@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="description" content="Full-stack web application with React, Express, and PostgreSQL" />
+  <meta name="author" content="Abner Grgurich" />
+  
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="My Web Application" />
+  <meta property="og:description" content="Modern web system built with current technologies" />
+  <meta property="og:image" content="%PUBLIC_URL%/og-image.png" />
+  
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:title" content="My Web Application" />
+  <meta property="twitter:description" content="Modern web system built with current technologies" />
+  <meta property="twitter:image" content="%PUBLIC_URL%/twitter-image.png" />
+
+  <!-- Apple Touch Icon -->
+  <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+  
+  <!-- Manifest for PWA -->
+  <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+  
+  <!-- Preconnect to external domains for performance -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <title>Stock management</title>
+  
+  <!-- Inline CSS for loading spinner and initial optimizations -->
+  <style>
+    /* Basic reset */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    /* Base source */
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+        sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      background-color: #f8fafc;
+      color: #1a202c;
+      line-height: 1.6;
+    }
+
+    /* Loading spinner while loading React */
+    .loading-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+
+    .loading-spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-top: 4px solid #ffffff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+
+    .loading-text {
+      color: white;
+      font-size: 18px;
+      font-weight: 500;
+      text-align: center;
+    }
+
+    .loading-subtitle {
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 14px;
+      margin-top: 8px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Fade out animation when React take control */
+    .loading-container.fade-out {
+      opacity: 0;
+      transition: opacity 0.5s ease-out;
+    }
+
+    /* No-script fallback */
+    .no-script-message {
+      background: #fee;
+      border: 1px solid #fcc;
+      color: #a00;
+      padding: 20px;
+      margin: 20px;
+      border-radius: 8px;
+      text-align: center;
+      font-weight: 500;
+    }
+
+    /* Styles for development */
+    .development-banner {
+      background: linear-gradient(90deg, #ff6b6b, #ee5a24);
+      color: white;
+      text-align: center;
+      padding: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 10000;
+      display: none;
+    }
+
+    /* Show development banner only in development */
+    body[data-env="development"] .development-banner {
+      display: block;
+    }
+
+    body[data-env="development"] #root {
+      margin-top: 32px;
+    }
+  </style>
+</head>
+
+<body data-env="%NODE_ENV%">
+  <!-- Development banner
+  <div class="development-banner">
+    🚧 DEVELOPMENT MODE - This application is in local development
+  </div>-->
+
+  <!-- Message for users without JavaScript -->
+  <noscript>
+    <div class="no-script-message">
+      <h2>🚨 JavaScript Required</h2>
+      <p>This application requires JavaScript to work properly.</p>
+      <p>Please enable JavaScript in your browser and reload the page.</p>
+      <p>
+        <strong>Instructions:</strong><br>
+        • Chrome/Firefox: Settings → Privacy & Security → Site Settings → JavaScript<br>
+        • Safari: Preferences → Security → Enable JavaScript
+      </p>
+    </div>
+  </noscript>
+
+  <!-- Loading screen while React loads -->
+  <div id="loading" class="loading-container">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Loading application</div>
+    <div class="loading-subtitle">Initializing components...</div>
+  </div>
+
+  <!-- Main container where React is mounted -->
+  <div id="root"></div>
+
+  <!-- Script to hide loading when React is ready -->
+  <script>
+    // Hide loading screen when React takes control
+    function hideLoading() {
+      const loadingElement = document.getElementById('loading');
+      if (loadingElement) {
+        loadingElement.classList.add('fade-out');
+        setTimeout(() => {
+          loadingElement.style.display = 'none';
+        }, 500);
+      }
+    }
+
+    // Detect when React has mounted
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'childList') {
+          const root = document.getElementById('root');
+          if (root && root.children.length > 0) {
+            hideLoading();
+            observer.disconnect();
+          }
+        }
+      });
+    });
+
+    // Observe changes in the root div
+    const rootElement = document.getElementById('root');
+    if (rootElement) {
+      observer.observe(rootElement, { childList: true });
+    }
+
+    // Fallback: hide loading after 10 seconds maximum
+    setTimeout(hideLoading, 10000);
+
+    // Console message for developers
+    console.log(`
+    🚀 Full-Stack Application
+    ========================
+    Frontend: React 18
+    Backend: Express + Sequelize
+    Database: PostgreSQL
+    Containerization: Docker
+    
+    Available endpoints:
+    • Frontend: http://localhost:3000
+    • API: http://localhost:3001/api
+    • pgAdmin: http://localhost:5050
+    • Docs: Ver README.md
+    `);
+  </script>
+
+  <!-- Service Worker para PWA-->
+  <script>
+    if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('%PUBLIC_URL%/sw.js')
+          .then((registration) => {
+            console.log('SW registered: ', registration);
+          })
+          .catch((registrationError) => {
+            console.log('SW registration failed: ', registrationError);
+          });
+      });
+    }
+  </script>
+</body>
+</html>

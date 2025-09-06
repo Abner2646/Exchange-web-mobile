@@ -1,0 +1,2 @@
+//Escáner automático de depositos
+

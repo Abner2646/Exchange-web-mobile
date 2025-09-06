@@ -1,0 +1,28 @@
+# backend/Dockerfile.dev
+FROM node:18-alpine
+
+# Install development tools
+RUN apk add --no-cache git
+
+WORKDIR /app
+
+# Environment variables for development
+ENV NODE_ENV=development
+
+# Copy package.json first
+COPY package*.json ./
+
+# Install dependencies including devDependencies
+RUN npm install
+
+# Install nodemon globally if not in package.json
+RUN npm install -g nodemon
+
+# Copy source code
+COPY . .
+
+# Expose ports (app and debugging)
+EXPOSE 3001 9229
+
+# Command with nodemon for hot reload
+CMD ["npm", "run", "dev"]

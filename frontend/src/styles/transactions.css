@@ -1,0 +1,184 @@
+h1, h2 {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+h1::before {
+  content: "📦 ";
+}
+h2::before {
+  content: "➕ ";
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: var(--shadow-sm);
+  max-width: 600px;
+  margin: 1rem auto;
+}
+
+form label {
+  font-weight: bold;
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+  display: block;
+}
+
+form input,
+form select,
+form textarea {
+  width: 100%;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: 6px;
+  padding: 0.75rem;
+  transition: all var(--transition-fast);
+}
+
+form textarea {
+  resize: vertical;
+}
+
+form input:focus,
+form select:focus,
+form textarea:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--primary-light);
+  outline: none;
+}
+
+/* Botones */
+button {
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: inherit;
+  margin: 0.25rem;
+}
+
+button:hover {
+  transform: translateY(-1px);
+}
+
+button[type="submit"] {
+  background-color: var(--primary-color);
+  color: var(--text-inverse);
+}
+
+button[type="submit"]:hover {
+  background-color: var(--primary-hover);
+}
+
+button[type="button"],
+button:not([type]) {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-primary);
+}
+
+button[type="button"]:hover,
+button:not([type]):hover {
+  background-color: var(--bg-secondary);
+  border-color: var(--border-hover);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 2rem;
+  font-size: 0.95rem;
+}
+
+th, td {
+  padding: 0.75rem;
+  border: 1px solid var(--border-secondary);
+  text-align: center;
+}
+
+th {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+td {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.stockIn {
+  color: var(--success);
+  font-weight: bold;
+}
+
+.stockOut {
+  color: var(--error);
+  font-weight: bold;
+}
+
+.adjustment {
+  color: var(--warning);
+  font-weight: bold;
+}
+
+div > button {
+  margin: 1rem 0.5rem;
+}
+
+/* Paginación */
+div > span {
+  display: inline-block;
+  margin: 0.5rem;
+  font-weight: bold;
+  color: var(--text-muted);
+}
+
+/* Error */
+div[style*="color: red"] {
+  text-align: center;
+  color: var(--error) !important;
+  font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  table, thead, tbody, th, td, tr {
+    display: block;
+  }
+
+  thead {
+    display: none;
+  }
+
+  tr {
+    margin-bottom: 1rem;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    box-shadow: var(--shadow-sm);
+    padding: 0.5rem;
+  }
+
+  td {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    border: none;
+    border-bottom: 1px solid var(--border-secondary);
+  }
+
+  td::before {
+    content: attr(data-label);
+    font-weight: bold;
+    color: var(--text-muted);
+  }
+}
