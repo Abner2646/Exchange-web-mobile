@@ -3,12 +3,80 @@ const { WalletMaestra, Criptomoneda, sequelize } = require('../models');
 const bip39 = require('bip39');
 const bitcoin = require('bitcoinjs-lib');
 const crypto = require('crypto');
+
 const ecc = require('tiny-secp256k1');
-const ECPair = require('ecpair').ECPairFactory(ecc);
 const { BIP32Factory } = require('bip32');
 const bip32 = BIP32Factory(ecc);
 
-// =================== CONFIGURACIÓN DE CRIPTOMONEDAS ===================
+class WalletMaestraSetup {
+  
+  static async generateMasterWallet(network, derivationPath = "m/44'/0'/0'") {
+    try {
+      const mnemonic = bip39.generateMnemonic(256);
+      const seed = await bip39.mnemonicToSeed(mnemonic);
+      
+      let walletData = {};
+      
+      switch (network.toLowerCase()) {
+        case 'bitcoin':
+        case 'btc':
+          walletData = this._generateBitcoinMasterWallet(seed, derivationPath);
+          break;
+          
+        case 'bsc':
+          walletData = this._generateBSCMasterWallet(seed, derivationPath);
+          break;
+          
+        default:
+          throw new Error(`Red no soportada: ${network}`);
+      }
+      
+      return {
+        network,
+        mnemonic,
+        derivationPath,
+        ...walletData,
+        createdAt: new Date(),
+        entropy: seed.toString('hex')
+      };
+      
+    } catch (error) {
+      throw new Error(`Error generando wallet maestra: ${error.message}`);
+    }
+  }
+  
+  static _generateBitcoinMasterWallet(seed, derivationPath) {
+    const network = bitcoin.networks.bitcoin;
+    const root = bip32.fromSeed(seed, network);
+    const account = root.derivePath(derivationPath);
+
+    return {
+      xprv: account.toBase58(),
+      xpub: account.neutered().toBase58(),
+      fingerprint: root.fingerprint.toString('hex'),
+      publicKey: account.publicKey.toString('hex')
+    };
+  }
+    
+  static _generateBSCMasterWallet(seed, derivationPath) {
+    const root = bip32.fromSeed(seed);
+    const account = root.derivePath(derivationPath);
+    
+    const publicKeyHex = account.publicKey.toString('hex');
+    const address = '0x' + crypto.randomBytes(20).toString('hex');
+    
+    return {
+      xprv: account.toBase58(),
+      xpub: account.neutered().toBase58(), 
+      fingerprint: root.fingerprint.toString('hex'),
+      publicKey: publicKeyHex,
+      privateKey: account.privateKey.toString('hex'),
+      address: address
+    };
+  }
+}
+
+// Configuración simplificada
 const CRIPTOMONEDAS_CONFIG = [
   {
     symbol: 'BTC',
@@ -19,14 +87,6 @@ const CRIPTOMONEDAS_CONFIG = [
     decimales: 8
   },
   {
-    symbol: 'ETH',
-    nombre: 'Ethereum',
-    red: 'ethereum',
-    derivationPath: "m/44'/60'/0'",
-    addressFormat: 'ethereum',
-    decimales: 18
-  },
-  {
     symbol: 'BNB',
     nombre: 'BNB Smart Chain',
     red: 'bsc',
@@ -35,190 +95,6 @@ const CRIPTOMONEDAS_CONFIG = [
     decimales: 18
   }
 ];
-
-// =================== UTILIDADES DE GENERACIÓN CRYPTO ===================
-// =================== UTILIDADES DE GENERACIÓN CRYPTO (CORRECCIONES SIMPLES) ===================
-class WalletGenerator {
-  
-  static async generateBitcoinWalletFromPrivateKey(privateKey) {
-      try {
-        // Generar mnemonic aleatorio (no se almacena, solo para generar otros datos)
-        const mnemonic = bip39.generateMnemonic(256);
-        const seed = await bip39.mnemonicToSeed(mnemonic);
-        
-        const network = bitcoin.networks.bitcoin;
-        const root = bip32.fromSeed(seed, network);
-        const account = root.derivePath("m/44'/0'/0'");
-        
-        // Usar el private key (ya en formato hex de 64 caracteres)
-        const cleanPrivateKey = privateKey.replace('0x', '');
-        const privateKeyBuffer = Buffer.from(cleanPrivateKey, 'hex');
-        
-        // ARREGLAR: Usar ECPair importado por separado
-        const keyPair = ECPair.fromPrivateKey(privateKeyBuffer, { network });
-        
-        // Generar address desde el keyPair real
-        const { address } = bitcoin.payments.p2pkh({ 
-          pubkey: keyPair.publicKey, 
-          network 
-        });
-        
-        console.log(`BTC Address generated: ${address}`);
-        
-        return {
-          mnemonic: mnemonic,
-          privateKey: privateKey,
-          address: address,
-          xpub: account.neutered().toBase58(),
-          fingerprint: root.fingerprint.toString('hex'),
-          publicKey: keyPair.publicKey.toString('hex'),
-          derivationPath: "m/44'/0'/0'"
-        };
-        
-      } catch (error) {
-        throw new Error(`Error generando wallet Bitcoin: ${error.message}`);
-      }
-    }
-  
-  static async generateBNBWalletFromPrivateKey(privateKey) {
-    try {
-      // Generar mnemonic aleatorio
-      const mnemonic = bip39.generateMnemonic(256);
-      const seed = await bip39.mnemonicToSeed(mnemonic);
-      
-      const root = bip32.fromSeed(seed);
-      const account = root.derivePath("m/44'/60'/0'");
-      
-      // Para BNB/BSC, generar address Ethereum-compatible
-      let address;
-      try {
-        // Usar crypto nativo sin dependencias adicionales
-        const cleanPrivateKey = privateKey.replace('0x', '');
-        const privateKeyBuffer = Buffer.from(cleanPrivateKey, 'hex');
-        
-        // Generar public key con tiny-secp256k1 (que ya tienes)
-        const publicKey = ecc.pointFromScalar(privateKeyBuffer, false);
-        
-        // Simular keccak256 con sha256 + manipulation (suficiente para testing)
-        const hash1 = crypto.createHash('sha256').update(publicKey.slice(1)).digest();
-        const hash2 = crypto.createHash('sha256').update(hash1).digest();
-        address = '0x' + hash2.slice(-20).toString('hex');
-        
-        console.log(`BNB Address generated: ${address}`);
-      } catch (error) {
-        // Fallback: usar address generada aleatoriamente
-        address = '0x' + crypto.randomBytes(20).toString('hex');
-        console.log(`BNB Address fallback: ${address}`);
-      }
-      
-      // Generar XPUB personalizado para BSC
-      const combined = Buffer.concat([account.publicKey, Buffer.from(privateKey.replace('0x', ''), 'hex')]);
-      const hash = crypto.createHash('sha256').update(combined).digest('hex');
-      const xpub = 'bpub' + hash.substring(0, 76); // BSC pub format
-      
-      return {
-        mnemonic: mnemonic,
-        privateKey: privateKey,
-        address: address,
-        xpub: xpub,
-        fingerprint: root.fingerprint.toString('hex'),
-        publicKey: account.publicKey.toString('hex'),
-        derivationPath: "m/44'/60'/0'"
-      };
-      
-    } catch (error) {
-      throw new Error(`Error generando wallet BNB: ${error.message}`);
-    }
-  }
-  
-  static getETHWalletFromEnv() {
-    try {
-      const requiredVars = ['ETH_PRIVATE_KEY', 'ETH_ADDRESS', 'ETH_MNEMONIC', 'ETH_XPUB'];
-      const missing = [];
-      
-      for (const varName of requiredVars) {
-        if (!process.env[varName] || process.env[varName].trim() === '') {
-          missing.push(varName);
-        }
-      }
-      
-      if (missing.length > 0) {
-        throw new Error(`Variables de entorno faltantes para ETH: ${missing.join(', ')}`);
-      }
-      
-      const mnemonic = process.env.ETH_MNEMONIC.trim();
-      const privateKey = process.env.ETH_PRIVATE_KEY.trim();
-      const address = process.env.ETH_ADDRESS.trim();
-      let xpub = process.env.ETH_XPUB.trim();
-      
-      // Validaciones
-      if (!bip39.validateMnemonic(mnemonic)) {
-        throw new Error('ETH_MNEMONIC inválido');
-      }
-      
-      if (!address.startsWith('0x') || address.length !== 42) {
-        throw new Error('ETH_ADDRESS inválida');
-      }
-      
-      const cleanPrivateKey = privateKey.startsWith('0x') ? privateKey.substring(2) : privateKey;
-      if (cleanPrivateKey.length !== 64) {
-        throw new Error('ETH_PRIVATE_KEY debe tener 64 caracteres hex');
-      }
-      
-      // ARREGLAR XPUB para Ethereum - convertir formato Bitcoin a Ethereum si es necesario
-      if (xpub.startsWith('xpub') || xpub.startsWith('ypub') || xpub.startsWith('zpub')) {
-        console.log('ETH: Convirtiendo XPUB formato Bitcoin a Ethereum...');
-        // Generar un XPUB específico para Ethereum basado en el address y private key
-        const input = `${address}${cleanPrivateKey}ETH${Date.now()}`;
-        const hash = crypto.createHash('sha256').update(input).digest('hex');
-        xpub = 'epub' + hash.substring(0, 76); // Ethereum pub format
-        console.log(`ETH: Nuevo XPUB generado: ${xpub.substring(0, 20)}...`);
-      }
-      
-      // Generar fingerprint y publicKey desde mnemonic
-      const seed = bip39.mnemonicToSeedSync(mnemonic);
-      const root = bip32.fromSeed(seed);
-      const account = root.derivePath("m/44'/60'/0'");
-      
-      return {
-        mnemonic: mnemonic,
-        privateKey: privateKey,
-        address: address,
-        xpub: xpub, // Usar XPUB corregido
-        fingerprint: root.fingerprint.toString('hex'),
-        publicKey: account.publicKey.toString('hex'),
-        derivationPath: "m/44'/60'/0'"
-      };
-      
-    } catch (error) {
-      throw new Error(`Error obteniendo datos ETH del .env: ${error.message}`);
-    }
-  }
-}
-
-// =================== UTILIDADES DE VALIDACIÓN ===================
-const validatePrivateKey = (privateKey, symbol, network) => {
-  if (!privateKey || privateKey.trim() === '') {
-    throw new Error(`${symbol}_PRIVATE_KEY no encontrada en .env`);
-  }
-  
-  let cleanKey = privateKey.trim();
-  
-  if (network === 'ethereum' || network === 'bsc') {
-    cleanKey = privateKey.startsWith('0x') ? privateKey.substring(2) : privateKey;
-    if (cleanKey.length !== 64) {
-      throw new Error(`Private key de ${symbol} debe tener 64 caracteres hex`);
-    }
-  } else if (network === 'bitcoin') {
-    if (cleanKey.length !== 64 && cleanKey.length !== 51 && cleanKey.length !== 52) {
-      throw new Error(`Private key de ${symbol} debe ser WIF o 64 caracteres hex`);
-    }
-  }
-  
-  return cleanKey;
-};
-
-// =================== MÉTODOS PRINCIPALES ===================
 
 // 1. CHECK STATUS
 const checkSetupStatus = async (req, res) => {
@@ -258,7 +134,7 @@ const checkSetupStatus = async (req, res) => {
   }
 };
 
-// 2. EXECUTE SETUP (BTC, ETH, BNB - CREA criptomonedas automáticamente)
+// 2. EXECUTE SETUP (Solo BTC y BNB)
 const executeSetup = async (req, res) => {
   const transaction = await sequelize.transaction();
   
@@ -281,7 +157,7 @@ const executeSetup = async (req, res) => {
     const resultados = [];
     const datosPrivados = [];
     
-    // Crear/verificar criptomonedas - NUEVA LÓGICA
+    // Crear/verificar criptomonedas
     const criptomonedas = {};
     for (const config of CRIPTOMONEDAS_CONFIG) {
       let criptomoneda = await Criptomoneda.findOne({
@@ -290,72 +166,48 @@ const executeSetup = async (req, res) => {
       });
       
       if (!criptomoneda) {
-        console.log(`Creando criptomoneda ${config.symbol}...`);
         criptomoneda = await Criptomoneda.create({
           symbol: config.symbol,
           nombre: config.nombre,
           red: config.red,
-          direccionContrato: config.direccionContrato,
+          derivationPath: config.derivationPath,
+          addressFormat: config.addressFormat,
           decimales: config.decimales,
           activa: true
         }, { transaction });
-        console.log(`✅ Criptomoneda ${config.symbol} creada con ID: ${criptomoneda.id}`);
-      } else {
-        console.log(`✅ Criptomoneda ${config.symbol} ya existe con ID: ${criptomoneda.id}`);
       }
       
       criptomonedas[config.symbol] = criptomoneda;
     }
     
-    // Crear wallets según la estrategia de cada moneda
+    // Generar wallets (Solo BTC y BNB)
     for (const config of CRIPTOMONEDAS_CONFIG) {
       const criptomoneda = criptomonedas[config.symbol];
       if (!criptomoneda) continue;
       
       try {
-        let walletData;
+        const walletData = await WalletMaestraSetup.generateMasterWallet(
+          config.red,
+          config.derivationPath
+        );
         
-        if (config.symbol === 'BTC') {
-          // BTC: Generar desde private key del .env
-          const privateKey = process.env.BTC_PRIVATE_KEY;
-          validatePrivateKey(privateKey, 'BTC', 'bitcoin');
-          walletData = await WalletGenerator.generateBitcoinWalletFromPrivateKey(privateKey);
-          
-        } else if (config.symbol === 'BNB') {
-          // BNB: Generar desde private key del .env
-          const privateKey = process.env.BNB_PRIVATE_KEY;
-          validatePrivateKey(privateKey, 'BNB', 'bsc');
-          walletData = await WalletGenerator.generateBNBWalletFromPrivateKey(privateKey);
-          
-        } else if (config.symbol === 'ETH') {
-          // ETH: Tomar todos los datos del .env
-          walletData = WalletGenerator.getETHWalletFromEnv();
-        }
-        
-        if (!walletData) {
-          throw new Error(`No se pudieron obtener datos para ${config.symbol}`);
-        }
-        
-        // Crear wallet en BD
         const nuevaWallet = await WalletMaestra.create({
           criptomonedaId: criptomoneda.id,
           nombre: `${config.nombre} Master Wallet`,
           red: config.red,
           symbol: config.symbol,
           xpub: walletData.xpub,
-          derivationPath: config.derivationPath, // Usar derivationPath de la configuración
+          derivationPath: walletData.derivationPath,
           fingerprint: walletData.fingerprint,
           publicKey: walletData.publicKey,
-          direccionPublica: walletData.address,
           balanceTotal: 0,
           activa: true,
-          descripcion: `Wallet maestra para ${config.nombre} (${config.symbol === 'ETH' ? 'desde .env completo' : 'generada desde private key'})`,
+          descripcion: `Wallet maestra para ${config.nombre}`,
           nextDerivationIndex: 0,
           metadata: {
-            createdAt: new Date(),
-            method: config.symbol === 'ETH' ? 'env-complete' : 'env-privatekey-generated',
-            version: '3.1',
-            source: 'environment_variables'
+            createdAt: walletData.createdAt,
+            method: 'api-setup',
+            version: '2.0'
           }
         }, { transaction });
         
@@ -364,43 +216,52 @@ const executeSetup = async (req, res) => {
           symbol: config.symbol,
           nombre: nuevaWallet.nombre,
           red: config.red,
-          address: walletData.address,
-          method: nuevaWallet.metadata.method,
           created_at: nuevaWallet.created_at
         };
         
+        if (walletData.address) {
+          resultado.address = walletData.address;
+        }
+        
         resultados.push(resultado);
         
-        // Datos privados para log
-        datosPrivados.push({
+        // Log privado
+        const datosPrivados_item = {
           symbol: config.symbol,
           id: nuevaWallet.id,
-          method: nuevaWallet.metadata.method,
           mnemonic: walletData.mnemonic,
-          privateKey: walletData.privateKey,
-          address: walletData.address,
-          xpub: walletData.xpub
-        });
+          xprv: walletData.xprv,
+          entropy: walletData.entropy
+        };
+        
+        if (walletData.privateKey) {
+          datosPrivados_item.privateKey = walletData.privateKey;
+        }
+        if (walletData.address) {
+          datosPrivados_item.address = walletData.address;
+        }
+        
+        datosPrivados.push(datosPrivados_item);
         
       } catch (error) {
         console.error(`Error creando wallet ${config.symbol}:`, error.message);
-        // Continuar con las siguientes wallets si una falla
       }
     }
     
     await transaction.commit();
     
     // Log datos privados
-    console.log('\n=== WALLETS CREADAS - SETUP COMPLETO ===');
+    console.log('\n=== DATOS PRIVADOS ===');
     for (const datos of datosPrivados) {
-      console.log(`\n--- ${datos.symbol} (${datos.method}) ---`);
+      console.log(`\n--- ${datos.symbol} ---`);
       console.log(`ID: ${datos.id}`);
       console.log(`MNEMONIC: ${datos.mnemonic}`);
-      console.log(`PRIVATE KEY: ${datos.privateKey}`);
-      console.log(`ADDRESS: ${datos.address}`);
-      console.log(`XPUB: ${datos.xpub}`);
+      console.log(`XPRV: ${datos.xprv}`);
+      if (datos.privateKey) console.log(`PRIVATE KEY: ${datos.privateKey}`);
+      if (datos.address) console.log(`ADDRESS: ${datos.address}`);
+      console.log(`ENTROPY: ${datos.entropy}`);
     }
-    console.log('\n========================================\n');
+    console.log('\n==================\n');
     
     res.status(201).json({
       success: true,
@@ -408,7 +269,7 @@ const executeSetup = async (req, res) => {
         walletsCreadas: resultados.length,
         wallets: resultados
       },
-      message: `Setup completado: ${resultados.length} wallets creadas (BTC generada, ETH desde .env, BNB generada)`
+      message: `Setup completado: ${resultados.length} wallets creadas (BTC, BNB)`
     });
     
   } catch (error) {
@@ -420,118 +281,64 @@ const executeSetup = async (req, res) => {
   }
 };
 
-// 3. CREATE SINGLE WALLET (BTC o BNB generadas, ETH desde .env)
+// 3. CREATE SINGLE WALLET
 const createSingleWallet = async (req, res) => {
   try {
-    const { symbol } = req.body;
+    const { criptomonedaId, nombre, red, symbol, derivationPath, descripcion } = req.body;
     
-    if (!symbol) {
+    if (!criptomonedaId || !red || !symbol) {
       return res.status(400).json({
         success: false,
-        error: 'Symbol es requerido'
+        error: 'criptomonedaId, red y symbol son requeridos'
       });
     }
     
-    const symbolUpper = symbol.toUpperCase();
+    const walletData = await WalletMaestraSetup.generateMasterWallet(
+      red,
+      derivationPath || "m/44'/0'/0'"
+    );
     
-    // Verificar que existe la configuración
-    const config = CRIPTOMONEDAS_CONFIG.find(c => c.symbol === symbolUpper);
-    if (!config) {
-      return res.status(400).json({
-        success: false,
-        error: `Configuración no encontrada para ${symbolUpper}. Símbolos disponibles: ${CRIPTOMONEDAS_CONFIG.map(c => c.symbol).join(', ')}`
-      });
-    }
-    
-    // Verificar que existe la criptomoneda en BD
-    const criptomoneda = await Criptomoneda.findOne({
-      where: { symbol: symbolUpper }
-    });
-    
-    if (!criptomoneda) {
-      return res.status(404).json({
-        success: false,
-        error: `Criptomoneda ${symbolUpper} no encontrada en base de datos. Crear primero con /create-${symbolUpper.toLowerCase()}-crypto`
-      });
-    }
-    
-    // Verificar que no existe wallet
-    const existingWallet = await WalletMaestra.findOne({
-      where: { criptomonedaId: criptomoneda.id }
-    });
-    
-    if (existingWallet) {
-      return res.status(400).json({
-        success: false,
-        error: `Ya existe una wallet para ${symbolUpper}`
-      });
-    }
-    
-    // Generar wallet según tipo
-    let walletData;
-    let method;
-    
-    if (symbolUpper === 'BTC') {
-      const privateKey = process.env.BTC_PRIVATE_KEY;
-      validatePrivateKey(privateKey, 'BTC', 'bitcoin');
-      walletData = await WalletGenerator.generateBitcoinWalletFromPrivateKey(privateKey);
-      method = 'env-privatekey-generated';
-      
-    } else if (symbolUpper === 'BNB') {
-      const privateKey = process.env.BNB_PRIVATE_KEY;
-      validatePrivateKey(privateKey, 'BNB', 'bsc');
-      walletData = await WalletGenerator.generateBNBWalletFromPrivateKey(privateKey);
-      method = 'env-privatekey-generated';
-      
-    } else if (symbolUpper === 'ETH') {
-      walletData = WalletGenerator.getETHWalletFromEnv();
-      method = 'env-complete';
-    }
-    
-    // Crear wallet
     const nuevaWallet = await WalletMaestra.create({
-      criptomonedaId: criptomoneda.id,
-      nombre: `${config.nombre} Master Wallet`,
-      red: config.red,
-      symbol: symbolUpper,
+      criptomonedaId,
+      nombre: nombre || `${symbol} Master Wallet`,
+      red: red.toLowerCase(),
+      symbol: symbol.toUpperCase(),
       xpub: walletData.xpub,
-      derivationPath: config.derivationPath, // Usar derivationPath de la configuración
+      derivationPath: walletData.derivationPath,
       fingerprint: walletData.fingerprint,
       publicKey: walletData.publicKey,
-      direccionPublica: walletData.address,
       balanceTotal: 0,
       activa: true,
-      descripcion: `Wallet maestra para ${config.nombre} (${method})`,
-      nextDerivationIndex: 0,
-      metadata: {
-        createdAt: new Date(),
-        method: method,
-        version: '3.1',
-        source: 'environment_variables'
-      }
+      descripcion: descripcion || `Wallet maestra para ${symbol}`,
+      nextDerivationIndex: 0
     });
     
-    // Log datos privados
-    console.log(`\n=== WALLET ${symbolUpper} CREADA (${method}) ===`);
+    // Log privado
+    console.log(`\n=== WALLET CREADA: ${symbol} ===`);
     console.log(`ID: ${nuevaWallet.id}`);
     console.log(`MNEMONIC: ${walletData.mnemonic}`);
-    console.log(`PRIVATE KEY: ${walletData.privateKey}`);
-    console.log(`ADDRESS: ${walletData.address}`);
+    console.log(`XPRV: ${walletData.xprv}`);
     console.log(`XPUB: ${walletData.xpub}`);
-    console.log('=======================================\n');
+    if (walletData.privateKey) console.log(`PRIVATE KEY: ${walletData.privateKey}`);
+    if (walletData.address) console.log(`ADDRESS: ${walletData.address}`);
+    console.log('========================\n');
+    
+    const response = {
+      id: nuevaWallet.id,
+      symbol: nuevaWallet.symbol,
+      nombre: nuevaWallet.nombre,
+      red: nuevaWallet.red,
+      created_at: nuevaWallet.created_at
+    };
+    
+    if (walletData.address) {
+      response.address = walletData.address;
+    }
     
     res.status(201).json({
       success: true,
-      data: {
-        id: nuevaWallet.id,
-        symbol: nuevaWallet.symbol,
-        nombre: nuevaWallet.nombre,
-        red: nuevaWallet.red,
-        address: walletData.address,
-        method: method,
-        created_at: nuevaWallet.created_at
-      },
-      message: `Wallet ${symbolUpper} creada exitosamente (${method})`
+      data: response,
+      message: `Wallet ${symbol} creada exitosamente`
     });
     
   } catch (error) {
@@ -648,8 +455,7 @@ const diagnostico = async (req, res) => {
       
       analysis[symbol] = {
         crypto: crypto ? { id: crypto.id, exists: true } : { exists: false },
-        wallet: wallet ? { id: wallet.id, exists: true } : { exists: false },
-        envCheck: checkEnvVarsForSymbol(symbol)
+        wallet: wallet ? { id: wallet.id, exists: true } : { exists: false }
       };
     }
     
@@ -678,7 +484,7 @@ const diagnostico = async (req, res) => {
   }
 };
 
-// 7. CREAR WALLET ERC20 (MANTENER COMO ESTABA - desde body)
+// 7. CREAR WALLET GENÉRICA PARA ERC20/ETHEREUM
 const createERC20WalletForCrypto = async (req, res) => {
   const transaction = await sequelize.transaction();
   
@@ -861,7 +667,6 @@ const createERC20WalletForCrypto = async (req, res) => {
       derivationPath: derivationPath,
       fingerprint: root.fingerprint.toString('hex'),
       publicKey: account.publicKey.toString('hex'),
-      direccionPublica: address,
       balanceTotal: 0,
       activa: true,
       descripcion: `Wallet maestra para ${criptomoneda.nombre}`,
@@ -879,7 +684,7 @@ const createERC20WalletForCrypto = async (req, res) => {
     await transaction.commit();
     
     // Log datos privados
-    console.log(`\n=== WALLET ERC20 ${criptomoneda.symbol} CREADA ===`);
+    console.log(`\n=== WALLET ${criptomoneda.symbol} CREADA ===`);
     console.log(`ID: ${nuevaWallet.id}`);
     console.log(`SYMBOL: ${criptomoneda.symbol}`);
     console.log(`NETWORK: ${criptomoneda.red}`);
@@ -892,7 +697,7 @@ const createERC20WalletForCrypto = async (req, res) => {
     if (criptomoneda.direccionContrato) {
       console.log(`TOKEN CONTRACT: ${criptomoneda.direccionContrato}`);
     }
-    console.log('=====================================================\n');
+    console.log('=====================================\n');
     
     res.status(201).json({
       success: true,
@@ -920,35 +725,7 @@ const createERC20WalletForCrypto = async (req, res) => {
   }
 };
 
-// =================== FUNCIONES AUXILIARES ===================
-const checkEnvVarsForSymbol = (symbol) => {
-  let requiredVars = [];
-  
-  if (symbol === 'BTC') {
-    requiredVars = ['BTC_PRIVATE_KEY'];
-  } else if (symbol === 'BNB') {
-    requiredVars = ['BNB_PRIVATE_KEY'];
-  } else if (symbol === 'ETH') {
-    requiredVars = ['ETH_PRIVATE_KEY', 'ETH_ADDRESS', 'ETH_MNEMONIC', 'ETH_XPUB'];
-  }
-  
-  const status = {};
-  let allPresent = true;
-  
-  for (const varName of requiredVars) {
-    const exists = !!(process.env[varName] && process.env[varName].trim() !== '');
-    status[varName] = exists;
-    if (!exists) allPresent = false;
-  }
-  
-  return {
-    allPresent,
-    variables: status,
-    strategy: symbol === 'ETH' ? 'complete-from-env' : 'generate-from-privatekey'
-  };
-};
-
-// FUNCIONES AUXILIARES PARA ERC20
+// FUNCIONES AUXILIARES
 function generateYpubFormat(account, symbol = 'TOKEN') {
   try {
     const combined = Buffer.concat([account.chainCode, account.publicKey]);
