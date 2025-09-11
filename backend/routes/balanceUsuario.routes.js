@@ -8,7 +8,7 @@ const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
 
 // RUTAS PÚBLICAS/ADMIN
 // GET /api/balances - Listar todos los balances (admin)
-router.get('/', isAdmin, balanceUserController.getBalances);
+router.get('/', /*isAdmin,*/ balanceUserController.getBalances); // Bien
 
 // GET /api/balances/stats - Estadísticas de balances (admin)
 router.get('/stats', isAdmin, balanceUserController.getBalanceStats);
@@ -35,7 +35,7 @@ router.get('/user/:userId/crypto/:criptomonedaId/check', authenticateToken, bala
 
 // RUTAS DE MODIFICACIÓN
 // PUT /api/balances/user/:userId/crypto/:criptomonedaId - Actualizar balance
-router.put('/user/:userId/crypto/:criptomonedaId', authenticateToken, balanceUserController.updateBalance);
+router.put('/user/:userId/crypto/:criptomonedaId', authenticateToken, balanceUserController.updateBalance); //<---- Para añadir balances
 
 // POST /api/balances/user/:userId/crypto/:criptomonedaId/block - Bloquear balance
 router.post('/user/:userId/crypto/:criptomonedaId/block', authenticateToken, balanceUserController.blockBalance);

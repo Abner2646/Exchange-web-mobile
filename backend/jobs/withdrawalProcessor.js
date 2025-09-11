@@ -1,2 +1,0 @@
-//Procesador automático de retiros
-

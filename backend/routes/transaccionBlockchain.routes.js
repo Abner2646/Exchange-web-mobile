@@ -1,123 +1,63 @@
+// routes/transaccionBlockchain.routes.js
 const express = require('express');
 const router = express.Router();
-const transaccionBlockchain = require('../controllers/transaccionBlockchain.controller');
+const transaccionBlockchainController = require('../controllers/transaccionBlockchain.controller');
+const {authenticateToken} = require('../middleware/authMiddleware');
+const validationMiddleware = require('../middleware/rateLimit.middleware');
+const rateLimitMiddleware = require('../middleware/rateLimit.middleware');
 
-// Middleware
-const { authenticateToken } = require('../middleware/authMiddleware.js');
-const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
+// =================== RUTAS PÚBLICAS (con auth) ===================
 
-// ================================
-// RUTAS PÚBLICAS (con autenticación básica)
-// ================================
+// Aplicar autenticación a todas las rutas
+router.use(authenticateToken);
 
-// Validar dirección de criptomoneda
-router.post('/validate-address', authenticateToken, transaccionBlockchain.validateAddress);
-/*
-{
-  "direccion": "1A2B3C4D5E6F7G8H9I0J",
-  "criptomonedaId": "uuid-btc"
-}
-*/
+// GET /api/transactions/my - Obtener mis transacciones
+router.get('/my', /*rateLimitMiddleware.general,*/ transaccionBlockchainController.getMyTransactions);
 
-// ================================
-// RUTAS DE USUARIO (autenticados)
-// ================================
+// GET /api/transactions/:id - Obtener transacción específica
+//router.get('/:id', /*validationMiddleware.validateUUID('id'),*/ transaccionBlockchainController.getTransaction);
 
-// Obtener mis transacciones
-router.post('/me', authenticateToken, transaccionBlockchain.getMyTransacciones); // Bien (volver a checkear)
-/*
-{
-  "tipo": "retiro",
-  "estado": "completado",
-  "limit": 20
-}
-*/
+// POST /api/transactions/withdraw - Crear retiro
+router.post('/withdraw', /*rateLimitMiddleware.withdrawal, validationMiddleware.validateWithdrawal,*/ transaccionBlockchainController.createWithdrawal);
 
-// Obtener límites de retiro disponibles
-router.post('/me/withdrawal-limits', authenticateToken, transaccionBlockchain.getWithdrawalLimits);
-/*
-{
-  "criptomonedaId": "uuid-btc"
-}
-*/
+// GET /api/transactions/balances - Obtener mis balances
+//router.get('/balances', /*rateLimitMiddleware.general,*/ transaccionBlockchainController.getMyBalances);
 
-// Crear solicitud de retiro (procesamiento automático)
-router.post('/retiros', authenticateToken, transaccionBlockchain.createRetiro);
-/*
-{
-  "criptomonedaId": "uuid-btc",
-  "cantidad": 0.5,
-  "direccionDestino": "1A2B3C4D5E6F7G8H9I0J",
-  "feeBlockchain": 0.0001
-}
-*/
+// GET /api/transactions/deposit-address/:criptomonedaId - Obtener dirección de depósito
+router.get('/deposit-address/:criptomonedaId', /*validationMiddleware.validateUUID('criptomonedaId'), rateLimitMiddleware.general,*/ transaccionBlockchainController.getDepositAddress); //Bien (En realidad está duplicada la ruta con una de "direccionDeposito")
 
-// Cancelar mi retiro (solo si está pendiente)
-//router.post('/cancel', authenticateToken, transaccionBlockchain.cancelRetiro);
-// {"id": "tx-uuid-123"}
+// GET /api/transactions/tx/:hash - Buscar por hash
+//router.get('/tx/:hash', /*validationMiddleware.validateTxHash,*/ transaccionBlockchainController.getTransactionByHash);
 
-// Obtener transacción específica por ID
-router.post('/get-by-id', authenticateToken, transaccionBlockchain.getTransaccionById);
-//{"id": "tx-uuid-123"}
+// =================== RUTAS ADMINISTRATIVAS ===================
 
-// Obtener transacción por hash de blockchain
-router.post('/get-by-hash', authenticateToken, transaccionBlockchain.getTransaccionByHash);
-//{"txHash": "sent_123abc456def"}
+// GET /api/admin/transactions - Todas las transacciones (admin)
+//router.get('/admin/all',  /*authMiddleware.requireRole(['admin', 'super_admin']), rateLimitMiddleware.admin,*/ transaccionBlockchainController.getAllTransactions);
 
-// ================================
-// RUTAS DEL SISTEMA AUTOMÁTICO (admin)
-// ================================
+// GET /api/admin/transactions/pending - Transacciones pendientes
+//router.get('/admin/pending', /*authMiddleware.requireRole(['admin', 'super_admin']), rateLimitMiddleware.admin,*/ transaccionBlockchainController.getPendingTransactions);
 
-// Escanear blockchain manualmente para nuevos depósitos
-router.post('/system/scan-deposits', authenticateToken, /*authorizeRoles(['admin', 'super_admin']),*/ transaccionBlockchain.scanBlockchainDeposits);
-//{}
+// POST /api/admin/transactions/:id/approve - Aprobar transacción
+//router.post('/admin/:id/approve', /*authMiddleware.requireRole(['admin', 'super_admin']), validationMiddleware.validateUUID('id'),*/ rateLimitMiddleware.admin, transaccionBlockchainController.approveTransaction);
 
-// Actualizar confirmaciones de todas las transacciones pendientes
-router.post('/system/update-confirmations', authenticateToken, /*authorizeRoles(['admin', 'super_admin']),*/ transaccionBlockchain.updateAllConfirmations);
-//{}
+// POST /api/admin/transactions/:id/reject - Rechazar transacción
+//router.post('/admin/:id/reject', /*authMiddleware.requireRole(['admin', 'super_admin']), validationMiddleware.validateUUID('id'),*/ validationMiddleware.validateRejection, rateLimitMiddleware.admin, transaccionBlockchainController.rejectTransaction);
 
-// Registrar depósito manualmente (casos especiales)
-//router.post('/system/manual-deposit', authenticateToken, /*authorizeRoles(['admin', 'super_admin']),*/ transaccionBlockchain.registerManualDeposit);
-/*
-{
-  "usuarioId": "user-uuid-123",
-  "criptomonedaId": "uuid-btc", 
-  "cantidad": 1.0,
-  "txHash": "manual_abc123...",
-  "direccionOrigen": "1XYZ789...",
-  "direccionDestino": "1ABC123...",
-  "confirmacionesRequeridas": 6
-}
-*/
+// GET /api/admin/transactions/stats - Estadísticas
+//router.get('/admin/stats',  /*authMiddleware.requireRole(['admin', 'super_admin']), rateLimitMiddleware.admin,*/ transaccionBlockchainController.getTransactionStats);
 
-// Forzar procesamiento de retiro específico
-//router.post('/system/force-process', authenticateToken, /*authorizeRoles(['admin', 'super_admin']),*/ transaccionBlockchain.forceProcessWithdrawal);
-//{"id": "tx-uuid-123"}
+// =================== RUTAS DE SISTEMA ===================
 
-// ================================
-// RUTAS DE ADMINISTRACIÓN
-// ================================
+// POST /api/system/scan-deposits - Escanear depósitos manualmente
+//router.post('/system/scan-deposits',  /*authMiddleware.requireRole(['admin', 'super_admin']), rateLimitMiddleware.system,*/ transaccionBlockchainController.scanDeposits);
 
-// Obtener todas las transacciones con filtros (solo admin)
-//router.post('/admin/list', authenticateToken, /*authorizeRoles(['admin', 'super_admin']),*/ transaccionBlockchain.getAllTransacciones);
-/*
-{
-  "tipo": "deposito",
-  "estado": "completado",
-  "fechaDesde": "2025-01-01",
-  "fechaHasta": "2025-01-02",
-  "page": 1,
-  "limit": 10
-}
-*/
+// POST /api/system/process-withdrawals - Procesar retiros manualmente
+//router.post('/system/process-withdrawals',  /*authMiddleware.requireRole(['admin', 'super_admin']), rateLimitMiddleware.system,*/ transaccionBlockchainController.processWithdrawals);
 
-// Obtener estadísticas del sistema (solo admin)
-//router.post('/admin/stats', authenticateToken, /*authorizeRoles(['admin', 'super_admin']),*/ transaccionBlockchain.getSystemStats);
-/*
-{
-  "fechaDesde": "2025-01-01",
-  "fechaHasta": "2025-01-02"
-}
-*/
+// POST /api/system/update-confirmations - Actualizar confirmaciones
+//router.post('/system/update-confirmations',  /*authMiddleware.requireRole(['admin', 'super_admin']), rateLimitMiddleware.system,*/ transaccionBlockchainController.updateConfirmations);
+
+// GET /api/system/blockchain-status - Estado de servicios
+//router.get('/system/blockchain-status',  /*authMiddleware.requireRole(['admin', 'super_admin']), rateLimitMiddleware.system,*/ transaccionBlockchainController.getBlockchainStatus);
 
 module.exports = router;

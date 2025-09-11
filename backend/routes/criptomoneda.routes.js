@@ -12,7 +12,7 @@ const criptomonedaController = require('../controllers/criptomoneda.controller.j
 // --------------------- RUTAS CRUD BÁSICAS --------------------- //
 
 // Obtener todas las criptomonedas
-router.get('/', authenticateToken, criptomonedaController.getCriptomonedas);
+router.get('/', authenticateToken, criptomonedaController.getCriptomonedas); // Bien
 
 // Obtener criptomoneda por ID
 router.get('/:id', authenticateToken, criptomonedaController.getCriptomonedaById);

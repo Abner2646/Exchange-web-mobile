@@ -1,501 +1,618 @@
-const { TransaccionBlockchain, Usuario, Criptomoneda, BalanceUsuario, Notificacion } = require('../models/index.js');
-const { Op } = require('sequelize');
+// controllers/transaccionBlockchain.controller.js
+const { TransaccionBlockchain, Usuario, Criptomoneda, BalanceUsuario } = require('../models');
+const BlockchainServiceManager = require('../services/blockchain');
+const { validationResult } = require('express-validator');
 
-// ================================
-// MÉTODOS DE CONSULTA PARA USUARIOS
-// ================================
+class TransaccionBlockchainController {
+  // =================== ENDPOINTS PARA USUARIOS ===================
 
-// Obtener mis transacciones
-const getMyTransacciones = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const filters = { ...req.body };
-    
-    const transacciones = await TransaccionBlockchain.getByUser(userId, filters);
-    
-    res.json({
-      transacciones,
-      total: transacciones.length
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+  // GET /api/transactions/my - Obtener transacciones del usuario
+  async getMyTransactions(req, res) {
+    try {
+      const userId = req.user.id;
+      const filters = {
+        tipo: req.query.tipo,
+        estado: req.query.estado,
+        criptomonedaId: req.query.criptomonedaId,
+        fechaDesde: req.query.fechaDesde,
+        fechaHasta: req.query.fechaHasta,
+        limit: req.query.limit || 20,
+        offset: req.query.offset || 0
+      };
 
-// Obtener transacción por ID
-const getTransaccionById = async (req, res) => {
-  try {
-    const { id } = req.body;
-    
-    if (!id) {
-      return res.status(400).json({ error: 'ID de transacción requerido' });
-    }
+      const result = await TransaccionBlockchain.getByUser(userId, filters);
 
-    const transaccion = await TransaccionBlockchain.getById(id);
-    
-    if (!transaccion) {
-      return res.status(404).json({ error: 'Transacción no encontrada' });
-    }
-
-    // Solo admins o el usuario dueño pueden ver la transacción
-    if (req.user.rol === 'normal' && req.user.id !== transaccion.usuarioId) {
-      return res.status(403).json({ error: 'Sin permisos para ver esta transacción' });
-    }
-
-    res.json(transaccion);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// Obtener transacción por hash de blockchain
-const getTransaccionByHash = async (req, res) => {
-  try {
-    const { txHash } = req.body;
-    
-    if (!txHash) {
-      return res.status(400).json({ error: 'Hash de transacción requerido' });
-    }
-
-    const transaccion = await TransaccionBlockchain.getByTxHash(txHash);
-    
-    if (!transaccion) {
-      return res.status(404).json({ error: 'Transacción no encontrada' });
-    }
-
-    // Solo admins o el usuario dueño pueden ver la transacción
-    if (req.user.rol === 'normal' && req.user.id !== transaccion.usuarioId) {
-      return res.status(403).json({ error: 'Sin permisos para ver esta transacción' });
-    }
-
-    res.json(transaccion);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// Validar dirección de criptomoneda
-const validateAddress = async (req, res) => {
-  try {
-    const { direccion, criptomonedaId } = req.body;
-    
-    if (!direccion || !criptomonedaId) {
-      return res.status(400).json({ error: 'Dirección y criptomonedaId son requeridos' });
-    }
-
-    const validation = await TransaccionBlockchain.validateAddress(direccion, criptomonedaId);
-    
-    res.json(validation);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// ================================
-// MÉTODOS DE RETIROS (AUTOMÁTICOS)
-// ================================
-
-// Crear solicitud de retiro (procesamiento automático)
-const createRetiro = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { criptomonedaId, cantidad, direccionDestino, feeBlockchain } = req.body;
-    
-    // Validaciones básicas
-    if (!criptomonedaId || !cantidad || !direccionDestino) {
-      return res.status(400).json({ 
-        error: 'Los campos criptomonedaId, cantidad y direccionDestino son requeridos' 
+      res.json({
+        success: true,
+        data: result
+      });
+    } catch (error) {
+      console.error('Error obteniendo transacciones del usuario:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor',
+        error: error.message
       });
     }
-
-    if (cantidad <= 0) {
-      return res.status(400).json({ error: 'La cantidad debe ser mayor a 0' });
-    }
-
-    // Validar dirección de destino
-    const addressValidation = await TransaccionBlockchain.validateAddress(direccionDestino, criptomonedaId);
-    if (!addressValidation.valid) {
-      return res.status(400).json({ error: addressValidation.message });
-    }
-
-    // Verificar límites diarios del usuario
-    const limitCheck = await Usuario.canMakeTransaction(userId, cantidad);
-    if (!limitCheck.canTransact) {
-      return res.status(400).json({ error: limitCheck.reason });
-    }
-
-    // Crear y procesar retiro automáticamente
-    const retiro = await TransaccionBlockchain.createWithdrawal({
-      usuarioId: userId,
-      criptomonedaId,
-      cantidad: parseFloat(cantidad),
-      direccionDestino,
-      feeBlockchain: feeBlockchain || 0
-    });
-
-    res.status(201).json({
-      message: 'Retiro creado y será procesado automáticamente',
-      transaccion: retiro,
-      info: 'El retiro se procesará en unos segundos. Recibirás una notificación cuando se complete.'
-    });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
   }
-};
 
-// Cancelar retiro (solo si aún está pendiente)
-const cancelRetiro = async (req, res) => {
-  try {
-    const { id } = req.body;
-    const userId = req.user.id;
+  // GET /api/transactions/:id - Obtener transacción específica
+  async getTransaction(req, res) {
+    try {
+      const { id } = req.params;
+      const userId = req.user.id;
+      const userRole = req.user.rol;
 
-    if (!id) {
-      return res.status(400).json({ error: 'ID de transacción requerido' });
-    }
+      const transaccion = await TransaccionBlockchain.getById(id);
 
-    const transaccion = await TransaccionBlockchain.getById(id);
-    
-    if (!transaccion) {
-      return res.status(404).json({ error: 'Transacción no encontrada' });
-    }
-
-    // Verificar que es del usuario
-    if (transaccion.usuarioId !== userId) {
-      return res.status(403).json({ error: 'Solo puedes cancelar tus propias transacciones' });
-    }
-
-    // Solo se pueden cancelar retiros pendientes (antes de procesarse)
-    if (transaccion.tipo !== 'retiro') {
-      return res.status(400).json({ error: 'Solo se pueden cancelar retiros' });
-    }
-
-    if (transaccion.estado !== 'pendiente') {
-      return res.status(400).json({ 
-        error: 'Solo se pueden cancelar retiros que aún no han sido procesados' 
-      });
-    }
-
-    // Actualizar estado a cancelada
-    await transaccion.update({ estado: 'fallido' });
-
-    // Desbloquear balance del usuario
-    await BalanceUsuario.unblockBalance(
-      transaccion.usuarioId,
-      transaccion.criptomonedaId,
-      transaccion.cantidad
-    );
-
-    // Crear notificación
-    await Notificacion.createNotification({
-      usuarioId: userId,
-      tipo: 'transaccion',
-      titulo: 'Retiro cancelado',
-      mensaje: `Tu retiro de ${transaccion.cantidad} ${transaccion.criptomoneda?.symbol || ''} ha sido cancelado. Los fondos han sido desbloqueados en tu cuenta.`,
-      importante: false,
-      entidadTipo: 'transaccion_blockchain',
-      entidadId: transaccion.id
-    });
-
-    res.json({
-      message: 'Retiro cancelado exitosamente',
-      transaccion: await TransaccionBlockchain.getById(id)
-    });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-};
-
-// Obtener límites de retiro disponibles
-const getWithdrawalLimits = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { criptomonedaId } = req.body;
-
-    if (!criptomonedaId) {
-      return res.status(400).json({ error: 'criptomonedaId es requerido' });
-    }
-
-    // Obtener balance disponible
-    const balance = await BalanceUsuario.getByUserAndCrypto(userId, criptomonedaId);
-    const balanceDisponible = balance ? parseFloat(balance.balanceDisponible) : 0;
-
-    // Obtener límites del usuario
-    const user = await Usuario.getById(userId);
-    const limiteDiario = user.limiteDiarioUsd;
-
-    // Calcular volumen usado hoy
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    const volumenHoy = await TransaccionBlockchain.findAll({
-      attributes: [[sequelize.fn('SUM', sequelize.col('cantidad')), 'total']],
-      where: {
-        usuarioId: userId,
-        tipo: 'retiro',
-        estado: { [Op.in]: ['pendiente', 'procesando', 'confirmado', 'completado'] },
-        created_at: {
-          [Op.gte]: today,
-          [Op.lt]: tomorrow
-        }
-      },
-      raw: true
-    });
-
-    const volumenUsado = parseFloat(volumenHoy[0]?.total || 0);
-    const limiteRestante = Math.max(0, limiteDiario - volumenUsado);
-
-    res.json({
-      balanceDisponible,
-      limiteDiario,
-      volumenUsado,
-      limiteRestante,
-      maxRetiro: Math.min(balanceDisponible, limiteRestante)
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// ================================
-// MÉTODOS DEL SISTEMA AUTOMÁTICO
-// ================================
-
-// Escanear blockchain para nuevos depósitos
-const scanBlockchainDeposits = async (req, res) => {
-  try {
-    // Solo admins pueden ejecutar escaneo manual
-    /*if (req.user.rol !== 'admin' && req.user.rol !== 'super_admin') {
-      return res.status(403).json({ error: 'Solo administradores pueden ejecutar escaneo de blockchain' });
-    }*/
-
-    const nuevosDepositos = await TransaccionBlockchain.scanForDeposits();
-    
-    res.json({
-      message: `Escaneo completado. Encontrados ${nuevosDepositos.length} nuevos depósitos`,
-      nuevosDepositos: nuevosDepositos.map(dep => ({
-        id: dep.id,
-        usuarioId: dep.usuarioId,
-        cantidad: dep.cantidad,
-        txHash: dep.txHash,
-        criptomoneda: dep.criptomoneda?.symbol
-      })),
-      total: nuevosDepositos.length
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// Actualizar confirmaciones de todas las transacciones
-const updateAllConfirmations = async (req, res) => {
-  try { 
-    // Solo admins pueden ejecutar actualización masiva
-    /*if (req.user.rol !== 'admin' && req.user.rol !== 'super_admin') {
-      return res.status(403).json({ error: 'Solo administradores pueden actualizar confirmaciones masivamente' }); //<--- Volver a descomentar por seguridad!!
-    }*/
-    console.log("Después del comentario")
-    const actualizadas = await TransaccionBlockchain.updateAllConfirmations();
-    
-    res.json({
-      message: `Confirmaciones actualizadas. ${actualizadas.length} transacciones procesadas`,
-      transaccionesActualizadas: actualizadas,
-      total: actualizadas.length
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// Registrar depósito manualmente (para casos especiales)
-const registerManualDeposit = async (req, res) => {
-  try {
-    const { 
-      usuarioId, 
-      criptomonedaId, 
-      cantidad, 
-      txHash, 
-      direccionOrigen, 
-      direccionDestino,
-      confirmacionesRequeridas = 6 
-    } = req.body;
-
-    // Solo admins pueden registrar depósitos manualmente
-    if (req.user.rol !== 'admin' && req.user.rol !== 'super_admin') {
-      return res.status(403).json({ error: 'Solo administradores pueden registrar depósitos manualmente' });
-    }
-
-    // Validaciones básicas
-    if (!usuarioId || !criptomonedaId || !cantidad || !direccionDestino) {
-      return res.status(400).json({ 
-        error: 'Los campos usuarioId, criptomonedaId, cantidad y direccionDestino son requeridos' 
-      });
-    }
-
-    if (cantidad <= 0) {
-      return res.status(400).json({ error: 'La cantidad debe ser mayor a 0' });
-    }
-
-    // Crear registro de depósito
-    const deposito = await TransaccionBlockchain.createDeposit({
-      usuarioId,
-      criptomonedaId,
-      cantidad: parseFloat(cantidad),
-      txHash,
-      direccionOrigen,
-      direccionDestino,
-      confirmacionesRequeridas: parseInt(confirmacionesRequeridas)
-    });
-
-    res.status(201).json({
-      message: 'Depósito registrado manualmente',
-      transaccion: deposito
-    });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-};
-
-// ================================
-// MÉTODOS DE ADMINISTRACIÓN
-// ================================
-
-// Obtener todas las transacciones (admin)
-const getAllTransacciones = async (req, res) => {
-  try {
-    // Solo admins pueden ver todas las transacciones
-    if (req.user.rol !== 'admin' && req.user.rol !== 'super_admin') {
-      return res.status(403).json({ error: 'Solo administradores pueden ver todas las transacciones' });
-    }
-
-    const filters = { ...req.body };
-    const result = await TransaccionBlockchain.getAll(filters);
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// Obtener estadísticas del sistema (admin)
-const getSystemStats = async (req, res) => {
-  try {
-    // Solo admins pueden ver estadísticas
-    if (req.user.rol !== 'admin' && req.user.rol !== 'super_admin') {
-      return res.status(403).json({ error: 'Solo administradores pueden ver estadísticas del sistema' });
-    }
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    // Estadísticas del día
-    const statsHoy = await TransaccionBlockchain.findAll({
-      attributes: [
-        'tipo',
-        'estado',
-        [sequelize.fn('COUNT', sequelize.col('id')), 'total'],
-        [sequelize.fn('SUM', sequelize.col('cantidad')), 'volumen']
-      ],
-      where: {
-        created_at: { [Op.gte]: today }
-      },
-      group: ['tipo', 'estado'],
-      raw: true
-    });
-
-    // Transacciones pendientes
-    const pendientes = await TransaccionBlockchain.count({
-      where: { estado: { [Op.in]: ['pendiente', 'procesando'] } }
-    });
-
-    // Últimas transacciones
-    const ultimasTransacciones = await TransaccionBlockchain.findAll({
-      include: [
-        {
-          model: Usuario,
-          as: 'usuario',
-          attributes: ['username']
-        },
-        {
-          model: Criptomoneda,
-          as: 'criptomoneda',
-          attributes: ['symbol']
-        }
-      ],
-      order: [['created_at', 'DESC']],
-      limit: 10
-    });
-
-    res.json({
-      estadisticasHoy: statsHoy,
-      transaccionesPendientes: pendientes,
-      ultimasTransacciones: ultimasTransacciones,
-      resumen: {
-        depositosHoy: statsHoy.filter(s => s.tipo === 'deposito').reduce((acc, s) => acc + parseInt(s.total), 0),
-        retirosHoy: statsHoy.filter(s => s.tipo === 'retiro').reduce((acc, s) => acc + parseInt(s.total), 0),
-        transaccionesPendientes: pendientes
+      if (!transaccion) {
+        return res.status(404).json({
+          success: false,
+          message: 'Transacción no encontrada'
+        });
       }
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+
+      // Solo el propietario o admin puede ver la transacción
+      if (transaccion.userId !== userId && !['admin', 'super_admin'].includes(userRole)) {
+        return res.status(403).json({
+          success: false,
+          message: 'No autorizado para ver esta transacción'
+        });
+      }
+
+      res.json({
+        success: true,
+        data: transaccion
+      });
+    } catch (error) {
+      console.error('Error obteniendo transacción:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor',
+        error: error.message
+      });
+    }
   }
-};
 
-// Forzar procesamiento de retiro específico (admin)
-const forceProcessWithdrawal = async (req, res) => {
-  try {
-    const { id } = req.body;
+  // POST /api/transactions/withdraw - Crear retiro
+  async createWithdrawal(req, res) {
+    try {
+      // Validar datos de entrada
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Datos de entrada inválidos',
+          errors: errors.array()
+        });
+      }
 
-    if (!id) {
-      return res.status(400).json({ error: 'ID de transacción requerido' });
+      const userId = req.user.id;
+      const { criptomonedaId, cantidad, direccionDestino } = req.body;
+
+      // Validar retiro
+      const validation = await TransaccionBlockchain.validateWithdrawal(
+        userId,
+        criptomonedaId,
+        cantidad,
+        direccionDestino
+      );
+
+      if (!validation.valid) {
+        return res.status(400).json({
+          success: false,
+          message: validation.message
+        });
+      }
+
+      // Validar dirección con el servicio de blockchain
+      const blockchainService = BlockchainServiceManager.getService(validation.criptomoneda.red);
+      const isValidAddress = await blockchainService.validateAddress(direccionDestino);
+
+      if (!isValidAddress) {
+        return res.status(400).json({
+          success: false,
+          message: 'Dirección de destino inválida'
+        });
+      }
+
+      // Crear retiro
+      const retiro = await TransaccionBlockchain.createWithdrawal({
+        userId,
+        criptomonedaId,
+        cantidad: parseFloat(cantidad),
+        direccionDestino,
+        confirmacionesRequeridas: validation.criptomoneda.red === 'bitcoin' ? 6 : 
+                                   validation.criptomoneda.red === 'ethereum' ? 12 : 6
+      });
+
+      res.status(201).json({
+        success: true,
+        message: 'Retiro creado exitosamente',
+        data: retiro
+      });
+    } catch (error) {
+      console.error('Error creando retiro:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor',
+        error: error.message
+      });
     }
-
-    // Solo super_admin puede forzar procesamiento
-    if (req.user.rol !== 'super_admin') {
-      return res.status(403).json({ error: 'Solo super administradores pueden forzar procesamiento' });
-    }
-
-    const transaccion = await TransaccionBlockchain.getById(id);
-    
-    if (!transaccion) {
-      return res.status(404).json({ error: 'Transacción no encontrada' });
-    }
-
-    if (transaccion.tipo !== 'retiro') {
-      return res.status(400).json({ error: 'Solo se puede forzar el procesamiento de retiros' });
-    }
-
-    // Forzar procesamiento
-    await TransaccionBlockchain.processAutomaticWithdrawal(id);
-    
-    res.json({
-      message: 'Procesamiento de retiro forzado',
-      transaccion: await TransaccionBlockchain.getById(id)
-    });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
   }
-};
 
-module.exports = {
-  // Métodos de consulta para usuarios
-  getMyTransacciones,
-  getTransaccionById,
-  getTransaccionByHash,
-  validateAddress,
-  
-  // Métodos de retiros automáticos
-  createRetiro,
-  cancelRetiro,
-  getWithdrawalLimits,
-  
-  // Métodos del sistema automático
-  scanBlockchainDeposits,
-  updateAllConfirmations,
-  registerManualDeposit,
-  
-  // Métodos de administración
-  getAllTransacciones,
-  getSystemStats,
-  forceProcessWithdrawal
-};
+  // GET /api/transactions/balances - Obtener balances del usuario
+  async getMyBalances(req, res) {
+    try {
+      const userId = req.user.id;
+
+      const balances = await BalanceUsuario.findAll({
+        where: { userId },
+        include: [
+          {
+            model: Criptomoneda,
+            as: 'criptomoneda',
+            attributes: ['id', 'symbol', 'nombre', 'red', 'decimales'],
+            where: { activa: true }
+          }
+        ],
+        order: [['criptomoneda', 'symbol', 'ASC']]
+      });
+
+      // Calcular balance total por criptomoneda
+      const balancesConTotal = balances.map(balance => ({
+        id: balance.id,
+        criptomoneda: balance.criptomoneda,
+        balanceDisponible: parseFloat(balance.balanceDisponible),
+        balanceBloqueado: parseFloat(balance.balanceBloqueado),
+        balanceTotal: parseFloat(balance.balanceDisponible) + parseFloat(balance.balanceBloqueado),
+        updatedAt: balance.updated_at
+      }));
+
+      res.json({
+        success: true,
+        data: balancesConTotal
+      });
+    } catch (error) {
+      console.error('Error obteniendo balances:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor',
+        error: error.message
+      });
+    }
+  }
+
+  // GET /api/transactions/deposit-address/:criptomonedaId - Obtener dirección de depósito
+  async getDepositAddress(req, res) {
+    try {
+      const userId = req.user.id;
+      const { criptomonedaId } = req.params;
+
+      // Verificar que la criptomoneda existe y está activa
+      const criptomoneda = await Criptomoneda.findByPk(criptomonedaId);
+      if (!criptomoneda || !criptomoneda.activa) {
+        return res.status(404).json({
+          success: false,
+          message: 'Criptomoneda no encontrada o inactiva'
+        });
+      }
+
+      // Buscar dirección existente o crear una nueva
+      const DireccionDeposito = require('../models').DireccionDeposito;
+      let direccion = await DireccionDeposito.getByUserAndCrypto(userId, criptomonedaId);
+
+      if (!direccion) {
+        // Generar nueva dirección
+        direccion = await DireccionDeposito.generateAddressForUser(userId, criptomonedaId);
+      }
+
+      res.json({
+        success: true,
+        data: {
+          direccion: direccion.direccion,
+          criptomoneda: direccion.criptomoneda,
+          qrCode: `${criptomoneda.symbol}:${direccion.direccion}`, // Para generar QR
+          mensaje: `Esta es tu dirección para depósitos de ${criptomoneda.symbol}. Los depósitos se acreditarán automáticamente después de las confirmaciones requeridas.`
+        }
+      });
+    } catch (error) {
+      console.error('Error obteniendo dirección de depósito:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor',
+        error: error.message
+      });
+    }
+  }
+
+  // =================== ENDPOINTS ADMINISTRATIVOS ===================
+
+  // GET /api/admin/transactions - Obtener todas las transacciones (admin)
+  async getAllTransactions(req, res) {
+    try {
+      if (!['admin', 'super_admin'].includes(req.user.rol)) {
+        return res.status(403).json({
+          success: false,
+          message: 'No autorizado'
+        });
+      }
+
+      const filters = {
+        tipo: req.query.tipo,
+        estado: req.query.estado,
+        userId: req.query.userId,
+        criptomonedaId: req.query.criptomonedaId,
+        requiereAprobacion: req.query.requiereAprobacion,
+        montoMin: req.query.montoMin,
+        montoMax: req.query.montoMax,
+        fechaDesde: req.query.fechaDesde,
+        fechaHasta: req.query.fechaHasta,
+        limit: req.query.limit || 50,
+        offset: req.query.offset || 0
+      };
+
+      const result = await TransaccionBlockchain.getAllWithFilters(filters);
+
+      res.json({
+        success: true,
+        data: result
+      });
+    } catch (error) {
+      console.error('Error obteniendo todas las transacciones:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor',
+        error: error.message
+      });
+    }
+  }
+
+  // GET /api/admin/transactions/pending - Obtener transacciones pendientes
+  async getPendingTransactions(req, res) {
+    try {
+      if (!['admin', 'super_admin'].includes(req.user.rol)) {
+        return res.status(403).json({
+          success: false,
+          message: 'No autorizado'
+        });
+      }
+
+      const pendingDeposits = await TransaccionBlockchain.getPendingDeposits();
+      const pendingWithdrawals = await TransaccionBlockchain.getPendingWithdrawals();
+
+      res.json({
+        success: true,
+        data: {
+          depositos: pendingDeposits,
+          retiros: pendingWithdrawals,
+          total: pendingDeposits.length + pendingWithdrawals.length
+        }
+      });
+    } catch (error) {
+      console.error('Error obteniendo transacciones pendientes:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor',
+        error: error.message
+      });
+    }
+  }
+
+  // POST /api/admin/transactions/:id/approve - Aprobar transacción
+  async approveTransaction(req, res) {
+    try {
+      if (!['admin', 'super_admin'].includes(req.user.rol)) {
+        return res.status(403).json({
+          success: false,
+          message: 'No autorizado'
+        });
+      }
+
+      const { id } = req.params;
+      const adminId = req.user.id;
+
+      const transaccion = await TransaccionBlockchain.findByPk(id);
+      if (!transaccion) {
+        return res.status(404).json({
+          success: false,
+          message: 'Transacción no encontrada'
+        });
+      }
+
+      if (transaccion.estado !== 'pendiente') {
+        return res.status(400).json({
+          success: false,
+          message: 'Solo se pueden aprobar transacciones pendientes'
+        });
+      }
+
+      await TransaccionBlockchain.update(
+        {
+          aprobadoPor: adminId,
+          fechaAprobacion: new Date(),
+          requiereAprobacion: false,
+          estado: 'procesando'
+        },
+        { where: { id } }
+      );
+
+      const updatedTransaction = await TransaccionBlockchain.getById(id);
+
+      res.json({
+        success: true,
+        message: 'Transacción aprobada exitosamente',
+        data: updatedTransaction
+      });
+    } catch (error) {
+      console.error('Error aprobando transacción:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor',
+        error: error.message
+      });
+    }
+  }
+
+  // POST /api/admin/transactions/:id/reject - Rechazar transacción
+  async rejectTransaction(req, res) {
+    try {
+      if (!['admin', 'super_admin'].includes(req.user.rol)) {
+        return res.status(403).json({
+          success: false,
+          message: 'No autorizado'
+        });
+      }
+
+      const { id } = req.params;
+      const { razon } = req.body;
+
+      const transaccion = await TransaccionBlockchain.findByPk(id);
+      if (!transaccion) {
+        return res.status(404).json({
+          success: false,
+          message: 'Transacción no encontrada'
+        });
+      }
+
+      if (transaccion.tipo === 'retiro') {
+        await TransaccionBlockchain.failWithdrawal(id, razon || 'Rechazado por administrador');
+      } else {
+        await TransaccionBlockchain.update(
+          { estado: 'fallido' },
+          { where: { id } }
+        );
+      }
+
+      const updatedTransaction = await TransaccionBlockchain.getById(id);
+
+      res.json({
+        success: true,
+        message: 'Transacción rechazada exitosamente',
+        data: updatedTransaction
+      });
+    } catch (error) {
+      console.error('Error rechazando transacción:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor',
+        error: error.message
+      });
+    }
+  }
+
+  // GET /api/admin/transactions/stats - Estadísticas de transacciones
+  async getTransactionStats(req, res) {
+    try {
+      if (!['admin', 'super_admin'].includes(req.user.rol)) {
+        return res.status(403).json({
+          success: false,
+          message: 'No autorizado'
+        });
+      }
+
+      const filters = {
+        fechaDesde: req.query.fechaDesde,
+        fechaHasta: req.query.fechaHasta
+      };
+
+      const stats = await TransaccionBlockchain.getStats(filters);
+
+      res.json({
+        success: true,
+        data: stats
+      });
+    } catch (error) {
+      console.error('Error obteniendo estadísticas:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor',
+        error: error.message
+      });
+    }
+  }
+
+  // =================== ENDPOINTS DE SISTEMA ===================
+
+  // POST /api/system/scan-deposits - Escanear depósitos manualmente
+  async scanDeposits(req, res) {
+    try {
+      if (!['admin', 'super_admin'].includes(req.user.rol)) {
+        return res.status(403).json({
+          success: false,
+          message: 'No autorizado'
+        });
+      }
+
+      const results = await BlockchainServiceManager.scanAllNetworksForDeposits();
+
+      res.json({
+        success: true,
+        message: 'Escaneo de depósitos completado',
+        data: results
+      });
+    } catch (error) {
+      console.error('Error escaneando depósitos:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor',
+        error: error.message
+      });
+    }
+  }
+
+  // POST /api/system/process-withdrawals - Procesar retiros manualmente
+  async processWithdrawals(req, res) {
+    try {
+      if (!['admin', 'super_admin'].includes(req.user.rol)) {
+        return res.status(403).json({
+          success: false,
+          message: 'No autorizado'
+        });
+      }
+
+      const results = await BlockchainServiceManager.processAllPendingWithdrawals();
+
+      res.json({
+        success: true,
+        message: 'Procesamiento de retiros completado',
+        data: results
+      });
+    } catch (error) {
+      console.error('Error procesando retiros:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor',
+        error: error.message
+      });
+    }
+  }
+
+  // POST /api/system/update-confirmations - Actualizar confirmaciones manualmente
+  async updateConfirmations(req, res) {
+    try {
+      if (!['admin', 'super_admin'].includes(req.user.rol)) {
+        return res.status(403).json({
+          success: false,
+          message: 'No autorizado'
+        });
+      }
+
+      const results = await BlockchainServiceManager.updateAllConfirmations();
+
+      res.json({
+        success: true,
+        message: 'Actualización de confirmaciones completada',
+        data: results
+      });
+    } catch (error) {
+      console.error('Error actualizando confirmaciones:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor',
+        error: error.message
+      });
+    }
+  }
+
+  // GET /api/system/blockchain-status - Estado de los servicios blockchain
+  async getBlockchainStatus(req, res) {
+    try {
+      if (!['admin', 'super_admin'].includes(req.user.rol)) {
+        return res.status(403).json({
+          success: false,
+          message: 'No autorizado'
+        });
+      }
+
+      const status = {
+        ethereum: {
+          connected: false,
+          lastBlock: null,
+          error: null
+        },
+        bsc: {
+          connected: false,
+          lastBlock: null,
+          error: null
+        },
+        bitcoin: {
+          connected: false,
+          lastBlock: null,
+          error: null
+        }
+      };
+
+      // Verificar estado de cada red
+      for (const [network, service] of Object.entries(BlockchainServiceManager.services)) {
+        try {
+          if (network === 'bitcoin') {
+            status[network].connected = true;
+            status[network].lastBlock = 'N/A';
+          } else {
+            const blockNumber = await service.provider.getBlockNumber();
+            status[network].connected = true;
+            status[network].lastBlock = blockNumber;
+          }
+        } catch (error) {
+          status[network].error = error.message;
+        }
+      }
+
+      res.json({
+        success: true,
+        data: status
+      });
+    } catch (error) {
+      console.error('Error obteniendo estado blockchain:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor',
+        error: error.message
+      });
+    }
+  }
+
+  // =================== ENDPOINTS DE CONSULTA ===================
+
+  // GET /api/transactions/tx/:hash - Buscar transacción por hash
+  async getTransactionByHash(req, res) {
+    try {
+      const { hash } = req.params;
+      
+      const transaccion = await TransaccionBlockchain.getByTxHash(hash);
+      
+      if (!transaccion) {
+        return res.status(404).json({
+          success: false,
+          message: 'Transacción no encontrada'
+        });
+      }
+
+      // Solo el propietario o admin puede ver la transacción
+      const userId = req.user.id;
+      const userRole = req.user.rol;
+      
+      if (transaccion.userId !== userId && !['admin', 'super_admin'].includes(userRole)) {
+        return res.status(403).json({
+          success: false,
+          message: 'No autorizado para ver esta transacción'
+        });
+      }
+
+      res.json({
+        success: true,
+        data: transaccion
+      });
+    } catch (error) {
+      console.error('Error buscando transacción por hash:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor',
+        error: error.message
+      });
+    }
+  }
+}
+
+module.exports = new TransaccionBlockchainController();

@@ -1,2 +1,0 @@
-//Jobs automáticos de blockchain
-

@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const ecc = require('tiny-secp256k1');
 const ECPair = require('ecpair').ECPairFactory(ecc);
 const { BIP32Factory } = require('bip32');
+const { env } = require('process');
 const bip32 = BIP32Factory(ecc);
 
 // =================== CONFIGURACIÓN DE CRIPTOMONEDAS ===================
@@ -16,7 +17,7 @@ const CRIPTOMONEDAS_CONFIG = [
     red: 'bitcoin',
     derivationPath: "m/44'/0'/0'",
     addressFormat: 'legacy',
-    decimales: 8
+    decimales: 8,
   },
   {
     symbol: 'ETH',
@@ -794,7 +795,7 @@ const createERC20WalletForCrypto = async (req, res) => {
     const root = bip32.fromSeed(seed);
     
     // Usar derivation path específico de la criptomoneda o el estándar Ethereum
-    const derivationPath = criptomoneda.derivationPath || "m/44'/60'/0'";
+    const derivationPath = /*criptomoneda.derivationPath ||*/ "m/44'/60'/0'";
     const account = root.derivePath(derivationPath);
     
     // GENERAR DIFERENTES FORMATOS HASTA ENCONTRAR UNO VÁLIDO

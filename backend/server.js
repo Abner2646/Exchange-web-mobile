@@ -238,6 +238,13 @@ async function startServer() {
       console.log(`⚠️  Server started without database on port ${PORT}`);
     });
   }
+
+  //De los jobs---
+  const JobManager = require('./jobs');
+  // En la función de inicialización:
+  await JobManager.startAll();
+  //await blockchainBootstrap.initialize();
+  //----------------
 }
 
 startServer();
@@ -262,3 +269,4 @@ process.on('SIGINT', async () => {
   }
   process.exit(0);
 });
+
