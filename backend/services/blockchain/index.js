@@ -1,10 +1,15 @@
-// services/blockchain/index.js - ACTUALIZADO
+// services/blockchain/index.js - ORDEN CORREGIDO
 const EthereumService = require('./ethereum.service');
 const BitcoinService = require('./bitcoin.service');
 const BscService = require('./bsc.service');
 
+// DEBUG:
+console.log('🔧 INIT: Creando BlockchainServiceManager...');
+
+// ✅ CORRECTO: Declarar la clase PRIMERO
 class BlockchainServiceManager {
   constructor() {
+    console.log('🔧 CONSTRUCTOR: Iniciando constructor...');
     this.services = {};
     this.symbolToService = {
       'ETH': 'ethereum',
@@ -14,31 +19,41 @@ class BlockchainServiceManager {
       'BNB': 'bsc',
       'BUSD': 'bsc'
     };
+    console.log('🔧 CONSTRUCTOR: Constructor terminado');
     
     this.initializeServices();
   }
 
   initializeServices() {
+    console.log('🔧 INIT_SERVICES: Iniciando servicios...');
     try {
       this.services.ethereum = new EthereumService();
       console.log('✅ Servicio Ethereum inicializado');
     } catch (error) {
       console.error('❌ Error inicializando Ethereum service:', error.message);
     }
-
+    
     try {
       this.services.bsc = new BscService();
       console.log('✅ Servicio BSC inicializado');
     } catch (error) {
       console.error('❌ Error inicializando BSC service:', error.message);
     }
-
+    
     try {
       this.services.bitcoin = new BitcoinService();
       console.log('✅ Servicio Bitcoin inicializado');
     } catch (error) {
       console.error('❌ Error inicializando Bitcoin service:', error.message);
     }
+    
+    // DEBUG TEMPORAL:
+    console.log('🔧 DEBUG - Servicios creados:');
+    console.log('- ethereum:', !!this.services.ethereum);
+    console.log('- bsc:', !!this.services.bsc);
+    console.log('- bitcoin:', !!this.services.bitcoin);
+    console.log('- Total servicios:', Object.keys(this.services).length);
+    console.log('🔧 INIT_SERVICES: Servicios terminados');
   }
 
   getService(networkOrSymbol) {
@@ -192,7 +207,7 @@ class BlockchainServiceManager {
           health[network] = {
             status: 'connected',
             lastBlock: blockNumber,
-            walletBalance: ethers.formatEther(walletBalance),
+            walletBalance: require('ethers').formatEther(walletBalance),
             walletAddress: service.wallet.address
           };
         }
@@ -208,4 +223,7 @@ class BlockchainServiceManager {
   }
 }
 
+// ✅ CORRECTO: Crear la instancia DESPUÉS de declarar la clase
+console.log('🔧 EXPORT: Creando singleton...');
 module.exports = new BlockchainServiceManager();
+console.log('🔧 EXPORT: Singleton creado');

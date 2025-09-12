@@ -1,5 +1,7 @@
 // jobs/index.js - Archivo principal para inicializar todos los jobs
 const blockchainJobManager = require('./blockchain.jobs');
+require('dotenv').config();
+
 
 class JobManager {
   constructor() {

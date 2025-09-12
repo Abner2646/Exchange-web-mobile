@@ -1,6 +1,8 @@
 // jobs/blockchainJobs.js
 const BlockchainServiceManager = require('../services/blockchain');
 const { TransaccionBlockchain } = require('../models');
+require('dotenv').config();
+
 
 class BlockchainJobManager {
   constructor() {

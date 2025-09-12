@@ -7,12 +7,12 @@ class BitcoinService {
       : 'https://blockstream.info/testnet/api';
     this.requiredConfirmations = parseInt(process.env.BTC_REQUIRED_CONFIRMATIONS) || 6;
     
-    console.log(`Bitcoin Service inicializado - Red: ${process.env.NODE_ENV === 'production' ? 'mainnet' : 'testnet'}`);
+    //console.log(`Bitcoin Service inicializado - Red: ${process.env.NODE_ENV === 'production' ? 'mainnet' : 'testnet'}`);
   }
 
   async scanForDeposits() {
     try {
-      console.log('Escaneando Bitcoin testnet para depósitos...');
+      //console.log('Escaneando Bitcoin testnet para depósitos...');
       
       const direcciones = await this.getActiveUserAddresses();
       const newDeposits = [];
@@ -22,13 +22,13 @@ class BitcoinService {
           const deposits = await this.scanBitcoinAddress(direccion);
           newDeposits.push(...deposits);
         } catch (error) {
-          console.error(`Error escaneando BTC ${direccion.direccion}:`, error.message);
+          //console.error(`Error escaneando BTC ${direccion.direccion}:`, error.message);
         }
       }
 
       return newDeposits;
     } catch (error) {
-      console.error('Error en Bitcoin scan:', error.message);
+      //console.error('Error en Bitcoin scan:', error.message);
       return [];
     }
   }
@@ -65,7 +65,7 @@ class BitcoinService {
               );
 
               deposits.push(newDeposit);
-              console.log(`✅ Depósito BTC: ${amount} BTC (fee: ${fee} BTC) - TX: ${tx.txid}`);
+              //console.log(`✅ Depósito BTC: ${amount} BTC (fee: ${fee} BTC) - TX: ${tx.txid}`);
             }
           }
         }
@@ -73,7 +73,7 @@ class BitcoinService {
 
       return deposits;
     } catch (error) {
-      console.error(`Error Blockstream API para ${direccion.direccion}:`, error.message);
+      //console.error(`Error Blockstream API para ${direccion.direccion}:`, error.message);
       return [];
     }
   }
@@ -108,7 +108,7 @@ class BitcoinService {
   }
 
   async processPendingWithdrawals() {
-    console.log('Bitcoin withdrawals no implementados completamente aún');
+    //console.log('Bitcoin withdrawals no implementados completamente aún');
     // Implementación básica pendiente - requiere librerías Bitcoin específicas
     return [];
   }
@@ -151,13 +151,13 @@ class BitcoinService {
             }
           }
         } catch (error) {
-          console.error(`Error actualizando confirmaciones BTC para ${tx.txHash}:`, error.message);
+          //console.error(`Error actualizando confirmaciones BTC para ${tx.txHash}:`, error.message);
         }
       }
 
       return updated;
     } catch (error) {
-      console.error('Error actualizando confirmaciones Bitcoin:', error.message);
+      //console.error('Error actualizando confirmaciones Bitcoin:', error.message);
       return [];
     }
   }

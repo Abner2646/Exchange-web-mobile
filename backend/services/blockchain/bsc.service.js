@@ -10,20 +10,20 @@ class BscService {
     this.requiredConfirmations = parseInt(process.env.BSC_REQUIRED_CONFIRMATIONS) || 6;
     this.hasApiKey = !!process.env.BSCSCAN_API_KEY;
     
-    console.log(`BSC Service inicializado - API: ${this.hasApiKey ? 'Disponible' : 'No disponible'}`);
+    //console.log(`BSC Service inicializado - API: ${this.hasApiKey ? 'Disponible' : 'No disponible'}`);
   }
 
   async scanForDeposits() {
     try {
       if (this.hasApiKey) {
-        console.log('Usando BSCScan API para detectar depósitos');
+        //console.log('Usando BSCScan API para detectar depósitos');
         return await this.scanWithBscScanAPI();
       } else {
-        console.log('Usando método de balance para detectar depósitos BSC');
+        //console.log('Usando método de balance para detectar depósitos BSC');
         return await this.scanWithBalanceCheck();
       }
     } catch (error) {
-      console.error('Error en BSC scan, usando fallback:', error.message);
+      //console.error('Error en BSC scan, usando fallback:', error.message);
       return await this.scanWithBalanceCheck();
     }
   }
@@ -46,7 +46,7 @@ class BscService {
         
         newDeposits.push(...deposits);
       } catch (error) {
-        console.error(`Error escaneando BSC ${direccion.direccion}:`, error.message);
+        //console.error(`Error escaneando BSC ${direccion.direccion}:`, error.message);
       }
     }
 
@@ -66,7 +66,7 @@ class BscService {
       const data = await response.json();
 
       if (data.status !== '1') {
-        console.warn(`BSCScan API warning para ${direccion.direccion}: ${data.message}`);
+        //console.warn(`BSCScan API warning para ${direccion.direccion}: ${data.message}`);
         return [];
       }
 
@@ -89,14 +89,14 @@ class BscService {
             );
 
             deposits.push(newDeposit);
-            console.log(`✅ Depósito BNB: ${amount} BNB (fee: ${fee} BNB) - TX: ${tx.hash}`);
+            //console.log(`✅ Depósito BNB: ${amount} BNB (fee: ${fee} BNB) - TX: ${tx.hash}`);
           }
         }
       }
 
       return deposits;
     } catch (error) {
-      console.error(`Error BSCScan API para ${direccion.direccion}:`, error.message);
+      //console.error(`Error BSCScan API para ${direccion.direccion}:`, error.message);
       return [];
     }
   }
@@ -132,14 +132,14 @@ class BscService {
             );
 
             deposits.push(newDeposit);
-            console.log(`✅ Depósito ${direccion.criptomoneda.symbol}: ${amount} - TX: ${tx.hash}`);
+            //console.log(`✅ Depósito ${direccion.criptomoneda.symbol}: ${amount} - TX: ${tx.hash}`);
           }
         }
       }
 
       return deposits;
     } catch (error) {
-      console.error(`Error BSCScan Token API para ${direccion.direccion}:`, error.message);
+      //console.error(`Error BSCScan Token API para ${direccion.direccion}:`, error.message);
       return [];
     }
   }
@@ -213,10 +213,10 @@ class BscService {
           const newDeposit = await this.createSimpleDeposit(direccion, newAmount);
           newDeposits.push(newDeposit);
           
-          console.log(`✅ Depósito BSC detectado: ${newAmount} ${direccion.criptomoneda.symbol}`);
+          //console.log(`✅ Depósito BSC detectado: ${newAmount} ${direccion.criptomoneda.symbol}`);
         }
       } catch (error) {
-        console.error(`Error BSC balance para ${direccion.direccion}:`, error.message);
+        //console.error(`Error BSC balance para ${direccion.direccion}:`, error.message);
       }
     }
 
@@ -291,7 +291,7 @@ class BscService {
           const result = await this.processWithdrawal(withdrawal);
           processed.push(result);
         } catch (error) {
-          console.error(`Error procesando retiro BSC ${withdrawal.id}:`, error.message);
+          //console.error(`Error procesando retiro BSC ${withdrawal.id}:`, error.message);
           await TransaccionBlockchain.failWithdrawal(withdrawal.id, error.message);
         }
       }
@@ -343,7 +343,7 @@ class BscService {
       estimatedFee
     );
 
-    console.log(`✅ Retiro BSC enviado: ${cantidad} ${criptomoneda.symbol} a ${direccionDestino}`);
+    //console.log(`✅ Retiro BSC enviado: ${cantidad} ${criptomoneda.symbol} a ${direccionDestino}`);
     return updated;
   }
 
@@ -383,7 +383,7 @@ class BscService {
             }
           }
         } catch (error) {
-          console.error(`Error actualizando confirmaciones BSC para ${tx.txHash}:`, error.message);
+          //console.error(`Error actualizando confirmaciones BSC para ${tx.txHash}:`, error.message);
         }
       }
 

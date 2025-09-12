@@ -1,4 +1,6 @@
 // Importaciones
+require('dotenv').config();
+
 const initBalanceUser = require('./entities/balanceUsuario.entity');
 const { Op } = require('sequelize');
 

@@ -1,4 +1,5 @@
 // services/blockchain/ethereum.service.js
+require('dotenv').config();
 const { ethers } = require('ethers');
 const { TransaccionBlockchain, DireccionDeposito, Criptomoneda } = require('../../models');
 
@@ -183,6 +184,7 @@ class EthereumService {
 
   // PROCESAR RETIROS
   async processPendingWithdrawals() {
+    //const {TransaccionBlockchain} = require('../../models/index') //Elimino reimportación problemática
     try {
       const pendingWithdrawals = await TransaccionBlockchain.findAll({
         where: {
@@ -217,20 +219,39 @@ class EthereumService {
   }
 
   async processWithdrawal(withdrawal) {
+    console.log(`🔧 DEBUG - Procesando retiro ${withdrawal.id}:`);
+    console.log(`   - Cantidad: ${withdrawal.cantidad}`);
+    console.log(`   - Destino: ${withdrawal.direccionDestino}`);
+    console.log(`   - Crypto: ${withdrawal.criptomoneda.symbol}`);
     const { cantidad, direccionDestino, criptomoneda } = withdrawal;
 
     // Verificar balance de wallet maestra antes de enviar
-    const walletBalance = await this.getWalletBalance(criptomoneda);
-    if (walletBalance < parseFloat(cantidad)) {
-      throw new Error(`Balance insuficiente en wallet maestra: ${walletBalance} < ${cantidad}`);
+    console.log(`🔧 DEBUG - Verificando balance wallet maestra...`);
+    try {
+      const walletBalance = await this.getWalletBalance(criptomoneda);
+      console.log(`🔧 DEBUG - Balance wallet: ${walletBalance} ${criptomoneda.symbol}`);
+      console.log(`🔧 DEBUG - Cantidad requerida: ${cantidad} ${criptomoneda.symbol}`);
+      
+      if (walletBalance < parseFloat(cantidad)) {
+        throw new Error(`Balance insuficiente en wallet maestra: ${walletBalance} < ${cantidad}`);
+      }
+    } catch (error) {
+      console.error(`🔧 DEBUG - Error verificando balance:`, error.message);
+      throw error;
     }
 
+    console.log(`🔧 DEBUG - Iniciando envío de transacción...`);
+
+    // ✅ CAMBIO 1: Declarar variables ANTES del if para scope correcto
     let tx;
     let estimatedFee;
 
+    // ✅ CAMBIO 2: Obtener feeData UNA VEZ antes de los condicionales
+    const feeData = await this.provider.getFeeData();
+    const gasPrice = feeData.gasPrice || feeData.maxFeePerGas || ethers.parseUnits('20', 'gwei');
+
     if (criptomoneda.symbol === 'ETH') {
       // Enviar ETH nativo
-      const gasPrice = await this.provider.getGasPrice();
       estimatedFee = parseFloat(ethers.formatEther(gasPrice * BigInt(21000)));
       
       tx = await this.wallet.sendTransaction({
@@ -250,7 +271,6 @@ class EthereumService {
         this.wallet
       );
 
-      const gasPrice = await this.provider.getGasPrice();
       estimatedFee = parseFloat(ethers.formatEther(gasPrice * BigInt(60000)));
       
       const decimales = await contract.decimals();
@@ -272,8 +292,8 @@ class EthereumService {
     console.log(`✅ Retiro enviado: ${cantidad} ${criptomoneda.symbol} a ${direccionDestino}`);
     console.log(`   TX Hash: ${tx.hash}, Fee estimado: ${estimatedFee} ETH`);
 
-    return updated;
-  }
+  return updated;
+}
 
   // ACTUALIZAR CONFIRMACIONES
   async updateConfirmations() {

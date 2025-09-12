@@ -1,9 +1,12 @@
 // models/transaccionBlockchain.model.js
+require('dotenv').config();
 const initTransaccionBlockchain = require('./entities/transaccionBlockchain.entity');
+const initBalanceUsuario = require('./entities/balanceUsuario.entity');
 const { Op } = require('sequelize');
 
 function createTransaccionBlockchainModel(sequelize) {
   const TransaccionBlockchain = initTransaccionBlockchain(sequelize);
+  const BalanceUsuario = initBalanceUsuario(sequelize);
 
   // =================== MÉTODOS DE CONSULTA BÁSICOS ===================
   
@@ -261,9 +264,7 @@ function createTransaccionBlockchainModel(sequelize) {
 
   TransaccionBlockchain._acreditarDeposito = async (transaccion, transaction) => {
     try {
-      // Actualizar balance del usuario
-      const BalanceUsuario = sequelize.models.BalanceUsuario;
-      
+      // Actualizar balance del usuario usando la entidad directa
       const [balance] = await BalanceUsuario.findOrCreate({
         where: {
           userId: transaccion.userId,
@@ -314,8 +315,7 @@ function createTransaccionBlockchainModel(sequelize) {
         throw new Error('Datos incompletos para crear retiro');
       }
 
-      // Verificar balance suficiente
-      const {BalanceUsuario} = require('./index')
+      // Verificar balance suficiente usando la entidad directa
       const balance = await BalanceUsuario.findOne({
         where: {
           userId: data.userId,
@@ -412,8 +412,7 @@ function createTransaccionBlockchainModel(sequelize) {
         throw new Error('Retiro no encontrado');
       }
 
-      // Desbloquear balance (liberar los fondos ya enviados)
-      const BalanceUsuario = sequelize.models.BalanceUsuario;
+      // Desbloquear balance (liberar los fondos ya enviados) usando la entidad directa
       const balance = await BalanceUsuario.findOne({
         where: {
           userId: retiro.userId,
@@ -461,8 +460,7 @@ function createTransaccionBlockchainModel(sequelize) {
         throw new Error('Retiro no encontrado');
       }
 
-      // Revertir balance (devolver fondos al disponible)
-      const BalanceUsuario = sequelize.models.BalanceUsuario;
+      // Revertir balance (devolver fondos al disponible) usando la entidad directa
       const balance = await BalanceUsuario.findOne({
         where: {
           userId: retiro.userId,
@@ -657,9 +655,7 @@ function createTransaccionBlockchainModel(sequelize) {
         return { valid: false, message: 'Criptomoneda no encontrada o inactiva' };
       }
 
-      // Validar balance suficiente
-      //Antes:
-      const { BalanceUsuario } = require('../models');
+      // Validar balance suficiente usando la entidad directa
       const balance = await BalanceUsuario.findOne({
         where: { userId, criptomonedaId }
       });
