@@ -279,97 +279,119 @@ class BitcoinService {
     return updated;
   }
 
-  async buildTransaction(utxos, toAddress, amountSatoshis) {
-    const psbt = new bitcoin.Psbt({ network: this.network });
+async buildTransaction(utxos, toAddress, amountSatoshis) {
+  const psbt = new bitcoin.Psbt({ network: this.network });
+  
+  let totalInput = 0;
+  let selectedUTXOs = [];
+  
+  for (const utxo of utxos) {
+    selectedUTXOs.push(utxo);
+    totalInput += utxo.value;
     
-    let totalInput = 0;
-    let selectedUTXOs = [];
+    const estimatedFee = 250 * this.feePerByte;
     
-    // Seleccionar UTXOs suficientes
-    for (const utxo of utxos) {
-      selectedUTXOs.push(utxo);
-      totalInput += utxo.value;
-      
-      // Estimación del fee (250 bytes típicos)
-      const estimatedFee = 250 * this.feePerByte;
-      
-      if (totalInput >= amountSatoshis + estimatedFee) {
-        break;
-      }
+    if (totalInput >= amountSatoshis + estimatedFee) {
+      break;
     }
-    
-    if (totalInput < amountSatoshis + (250 * this.feePerByte)) {
-      throw new Error(`UTXOs insuficientes para cubrir monto + fee`);
-    }
+  }
+  
+  if (totalInput < amountSatoshis + (250 * this.feePerByte)) {
+    throw new Error(`UTXOs insuficientes para cubrir monto + fee`);
+  }
 
-    // Agregar inputs al PSBT
-    for (const utxo of selectedUTXOs) {
-      // Para SegWit necesitamos el witnessUtxo
-      const { scriptPubKey } = await this.getTransactionOutput(utxo.tx_hash, utxo.tx_output_n);
-      
-      psbt.addInput({
-        hash: utxo.tx_hash,
-        index: utxo.tx_output_n,
-        witnessUtxo: {
-          script: Buffer.from(scriptPubKey, 'hex'),
-          value: utxo.value,
-        },
-      });
-    }
-
-    // Output principal (al destinatario)
-    psbt.addOutput({
-      address: toAddress,
-      value: amountSatoshis,
+  for (const utxo of selectedUTXOs) {
+    psbt.addInput({
+      hash: utxo.txid,
+      index: utxo.vout,
+      witnessUtxo: {
+        script: Buffer.from(utxo.scriptPubKey, 'hex'),
+        value: utxo.value,
+      },
     });
-
-    // Calcular fee real y change
-    const txSize = this.estimateTransactionSize(selectedUTXOs.length, 2); // 2 outputs máximo
-    const actualFee = txSize * this.feePerByte;
-    const change = totalInput - amountSatoshis - actualFee;
-
-    // Si hay change suficiente, agregarlo
-    if (change > 546) { // Dust limit
-      psbt.addOutput({
-        address: this.walletAddress,
-        value: change,
-      });
-    }
-
-    // Firmar todos los inputs
-    for (let i = 0; i < selectedUTXOs.length; i++) {
-      psbt.signInput(i, this.keyPair);
-    }
-
-    // Finalizar
-    psbt.finalizeAllInputs();
-    const txHex = psbt.extractTransaction().toHex();
-
-    return { txHex, actualFee };
   }
 
-  async getWalletUTXOs() {
-    if (!this.walletAddress) {
+  psbt.addOutput({
+    address: toAddress,
+    value: amountSatoshis,
+  });
+
+  const txSize = this.estimateTransactionSize(selectedUTXOs.length, 2);
+  const actualFee = txSize * this.feePerByte;
+  const change = totalInput - amountSatoshis - actualFee;
+
+  if (change > 546) {
+    psbt.addOutput({
+      address: this.walletAddress,
+      value: change,
+    });
+  }
+
+  for (let i = 0; i < selectedUTXOs.length; i++) {
+    psbt.signInput(i, this.keyPair);
+  }
+
+  psbt.finalizeAllInputs();
+  const txHex = psbt.extractTransaction().toHex();
+
+  return { txHex, actualFee };
+}
+
+async getWalletUTXOs() {
+  if (!this.walletAddress) {
+    return [];
+  }
+  
+  let url = `${this.baseUrl}/addrs/${this.walletAddress}`;
+  
+  const params = ['unspentOnly=true', 'includeScript=true'];
+  
+  if (this.apiToken) {
+    params.push(`token=${this.apiToken.replace('?token=', '')}`);
+  }
+  
+  url += '?' + params.join('&');
+  
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+    
+    // Combinar UTXOs confirmados y no confirmados
+    const allUTXOs = [
+      ...(data.txrefs || []),           
+      ...(data.unconfirmed_txrefs || []) 
+    ];
+    
+    console.log(`🔧 DEBUG - UTXOs totales encontrados: ${allUTXOs.length}`);
+    console.log(`🔧 DEBUG - Confirmados: ${(data.txrefs || []).length}, No confirmados: ${(data.unconfirmed_txrefs || []).length}`);
+    
+    if (allUTXOs.length === 0) {
       return [];
     }
     
-    const url = `${this.baseUrl}/addrs/${this.walletAddress}${this.apiToken}&unspentOnly=true`;
+    // Procesar UTXOs
+    const processedUTXOs = [];
     
-    try {
-      const response = await fetch(url);
-      const data = await response.json();
-      
-      if (!data.txrefs) {
-        return [];
+    for (const utxo of allUTXOs) {
+      if (!utxo.spent) {
+        processedUTXOs.push({
+          txid: utxo.tx_hash,
+          vout: utxo.tx_output_n,
+          value: utxo.value,
+          scriptPubKey: utxo.script,
+          confirmations: utxo.confirmations
+        });
       }
-      
-      // Filtrar solo UTXOs confirmados
-      return data.txrefs.filter(utxo => utxo.confirmations > 0);
-    } catch (error) {
-      console.error('Error obteniendo UTXOs BTC:', error.message);
-      return [];
     }
+    
+    console.log(`🔧 DEBUG - UTXOs procesados (no gastados): ${processedUTXOs.length}`);
+    
+    return processedUTXOs;
+  } catch (error) {
+    console.error('Error obteniendo UTXOs BTC:', error.message);
+    return [];
   }
+}
 
   async getTransactionOutput(txHash, outputIndex) {
     const url = `${this.baseUrl}/txs/${txHash}${this.apiToken}`;
@@ -389,38 +411,22 @@ class BitcoinService {
 
   async getWalletBalance() {
     if (!this.walletAddress) {
-      console.log('❌ No hay dirección wallet');
       return 0;
     }
     
     const url = `${this.baseUrl}/addrs/${this.walletAddress}/balance${this.apiToken}`;
-    console.log(`🔧 DEBUG - Consultando balance en: ${url}`);
     
     try {
       const response = await fetch(url);
-      console.log(`🔧 DEBUG - Response status: ${response.status}`);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
       const data = await response.json();
-      console.log(`🔧 DEBUG - Response data:`, JSON.stringify(data, null, 2));
       
-      // Verificar que los campos existan
-      if (typeof data.balance === 'undefined') {
-        console.error('❌ Campo balance no encontrado en respuesta API');
-        return 0;
-      }
-      
-      // Balance confirmado en BTC
-      const balance = data.balance / 100000000;
-      console.log(`🔧 DEBUG - Balance calculado: ${balance} BTC (${data.balance} satoshis)`);
+      // Usar final_balance en lugar de balance (incluye confirmados + no confirmados)
+      const balance = data.final_balance / 100000000;  // Cambiar esta línea
+      console.log(`Balance wallet: ${balance} BTC (${data.final_balance} satoshis)`);
       
       return balance;
     } catch (error) {
-      console.error('❌ Error obteniendo balance wallet BTC:', error.message);
-      console.error('❌ URL consultada:', url);
+      console.error('Error obteniendo balance wallet BTC:', error.message);
       return 0;
     }
   }
