@@ -460,7 +460,30 @@ function createDireccionDepositoModel(sequelize) {
         case 'bitcoin':
         case 'testnet3':
           xpub = process.env.BTC_MASTER_XPUB;
-          derivationPath = process.env.BTC_DERIVATION_PATH || "m/84'/1'/0'";
+          
+          // DETERMINAR DERIVATION PATH SEGÚN TIPO DE XPUB
+          if (xpub) {
+            const prefix = xpub.substring(0, 4);
+            if (prefix === 'vpub' || prefix === 'vprv') {
+              // BIP84 - Native SegWit
+              derivationPath = "m/84'/1'/0'";
+              console.log('Detectado BIP84 (vpub) - usando derivation path m/84\'/1\'/0\'');
+            } else if (prefix === 'upub' || prefix === 'uprv') {
+              // BIP49 - P2SH-SegWit
+              derivationPath = "m/49'/1'/0'";
+              console.log('Detectado BIP49 (upub) - usando derivation path m/49\'/1\'/0\'');
+            } else if (prefix === 'tpub' || prefix === 'tprv') {
+              // BIP44 - Legacy
+              derivationPath = "m/44'/1'/0'";
+              console.log('Detectado BIP44 (tpub) - usando derivation path m/44\'/1\'/0\'');
+            } else {
+              // Fallback
+              derivationPath = process.env.BTC_DERIVATION_PATH || "m/84'/1'/0'";
+              console.log(`Prefijo desconocido ${prefix} - usando ENV o fallback: ${derivationPath}`);
+            }
+          } else {
+            derivationPath = process.env.BTC_DERIVATION_PATH || "m/84'/1'/0'";
+          }
           break;
 
         case 'ethereum':
@@ -483,6 +506,17 @@ function createDireccionDepositoModel(sequelize) {
         throw new Error(`XPUB/seed no configurado para ${criptomoneda.red} en variables de entorno`);
       }
 
+      // Determinar estándar BIP
+      let bipStandard = 'BIP44';
+      if (criptomoneda.red.toLowerCase() === 'bitcoin' || criptomoneda.red.toLowerCase() === 'testnet3') {
+        const prefix = xpub.substring(0, 4);
+        if (prefix === 'vpub' || prefix === 'vprv') {
+          bipStandard = 'BIP84';
+        } else if (prefix === 'upub' || prefix === 'uprv') {
+          bipStandard = 'BIP49';
+        }
+      }
+
       const walletData = {
         nombre: `Wallet Maestra ${criptomoneda.symbol}`,
         red: criptomoneda.red,
@@ -495,12 +529,16 @@ function createDireccionDepositoModel(sequelize) {
         metadata: {
           createdAt: new Date().toISOString(),
           source: 'env_variables',
-          autoCreated: true
+          autoCreated: true,
+          derivationStandard: bipStandard,
+          xpubType: xpub.substring(0, 4),
+          addressFormat: bipStandard === 'BIP84' ? 'native-segwit' : 
+                        bipStandard === 'BIP49' ? 'p2sh-segwit' : 'legacy'
         }
       };
 
       const walletMaestra = await sequelize.models.WalletMaestra.create(walletData, { transaction });
-      console.log(`Wallet maestra creada automáticamente para ${criptomoneda.symbol}`);
+      console.log(`Wallet maestra creada para ${criptomoneda.symbol} - ${bipStandard} con path: ${derivationPath}`);
       
       return walletMaestra;
     } catch (error) {
@@ -539,136 +577,152 @@ function createDireccionDepositoModel(sequelize) {
   DireccionDeposito._generateBitcoinAddress = (xpub, derivationPath, index, format = 'legacy') => {
     try {
       console.log(`Generando dirección Bitcoin ${format} con índice ${index}`);
+      console.log(`XPUB prefix: ${xpub.substring(0, 4)}`);
       
       if (!bitcoin || !BIP32Factory) {
         throw new Error('Librerías de Bitcoin no disponibles');
       }
 
-      // Determinar red basada en el prefijo del XPUB
+      // CONFIGURACIONES ESPECÍFICAS PARA CADA TIPO DE XPUB
       let network;
-      if (xpub.startsWith('vpub') || xpub.startsWith('vprv')) {
-        network = bitcoin.networks.testnet; // BIP84 testnet
-      } else if (xpub.startsWith('tpub') || xpub.startsWith('tprv')) {
-        network = bitcoin.networks.testnet; // BIP32 testnet
-      } else if (xpub.startsWith('xpub') || xpub.startsWith('xprv')) {
-        network = bitcoin.networks.bitcoin; // mainnet
+      const prefix = xpub.substring(0, 4);
+      
+      if (prefix === 'vpub' || prefix === 'vprv') {
+        // BIP84 testnet (Native SegWit) - TU CASO
+        network = {
+          messagePrefix: '\x18Bitcoin Signed Message:\n',
+          bech32: 'tb',
+          bip32: {
+            public: 0x045f1cf6,   // vpub específico
+            private: 0x045f18bc,  // vprv específico
+          },
+          pubKeyHash: 0x6f,
+          scriptHash: 0xc4,
+          wif: 0xef,
+        };
+        console.log('Configurando para BIP84 testnet (vpub)');
+        
+      } else if (prefix === 'upub' || prefix === 'uprv') {
+        // BIP49 testnet (P2SH-SegWit)
+        network = {
+          messagePrefix: '\x18Bitcoin Signed Message:\n',
+          bech32: 'tb',
+          bip32: {
+            public: 0x044a5262,   // upub
+            private: 0x044a4e28,  // uprv
+          },
+          pubKeyHash: 0x6f,
+          scriptHash: 0xc4,
+          wif: 0xef,
+        };
+        console.log('Configurando para BIP49 testnet (upub)');
+        
+      } else if (prefix === 'tpub' || prefix === 'tprv') {
+        // BIP44 testnet (Legacy)
+        network = {
+          messagePrefix: '\x18Bitcoin Signed Message:\n',
+          bech32: 'tb',
+          bip32: {
+            public: 0x043587cf,   // tpub
+            private: 0x04358394,  // tprv
+          },
+          pubKeyHash: 0x6f,
+          scriptHash: 0xc4,
+          wif: 0xef,
+        };
+        console.log('Configurando para BIP44 testnet (tpub)');
+        
       } else {
-        // Fallback basado en variables de entorno
-        network = process.env.BITCOIN_NETWORK === 'testnet3' ? 
-          bitcoin.networks.testnet : bitcoin.networks.bitcoin;
+        // Fallback para otros casos
+        console.warn(`Prefijo desconocido: ${prefix}, usando bitcoin.networks.testnet`);
+        network = bitcoin.networks.testnet;
       }
 
-      console.log(`Usando red Bitcoin: ${network === bitcoin.networks.testnet ? 'testnet' : 'mainnet'}`);
+      console.log(`Configuración de red para ${prefix}:`, {
+        bip32Public: network.bip32.public.toString(16),
+        bip32Private: network.bip32.private.toString(16)
+      });
 
+      // DERIVACIÓN CON LA RED CORRECTA
       let node, child;
       
       try {
+        console.log('Intentando derivación con configuración específica...');
+        
+        // Intentar con BIP32Factory
         if (typeof BIP32Factory.fromBase58 === 'function') {
           node = BIP32Factory.fromBase58(xpub, network);
-        } else if (typeof BIP32Factory === 'function') {
-          node = BIP32Factory(require('tiny-secp256k1')).fromBase58(xpub, network);
         } else {
-          throw new Error('BIP32Factory no es una función válida');
+          const ecc = require('tiny-secp256k1');
+          const BIP32 = BIP32Factory(ecc);
+          node = BIP32.fromBase58(xpub, network);
         }
         
         child = node.derive(index);
+        console.log('Derivación exitosa con configuración específica');
+        
       } catch (derivationError) {
-        throw new Error(`Error en derivación HD: ${derivationError.message}`);
+        console.error('Error en derivación:', derivationError.message);
+        throw new Error(`Error en derivación HD con ${prefix}: ${derivationError.message}`);
       }
 
       if (!child || !child.publicKey) {
         throw new Error('No se pudo derivar clave pública del nodo hijo');
       }
 
-      // Conversión robusta de publicKey a hex
+      // CONVERSIÓN DE PUBLIC KEY
       let publicKeyHex;
-      
       try {
         if (Buffer.isBuffer(child.publicKey)) {
           publicKeyHex = child.publicKey.toString('hex');
-        } else if (Array.isArray(child.publicKey)) {
-          publicKeyHex = Buffer.from(child.publicKey).toString('hex');
-        } else if (typeof child.publicKey === 'string') {
-          publicKeyHex = child.publicKey.replace(/^0x/, '');
-        } else if (child.publicKey && typeof child.publicKey.toString === 'function') {
-          const stringValue = child.publicKey.toString();
-          if (stringValue.includes(',')) {
-            const keyArray = stringValue.split(',').map(num => parseInt(num.trim()));
-            publicKeyHex = Buffer.from(keyArray).toString('hex');
-          } else {
-            publicKeyHex = stringValue.replace(/^0x/, '');
-          }
-        } else if (child.publicKey && child.publicKey.buffer) {
-          publicKeyHex = Buffer.from(child.publicKey.buffer).toString('hex');
-        } else if (child.publicKey && typeof child.publicKey === 'object') {
-          const keys = Object.keys(child.publicKey).filter(k => !isNaN(k)).sort((a, b) => a - b);
-          if (keys.length > 0) {
-            const keyArray = keys.map(k => child.publicKey[k]);
-            publicKeyHex = Buffer.from(keyArray).toString('hex');
-          } else {
-            throw new Error(`Objeto publicKey sin índices numéricos`);
-          }
         } else {
           publicKeyHex = Buffer.from(child.publicKey).toString('hex');
         }
       } catch (conversionError) {
-        throw new Error(`No se pudo convertir publicKey a hex: ${conversionError.message}`);
+        throw new Error(`Error convirtiendo publicKey: ${conversionError.message}`);
       }
 
-      if (!publicKeyHex || typeof publicKeyHex !== 'string') {
-        throw new Error(`Conversión a hex falló: ${publicKeyHex}`);
+      if (!publicKeyHex || publicKeyHex.length !== 66) {
+        throw new Error(`PublicKey inválida: longitud ${publicKeyHex?.length}, esperado 66`);
       }
 
-      // Limpiar y validar hex
-      publicKeyHex = publicKeyHex.toLowerCase().replace(/[^0-9a-f]/g, '');
-      
-      if (publicKeyHex.length !== 66 && publicKeyHex.length !== 130) {
-        throw new Error(`Longitud de clave pública inválida: ${publicKeyHex.length} caracteres`);
-      }
-
-      if (publicKeyHex.length === 66) {
-        const prefix = publicKeyHex.substring(0, 2);
-        if (prefix !== '02' && prefix !== '03') {
-          throw new Error(`Prefijo de clave comprimida inválido: ${prefix}`);
-        }
-      }
-      
+      // GENERACIÓN DE DIRECCIÓN SEGÚN EL TIPO DE XPUB
       let address;
       const pubkeyBuffer = Buffer.from(publicKeyHex, 'hex');
       
       try {
-        switch (format.toLowerCase()) {
-          case 'segwit':
-          case 'p2wpkh':
-            const p2wpkhResult = bitcoin.payments.p2wpkh({ 
-              pubkey: pubkeyBuffer,
-              network: network 
-            });
-            address = p2wpkhResult.address;
-            break;
-            
-          case 'nested-segwit':
-          case 'p2sh-p2wpkh':
-            const redeemScript = bitcoin.payments.p2wpkh({ 
-              pubkey: pubkeyBuffer,
-              network: network 
-            });
-            const p2shResult = bitcoin.payments.p2sh({
-              redeem: redeemScript,
-              network: network
-            });
-            address = p2shResult.address;
-            break;
-            
-          case 'legacy':
-          case 'p2pkh':
-          default:
-            const p2pkhResult = bitcoin.payments.p2pkh({ 
-              pubkey: pubkeyBuffer,
-              network: network 
-            });
-            address = p2pkhResult.address;
+        if (prefix === 'vpub' || prefix === 'vprv') {
+          // BIP84 - Native SegWit (bech32)
+          const p2wpkhResult = bitcoin.payments.p2wpkh({ 
+            pubkey: pubkeyBuffer,
+            network: bitcoin.networks.testnet // Usar red estándar para payments
+          });
+          address = p2wpkhResult.address;
+          console.log(`Dirección Native SegWit generada: ${address}`);
+          
+        } else if (prefix === 'upub' || prefix === 'uprv') {
+          // BIP49 - P2SH-SegWit
+          const redeemScript = bitcoin.payments.p2wpkh({ 
+            pubkey: pubkeyBuffer,
+            network: bitcoin.networks.testnet 
+          });
+          const p2shResult = bitcoin.payments.p2sh({
+            redeem: redeemScript,
+            network: bitcoin.networks.testnet
+          });
+          address = p2shResult.address;
+          console.log(`Dirección P2SH-SegWit generada: ${address}`);
+          
+        } else {
+          // BIP44 - Legacy P2PKH
+          const p2pkhResult = bitcoin.payments.p2pkh({ 
+            pubkey: pubkeyBuffer,
+            network: bitcoin.networks.testnet
+          });
+          address = p2pkhResult.address;
+          console.log(`Dirección Legacy generada: ${address}`);
         }
+        
       } catch (paymentError) {
         throw new Error(`Error creando payment Bitcoin: ${paymentError.message}`);
       }
@@ -677,15 +731,32 @@ function createDireccionDepositoModel(sequelize) {
         throw new Error('No se pudo generar dirección Bitcoin válida');
       }
 
-      console.log(`Dirección Bitcoin generada: ${address}`);
+      // VALIDAR FORMATO SEGÚN TIPO
+      let isValidFormat = false;
+      if (prefix === 'vpub' || prefix === 'vprv') {
+        isValidFormat = address.startsWith('tb1'); // Native SegWit testnet
+      } else if (prefix === 'upub' || prefix === 'uprv') {
+        isValidFormat = address.startsWith('2');   // P2SH testnet
+      } else {
+        isValidFormat = address.startsWith('m') || address.startsWith('n'); // Legacy testnet
+      }
+
+      if (!isValidFormat) {
+        console.warn(`Advertencia: Dirección generada con formato inesperado para ${prefix}: ${address}`);
+      }
+
+      console.log(`Dirección Bitcoin testnet generada exitosamente: ${address}`);
 
       return {
         address,
         publicKey: publicKeyHex,
         derivationIndex: index,
-        format: format
+        format: prefix === 'vpub' ? 'native-segwit' : (prefix === 'upub' ? 'p2sh-segwit' : 'legacy'),
+        network: 'testnet'
       };
+
     } catch (error) {
+      console.error('Error completo en _generateBitcoinAddress:', error.message);
       throw new Error(`Error generando dirección Bitcoin: ${error.message}`);
     }
   };
@@ -1324,6 +1395,85 @@ function createDireccionDepositoModel(sequelize) {
       return direcciones;
     } catch (error) {
       throw new Error(`Error obteniendo direcciones por red: ${error.message}`);
+    }
+  };
+
+  // Añadir este método al modelo para configuración explícita de testnet3
+  DireccionDeposito._getBitcoinNetwork = () => {
+    // Configuración explícita para Bitcoin testnet3
+    const testnet3Config = {
+      messagePrefix: '\x18Bitcoin Signed Message:\n',
+      bech32: 'tb',
+      bip32: {
+        public: 0x043587cf,   // tpub - BIP32 extended public key
+        private: 0x04358394,  // tprv - BIP32 extended private key
+      },
+      pubKeyHash: 0x6f,       // Direcciones P2PKH testnet (empiezan con 'm' o 'n')
+      scriptHash: 0xc4,       // Direcciones P2SH testnet (empiezan con '2')
+      wif: 0xef,              // Wallet Import Format para testnet
+    };
+
+    const mainnetConfig = {
+      messagePrefix: '\x18Bitcoin Signed Message:\n',
+      bech32: 'bc',
+      bip32: {
+        public: 0x0488b21e,   // xpub
+        private: 0x0488ade4,  // xprv
+      },
+      pubKeyHash: 0x00,       // Direcciones P2PKH mainnet (empiezan con '1')
+      scriptHash: 0x05,       // Direcciones P2SH mainnet (empiezan con '3')
+      wif: 0x80,              // Wallet Import Format para mainnet
+    };
+
+    // Determinar configuración desde variables de entorno
+    if (process.env.BITCOIN_NETWORK === 'testnet3' || process.env.BITCOIN_NETWORK === 'testnet') {
+      console.log('Usando configuración Bitcoin testnet3');
+      return testnet3Config;
+    } else if (process.env.BITCOIN_NETWORK === 'mainnet') {
+      console.log('Usando configuración Bitcoin mainnet');
+      return mainnetConfig;
+    } else {
+      // Default para desarrollo
+      console.log('Usando configuración por defecto: testnet3');
+      return testnet3Config;
+    }
+  };
+
+  // También añadir método de validación de XPUB
+  DireccionDeposito._validateXPUB = (xpub, network) => {
+    try {
+      if (!xpub || typeof xpub !== 'string' || xpub.length < 100) {
+        throw new Error('XPUB inválido: formato incorrecto');
+      }
+
+      // Verificar prefijos válidos según la red
+      const validPrefixes = network === bitcoin.networks.testnet
+        ? ['tpub', 'tprv', 'upub', 'uprv', 'vpub', 'vprv'] // testnet
+        : ['xpub', 'xprv', 'ypub', 'yprv', 'zpub', 'zprv']; // mainnet
+
+      const hasValidPrefix = validPrefixes.some(prefix => xpub.startsWith(prefix));
+      
+      if (!hasValidPrefix) {
+        console.warn(`XPUB con prefijo inusual: ${xpub.substring(0, 4)} para red ${network === bitcoin.networks.testnet ? 'testnet' : 'mainnet'}`);
+      }
+
+      // Intentar parsear para validar
+      const node = BIP32Factory.fromBase58(xpub, network);
+      
+      return {
+        valid: true,
+        prefix: xpub.substring(0, 4),
+        network: network === bitcoin.networks.testnet ? 'testnet' : 'mainnet',
+        depth: node.depth,
+        fingerprint: node.fingerprint.toString('hex')
+      };
+
+    } catch (error) {
+      return {
+        valid: false,
+        error: error.message,
+        prefix: xpub.substring(0, 4)
+      };
     }
   };
 

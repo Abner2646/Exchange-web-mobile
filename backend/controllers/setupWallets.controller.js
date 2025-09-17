@@ -14,7 +14,7 @@ const CRIPTOMONEDAS_BASICAS = [
     symbol: 'BTC',
     nombre: 'Bitcoin',
     red: 'bitcoin',
-    derivationPath: "m/44'/1'/0'", //En minnet: "m/44'/0'/0'"
+    derivationPath: "m/84'/1'/0'", //En minnet usar otro
     decimales: 8,
   },
   {
