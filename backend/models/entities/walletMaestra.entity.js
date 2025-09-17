@@ -209,13 +209,33 @@ function initWalletMaestra(sequelize) {
       // Validar que xpub corresponde a la red
       xpubMatchesNetwork() {
         if (this.xpub && this.red) {
-          // Bitcoin xpub empieza con 'xpub'
-          if (this.red === 'bitcoin' && !this.xpub.startsWith('xpub')) {
-            throw new Error('XPUB de Bitcoin debe empezar con "xpub"');
+          // Bitcoin: acepta mainnet y testnet
+          if (this.red === 'bitcoin') {
+            const validBitcoinPrefixes = ['xpub', 'ypub', 'zpub', 'tpub', 'upub', 'vpub'];
+            const isValidBitcoin = validBitcoinPrefixes.some(prefix => 
+              this.xpub.startsWith(prefix)
+            );
+            
+            if (!isValidBitcoin) {
+              throw new Error('XPUB de Bitcoin debe empezar con un prefijo válido (xpub/ypub/zpub para mainnet, tpub/upub/vpub para testnet)');
+            }
           }
+          
           // Ethereum usa formato diferente
           if (this.red === 'ethereum' && this.xpub.startsWith('xpub')) {
             throw new Error('XPUB de Ethereum no debe usar formato Bitcoin');
+          }
+          
+          // BSC puede usar formato ethereum o propio
+          if (this.red === 'bsc') {
+            const validBscPrefixes = ['epub', 'bpub', 'upub'];
+            const startsWithBitcoinPrefix = this.xpub.startsWith('xpub') || 
+                                            this.xpub.startsWith('ypub') || 
+                                            this.xpub.startsWith('zpub');
+            
+            if (startsWithBitcoinPrefix) {
+              throw new Error('XPUB de BSC no debe usar formato Bitcoin (xpub/ypub/zpub)');
+            }
           }
         }
       },
