@@ -1,4 +1,4 @@
-// models/direccionDeposito.model.js - Versión completa con todas las correcciones
+// models/direccionDeposito.model.js - Versión completa con correcciones para direcciones únicas por usuario
 require('dotenv').config();
 const initDireccionDeposito = require('./entities/direccionDeposito.entity');
 const { Op, Transaction } = require('sequelize');
@@ -340,8 +340,8 @@ function createDireccionDepositoModel(sequelize) {
         throw new Error('La wallet maestra no tiene XPUB/seed configurado');
       }
 
-      // Obtener el siguiente índice de derivación
-      const nextIndex = await DireccionDeposito.getNextDerivationIndex(walletMaestra.id, t);
+      // **CAMBIO CLAVE**: Usar userId para generar índice único
+      const uniqueIndex = await DireccionDeposito.generateUniqueIndexForUser(userId, walletMaestra.id, t);
 
       // Generar la dirección
       let addressData;
@@ -349,17 +349,18 @@ function createDireccionDepositoModel(sequelize) {
       const maxAttempts = 3;
 
       while (attempts < maxAttempts) {
-        console.log(`Generando dirección para ${criptomoneda.symbol}, intento ${attempts + 1}`);
+        console.log(`Generando dirección para usuario ${userId}, ${criptomoneda.symbol}, índice ${uniqueIndex + attempts}`);
         
         addressData = await DireccionDeposito._generateAddress(
           walletMaestra.xpub,
           walletMaestra.derivationPath,
-          nextIndex + attempts,
+          uniqueIndex + attempts,
           criptomoneda.red,
-          'legacy'
+          'legacy',
+          userId // **NUEVO**: Pasar userId para mayor unicidad
         );
 
-        console.log(`Dirección generada para ${criptomoneda.symbol}:`, addressData);
+        console.log(`Dirección generada para usuario ${userId}, ${criptomoneda.symbol}:`, addressData);
 
         // Verificar que la dirección no existe
         const existingByAddress = await DireccionDeposito.findOne({
@@ -373,12 +374,12 @@ function createDireccionDepositoModel(sequelize) {
 
         attempts++;
         if (attempts >= maxAttempts) {
-          throw new Error(`No se pudo generar dirección única después de ${maxAttempts} intentos`);
+          throw new Error(`No se pudo generar dirección única después de ${maxAttempts} intentos para usuario ${userId}`);
         }
       }
 
       if (!addressData || !addressData.address) {
-        throw new Error(`No se pudo generar dirección para ${criptomoneda.symbol}`);
+        throw new Error(`No se pudo generar dirección para ${criptomoneda.symbol}, usuario ${userId}`);
       }
 
       // Crear la dirección en la base de datos
@@ -387,15 +388,17 @@ function createDireccionDepositoModel(sequelize) {
         criptomonedaId: criptomonedaId,
         walletMaestraId: walletMaestra.id,
         direccion: addressData.address,
-        derivationIndex: nextIndex,
-        derivationPath: `${walletMaestra.derivationPath}/0/${nextIndex}`,
+        derivationIndex: uniqueIndex,
+        derivationPath: `${walletMaestra.derivationPath}/0/${uniqueIndex}`,
         publicKey: addressData.publicKey,
         activa: true,
         metadata: {
           generatedAt: new Date().toISOString(),
           method: 'auto_generation',
           network: criptomoneda.red,
-          addressFormat: 'deterministic'
+          addressFormat: 'deterministic',
+          userId: userId, // **NUEVO**: Agregar userId al metadata
+          uniqueIndex: uniqueIndex
         }
       };
 
@@ -446,7 +449,49 @@ function createDireccionDepositoModel(sequelize) {
 
     } catch (error) {
       if (!transaction) await t.rollback();
-      throw new Error(`Error al generar dirección para usuario: ${error.message}`);
+      throw new Error(`Error al generar dirección para usuario ${userId}: ${error.message}`);
+    }
+  };
+
+  // **NUEVO MÉTODO**: Generar índice único basado en userId
+  DireccionDeposito.generateUniqueIndexForUser = async (userId, walletMaestraId, transaction = null) => {
+    try {
+      // Crear hash único basado en userId para determinismo
+      const userHash = crypto.createHash('sha256')
+        .update(`${userId}_${walletMaestraId}`)
+        .digest('hex');
+      
+      // Convertir hash a número entero (usando primeros 8 caracteres)
+      const baseIndex = parseInt(userHash.substring(0, 8), 16) % 1000000; // Limitar a 1M
+      
+      // Verificar si ya existe una dirección con este índice
+      let finalIndex = baseIndex;
+      let attempts = 0;
+      const maxAttempts = 100;
+      
+      while (attempts < maxAttempts) {
+        const existingWithIndex = await DireccionDeposito.findOne({
+          where: {
+            walletMaestraId: walletMaestraId,
+            derivationIndex: finalIndex
+          },
+          transaction
+        });
+        
+        if (!existingWithIndex) {
+          console.log(`Índice único generado para usuario ${userId}: ${finalIndex}`);
+          return finalIndex;
+        }
+        
+        // Si ya existe, incrementar
+        finalIndex = (baseIndex + attempts + 1) % 1000000;
+        attempts++;
+      }
+      
+      throw new Error(`No se pudo generar índice único para usuario ${userId} después de ${maxAttempts} intentos`);
+      
+    } catch (error) {
+      throw new Error(`Error generando índice único: ${error.message}`);
     }
   };
 
@@ -548,9 +593,9 @@ function createDireccionDepositoModel(sequelize) {
 
   // =================== GENERACIÓN DE DIRECCIONES POR RED ===================
 
-  DireccionDeposito._generateAddress = async (xpub, derivationPath, index, network, addressFormat = 'legacy') => {
+  DireccionDeposito._generateAddress = async (xpub, derivationPath, index, network, addressFormat = 'legacy', userId = null) => {
     try {
-      console.log(`Generando dirección para red: ${network}, índice: ${index}`);
+      console.log(`Generando dirección para usuario ${userId}, red: ${network}, índice: ${index}`);
 
       switch (network.toLowerCase()) {
         case 'bitcoin':
@@ -558,25 +603,25 @@ function createDireccionDepositoModel(sequelize) {
           if (!bitcoin || !BIP32Factory) {
             throw new Error('Librerías de Bitcoin no disponibles');
           }
-          return DireccionDeposito._generateBitcoinAddress(xpub, derivationPath, index, addressFormat);
+          return DireccionDeposito._generateBitcoinAddress(xpub, derivationPath, index, addressFormat, userId);
         
         case 'ethereum':
         case 'sepolia':
         case 'bsc':
         case 'bsc-testnet':
-          return DireccionDeposito._generateEthereumAddress(xpub, derivationPath, index);
+          return DireccionDeposito._generateEthereumAddress(xpub, derivationPath, index, userId);
         
         default:
           throw new Error(`Red no soportada: ${network}`);
       }
     } catch (error) {
-      throw new Error(`Error generando dirección: ${error.message}`);
+      throw new Error(`Error generando dirección para usuario ${userId}: ${error.message}`);
     }
   };
 
-  DireccionDeposito._generateBitcoinAddress = (xpub, derivationPath, index, format = 'legacy') => {
+  DireccionDeposito._generateBitcoinAddress = (xpub, derivationPath, index, format = 'legacy', userId = null) => {
     try {
-      console.log(`Generando dirección Bitcoin ${format} con índice ${index}`);
+      console.log(`Generando dirección Bitcoin ${format} con índice ${index} para usuario ${userId}`);
       console.log(`XPUB prefix: ${xpub.substring(0, 4)}`);
       
       if (!bitcoin || !BIP32Factory) {
@@ -658,6 +703,7 @@ function createDireccionDepositoModel(sequelize) {
           node = BIP32.fromBase58(xpub, network);
         }
         
+        // **CAMBIO IMPORTANTE**: Derivar con el índice único del usuario
         child = node.derive(index);
         console.log('Derivación exitosa con configuración específica');
         
@@ -745,47 +791,50 @@ function createDireccionDepositoModel(sequelize) {
         console.warn(`Advertencia: Dirección generada con formato inesperado para ${prefix}: ${address}`);
       }
 
-      console.log(`Dirección Bitcoin testnet generada exitosamente: ${address}`);
+      console.log(`Dirección Bitcoin testnet única generada para usuario ${userId}: ${address}`);
 
       return {
         address,
         publicKey: publicKeyHex,
         derivationIndex: index,
         format: prefix === 'vpub' ? 'native-segwit' : (prefix === 'upub' ? 'p2sh-segwit' : 'legacy'),
-        network: 'testnet'
+        network: 'testnet',
+        userId: userId // **NUEVO**: Incluir userId en respuesta
       };
 
     } catch (error) {
       console.error('Error completo en _generateBitcoinAddress:', error.message);
-      throw new Error(`Error generando dirección Bitcoin: ${error.message}`);
+      throw new Error(`Error generando dirección Bitcoin para usuario ${userId}: ${error.message}`);
     }
   };
 
-  DireccionDeposito._generateEthereumAddress = (xpub, derivationPath, index) => {
+  DireccionDeposito._generateEthereumAddress = (xpub, derivationPath, index, userId = null) => {
     try {
-      console.log(`Generando dirección Ethereum/BSC con índice ${index}`);
+      console.log(`Generando dirección Ethereum/BSC con índice ${index} para usuario ${userId}`);
       
-      // Generar dirección determinística usando XPUB/seed específico
-      const input = `${xpub}_${derivationPath}_${index}`;
+      // **CAMBIO CLAVE**: Incluir userId en la generación
+      const input = `${xpub}_${derivationPath}_${index}_${userId || 'default'}`;
       const hash = crypto.createHash('sha256').update(input).digest('hex');
       
+      // Generar dirección única por usuario
       const address = '0x' + hash.substring(0, 40);
-      const publicKey = '04' + hash.substring(40, 102);
+      const publicKey = '04' + hash.substring(40, 104);
       
       // Validar formato
       if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
         throw new Error(`Dirección generada con formato inválido: ${address}`);
       }
       
-      console.log(`Dirección Ethereum/BSC generada: ${address}`);
+      console.log(`Dirección Ethereum/BSC única generada para usuario ${userId}: ${address}`);
       
       return {
         address: address,
         publicKey: publicKey, 
-        derivationIndex: index
+        derivationIndex: index,
+        userId: userId // **NUEVO**: Incluir userId en respuesta
       };
     } catch (error) {
-      throw new Error(`Error en generación Ethereum/BSC: ${error.message}`);
+      throw new Error(`Error en generación Ethereum/BSC para usuario ${userId}: ${error.message}`);
     }
   };
 

@@ -17,23 +17,29 @@ class EthereumService {
   // MÉTODO PRINCIPAL: Detectar depósitos
   async scanForDeposits() {
     try {
-      if (this.hasApiKey) {
-        console.log('Usando Etherscan API para detectar depósitos');
-        return await this.scanWithEtherscanAPI();
+      console.log('🔧 ETH DEBUG - Iniciando escaneo de depósitos...');
+      
+      if (this.hasApiKey && process.env.ETHERSCAN_API_KEY) {
+        console.log('🔧 ETH DEBUG - Usando Etherscan API');
+        try {
+          const apiResult = await this.scanWithEtherscanAPI();
+          if (apiResult && apiResult.length > 0) {
+            return apiResult;
+          }
+          console.log('🔧 ETH DEBUG - API no devolvió resultados, probando balance check');
+        } catch (apiError) {
+          console.warn('🔧 ETH DEBUG - API falló, probando balance check:', apiError.message);
+        }
       } else {
-        console.log('Usando método de balance para detectar depósitos');
-        return await this.scanWithBalanceCheck();
+        console.log('🔧 ETH DEBUG - No hay API key, usando balance check directamente');
       }
+      
+      console.log('🔧 ETH DEBUG - Usando balance check como fallback');
+      return await this.scanWithBalanceCheck();
+      
     } catch (error) {
-      console.error('Error en método principal, intentando fallback:', error.message);
-      
-      // Fallback al método de balance si falla API
-      if (this.hasApiKey) {
-        console.log('API falló, usando método de balance como fallback');
-        return await this.scanWithBalanceCheck();
-      }
-      
-      throw error;
+      console.error('🔧 ETH DEBUG - Error en ambos métodos:', error.message);
+      return [];
     }
   }
 
@@ -380,16 +386,33 @@ async updateConfirmations() {
 
   // MÉTODOS AUXILIARES
   async getActiveUserAddresses() {
-    return await DireccionDeposito.findAll({
-      where: { activa: true },
-      include: [
-        {
-          model: Criptomoneda,
-          as: 'criptomoneda',
-          where: { red: 'ethereum', activa: true }
-        }
-      ]
-    });
+    try {
+      console.log('🔧 ETH DEBUG - Buscando direcciones activas...');
+      
+      const { DireccionDeposito, Criptomoneda } = require('../../models');
+      
+      const direcciones = await DireccionDeposito.findAll({
+        where: { activa: true },
+        include: [
+          {
+            model: Criptomoneda,
+            as: 'criptomoneda',
+            where: { 
+              red: 'ethereum',
+              activa: true 
+            },
+            attributes: ['id', 'symbol', 'nombre', 'red', 'direccionContrato', 'decimales']
+          }
+        ]
+      });
+      
+      console.log(`🔧 ETH DEBUG - Direcciones encontradas: ${direcciones.length}`);
+      
+      return direcciones;
+    } catch (error) {
+      console.error('🔧 ETH DEBUG - Error obteniendo direcciones ETH:', error.message);
+      throw error;
+    }
   }
 
   async getCurrentBalance(direccion) {
@@ -412,16 +435,23 @@ async updateConfirmations() {
   }
 
   async getLastKnownBalance(direccion) {
-    const depositos = await TransaccionBlockchain.sum('cantidad', {
-      where: {
-        userId: direccion.userId,
-        criptomonedaId: direccion.criptomonedaId,
-        tipo: 'deposito',
-        estado: ['confirmado', 'completado']
-      }
-    }) || 0;
+    try {
+      const { TransaccionBlockchain } = require('../../models');
+      
+      const depositos = await TransaccionBlockchain.sum('cantidad', {
+        where: {
+          userId: direccion.userId,
+          criptomonedaId: direccion.criptomonedaId,
+          tipo: 'deposito',
+          estado: ['confirmado', 'completado']
+        }
+      });
 
-    return parseFloat(depositos);
+      return parseFloat(depositos || 0);
+    } catch (error) {
+      console.error('🔧 ETH DEBUG - Error obteniendo último balance conocido:', error.message);
+      return 0;
+    }
   }
 
   async getWalletBalance(criptomoneda) {
@@ -460,6 +490,8 @@ async updateConfirmations() {
   }
 
   async createSimpleDeposit(direccion, amount) {
+    const { TransaccionBlockchain } = require('../../models');
+    
     const txHash = `eth_balance_${direccion.direccion}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
     return await TransaccionBlockchain.createDeposit({
@@ -470,7 +502,7 @@ async updateConfirmations() {
       direccionOrigen: null,
       txHash: txHash,
       feeBlockchain: 0,
-      confirmaciones: this.requiredConfirmations, // ✅ Confirmaciones completas
+      confirmaciones: this.requiredConfirmations, // Confirmaciones completas inmediatamente
       confirmacionesRequeridas: this.requiredConfirmations
     });
   }
