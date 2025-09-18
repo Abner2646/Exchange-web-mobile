@@ -1,5 +1,5 @@
 // controllers/transaccionBlockchain.controller.js
-const { TransaccionBlockchain, Usuario, Criptomoneda, BalanceUsuario } = require('../models');
+const { TransaccionBlockchain, Usuario, Criptomoneda, BalanceUsuario, DireccionDeposito } = require('../models');
 const BlockchainServiceManager = require('../services/blockchain');
 const { validationResult } = require('express-validator');
 
@@ -198,21 +198,51 @@ class TransaccionBlockchainController {
         });
       }
 
-      // Buscar dirección existente o crear una nueva
-      const DireccionDeposito = require('../models').DireccionDeposito;
-      let direccion = await DireccionDeposito.getByUserAndCrypto(userId, criptomonedaId);
+      // ✅ CORRECCIÓN: Usar DireccionDeposito correctamente
+      let direccion;
+      
+      try {
+        direccion = await DireccionDeposito.getByUserAndCrypto(userId, criptomonedaId);
+      } catch (error) {
+        console.error('Error buscando dirección existente:', error.message);
+      }
 
       if (!direccion) {
-        // Generar nueva dirección
-        direccion = await DireccionDeposito.generateAddressForUser(userId, criptomonedaId);
+        try {
+          // Generar nueva dirección
+          direccion = await DireccionDeposito.generateAddressForUser(userId, criptomonedaId);
+        } catch (generateError) {
+          console.error('Error generando nueva dirección:', generateError.message);
+          return res.status(500).json({
+            success: false,
+            message: 'Error generando dirección de depósito',
+            error: generateError.message
+          });
+        }
+      }
+
+      // ✅ CORRECCIÓN: Validar que la dirección se generó correctamente
+      if (!direccion || !direccion.direccion) {
+        return res.status(500).json({
+          success: false,
+          message: 'No se pudo obtener dirección de depósito'
+        });
       }
 
       res.json({
         success: true,
         data: {
           direccion: direccion.direccion,
-          criptomoneda: direccion.criptomoneda,
-          qrCode: `${criptomoneda.symbol}:${direccion.direccion}`, // Para generar QR
+          criptomoneda: direccion.criptomoneda || criptomoneda,
+          qrCode: `${criptomoneda.symbol}:${direccion.direccion}`,
+          derivationIndex: direccion.derivationIndex,
+          metadata: {
+            createdAt: direccion.created_at,
+            network: criptomoneda.red,
+            confirmationsRequired: direccion.confirmacionesRequeridas || 
+              (criptomoneda.red === 'bitcoin' ? 3 : 
+              criptomoneda.red === 'ethereum' ? 12 : 6)
+          },
           mensaje: `Esta es tu dirección para depósitos de ${criptomoneda.symbol}. Los depósitos se acreditarán automáticamente después de las confirmaciones requeridas.`
         }
       });

@@ -285,22 +285,38 @@ async buildTransaction(utxos, toAddress, amountSatoshis) {
   let totalInput = 0;
   let selectedUTXOs = [];
   
-  for (const utxo of utxos) {
+  // ✅ CORRECCIÓN: Mejor selección de UTXOs
+  const sortedUTXOs = [...utxos].sort((a, b) => b.value - a.value); // Más grandes primero
+  
+  for (const utxo of sortedUTXOs) {
     selectedUTXOs.push(utxo);
     totalInput += utxo.value;
     
-    const estimatedFee = 250 * this.feePerByte;
+    // ✅ CORRECCIÓN: Estimación de fee más precisa
+    const inputCount = selectedUTXOs.length;
+    const outputCount = 2; // dest + change
+    const estimatedSize = this.estimateTransactionSize(inputCount, outputCount);
+    const estimatedFee = estimatedSize * this.feePerByte;
     
     if (totalInput >= amountSatoshis + estimatedFee) {
       break;
     }
   }
   
-  if (totalInput < amountSatoshis + (250 * this.feePerByte)) {
-    throw new Error(`UTXOs insuficientes para cubrir monto + fee`);
+  // ✅ CORRECCIÓN: Validación mejorada
+  const finalTxSize = this.estimateTransactionSize(selectedUTXOs.length, 2);
+  const finalFee = finalTxSize * this.feePerByte;
+  
+  if (totalInput < amountSatoshis + finalFee) {
+    throw new Error(`UTXOs insuficientes: necesario ${amountSatoshis + finalFee}, disponible ${totalInput}`);
   }
 
+  // ✅ CORRECCIÓN: Agregar inputs con validación
   for (const utxo of selectedUTXOs) {
+    if (!utxo.scriptPubKey) {
+      throw new Error(`UTXO ${utxo.txid}:${utxo.vout} sin scriptPubKey`);
+    }
+    
     psbt.addInput({
       hash: utxo.txid,
       index: utxo.vout,
@@ -311,15 +327,16 @@ async buildTransaction(utxos, toAddress, amountSatoshis) {
     });
   }
 
+  // Agregar output principal
   psbt.addOutput({
     address: toAddress,
     value: amountSatoshis,
   });
 
-  const txSize = this.estimateTransactionSize(selectedUTXOs.length, 2);
-  const actualFee = txSize * this.feePerByte;
-  const change = totalInput - amountSatoshis - actualFee;
-
+  // ✅ CORRECCIÓN: Calcular change correctamente
+  const change = totalInput - amountSatoshis - finalFee;
+  
+  // Solo agregar change si es mayor al dust limit
   if (change > 546) {
     psbt.addOutput({
       address: this.walletAddress,
@@ -327,6 +344,7 @@ async buildTransaction(utxos, toAddress, amountSatoshis) {
     });
   }
 
+  // Firmar todas las entradas
   for (let i = 0; i < selectedUTXOs.length; i++) {
     psbt.signInput(i, this.keyPair);
   }
@@ -334,64 +352,92 @@ async buildTransaction(utxos, toAddress, amountSatoshis) {
   psbt.finalizeAllInputs();
   const txHex = psbt.extractTransaction().toHex();
 
-  return { txHex, actualFee };
+  return { txHex, actualFee: finalFee };
 }
 
-async getWalletUTXOs() {
-  if (!this.walletAddress) {
-    return [];
-  }
-  
-  let url = `${this.baseUrl}/addrs/${this.walletAddress}`;
-  
-  const params = ['unspentOnly=true', 'includeScript=true'];
-  
-  if (this.apiToken) {
-    params.push(`token=${this.apiToken.replace('?token=', '')}`);
-  }
-  
-  url += '?' + params.join('&');
-  
-  try {
-    const response = await fetch(url);
-    const data = await response.json();
-    
-    // Combinar UTXOs confirmados y no confirmados
-    const allUTXOs = [
-      ...(data.txrefs || []),           
-      ...(data.unconfirmed_txrefs || []) 
-    ];
-    
-    console.log(`🔧 DEBUG - UTXOs totales encontrados: ${allUTXOs.length}`);
-    console.log(`🔧 DEBUG - Confirmados: ${(data.txrefs || []).length}, No confirmados: ${(data.unconfirmed_txrefs || []).length}`);
-    
-    if (allUTXOs.length === 0) {
+  async getWalletUTXOs() {
+    if (!this.walletAddress) {
       return [];
     }
     
-    // Procesar UTXOs
-    const processedUTXOs = [];
+    let url = `${this.baseUrl}/addrs/${this.walletAddress}`;
     
-    for (const utxo of allUTXOs) {
-      if (!utxo.spent) {
-        processedUTXOs.push({
-          txid: utxo.tx_hash,
-          vout: utxo.tx_output_n,
-          value: utxo.value,
-          scriptPubKey: utxo.script,
-          confirmations: utxo.confirmations
-        });
-      }
+    const params = ['unspentOnly=true', 'includeScript=true'];
+    
+    if (this.apiToken) {
+      params.push(`token=${this.apiToken.replace('?token=', '')}`);
     }
     
-    console.log(`🔧 DEBUG - UTXOs procesados (no gastados): ${processedUTXOs.length}`);
+    url += '?' + params.join('&');
     
-    return processedUTXOs;
-  } catch (error) {
-    console.error('Error obteniendo UTXOs BTC:', error.message);
-    return [];
+    try {
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`BlockCypher API error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // ✅ CORRECCIÓN: Manejar respuesta vacía correctamente
+      if (!data) {
+        console.log('🔧 DEBUG - Respuesta API vacía');
+        return [];
+      }
+      
+      // Combinar UTXOs confirmados y no confirmados
+      const allUTXOs = [
+        ...(data.txrefs || []),           
+        ...(data.unconfirmed_txrefs || []) 
+      ];
+      
+      console.log(`🔧 DEBUG - UTXOs totales encontrados: ${allUTXOs.length}`);
+      console.log(`🔧 DEBUG - Confirmados: ${(data.txrefs || []).length}, No confirmados: ${(data.unconfirmed_txrefs || []).length}`);
+      
+      if (allUTXOs.length === 0) {
+        console.log('🔧 DEBUG - No hay UTXOs disponibles');
+        return [];
+      }
+      
+      // ✅ CORRECCIÓN: Procesar UTXOs con validación mejorada
+      const processedUTXOs = [];
+      
+      for (const utxo of allUTXOs) {
+        if (!utxo.spent && utxo.value && utxo.value > 0) {
+          // ✅ CORRECCIÓN: Obtener scriptPubKey si no está presente
+          let scriptPubKey = utxo.script;
+          
+          if (!scriptPubKey) {
+            try {
+              const txOutput = await this.getTransactionOutput(utxo.tx_hash, utxo.tx_output_n);
+              scriptPubKey = txOutput.scriptPubKey;
+            } catch (scriptError) {
+              console.warn(`⚠️ No se pudo obtener script para UTXO ${utxo.tx_hash}:${utxo.tx_output_n}`);
+              continue; // Omitir este UTXO
+            }
+          }
+          
+          processedUTXOs.push({
+            txid: utxo.tx_hash,
+            vout: utxo.tx_output_n,
+            value: utxo.value,
+            scriptPubKey: scriptPubKey,
+            confirmations: utxo.confirmations || 0
+          });
+        }
+      }
+      
+      console.log(`🔧 DEBUG - UTXOs válidos procesados: ${processedUTXOs.length}`);
+      
+      // ✅ CORRECCIÓN: Ordenar por confirmaciones (más confirmadas primero)
+      processedUTXOs.sort((a, b) => (b.confirmations || 0) - (a.confirmations || 0));
+      
+      return processedUTXOs;
+    } catch (error) {
+      console.error('Error obteniendo UTXOs BTC:', error.message);
+      return [];
+    }
   }
-}
 
   async getTransactionOutput(txHash, outputIndex) {
     const url = `${this.baseUrl}/txs/${txHash}${this.apiToken}`;

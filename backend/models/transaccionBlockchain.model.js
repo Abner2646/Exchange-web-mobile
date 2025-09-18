@@ -264,6 +264,14 @@ function createTransaccionBlockchainModel(sequelize) {
 
   TransaccionBlockchain._acreditarDeposito = async (transaccion, transaction) => {
     try {
+      console.log(`🔧 DEBUG - Acreditando depósito:`, {
+        transaccionId: transaccion.id,
+        userId: transaccion.userId,
+        criptomonedaId: transaccion.criptomonedaId,
+        cantidad: transaccion.cantidad,
+        estado: transaccion.estado
+      });
+
       // Actualizar balance del usuario usando la entidad directa
       const [balance] = await BalanceUsuario.findOrCreate({
         where: {
@@ -279,27 +287,63 @@ function createTransaccionBlockchainModel(sequelize) {
         transaction
       });
 
+      console.log(`🔧 DEBUG - Balance actual antes de acreditar:`, {
+        balanceId: balance.id,
+        balanceDisponible: balance.balanceDisponible,
+        balanceBloqueado: balance.balanceBloqueado
+      });
+
       const nuevoBalance = parseFloat(balance.balanceDisponible) + parseFloat(transaccion.cantidad);
       
-      await BalanceUsuario.update(
+      console.log(`🔧 DEBUG - Nuevo balance calculado:`, {
+        balanceAnterior: parseFloat(balance.balanceDisponible),
+        cantidadDepositada: parseFloat(transaccion.cantidad),
+        nuevoBalance: nuevoBalance
+      });
+
+      // ✅ CORRECCIÓN CRÍTICA: Actualizar el balance correctamente
+      const [updatedRows] = await BalanceUsuario.update(
         { balanceDisponible: nuevoBalance },
         { 
           where: { id: balance.id },
-          transaction
+          transaction,
+          returning: true // Para PostgreSQL, obtener el registro actualizado
         }
       );
 
-      // Marcar transacción como completada
+      console.log(`🔧 DEBUG - Balance actualizado, filas afectadas: ${updatedRows || 1}`);
+
+      // ✅ CORRECCIÓN: Verificar que el balance se actualizó correctamente
+      const balanceVerificacion = await BalanceUsuario.findByPk(balance.id, { transaction });
+      console.log(`🔧 DEBUG - Balance después de actualizar:`, {
+        balanceDisponible: balanceVerificacion.balanceDisponible,
+        balanceBloqueado: balanceVerificacion.balanceBloqueado
+      });
+
+      // ✅ CORRECCIÓN: Marcar transacción como completada (no confirmada)
       await TransaccionBlockchain.update(
-        { estado: 'completado' },
+        { 
+          estado: 'completado',
+          fechaCompletado: new Date()
+        },
         { 
           where: { id: transaccion.id },
           transaction
         }
       );
 
-      console.log(`Depósito acreditado: ${transaccion.cantidad} ${transaccion.criptomoneda?.symbol} para usuario ${transaccion.userId}`);
+      console.log(`✅ Depósito acreditado exitosamente: ${transaccion.cantidad} para usuario ${transaccion.userId}`);
+      
+      // ✅ MEJORA: Obtener símbolo de criptomoneda para log
+      try {
+        const criptomoneda = await sequelize.models.Criptomoneda.findByPk(transaccion.criptomonedaId, { transaction });
+        console.log(`✅ Depósito completado: ${transaccion.cantidad} ${criptomoneda?.symbol || 'BTC'} acreditado al usuario ${transaccion.userId}`);
+      } catch (logError) {
+        console.log(`✅ Depósito completado: ${transaccion.cantidad} acreditado al usuario ${transaccion.userId}`);
+      }
+
     } catch (error) {
+      console.error(`❌ Error crítico acreditando depósito:`, error);
       throw new Error(`Error al acreditar depósito: ${error.message}`);
     }
   };
@@ -702,6 +746,50 @@ function createTransaccionBlockchainModel(sequelize) {
       };
     } catch (error) {
       return { valid: false, message: `Error en validación: ${error.message}` };
+    }
+  };
+
+  TransaccionBlockchain.cleanupBalanceCheckTransactions = async () => {
+    try {
+      console.log('🧹 Limpiando transacciones de balance check stuck...');
+      
+      // Encontrar todas las transacciones de balance check pendientes
+      const stuckTxs = await TransaccionBlockchain.findAll({
+        where: {
+          estado: ['pendiente', 'procesando'],
+          txHash: {
+            [Op.or]: [
+              { [Op.like]: 'bsc_balance_%' },
+              { [Op.like]: 'eth_balance_%' },
+              { [Op.like]: 'balance_%' }
+            ]
+          }
+        }
+      });
+      
+      console.log(`🧹 Encontradas ${stuckTxs.length} transacciones de balance check stuck`);
+      
+      let cleaned = 0;
+      for (const tx of stuckTxs) {
+        try {
+          await TransaccionBlockchain.updateConfirmations(
+            tx.id,
+            tx.confirmacionesRequeridas || 6, // Confirmar completamente
+            tx.txHash
+          );
+          cleaned++;
+          console.log(`✅ Auto-confirmada: ${tx.txHash}`);
+        } catch (error) {
+          console.error(`Error limpiando ${tx.txHash}: ${error.message}`);
+        }
+      }
+      
+      console.log(`🧹 Limpieza completada: ${cleaned}/${stuckTxs.length} transacciones procesadas`);
+      return { total: stuckTxs.length, cleaned };
+      
+    } catch (error) {
+      console.error('Error en limpieza de balance checks:', error.message);
+      throw error;
     }
   };
 

@@ -223,6 +223,7 @@ class EthereumService {
     console.log(`   - Cantidad: ${withdrawal.cantidad}`);
     console.log(`   - Destino: ${withdrawal.direccionDestino}`);
     console.log(`   - Crypto: ${withdrawal.criptomoneda.symbol}`);
+    
     const { cantidad, direccionDestino, criptomoneda } = withdrawal;
 
     // Verificar balance de wallet maestra antes de enviar
@@ -242,107 +243,140 @@ class EthereumService {
 
     console.log(`🔧 DEBUG - Iniciando envío de transacción...`);
 
-    // ✅ CAMBIO 1: Declarar variables ANTES del if para scope correcto
+    // ✅ CORRECCIÓN: Declarar variables ANTES del condicional
     let tx;
     let estimatedFee;
 
-    // ✅ CAMBIO 2: Obtener feeData UNA VEZ antes de los condicionales
+    // ✅ CORRECCIÓN: Obtener feeData UNA VEZ
     const feeData = await this.provider.getFeeData();
     const gasPrice = feeData.gasPrice || feeData.maxFeePerGas || ethers.parseUnits('20', 'gwei');
 
-    if (criptomoneda.symbol === 'ETH') {
-      // Enviar ETH nativo
-      estimatedFee = parseFloat(ethers.formatEther(gasPrice * BigInt(21000)));
-      
-      tx = await this.wallet.sendTransaction({
-        to: direccionDestino,
-        value: ethers.parseEther(cantidad.toString()),
-        gasLimit: 21000,
-        gasPrice: gasPrice
-      });
-    } else {
-      // Enviar token ERC-20
-      const contract = new ethers.Contract(
-        criptomoneda.direccionContrato,
-        [
-          'function transfer(address to, uint256 amount) returns (bool)',
-          'function decimals() view returns (uint8)'
-        ],
-        this.wallet
-      );
-
-      estimatedFee = parseFloat(ethers.formatEther(gasPrice * BigInt(60000)));
-      
-      const decimales = await contract.decimals();
-      const amount = ethers.parseUnits(cantidad.toString(), decimales);
-
-      tx = await contract.transfer(direccionDestino, amount, {
-        gasLimit: 60000,
-        gasPrice: gasPrice
-      });
-    }
-
-    // Actualizar transacción con hash real
-    const updated = await TransaccionBlockchain.markWithdrawalAsSent(
-      withdrawal.id,
-      tx.hash,
-      estimatedFee
-    );
-
-    console.log(`✅ Retiro enviado: ${cantidad} ${criptomoneda.symbol} a ${direccionDestino}`);
-    console.log(`   TX Hash: ${tx.hash}, Fee estimado: ${estimatedFee} ETH`);
-
-  return updated;
-}
-
-  // ACTUALIZAR CONFIRMACIONES
-  async updateConfirmations() {
     try {
-      const pendingTxs = await TransaccionBlockchain.findAll({
-        where: {
-          estado: ['pendiente', 'procesando'],
-          txHash: { [require('sequelize').Op.ne]: null }
-        },
-        include: [
-          {
-            model: Criptomoneda,
-            as: 'criptomoneda',
-            where: { red: 'ethereum' }
-          }
-        ]
-      });
+      if (criptomoneda.symbol === 'ETH') {
+        // Enviar ETH nativo
+        estimatedFee = parseFloat(ethers.formatEther(gasPrice * BigInt(21000)));
+        
+        tx = await this.wallet.sendTransaction({
+          to: direccionDestino,
+          value: ethers.parseEther(cantidad.toString()),
+          gasLimit: 21000,
+          gasPrice: gasPrice
+        });
+      } else {
+        // Enviar token ERC-20
+        const contract = new ethers.Contract(
+          criptomoneda.direccionContrato,
+          [
+            'function transfer(address to, uint256 amount) returns (bool)',
+            'function decimals() view returns (uint8)'
+          ],
+          this.wallet
+        );
 
-      const updated = [];
-      const currentBlock = await this.provider.getBlockNumber();
+        estimatedFee = parseFloat(ethers.formatEther(gasPrice * BigInt(60000)));
+        
+        const decimales = await contract.decimals();
+        const amount = ethers.parseUnits(cantidad.toString(), decimales);
 
-      for (const tx of pendingTxs) {
-        try {
-          const receipt = await this.provider.getTransactionReceipt(tx.txHash);
-          
-          if (receipt && receipt.blockNumber) {
-            const confirmations = currentBlock - receipt.blockNumber;
-            
-            if (confirmations !== tx.confirmaciones) {
-              const updatedTx = await TransaccionBlockchain.updateConfirmations(
-                tx.id,
-                confirmations,
-                tx.txHash
-              );
-              updated.push(updatedTx);
-              
-              console.log(`Confirmaciones actualizadas para ${tx.txHash}: ${confirmations}`);
-            }
-          }
-        } catch (error) {
-          console.error(`Error actualizando confirmaciones para ${tx.txHash}:`, error.message);
-        }
+        tx = await contract.transfer(direccionDestino, amount, {
+          gasLimit: 60000,
+          gasPrice: gasPrice
+        });
       }
 
+      // Actualizar transacción con hash real
+      const updated = await TransaccionBlockchain.markWithdrawalAsSent(
+        withdrawal.id,
+        tx.hash,
+        estimatedFee
+      );
+
+      console.log(`✅ Retiro enviado: ${cantidad} ${criptomoneda.symbol} a ${direccionDestino}`);
+      console.log(`   TX Hash: ${tx.hash}, Fee estimado: ${estimatedFee} ETH`);
+
       return updated;
-    } catch (error) {
-      throw new Error(`Error actualizando confirmaciones ETH: ${error.message}`);
+
+    } catch (txError) {
+      console.error(`❌ Error en transacción ETH:`, txError.message);
+      throw new Error(`Error enviando transacción ETH: ${txError.message}`);
     }
   }
+
+  // ACTUALIZAR CONFIRMACIONES
+async updateConfirmations() {
+  try {
+    const pendingTxs = await TransaccionBlockchain.findAll({
+      where: {
+        estado: ['pendiente', 'procesando'],
+        txHash: { [require('sequelize').Op.ne]: null }
+      },
+      include: [
+        {
+          model: Criptomoneda,
+          as: 'criptomoneda',
+          where: { red: 'ethereum' }
+        }
+      ]
+    });
+
+    const updated = [];
+    const currentBlock = await this.provider.getBlockNumber();
+
+    for (const tx of pendingTxs) {
+      try {
+        // ✅ CORRECCIÓN: Detectar transacciones de balance check ETH
+        if (tx.txHash.startsWith('eth_balance_')) {
+          const updatedTx = await TransaccionBlockchain.updateConfirmations(
+            tx.id,
+            this.requiredConfirmations,
+            tx.txHash
+          );
+          updated.push(updatedTx);
+          console.log(`✅ ETH - Balance check confirmado automáticamente: ${tx.txHash}`);
+          continue;
+        }
+        
+        const receipt = await this.provider.getTransactionReceipt(tx.txHash);
+        
+        if (receipt && receipt.blockNumber) {
+          const confirmations = currentBlock - receipt.blockNumber;
+          
+          if (confirmations !== tx.confirmaciones) {
+            const updatedTx = await TransaccionBlockchain.updateConfirmations(
+              tx.id,
+              confirmations,
+              tx.txHash
+            );
+            updated.push(updatedTx);
+            
+            console.log(`Confirmaciones actualizadas para ${tx.txHash}: ${confirmations}`);
+          }
+        }
+      } catch (error) {
+        console.error(`Error actualizando confirmaciones ETH para ${tx.txHash}:`, error.message);
+        
+        // Auto-confirmar balance checks que fallan
+        if (tx.txHash.startsWith('eth_balance_')) {
+          try {
+            const updatedTx = await TransaccionBlockchain.updateConfirmations(
+              tx.id,
+              this.requiredConfirmations,
+              tx.txHash
+            );
+            updated.push(updatedTx);
+            console.log(`✅ ETH - Balance check auto-confirmado después de error: ${tx.txHash}`);
+          } catch (autoConfirmError) {
+            console.error(`Error auto-confirmando balance check ETH: ${autoConfirmError.message}`);
+          }
+        }
+      }
+    }
+
+    return updated;
+  } catch (error) {
+    throw new Error(`Error actualizando confirmaciones ETH: ${error.message}`);
+  }
+}
 
   // MÉTODOS AUXILIARES
   async getActiveUserAddresses() {
@@ -426,7 +460,7 @@ class EthereumService {
   }
 
   async createSimpleDeposit(direccion, amount) {
-    const txHash = `balance_${direccion.direccion}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const txHash = `eth_balance_${direccion.direccion}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
     return await TransaccionBlockchain.createDeposit({
       userId: direccion.userId,
@@ -436,7 +470,8 @@ class EthereumService {
       direccionOrigen: null,
       txHash: txHash,
       feeBlockchain: 0,
-      confirmaciones: this.requiredConfirmations
+      confirmaciones: this.requiredConfirmations, // ✅ Confirmaciones completas
+      confirmacionesRequeridas: this.requiredConfirmations
     });
   }
 
