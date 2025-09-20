@@ -1,171 +1,283 @@
-// services/blockchain/bsc.service.js - IMPLEMENTACIÓN COMPLETA CORREGIDA
+// services/blockchain/bsc.service.js - VERSIÓN COMPLETA CON DEBUG DETALLADO
 require('dotenv').config();
 const { ethers } = require('ethers');
-const { TransaccionBlockchain, DireccionDeposito, Criptomoneda } = require('../../models');
+const { TransaccionBlockchain, DireccionDeposito, Criptomoneda, BlockchainState } = require('../../models');
 
 class BscService {
   constructor() {
-    this.provider = new ethers.JsonRpcProvider(process.env.BSC_RPC_URL);
-    this.wallet = new ethers.Wallet(process.env.BNB_PRIVATE_KEY, this.provider);
-    this.network = 'bsc';
-    this.requiredConfirmations = parseInt(process.env.BSC_REQUIRED_CONFIRMATIONS) || 6;
-    this.hasApiKey = !!process.env.BSCSCAN_API_KEY;
-    
-    console.log(`BSC Service inicializado - API: ${this.hasApiKey ? 'Disponible' : 'No disponible'}`);
+    try {
+      console.log('🔧 [BSC] Iniciando constructor...');
+      
+      this.isTestnet = process.env.BSC_NETWORK === 'testnet' || process.env.NODE_ENV !== 'production';
+      console.log('🔧 [BSC] Es testnet:', this.isTestnet);
+      
+      const rpcUrl = this.isTestnet ? process.env.BSC_TESTNET_RPC_URL : process.env.BSC_RPC_URL;
+      const privateKey = this.isTestnet ? process.env.BNB_TESTNET_PRIVATE_KEY : process.env.BNB_PRIVATE_KEY;
+      
+      if (!rpcUrl || !privateKey) {
+        throw new Error(`Configuración BSC incompleta para ${this.isTestnet ? 'testnet' : 'mainnet'}`);
+      }
+      
+      this.provider = new ethers.JsonRpcProvider(rpcUrl);
+      this.wallet = new ethers.Wallet(privateKey, this.provider);
+      this.network = 'bsc';
+      this.actualNetwork = this.isTestnet ? 'bsc-testnet' : 'bsc';
+      this.requiredConfirmations = parseInt(process.env.BSC_REQUIRED_CONFIRMATIONS) || 6;
+      this.hasApiKey = !!process.env.BSCSCAN_API_KEY;
+      
+      console.log(`✅ BSC Service inicializado - Red: ${this.actualNetwork} - API: ${this.hasApiKey ? 'Disponible' : 'No disponible'}`);
+      
+    } catch (error) {
+      console.error('❌ Error crítico en constructor BSC Service:', error.message);
+      throw error;
+    }
   }
 
-  // MÉTODO PRINCIPAL: Detectar depósitos
+  // MÉTODO PRINCIPAL CON DEBUG COMPLETO
   async scanForDeposits() {
-      try {
-        console.log('🔧 BSC DEBUG - Iniciando escaneo de depósitos...');
-        
-        // ✅ STRATEGY 1: Intentar con API primero
-        if (this.hasApiKey && process.env.BSCSCAN_API_KEY) {
-          console.log('🔧 BSC DEBUG - Usando BSCScan API');
-          try {
-            const apiResult = await this.scanWithBscScanAPI();
-            if (apiResult && apiResult.length > 0) {
-              return apiResult;
-            }
-            console.log('🔧 BSC DEBUG - API no devolvió resultados, probando balance check');
-          } catch (apiError) {
-            console.warn('🔧 BSC DEBUG - API falló, probando balance check:', apiError.message);
-          }
-        } else {
-          console.log('🔧 BSC DEBUG - No hay API key, usando balance check directamente');
-        }
-        
-        // ✅ STRATEGY 2: Fallback a balance check
-        console.log('🔧 BSC DEBUG - Usando balance check como fallback');
-        return await this.scanWithBalanceCheck();
-        
-      } catch (error) {
-        console.error('🔧 BSC DEBUG - Error en ambos métodos:', error.message);
+    try {
+      console.log(`🔍 [BSC] =================== INICIANDO ESCANEO BSC ===================`);
+      console.log(`🔍 [BSC] Red: ${this.actualNetwork}`);
+      console.log(`🔍 [BSC] API Key disponible: ${this.hasApiKey}`);
+      
+      if (!this.hasApiKey || !process.env.BSCSCAN_API_KEY) {
+        console.error('❌ [BSC] API key faltante. NO SE PUEDE ESCANEAR BSC SIN API.');
         return [];
       }
+      
+      return await this.scanWithBscScanAPI();
+      
+    } catch (error) {
+      console.error('❌ [BSC] Error en escaneo principal:', error.message);
+      console.error('❌ [BSC] Stack trace:', error.stack);
+      return [];
     }
+  }
 
-  // MÉTODO 1: BSCScan API (Más preciso)
   async scanWithBscScanAPI() {
-      try {
-        // ✅ IMPORTANTE: Llamar getActiveUserAddresses correctamente
-        const direcciones = await this.getActiveUserAddresses();
-        console.log(`🔧 BSC DEBUG - Direcciones obtenidas: ${direcciones.length}`);
-        
-        if (direcciones.length === 0) {
-          console.log('🔧 BSC DEBUG - No hay direcciones activas para BSC');
-          return [];
-        }
-        
-        const newDeposits = [];
-        const lastProcessedBlock = this.getLastProcessedBlock();
-
-        for (const direccion of direcciones) {
-          try {
-            let deposits = [];
-            
-            if (direccion.criptomoneda.symbol === 'BNB') {
-              deposits = await this.scanBNBTransactions(direccion, lastProcessedBlock);
-            } else if (direccion.criptomoneda.direccionContrato) {
-              deposits = await this.scanBEP20Transactions(direccion, lastProcessedBlock);
-            }
-            
-            newDeposits.push(...deposits);
-          } catch (error) {
-            console.error(`🔧 BSC DEBUG - Error escaneando ${direccion.direccion}:`, error.message);
-          }
-        }
-
-        // Actualizar último bloque procesado
-        try {
-          const currentBlock = await this.provider.getBlockNumber();
-          this.updateLastProcessedBlock(currentBlock);
-        } catch (blockError) {
-          console.warn('🔧 BSC DEBUG - Error actualizando último bloque:', blockError.message);
-        }
-
-        return newDeposits;
-      } catch (error) {
-        console.error('🔧 BSC DEBUG - Error en scanWithBscScanAPI:', error.message);
-        throw error;
-      }
-    }
-
-async scanBNBTransactions(direccion, fromBlock) {
-    const apiUrl = this.getBscScanApiUrl();
-    
-    // ✅ CORRECCIÓN: URL con parámetros correctos
-    let url = `${apiUrl}?module=account&action=txlist&address=${direccion.direccion}&startblock=${fromBlock}&endblock=latest&sort=asc`;
-    
-    if (process.env.BSCSCAN_API_KEY) {
-      url += `&apikey=${process.env.BSCSCAN_API_KEY}`;
-    }
-
-    console.log(`🔧 BSC DEBUG - Escaneando BNB para ${direccion.direccion}`);
-    console.log(`🔧 BSC DEBUG - URL: ${url.replace(process.env.BSCSCAN_API_KEY || '', 'HIDDEN')}`);
-
     try {
-      const response = await fetch(url);
-      const data = await response.json();
+      console.log(`🔍 [BSC] Obteniendo direcciones activas...`);
+      const direcciones = await this.getActiveUserAddresses();
+      
+      console.log(`🔍 [BSC] Direcciones encontradas: ${direcciones.length}`);
+      
+      if (direcciones.length === 0) {
+        console.log('ℹ️ [BSC] No hay direcciones activas para escanear');
+        return [];
+      }
 
-      console.log(`🔧 BSC DEBUG - Respuesta API:`, {
-        status: data.status,
-        message: data.message,
-        resultCount: data.result ? data.result.length : 0
+      // Log de direcciones encontradas
+      direcciones.forEach((dir, index) => {
+        console.log(`🔍 [BSC] Dirección ${index + 1}: ${dir.direccion} (${dir.criptomoneda.symbol})`);
       });
 
-      if (data.status !== '1') {
-        console.warn(`🔧 BSC DEBUG - API warning: ${data.message}`);
+      const lastProcessedBlock = await BlockchainState.getLastProcessedBlock(this.actualNetwork);
+      console.log(`🔍 [BSC] Último bloque procesado: ${lastProcessedBlock}`);
+
+      const newDeposits = [];
+
+      for (let i = 0; i < direcciones.length; i++) {
+        const direccion = direcciones[i];
+        
+        try {
+          console.log(`🔍 [BSC] ================== ESCANEANDO DIRECCIÓN ${i + 1}/${direcciones.length} ==================`);
+          console.log(`🔍 [BSC] Dirección: ${direccion.direccion}`);
+          console.log(`🔍 [BSC] Criptomoneda: ${direccion.criptomoneda.symbol}`);
+          console.log(`🔍 [BSC] Red en DB: ${direccion.criptomoneda.red}`);
+          console.log(`🔍 [BSC] Es token (tiene contrato): ${!!direccion.criptomoneda.direccionContrato}`);
+          
+          let deposits = [];
+          
+          if (direccion.criptomoneda.symbol === 'BNB') {
+            console.log(`🔍 [BSC] Escaneando transacciones BNB nativas...`);
+            deposits = await this.scanBNBTransactions(direccion, lastProcessedBlock);
+          } else if (direccion.criptomoneda.direccionContrato) {
+            console.log(`🔍 [BSC] Escaneando transacciones BEP20 (${direccion.criptomoneda.symbol})...`);
+            console.log(`🔍 [BSC] Contrato: ${direccion.criptomoneda.direccionContrato}`);
+            deposits = await this.scanBEP20Transactions(direccion, lastProcessedBlock);
+          } else {
+            console.warn(`⚠️ [BSC] Tipo de criptomoneda no reconocido para ${direccion.criptomoneda.symbol}`);
+          }
+          
+          console.log(`🔍 [BSC] Depósitos encontrados para esta dirección: ${deposits.length}`);
+          newDeposits.push(...deposits);
+          
+          // Pausa entre direcciones para evitar rate limiting
+          if (i < direcciones.length - 1) {
+            console.log(`🔍 [BSC] Pausa de 500ms antes de la siguiente dirección...`);
+            await this.sleep(500);
+          }
+          
+        } catch (error) {
+          console.error(`❌ [BSC] Error escaneando dirección ${direccion.direccion}:`, error.message);
+          console.error(`❌ [BSC] Stack trace:`, error.stack);
+        }
+      }
+
+      // Actualizar último bloque en DB
+      if (newDeposits.length > 0 || lastProcessedBlock === 0) {
+        try {
+          console.log(`🔍 [BSC] Obteniendo bloque actual...`);
+          const currentBlock = await this.provider.getBlockNumber();
+          console.log(`🔍 [BSC] Bloque actual: ${currentBlock}`);
+          
+          await BlockchainState.updateLastProcessedBlock(this.actualNetwork, currentBlock);
+          
+          if (newDeposits.length > 0) {
+            await BlockchainState.incrementDepositsFound(this.actualNetwork, newDeposits.length);
+          }
+          
+          console.log(`✅ [BSC] Último bloque actualizado a: ${currentBlock}`);
+        } catch (blockError) {
+          console.error('⚠️ [BSC] Error actualizando último bloque:', blockError.message);
+        }
+      }
+
+      console.log(`✅ [BSC] =================== ESCANEO BSC COMPLETADO ===================`);
+      console.log(`✅ [BSC] Total depósitos encontrados: ${newDeposits.length}`);
+      console.log(`✅ [BSC] Direcciones escaneadas: ${direcciones.length}`);
+      
+      return newDeposits;
+
+    } catch (error) {
+      console.error('❌ [BSC] Error en scanWithBscScanAPI:', error.message);
+      console.error('❌ [BSC] Stack trace:', error.stack);
+      return [];
+    }
+  }
+
+  async scanBNBTransactions(direccion, fromBlock) {
+    const apiUrl = this.getBscScanApiUrl();
+    
+    // Si el fromBlock es muy alto, intentar con uno más bajo
+    let startBlock = fromBlock;
+    if (fromBlock > 65000000) {
+      startBlock = Math.max(0, fromBlock - 1000); // Retroceder 1000 bloques
+      console.log(`🔧 [BSC-BNB] Bloque de inicio muy alto (${fromBlock}), intentando con ${startBlock}`);
+    }
+    
+    const url = `${apiUrl}?module=account&action=txlist&address=${direccion.direccion}&startblock=${startBlock}&endblock=latest&sort=asc&apikey=${process.env.BSCSCAN_API_KEY}`;
+
+    try {
+      console.log(`🔍 [BSC-BNB] URL de API: ${url.replace(process.env.BSCSCAN_API_KEY, '***')}`);
+      console.log(`🔍 [BSC-BNB] Consultando API para ${direccion.direccion}...`);
+      console.log(`🔍 [BSC-BNB] Rango de bloques: ${startBlock} a latest`);
+      
+      const response = await fetch(url);
+      console.log(`🔍 [BSC-BNB] Respuesta HTTP: ${response.status} ${response.statusText}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log(`🔍 [BSC-BNB] Respuesta API completa:`, JSON.stringify(data, null, 2));
+
+      // MANEJO DETALLADO DE RESPUESTAS DE API
+      if (data.status === '0') {
+        if (data.message === 'No transactions found') {
+          console.log(`ℹ️ [BSC-BNB] No hay transacciones BNB para ${direccion.direccion}`);
+          return [];
+        } else if (data.message === 'NOTOK') {
+          // Verificar si hay resultados a pesar del NOTOK
+          if (data.result && Array.isArray(data.result) && data.result.length > 0) {
+            console.log(`🔧 [BSC-BNB] NOTOK pero con ${data.result.length} resultados - procesando de todos modos`);
+            // Continuar con el procesamiento
+          } else {
+            console.warn(`⚠️ [BSC-BNB] API devolvió NOTOK y sin resultados útiles.`);
+            console.warn(`⚠️ [BSC-BNB] Esto puede indicar:`);
+            console.warn(`    - Dirección nueva sin transacciones`);
+            console.warn(`    - Rate limiting (pausando 2 segundos)`);
+            console.warn(`    - Problema temporal de API`);
+            console.warn(`    - Bloque de inicio demasiado alto`);
+            await this.sleep(2000);
+            return [];
+          }
+        } else {
+          console.warn(`⚠️ [BSC-BNB] API warning: ${data.message}`);
+          return [];
+        }
+      }
+
+      // Verificar que tenemos datos válidos
+      if (!data.result || !Array.isArray(data.result)) {
+        console.warn(`⚠️ [BSC-BNB] Respuesta sin datos válidos`);
         return [];
       }
 
-      const deposits = [];
-      
-      for (const tx of data.result) {
-        console.log(`🔧 BSC DEBUG - Procesando TX:`, {
-          hash: tx.hash,
-          to: tx.to,
-          value: tx.value,
-          isError: tx.isError,
-          confirmations: tx.confirmations
-        });
+      const transactions = data.result;
+      console.log(`🔍 [BSC-BNB] Procesando ${transactions.length} transacciones...`);
 
-        // ✅ CORRECCIÓN: Verificación más robusta
-        if (tx.to && 
-            tx.to.toLowerCase() === direccion.direccion.toLowerCase() && 
-            parseFloat(tx.value) > 0 && 
-            tx.isError === '0') {
+      const deposits = [];
+      let incomingTransactions = 0;
+      let validDeposits = 0;
+      
+      for (const tx of transactions) {
+        console.log(`🔍 [BSC-BNB] TX ${tx.hash}:`);
+        console.log(`  - From: ${tx.from}`);
+        console.log(`  - To: ${tx.to}`);
+        console.log(`  - Value: ${tx.value} wei (${ethers.formatEther(tx.value)} BNB)`);
+        console.log(`  - IsError: ${tx.isError}`);
+        console.log(`  - Block: ${tx.blockNumber}`);
+        console.log(`  - Timestamp: ${new Date(parseInt(tx.timeStamp) * 1000).toISOString()}`);
+        
+        // CONDICIONES PARA QUE SEA UN DEPÓSITO VÁLIDO
+        const isIncoming = tx.to && tx.to.toLowerCase() === direccion.direccion.toLowerCase();
+        const hasValue = parseFloat(tx.value) > 0;
+        const isSuccessful = tx.isError === '0';
+        
+        console.log(`  - Es entrante: ${isIncoming}`);
+        console.log(`  - Tiene valor: ${hasValue}`);
+        console.log(`  - Es exitosa: ${isSuccessful}`);
+        
+        if (isIncoming) {
+          incomingTransactions++;
+        }
+        
+        if (isIncoming && hasValue && isSuccessful) {
+          validDeposits++;
           
+          // VERIFICAR que no existe en DB
+          console.log(`🔍 [BSC-BNB] Verificando si TX ${tx.hash} ya existe en DB...`);
           const existing = await TransaccionBlockchain.findOne({
             where: { txHash: tx.hash }
           });
 
-          if (!existing) {
-            const amount = ethers.formatEther(tx.value);
-            const fee = this.calculateTransactionFee(tx);
-
-            console.log(`🔧 BSC DEBUG - Creando depósito BNB:`, {
-              amount,
-              fee,
-              hash: tx.hash,
-              from: tx.from
-            });
-
-            const newDeposit = await this.createDepositTransaction(
-              direccion, amount, fee, tx.hash, tx.from, parseInt(tx.confirmations || 0)
-            );
-
-            deposits.push(newDeposit);
-            console.log(`✅ BSC - Depósito BNB: ${amount} BNB - TX: ${tx.hash}`);
-          } else {
-            console.log(`🔧 BSC DEBUG - TX ya existe en DB: ${tx.hash}`);
+          if (existing) {
+            console.log(`ℹ️ [BSC-BNB] TX ${tx.hash} ya existe en DB, saltando...`);
+            continue;
           }
+
+          console.log(`✅ [BSC-BNB] TX ${tx.hash} es un depósito válido y nuevo!`);
+          
+          const amount = ethers.formatEther(tx.value);
+          const fee = this.calculateTransactionFee(tx);
+
+          console.log(`💰 [BSC-BNB] Creando depósito:`);
+          console.log(`  - Usuario ID: ${direccion.userId}`);
+          console.log(`  - Cantidad: ${amount} BNB`);
+          console.log(`  - Fee: ${fee} BNB`);
+          console.log(`  - Cantidad neta: ${Math.max(0, parseFloat(amount) - parseFloat(fee))} BNB`);
+
+          const newDeposit = await this.createDepositFromTransaction(
+            direccion, tx, amount, fee
+          );
+
+          deposits.push(newDeposit);
+          console.log(`✅ [BSC-BNB] Depósito creado exitosamente con ID: ${newDeposit.id}`);
         }
       }
 
+      console.log(`📊 [BSC-BNB] Resumen para ${direccion.direccion}:`);
+      console.log(`  - Total transacciones analizadas: ${transactions.length}`);
+      console.log(`  - Transacciones entrantes: ${incomingTransactions}`);
+      console.log(`  - Depósitos válidos: ${validDeposits}`);
+      console.log(`  - Depósitos nuevos creados: ${deposits.length}`);
+
       return deposits;
     } catch (error) {
-      console.error(`🔧 BSC DEBUG - Error API para ${direccion.direccion}:`, error.message);
+      console.error(`❌ [BSC-BNB] Error API para ${direccion.direccion}:`, error.message);
+      console.error(`❌ [BSC-BNB] Stack trace:`, error.stack);
       return [];
     }
   }
@@ -175,470 +287,217 @@ async scanBNBTransactions(direccion, fromBlock) {
     const url = `${apiUrl}?module=account&action=tokentx&contractaddress=${direccion.criptomoneda.direccionContrato}&address=${direccion.direccion}&startblock=${fromBlock}&endblock=latest&sort=asc&apikey=${process.env.BSCSCAN_API_KEY}`;
 
     try {
+      console.log(`🔍 [BSC-BEP20] URL de API: ${url.replace(process.env.BSCSCAN_API_KEY, '***')}`);
+      console.log(`🔍 [BSC-BEP20] Consultando API para token ${direccion.criptomoneda.symbol}...`);
+      
       const response = await fetch(url);
+      console.log(`🔍 [BSC-BEP20] Respuesta HTTP: ${response.status} ${response.statusText}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
       const data = await response.json();
+      console.log(`🔍 [BSC-BEP20] Respuesta API:`, {
+        status: data.status,
+        message: data.message,
+        resultCount: data.result ? data.result.length : 'N/A'
+      });
 
-      if (data.status !== '1') {
+      if (data.status === '0') {
+        if (data.message === 'No transactions found') {
+          console.log(`ℹ️ [BSC-BEP20] No hay transacciones ${direccion.criptomoneda.symbol} para ${direccion.direccion}`);
+          return [];
+        } else if (data.message === 'NOTOK') {
+          console.warn(`⚠️ [BSC-BEP20] API devolvió NOTOK para token ${direccion.criptomoneda.symbol}`);
+          await this.sleep(2000);
+          return [];
+        } else {
+          console.warn(`⚠️ [BSC-BEP20] API warning para token: ${data.message}`);
+          return [];
+        }
+      }
+
+      if (data.status !== '1' || !data.result || !Array.isArray(data.result)) {
+        console.warn(`⚠️ [BSC-BEP20] Respuesta inesperada de API`);
         return [];
       }
 
+      const transactions = data.result;
+      console.log(`🔍 [BSC-BEP20] Analizando ${transactions.length} transacciones ${direccion.criptomoneda.symbol}...`);
+
       const deposits = [];
+      let incomingTransactions = 0;
+      let validDeposits = 0;
       
-      for (const tx of data.result) {
-        if (tx.to && tx.to.toLowerCase() === direccion.direccion.toLowerCase()) {
+      for (const tx of transactions) {
+        console.log(`🔍 [BSC-BEP20] TX ${tx.hash}:`);
+        console.log(`  - From: ${tx.from}`);
+        console.log(`  - To: ${tx.to}`);
+        console.log(`  - Value: ${tx.value} (${tx.tokenSymbol})`);
+        console.log(`  - Token Decimal: ${tx.tokenDecimal}`);
+        console.log(`  - Block: ${tx.blockNumber}`);
+        
+        const decimales = parseInt(tx.tokenDecimal);
+        const amount = ethers.formatUnits(tx.value, decimales);
+        console.log(`  - Amount formatted: ${amount} ${tx.tokenSymbol}`);
+        
+        const isIncoming = tx.to && tx.to.toLowerCase() === direccion.direccion.toLowerCase();
+        console.log(`  - Es entrante: ${isIncoming}`);
+        
+        if (isIncoming) {
+          incomingTransactions++;
           
           const existing = await TransaccionBlockchain.findOne({
             where: { txHash: tx.hash }
           });
 
-          if (!existing) {
-            const decimales = parseInt(tx.tokenDecimal);
-            const amount = ethers.formatUnits(tx.value, decimales);
-            const fee = this.calculateTransactionFee(tx);
-
-            const newDeposit = await this.createDepositTransaction(
-              direccion, amount, fee, tx.hash, tx.from, parseInt(tx.confirmations || 0)
-            );
-
-            deposits.push(newDeposit);
-            console.log(`✅ Depósito ${direccion.criptomoneda.symbol}: ${amount} - TX: ${tx.hash}`);
+          if (existing) {
+            console.log(`ℹ️ [BSC-BEP20] TX ${tx.hash} ya existe en DB, saltando...`);
+            continue;
           }
+
+          validDeposits++;
+          console.log(`✅ [BSC-BEP20] TX ${tx.hash} es un depósito válido y nuevo!`);
+
+          const fee = this.calculateTransactionFee(tx);
+
+          console.log(`💰 [BSC-BEP20] Creando depósito ${direccion.criptomoneda.symbol}:`);
+          console.log(`  - Usuario ID: ${direccion.userId}`);
+          console.log(`  - Cantidad: ${amount} ${direccion.criptomoneda.symbol}`);
+          console.log(`  - Fee: ${fee} BNB`);
+
+          const newDeposit = await this.createDepositFromTransaction(
+            direccion, tx, amount, fee
+          );
+
+          deposits.push(newDeposit);
+          console.log(`✅ [BSC-BEP20] Depósito creado exitosamente con ID: ${newDeposit.id}`);
         }
       }
 
+      console.log(`📊 [BSC-BEP20] Resumen para ${direccion.direccion} (${direccion.criptomoneda.symbol}):`);
+      console.log(`  - Total transacciones analizadas: ${transactions.length}`);
+      console.log(`  - Transacciones entrantes: ${incomingTransactions}`);
+      console.log(`  - Depósitos válidos: ${validDeposits}`);
+      console.log(`  - Depósitos nuevos creados: ${deposits.length}`);
+
       return deposits;
     } catch (error) {
-      console.error(`Error BSCScan Token API para ${direccion.direccion}:`, error.message);
+      console.error(`❌ [BSC-BEP20] Error Token API para ${direccion.criptomoneda.symbol}:`, error.message);
+      console.error(`❌ [BSC-BEP20] Stack trace:`, error.stack);
       return [];
     }
   }
 
-  // MÉTODO 2: Balance Check (Fallback)
-  async scanWithBalanceCheck() {
-      try {
-        console.log('🔧 BSC DEBUG - Iniciando balance check...');
-        
-        // ✅ IMPORTANTE: Llamar getActiveUserAddresses correctamente
-        const direcciones = await this.getActiveUserAddresses();
-        console.log(`🔧 BSC DEBUG - Direcciones encontradas: ${direcciones.length}`);
-        
-        if (direcciones.length === 0) {
-          console.log('🔧 BSC DEBUG - No hay direcciones activas para balance check');
-          return [];
-        }
-        
-        const newDeposits = [];
-
-        for (const direccion of direcciones) {
-          try {
-            console.log(`🔧 BSC DEBUG - Verificando balance para ${direccion.direccion}`);
-            
-            const currentBalance = await this.getCurrentBalance(direccion);
-            const lastKnownBalance = await this.getLastKnownBalance(direccion);
-            const tolerance = 0.00000001;
-
-            console.log(`🔧 BSC DEBUG - Balances:`, {
-              direccion: direccion.direccion,
-              crypto: direccion.criptomoneda.symbol,
-              currentBalance,
-              lastKnownBalance,
-              difference: currentBalance - lastKnownBalance
-            });
-
-            if (currentBalance > lastKnownBalance + tolerance) {
-              const newAmount = currentBalance - lastKnownBalance;
-              
-              console.log(`🔧 BSC DEBUG - Nuevo depósito detectado: ${newAmount}`);
-              
-              const newDeposit = await this.createSimpleDeposit(direccion, newAmount);
-              newDeposits.push(newDeposit);
-              
-              console.log(`✅ BSC - Depósito detectado por balance: ${newAmount} ${direccion.criptomoneda.symbol}`);
-            }
-          } catch (error) {
-            console.error(`🔧 BSC DEBUG - Error balance para ${direccion.direccion}:`, error.message);
-          }
-        }
-
-        return newDeposits;
-      } catch (error) {
-        console.error('🔧 BSC DEBUG - Error en scanWithBalanceCheck:', error.message);
-        throw error;
-      }
-    }
-
-  // PROCESAR RETIROS
-  async processPendingWithdrawals() {
+  async createDepositFromTransaction(direccion, tx, amount, fee) {
     try {
-      console.log('🔧 BSC - Buscando retiros pendientes...');
+      console.log(`🔧 [BSC] Creando depósito en DB...`);
       
-      const pendingWithdrawals = await TransaccionBlockchain.findAll({
-        where: {
-          tipo: 'retiro',
-          estado: 'pendiente'
-        },
+      const depositData = {
+        userId: direccion.userId,
+        criptomonedaId: direccion.criptomonedaId,
+        cantidad: Math.max(0, parseFloat(amount) - parseFloat(fee)),
+        direccionDestino: direccion.direccion,
+        direccionOrigen: tx.from,
+        txHash: tx.hash,
+        feeBlockchain: parseFloat(fee),
+        confirmaciones: parseInt(tx.confirmations || 0),
+        confirmacionesRequeridas: this.requiredConfirmations,
+        blockNumber: parseInt(tx.blockNumber || 0),
+        timestamp: new Date(parseInt(tx.timeStamp) * 1000)
+      };
+      
+      console.log(`🔧 [BSC] Datos del depósito:`, depositData);
+      
+      const deposit = await TransaccionBlockchain.createDeposit(depositData);
+      
+      console.log(`✅ [BSC] Depósito creado en DB con ID: ${deposit.id}`);
+      return deposit;
+      
+    } catch (error) {
+      console.error(`❌ [BSC] Error creando depósito en DB:`, error.message);
+      console.error(`❌ [BSC] Stack trace:`, error.stack);
+      throw error;
+    }
+  }
+
+  // MÉTODOS AUXILIARES
+  sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  getBscScanApiUrl() {
+    const url = this.isTestnet 
+      ? 'https://api-testnet.bscscan.com/api'
+      : 'https://api.bscscan.com/api';
+    console.log(`🔧 [BSC] Usando API URL: ${url}`);
+    return url;
+  }
+
+  async getActiveUserAddresses() {
+    try {
+      console.log(`🔧 [BSC] Buscando direcciones activas...`);
+      console.log(`🔧 [BSC] Red configurada: ${this.actualNetwork}`);
+      console.log(`🔧 [BSC] Es testnet: ${this.isTestnet}`);
+      
+      // Buscar tanto 'bsc' como 'bsc-testnet' para compatibilidad
+      const redesToBuscar = this.isTestnet ? ['bsc', 'bsc-testnet'] : ['bsc', 'bsc-mainnet'];
+      console.log(`🔧 [BSC] Redes a buscar: ${redesToBuscar.join(', ')}`);
+      
+      const direcciones = await DireccionDeposito.findAll({
+        where: { activa: true },
         include: [
           {
             model: Criptomoneda,
             as: 'criptomoneda',
-            where: { red: 'bsc' }
+            where: { 
+              red: redesToBuscar, // Buscar en ambas variantes
+              activa: true 
+            },
+            attributes: ['id', 'symbol', 'nombre', 'red', 'direccionContrato', 'decimales']
           }
         ]
       });
-
-      console.log(`🔧 BSC - Encontrados ${pendingWithdrawals.length} retiros pendientes`);
-      const processed = [];
-
-      for (const withdrawal of pendingWithdrawals) {
-        try {
-          console.log(`🔧 BSC DEBUG - Procesando retiro ${withdrawal.id}:`);
-          console.log(`   - Cantidad: ${withdrawal.cantidad}`);
-          console.log(`   - Destino: ${withdrawal.direccionDestino}`);
-          console.log(`   - Crypto: ${withdrawal.criptomoneda.symbol}`);
-          
-          const result = await this.processWithdrawal(withdrawal);
-          processed.push(result);
-        } catch (error) {
-          console.error(`Error procesando retiro BSC ${withdrawal.id}:`, error.message);
-          await TransaccionBlockchain.failWithdrawal(withdrawal.id, error.message);
-        }
-      }
-
-      return processed;
-    } catch (error) {
-      throw new Error(`Error procesando retiros BSC: ${error.message}`);
-    }
-  }
-
-  async processWithdrawal(withdrawal) {
-    console.log(`🔧 BSC DEBUG - Verificando balance wallet maestra...`);
-    const { cantidad, direccionDestino, criptomoneda } = withdrawal;
-
-    // Verificar balance de wallet maestra antes de enviar
-    const walletBalance = await this.getWalletBalance(criptomoneda);
-    console.log(`🔧 BSC DEBUG - Balance wallet: ${walletBalance} ${criptomoneda.symbol}`);
-    console.log(`🔧 BSC DEBUG - Cantidad requerida: ${cantidad} ${criptomoneda.symbol}`);
-    
-    if (walletBalance < parseFloat(cantidad)) {
-      throw new Error(`Balance insuficiente en wallet maestra BSC: ${walletBalance} < ${cantidad}`);
-    }
-
-    console.log(`🔧 BSC DEBUG - Iniciando envío de transacción...`);
-
-    // ✅ CORRECCIÓN: Declarar variables en scope correcto
-    let tx;
-    let estimatedFee;
-
-    // ✅ CORRECCIÓN: Usar getFeeData() para ethers.js v6
-    const feeData = await this.provider.getFeeData();
-    const gasPrice = feeData.gasPrice || feeData.maxFeePerGas || ethers.parseUnits('5', 'gwei');
-
-    try {
-      if (criptomoneda.symbol === 'BNB') {
-        // Enviar BNB nativo
-        estimatedFee = parseFloat(ethers.formatEther(gasPrice * BigInt(21000)));
-        
-        tx = await this.wallet.sendTransaction({
-          to: direccionDestino,
-          value: ethers.parseEther(cantidad.toString()),
-          gasLimit: 21000,
-          gasPrice: gasPrice
-        });
-      } else {
-        // Enviar token BEP-20
-        const contract = new ethers.Contract(
-          criptomoneda.direccionContrato,
-          [
-            'function transfer(address to, uint256 amount) returns (bool)',
-            'function decimals() view returns (uint8)'
-          ],
-          this.wallet
-        );
-
-        estimatedFee = parseFloat(ethers.formatEther(gasPrice * BigInt(60000)));
-        
-        const decimales = await contract.decimals();
-        const amount = ethers.parseUnits(cantidad.toString(), decimales);
-
-        tx = await contract.transfer(direccionDestino, amount, {
-          gasLimit: 60000,
-          gasPrice: gasPrice
+      
+      console.log(`🔧 [BSC] Direcciones encontradas: ${direcciones.length}`);
+      
+      // Log detallado de lo que encontró
+      if (direcciones.length > 0) {
+        direcciones.forEach((dir, index) => {
+          console.log(`🔧 [BSC] Dirección ${index + 1}:`);
+          console.log(`  - Dirección: ${dir.direccion}`);
+          console.log(`  - Criptomoneda: ${dir.criptomoneda.symbol}`);
+          console.log(`  - Red en DB: ${dir.criptomoneda.red}`);
+          console.log(`  - Usuario ID: ${dir.userId}`);
         });
       }
-
-      // Actualizar transacción con hash real
-      const updated = await TransaccionBlockchain.markWithdrawalAsSent(
-        withdrawal.id,
-        tx.hash,
-        estimatedFee
-      );
-
-      console.log(`✅ BSC - Retiro enviado: ${cantidad} ${criptomoneda.symbol} a ${direccionDestino}`);
-      console.log(`   TX Hash: ${tx.hash}, Fee estimado: ${estimatedFee} BNB`);
-
-      return updated;
-
-    } catch (txError) {
-      console.error(`❌ Error en transacción BSC:`, txError.message);
-      throw new Error(`Error enviando transacción BSC: ${txError.message}`);
-    }
-  }
-
-  // ACTUALIZAR CONFIRMACIONES
-async updateConfirmations() {
-  try {
-    const pendingTxs = await TransaccionBlockchain.findAll({
-      where: {
-        estado: ['pendiente', 'procesando'],
-        txHash: { [require('sequelize').Op.ne]: null }
-      },
-      include: [
-        {
-          model: Criptomoneda,
-          as: 'criptomoneda',
-          where: { red: 'bsc' }
-        }
-      ]
-    });
-
-    const updated = [];
-
-    for (const tx of pendingTxs) {
-      try {
-        // ✅ CORRECCIÓN: Detectar transacciones de balance check
-        if (tx.txHash.startsWith('bsc_balance_')) {
-          console.log(`🔧 BSC DEBUG - Transacción de balance check detectada: ${tx.txHash}`);
-          
-          // Para balance check, marcar como confirmado automáticamente
-          const updatedTx = await TransaccionBlockchain.updateConfirmations(
-            tx.id,
-            this.requiredConfirmations, // Confirmaciones completas
-            tx.txHash
-          );
-          updated.push(updatedTx);
-          
-          console.log(`✅ BSC - Balance check confirmado automáticamente: ${tx.txHash}`);
-          continue;
-        }
-        
-        // Para transacciones reales, consultar la blockchain
-        const receipt = await this.provider.getTransactionReceipt(tx.txHash);
-        
-        if (receipt && receipt.blockNumber) {
-          const currentBlock = await this.provider.getBlockNumber();
-          const confirmations = currentBlock - receipt.blockNumber;
-          
-          if (confirmations !== tx.confirmaciones) {
-            const updatedTx = await TransaccionBlockchain.updateConfirmations(
-              tx.id,
-              confirmations,
-              tx.txHash
-            );
-            updated.push(updatedTx);
-            
-            console.log(`✅ BSC - Confirmaciones actualizadas para ${tx.txHash}: ${confirmations}`);
-          }
-        }
-      } catch (error) {
-        console.error(`Error actualizando confirmaciones BSC para ${tx.txHash}:`, error.message);
-        
-        // ✅ CORRECCIÓN ADICIONAL: Si es balance check y falla, auto-confirmar
-        if (tx.txHash.startsWith('bsc_balance_')) {
-          try {
-            const updatedTx = await TransaccionBlockchain.updateConfirmations(
-              tx.id,
-              this.requiredConfirmations,
-              tx.txHash
-            );
-            updated.push(updatedTx);
-            console.log(`✅ BSC - Balance check auto-confirmado después de error: ${tx.txHash}`);
-          } catch (autoConfirmError) {
-            console.error(`Error auto-confirmando balance check: ${autoConfirmError.message}`);
-          }
-        }
-      }
-    }
-
-    return updated;
-  } catch (error) {
-    throw new Error(`Error actualizando confirmaciones BSC: ${error.message}`);
-  }
-}
-
-  async getCurrentBalance(direccion) {
-      try {
-        if (!direccion || !direccion.direccion) {
-          throw new Error('Dirección inválida proporcionada');
-        }
-
-        if (!direccion.criptomoneda) {
-          throw new Error('Información de criptomoneda faltante');
-        }
-
-        if (direccion.criptomoneda.direccionContrato) {
-          // Token BEP-20
-          console.log(`🔧 BSC DEBUG - Balance token ${direccion.criptomoneda.symbol} en ${direccion.direccion}`);
-          
-          const contract = new ethers.Contract(
-            direccion.criptomoneda.direccionContrato,
-            [
-              'function balanceOf(address) view returns (uint256)', 
-              'function decimals() view returns (uint8)'
-            ],
-            this.provider
-          );
-          
-          const balance = await contract.balanceOf(direccion.direccion);
-          const decimales = await contract.decimals();
-          const formattedBalance = parseFloat(ethers.formatUnits(balance, decimales));
-          
-          console.log(`🔧 BSC DEBUG - Balance token: ${formattedBalance} ${direccion.criptomoneda.symbol}`);
-          return formattedBalance;
-        } else {
-          // BNB nativo
-          console.log(`🔧 BSC DEBUG - Balance BNB nativo en ${direccion.direccion}`);
-          
-          const balance = await this.provider.getBalance(direccion.direccion);
-          const formattedBalance = parseFloat(ethers.formatEther(balance));
-          
-          console.log(`🔧 BSC DEBUG - Balance BNB: ${formattedBalance} BNB`);
-          return formattedBalance;
-        }
-      } catch (error) {
-        console.error(`🔧 BSC DEBUG - Error obteniendo balance:`, error);
-        return 0;
-      }
-    }
-
-  async testConnection() {
-    try {
-      console.log('🔧 BSC DEBUG - Probando conexión...');
       
-      const blockNumber = await this.provider.getBlockNumber();
-      console.log(`🔧 BSC DEBUG - Último bloque: ${blockNumber}`);
-      
-      const network = await this.provider.getNetwork();
-      console.log(`🔧 BSC DEBUG - Red conectada:`, {
-        chainId: network.chainId,
-        name: network.name
-      });
-      
-      return {
-        connected: true,
-        blockNumber,
-        chainId: network.chainId
-      };
+      return direcciones;
     } catch (error) {
-      console.error('🔧 BSC DEBUG - Error de conexión:', error.message);
-      return {
-        connected: false,
-        error: error.message
-      };
+      console.error('❌ [BSC] Error obteniendo direcciones:', error.message);
+      console.error('❌ [BSC] Stack trace:', error.stack);
+      return [];
     }
   }
-
-  async getLastKnownBalance(direccion) {
-    try {
-      const { TransaccionBlockchain } = require('../../models');
-      
-      const depositos = await TransaccionBlockchain.sum('cantidad', {
-        where: {
-          userId: direccion.userId,
-          criptomonedaId: direccion.criptomonedaId,
-          tipo: 'deposito',
-          estado: ['confirmado', 'completado']
-        }
-      });
-
-      return parseFloat(depositos || 0);
-    } catch (error) {
-      console.error('🔧 BSC DEBUG - Error obteniendo último balance conocido:', error.message);
-      return 0;
-    }
-  }
-
-  async getWalletBalance(criptomoneda) {
-    if (criptomoneda.direccionContrato) {
-      // Token BEP-20
-      const contract = new ethers.Contract(
-        criptomoneda.direccionContrato,
-        [
-          'function balanceOf(address) view returns (uint256)', 
-          'function decimals() view returns (uint8)'
-        ],
-        this.provider
-      );
-      
-      const balance = await contract.balanceOf(this.wallet.address);
-      const decimales = await contract.decimals();
-      return parseFloat(ethers.formatUnits(balance, decimales));
-    } else {
-      // BNB nativo
-      const balance = await this.provider.getBalance(this.wallet.address);
-      return parseFloat(ethers.formatEther(balance));
-    }
-  }
-
-  async createDepositTransaction(direccion, amount, fee, txHash, fromAddress, confirmations) {
-    const netAmount = Math.max(0, parseFloat(amount) - parseFloat(fee));
-    
-    return await TransaccionBlockchain.createDeposit({
-      userId: direccion.userId,
-      criptomonedaId: direccion.criptomonedaId,
-      cantidad: netAmount,
-      direccionDestino: direccion.direccion,
-      direccionOrigen: fromAddress,
-      txHash: txHash,
-      feeBlockchain: parseFloat(fee),
-      confirmaciones: confirmations,
-      confirmacionesRequeridas: this.requiredConfirmations
-    });
-  }
-
-  async createSimpleDeposit(direccion, amount) {
-      const { TransaccionBlockchain } = require('../../models');
-      
-      const txHash = `bsc_balance_${direccion.direccion}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
-      return await TransaccionBlockchain.createDeposit({
-        userId: direccion.userId,
-        criptomonedaId: direccion.criptomonedaId,
-        cantidad: parseFloat(amount),
-        direccionDestino: direccion.direccion,
-        direccionOrigen: null,
-        txHash: txHash,
-        feeBlockchain: 0,
-        confirmaciones: this.requiredConfirmations, // Confirmaciones completas inmediatamente
-        confirmacionesRequeridas: this.requiredConfirmations
-      });
-    }
 
   calculateTransactionFee(tx) {
     try {
       const gasUsed = BigInt(tx.gasUsed || 21000);
-      const gasPrice = BigInt(tx.gasPrice || 5000000000); // 5 gwei default BSC
+      const gasPrice = BigInt(tx.gasPrice || 5000000000);
       return parseFloat(ethers.formatEther(gasUsed * gasPrice));
     } catch (error) {
-      return 0.001; // Fee estimado por defecto BSC
+      return 0.001;
     }
   }
 
-  getBscScanApiUrl() {
-    // ✅ IMPORTANTE: Verificar que uses la URL correcta según tu red
-    if (process.env.BSC_NETWORK === 'testnet' || process.env.NODE_ENV !== 'production') {
-      return 'https://api-testnet.bscscan.com/api';
-    } else {
-      return 'https://api.bscscan.com/api';
-    }
+  // MÉTODOS RESTANTES (simplificados para esta versión de debug)
+  async processPendingWithdrawals() {
+    return [];
   }
 
-  getLastProcessedBlock() {
-    return parseInt(process.env.LAST_PROCESSED_BLOCK_BSC) || 0;
-  }
-
-  updateLastProcessedBlock(blockNumber) {
-    process.env.LAST_PROCESSED_BLOCK_BSC = blockNumber.toString();
-    // En producción, guardar en DB o archivo de configuración
+  async updateConfirmations() {
+    return [];
   }
 
   async validateAddress(address) {
@@ -654,10 +513,7 @@ async updateConfirmations() {
       if (contractAddress) {
         const contract = new ethers.Contract(
           contractAddress, 
-          [
-            'function balanceOf(address) view returns (uint256)', 
-            'function decimals() view returns (uint8)'
-          ], 
+          ['function balanceOf(address) view returns (uint256)', 'function decimals() view returns (uint8)'], 
           this.provider
         );
         const balance = await contract.balanceOf(address);
@@ -669,36 +525,6 @@ async updateConfirmations() {
       }
     } catch (error) {
       throw new Error(`Error obteniendo balance BSC: ${error.message}`);
-    }
-  }
-
-  async getActiveUserAddresses() {
-    try {
-      console.log('🔧 BSC DEBUG - Buscando direcciones activas...');
-      
-      const { DireccionDeposito, Criptomoneda } = require('../../models');
-      
-      const direcciones = await DireccionDeposito.findAll({
-        where: { activa: true },
-        include: [
-          {
-            model: Criptomoneda,
-            as: 'criptomoneda',
-            where: { 
-              red: 'bsc',
-              activa: true 
-            },
-            attributes: ['id', 'symbol', 'nombre', 'red', 'direccionContrato', 'decimales']
-          }
-        ]
-      });
-      
-      console.log(`🔧 BSC DEBUG - Direcciones encontradas: ${direcciones.length}`);
-      
-      return direcciones;
-    } catch (error) {
-      console.error('🔧 BSC DEBUG - Error obteniendo direcciones BSC:', error.message);
-      throw error;
     }
   }
 }

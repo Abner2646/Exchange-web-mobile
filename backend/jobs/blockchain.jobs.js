@@ -1,6 +1,6 @@
-// jobs/blockchain.jobs.js - VERSIÓN OPTIMIZADA PARA DEPÓSITOS
+// jobs/blockchain.jobs.js - VERSIÓN MEJORADA CON DIAGNÓSTICOS
 const BlockchainServiceManager = require('../services/blockchain');
-const { TransaccionBlockchain, DireccionDeposito, Criptomoneda } = require('../models');
+const { TransaccionBlockchain, DireccionDeposito, Criptomoneda, BlockchainState } = require('../models');
 require('dotenv').config();
 
 class BlockchainJobManager {
@@ -19,8 +19,148 @@ class BlockchainJobManager {
       successfulScans: 0,
       failedScans: 0,
       networksScanned: 0,
-      addressesScanned: 0
+      addressesScanned: 0,
+      lastDiagnostic: null
     };
+  }
+
+  // =================== DIAGNÓSTICO DEL SISTEMA ===================
+  async runSystemDiagnostic() {
+    console.log('🔬 =================== DIAGNÓSTICO DEL SISTEMA ===================');
+    
+    const diagnostic = {
+      timestamp: new Date(),
+      services: {},
+      networks: {},
+      apiKeys: {},
+      database: {},
+      overallHealth: 'unknown'
+    };
+
+    try {
+      // ✅ 1. Verificar servicios blockchain
+      console.log('🔬 Verificando servicios blockchain...');
+      const availableServices = ['ethereum', 'bsc', 'bitcoin'];
+      
+      for (const network of availableServices) {
+        try {
+          const service = BlockchainServiceManager.getService(network);
+          diagnostic.services[network] = {
+            available: !!service,
+            initialized: !!service,
+            error: null
+          };
+          
+          if (service) {
+            console.log(`✅ Servicio ${network}: Disponible`);
+          } else {
+            console.log(`❌ Servicio ${network}: No disponible`);
+          }
+        } catch (error) {
+          diagnostic.services[network] = {
+            available: false,
+            initialized: false,
+            error: error.message
+          };
+          console.log(`❌ Servicio ${network}: Error - ${error.message}`);
+        }
+      }
+
+      // ✅ 2. Verificar API Keys
+      console.log('🔬 Verificando API Keys...');
+      diagnostic.apiKeys = {
+        etherscan: !!process.env.ETHERSCAN_API_KEY,
+        bscscan: !!process.env.BSCSCAN_API_KEY,
+        blockcypher: !!process.env.BLOCKCYPHER_TOKEN
+      };
+
+      console.log(`   - Etherscan API: ${diagnostic.apiKeys.etherscan ? '✅' : '❌'}`);
+      console.log(`   - BSCScan API: ${diagnostic.apiKeys.bscscan ? '✅' : '❌'}`);
+      console.log(`   - BlockCypher API: ${diagnostic.apiKeys.blockcypher ? '✅' : '❌'}`);
+
+      // ✅ 3. Verificar estado de redes en DB
+      console.log('🔬 Verificando estado de redes...');
+      for (const network of availableServices) {
+        try {
+          const stats = await BlockchainState.getNetworkStats(network);
+          diagnostic.networks[network] = stats || {
+            lastProcessedBlock: 0,
+            totalDepositsFound: 0,
+            lastScanTimestamp: null
+          };
+          console.log(`✅ Red ${network}: Último bloque ${diagnostic.networks[network].lastProcessedBlock}`);
+        } catch (error) {
+          diagnostic.networks[network] = { error: error.message };
+          console.log(`❌ Red ${network}: Error - ${error.message}`);
+        }
+      }
+
+      // ✅ 4. Verificar base de datos
+      console.log('🔬 Verificando base de datos...');
+      try {
+        const addressCount = await DireccionDeposito.count({ where: { activa: true } });
+        const pendingTxCount = await TransaccionBlockchain.count({ 
+          where: { estado: ['pendiente', 'procesando'] } 
+        });
+        
+        diagnostic.database = {
+          activeAddresses: addressCount,
+          pendingTransactions: pendingTxCount,
+          connected: true
+        };
+        
+        console.log(`✅ DB: ${addressCount} direcciones activas, ${pendingTxCount} transacciones pendientes`);
+      } catch (error) {
+        diagnostic.database = {
+          connected: false,
+          error: error.message
+        };
+        console.log(`❌ DB: Error - ${error.message}`);
+      }
+
+      // ✅ 5. Determinar salud general
+      const criticalIssues = [];
+      
+      if (!diagnostic.database.connected) {
+        criticalIssues.push('Base de datos no disponible');
+      }
+      
+      if (!diagnostic.apiKeys.etherscan && !diagnostic.apiKeys.bscscan) {
+        criticalIssues.push('Ninguna API key disponible');
+      }
+      
+      const workingServices = Object.values(diagnostic.services).filter(s => s.available).length;
+      if (workingServices === 0) {
+        criticalIssues.push('Ningún servicio blockchain disponible');
+      }
+
+      if (criticalIssues.length === 0) {
+        diagnostic.overallHealth = 'healthy';
+        console.log('✅ Sistema: Saludable');
+      } else if (criticalIssues.length <= 2) {
+        diagnostic.overallHealth = 'warning';
+        console.log('⚠️ Sistema: Advertencias');
+      } else {
+        diagnostic.overallHealth = 'critical';
+        console.log('❌ Sistema: Crítico');
+      }
+
+      if (criticalIssues.length > 0) {
+        console.log('🔬 Problemas encontrados:');
+        criticalIssues.forEach(issue => console.log(`   - ${issue}`));
+      }
+
+      this.stats.lastDiagnostic = diagnostic;
+      
+      console.log('🔬 =================== DIAGNÓSTICO COMPLETADO ===================');
+      return diagnostic;
+
+    } catch (error) {
+      console.error('❌ Error en diagnóstico del sistema:', error.message);
+      diagnostic.overallHealth = 'critical';
+      diagnostic.error = error.message;
+      return diagnostic;
+    }
   }
 
   // =================== JOB PRINCIPAL: ESCANEAR DEPÓSITOS ===================
@@ -29,6 +169,23 @@ class BlockchainJobManager {
     
     try {
       console.log('🔍 [DEPOSIT_SCAN] =================== INICIANDO ESCANEO ===================');
+      
+      // ✅ Ejecutar diagnóstico antes del escaneo si es necesario
+      if (!this.stats.lastDiagnostic || 
+          (Date.now() - new Date(this.stats.lastDiagnostic.timestamp).getTime()) > 300000) { // 5 minutos
+        await this.runSystemDiagnostic();
+      }
+
+      // ✅ Verificar que el sistema esté saludable
+      if (this.stats.lastDiagnostic?.overallHealth === 'critical') {
+        console.log('❌ [DEPOSIT_SCAN] Sistema en estado crítico, abortando escaneo');
+        return {
+          success: false,
+          error: 'Sistema en estado crítico',
+          duration: Date.now() - startTime,
+          timestamp: new Date()
+        };
+      }
       
       // Obtener estadísticas pre-escaneo
       const preStats = await this.getPreScanStats();
@@ -41,12 +198,32 @@ class BlockchainJobManager {
       for (const network of preStats.networks) {
         try {
           console.log(`🔍 [DEPOSIT_SCAN] Escaneando red: ${network.toUpperCase()}`);
+          
+          // ✅ Verificar si el servicio está disponible
+          const service = BlockchainServiceManager.getService(network);
+          if (!service) {
+            console.log(`⚠️ [DEPOSIT_SCAN] Servicio ${network} no disponible, saltando...`);
+            networkResults.push({
+              network,
+              success: false,
+              error: 'Servicio no disponible',
+              deposits: 0,
+              addressesScanned: 0
+            });
+            continue;
+          }
+          
           const result = await this.scanNetworkForDeposits(network);
           networkResults.push(result);
           
           // Log inmediato del resultado
           if (result.success) {
             console.log(`✅ [DEPOSIT_SCAN] ${network}: ${result.deposits} depósitos, ${result.addressesScanned} direcciones`);
+            
+            // ✅ Actualizar estadísticas en BlockchainState
+            if (result.deposits > 0) {
+              await BlockchainState.incrementDepositsFound(network, result.deposits);
+            }
           } else {
             console.error(`❌ [DEPOSIT_SCAN] ${network}: ${result.error}`);
           }
@@ -113,7 +290,7 @@ class BlockchainJobManager {
     }
   }
 
-  // =================== ESCANEO POR RED ===================
+  // =================== ESCANEO POR RED (MEJORADO) ===================
   async scanNetworkForDeposits(network) {
     try {
       // Obtener direcciones activas para esta red
@@ -142,6 +319,20 @@ class BlockchainJobManager {
       const service = BlockchainServiceManager.getService(network);
       if (!service) {
         throw new Error(`Servicio blockchain no disponible para ${network}`);
+      }
+      
+      // ✅ Verificar configuración de red antes de escanear
+      const diagnostic = this.stats.lastDiagnostic;
+      if (!diagnostic?.services[network]?.available) {
+        throw new Error(`Servicio ${network} reportado como no disponible en diagnóstico`);
+      }
+
+      // ✅ Verificar API keys necesarias
+      if (network === 'ethereum' && !diagnostic?.apiKeys?.etherscan) {
+        throw new Error('Etherscan API key requerida para escanear Ethereum');
+      }
+      if (network === 'bsc' && !diagnostic?.apiKeys?.bscscan) {
+        throw new Error('BSCScan API key requerida para escanear BSC');
       }
       
       // Escanear usando el servicio específico
@@ -189,11 +380,10 @@ class BlockchainJobManager {
     }
   }
 
-  // =================== MÉTODOS AUXILIARES ===================
+  // =================== MÉTODOS AUXILIARES (mantenemos los existentes) ===================
   
   async getPreScanStats() {
     try {
-      // Obtener todas las direcciones activas agrupadas por red
       const addressStats = await DireccionDeposito.findAll({
         where: { activa: true },
         include: [
@@ -258,19 +448,16 @@ class BlockchainJobManager {
     
     for (const address of addresses) {
       try {
-        // Validación básica de formato
         if (!address.direccion || address.direccion.length < 10) {
           console.warn(`⚠️ Dirección inválida detectada: ${address.direccion}`);
           continue;
         }
         
-        // Validación específica por red
         let isValid = false;
         
         switch (network.toLowerCase()) {
           case 'bitcoin':
           case 'testnet3':
-            // Bitcoin: debe empezar con 1, 3, bc1, tb1, m, n, 2
             isValid = /^[13mn2]|^bc1|^tb1/.test(address.direccion);
             break;
             
@@ -278,12 +465,11 @@ class BlockchainJobManager {
           case 'sepolia':
           case 'bsc':
           case 'bsc-testnet':
-            // Ethereum/BSC: formato hexadecimal 0x...
             isValid = /^0x[a-fA-F0-9]{40}$/.test(address.direccion);
             break;
             
           default:
-            isValid = true; // Asumir válida para redes desconocidas
+            isValid = true;
         }
         
         if (isValid) {
@@ -300,16 +486,14 @@ class BlockchainJobManager {
     return validAddresses;
   }
 
-  // =================== JOB: ACTUALIZAR CONFIRMACIONES ===================
+  // =================== JOB: ACTUALIZAR CONFIRMACIONES (mantenemos existente) ===================
   async runConfirmationUpdateJob() {
     const startTime = Date.now();
     
     try {
       console.log('🔄 [CONFIRMATION_UPDATE] Iniciando actualización de confirmaciones...');
       
-      // Obtener transacciones pendientes por red
       const pendingByNetwork = await this.getPendingTransactionsByNetwork();
-      
       const results = [];
       
       for (const [network, transactions] of Object.entries(pendingByNetwork)) {
@@ -377,7 +561,6 @@ class BlockchainJobManager {
         ]
       });
       
-      // Agrupar por red
       const byNetwork = {};
       pendingTxs.forEach(tx => {
         const network = tx.criptomoneda.red;
@@ -394,7 +577,7 @@ class BlockchainJobManager {
     }
   }
 
-  // =================== CONTROL DE JOBS ===================
+  // =================== CONTROL DE JOBS MEJORADO ===================
   
   start() {
     if (this.isRunning) {
@@ -415,14 +598,24 @@ class BlockchainJobManager {
       await this.runConfirmationUpdateJob();
     }, this.intervals.confirmationUpdate));
 
+    // Job de diagnóstico periódico (cada 10 minutos)
+    this.jobs.set('systemDiagnostic', setInterval(async () => {
+      await this.runSystemDiagnostic();
+    }, 600000));
+
     console.log('✅ Jobs de depósitos iniciados exitosamente');
     this.logJobStatus();
     
-    // Ejecutar primer escaneo inmediatamente
-    setTimeout(() => {
-      console.log('🔍 Ejecutando primer escaneo de depósitos...');
-      this.runDepositScanJob();
-    }, 5000); // Esperar 5 segundos
+    // Ejecutar primer diagnóstico y escaneo inmediatamente
+    setTimeout(async () => {
+      console.log('🔬 Ejecutando diagnóstico inicial...');
+      await this.runSystemDiagnostic();
+      
+      setTimeout(async () => {
+        console.log('🔍 Ejecutando primer escaneo de depósitos...');
+        await this.runDepositScanJob();
+      }, 5000);
+    }, 2000);
   }
 
   stop() {
@@ -454,35 +647,120 @@ class BlockchainJobManager {
         return await this.runDepositScanJob();
       case 'confirmationUpdate':
         return await this.runConfirmationUpdateJob();
+      case 'systemDiagnostic':
+        return await this.runSystemDiagnostic();
       default:
         throw new Error(`Job desconocido: ${jobName}`);
     }
   }
 
-  // Obtener estadísticas detalladas
-  getDetailedStats() {
-    return {
-      running: this.isRunning,
-      activeJobs: Array.from(this.jobs.keys()),
-      intervals: this.intervals,
-      stats: this.stats,
-      uptime: this.stats.lastScanTime ? 
-        Date.now() - new Date(this.stats.lastScanTime).getTime() : null
-    };
+  // =================== MÉTODOS DE MONITOREO MEJORADOS ===================
+
+  async getDetailedStats() {
+    try {
+      // Obtener estadísticas de todas las redes
+      const networkStats = await BlockchainState.getAllNetworksStats();
+      
+      return {
+        running: this.isRunning,
+        activeJobs: Array.from(this.jobs.keys()),
+        intervals: this.intervals,
+        stats: this.stats,
+        networks: networkStats,
+        lastDiagnostic: this.stats.lastDiagnostic,
+        uptime: this.stats.lastScanTime ? 
+          Date.now() - new Date(this.stats.lastScanTime).getTime() : null
+      };
+    } catch (error) {
+      console.error('Error obteniendo estadísticas detalladas:', error.message);
+      return {
+        running: this.isRunning,
+        activeJobs: Array.from(this.jobs.keys()),
+        intervals: this.intervals,
+        stats: this.stats,
+        networks: [],
+        error: error.message
+      };
+    }
   }
 
-  logJobStatus() {
-    const status = this.getDetailedStats();
-    console.log('📊 Estado de jobs de depósitos:');
-    console.log(`   - Estado: ${status.running ? '🟢 Ejecutándose' : '🔴 Detenidos'}`);
-    console.log(`   - Jobs activos: ${status.activeJobs.join(', ')}`);
-    console.log(`   - Depósitos encontrados: ${status.stats.totalDepositsFound}`);
-    console.log(`   - Direcciones escaneadas: ${status.stats.addressesScanned}`);
-    console.log(`   - Último escaneo: ${status.stats.lastScanTime || 'Nunca'}`);
-    console.log(`   - Intervalos:`);
-    Object.entries(status.intervals).forEach(([job, interval]) => {
-      console.log(`     • ${job}: cada ${interval / 1000}s`);
-    });
+  async logJobStatus() {
+    try {
+      const status = await this.getDetailedStats();
+      console.log('📊 Estado de jobs de depósitos:');
+      console.log(`   - Estado: ${status.running ? '🟢 Ejecutándose' : '🔴 Detenidos'}`);
+      console.log(`   - Jobs activos: ${status.activeJobs.join(', ')}`);
+      console.log(`   - Depósitos encontrados: ${status.stats.totalDepositsFound}`);
+      console.log(`   - Direcciones escaneadas: ${status.stats.addressesScanned}`);
+      console.log(`   - Último escaneo: ${status.stats.lastScanTime || 'Nunca'}`);
+      console.log(`   - Intervalos:`);
+      Object.entries(status.intervals).forEach(([job, interval]) => {
+        console.log(`     • ${job}: cada ${interval / 1000}s`);
+      });
+
+      if (status.networks && status.networks.length > 0) {
+        console.log(`   - Estado de redes:`);
+        status.networks.forEach(network => {
+          console.log(`     • ${network.network}: Bloque ${network.lastProcessedBlock}, ${network.totalDepositsFound} depósitos`);
+        });
+      }
+
+      if (status.lastDiagnostic) {
+        console.log(`   - Último diagnóstico: ${status.lastDiagnostic.timestamp}`);
+        console.log(`   - Salud del sistema: ${status.lastDiagnostic.overallHealth}`);
+      }
+    } catch (error) {
+      console.error('Error mostrando estado de jobs:', error.message);
+    }
+  }
+
+  // =================== MÉTODOS DE LIMPIEZA ===================
+
+  async cleanupStuckTransactions() {
+    try {
+      console.log('🧹 Iniciando limpieza de transacciones problemáticas...');
+      
+      const BalanceCheckCleanup = require('../scripts/cleanup-balance-checks');
+      const cleanup = new BalanceCheckCleanup();
+      
+      const results = await cleanup.findProblematicTransactions();
+      
+      if (results.total > 0) {
+        console.log(`🧹 Encontradas ${results.total} transacciones problemáticas`);
+        console.log('🧹 Ejecute el script de limpieza manualmente para corregirlas:');
+        console.log('🧹 node scripts/cleanup-balance-checks.js --dry-run');
+      } else {
+        console.log('✅ No se encontraron transacciones problemáticas');
+      }
+      
+      return results;
+    } catch (error) {
+      console.error('Error en limpieza de transacciones:', error.message);
+      throw error;
+    }
+  }
+
+  // =================== MÉTODOS DE CONFIGURACIÓN ===================
+
+  async updateNetworkConfig(network, config) {
+    try {
+      for (const [key, value] of Object.entries(config)) {
+        await BlockchainState.setConfig(network, key, value);
+      }
+      console.log(`✅ Configuración actualizada para ${network}`);
+    } catch (error) {
+      console.error(`Error actualizando configuración de ${network}:`, error.message);
+      throw error;
+    }
+  }
+
+  async getNetworkConfig(network) {
+    try {
+      return await BlockchainState.getNetworkStats(network);
+    } catch (error) {
+      console.error(`Error obteniendo configuración de ${network}:`, error.message);
+      return null;
+    }
   }
 }
 

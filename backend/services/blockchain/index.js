@@ -1,229 +1,167 @@
-// services/blockchain/index.js - ORDEN CORREGIDO
-const EthereumService = require('./ethereum.service');
-const BitcoinService = require('./bitcoin.service');
-const BscService = require('./bsc.service');
+// services/blockchain/index.js - Service Manager Corregido
+require('dotenv').config();
 
-// DEBUG:
-console.log('🔧 INIT: Creando BlockchainServiceManager...');
-
-// ✅ CORRECTO: Declarar la clase PRIMERO
 class BlockchainServiceManager {
   constructor() {
-    console.log('🔧 CONSTRUCTOR: Iniciando constructor...');
-    this.services = {};
-    this.symbolToService = {
-      'ETH': 'ethereum',
-      'USDT': 'ethereum',
-      'USDC': 'ethereum',
-      'BTC': 'bitcoin',
-      'BNB': 'bsc',
-      'BUSD': 'bsc'
-    };
-    console.log('🔧 CONSTRUCTOR: Constructor terminado');
-    
+    this.services = new Map();
     this.initializeServices();
   }
 
   initializeServices() {
-    console.log('🔧 INIT_SERVICES: Iniciando servicios...');
     try {
-      this.services.ethereum = new EthereumService();
-      console.log('✅ Servicio Ethereum inicializado');
-    } catch (error) {
-      console.error('❌ Error inicializando Ethereum service:', error.message);
-    }
-    
-    try {
-      this.services.bsc = new BscService();
-      console.log('✅ Servicio BSC inicializado');
-    } catch (error) {
-      console.error('❌ Error inicializando BSC service:', error.message);
-    }
-    
-    try {
-      this.services.bitcoin = new BitcoinService();
-      console.log('✅ Servicio Bitcoin inicializado');
-    } catch (error) {
-      console.error('❌ Error inicializando Bitcoin service:', error.message);
-    }
-    
-    // DEBUG TEMPORAL:
-    console.log('🔧 DEBUG - Servicios creados:');
-    console.log('- ethereum:', !!this.services.ethereum);
-    console.log('- bsc:', !!this.services.bsc);
-    console.log('- bitcoin:', !!this.services.bitcoin);
-    console.log('- Total servicios:', Object.keys(this.services).length);
-    console.log('🔧 INIT_SERVICES: Servicios terminados');
-  }
+      console.log('🔧 Inicializando servicios blockchain...');
 
-  getService(networkOrSymbol) {
-    // Primero intentar como red directa
-    if (this.services[networkOrSymbol.toLowerCase()]) {
-      return this.services[networkOrSymbol.toLowerCase()];
-    }
-
-    // Luego como símbolo de criptomoneda
-    const serviceName = this.symbolToService[networkOrSymbol.toUpperCase()];
-    if (serviceName && this.services[serviceName]) {
-      return this.services[serviceName];
-    }
-
-    throw new Error(`Servicio de blockchain no encontrado para: ${networkOrSymbol}`);
-  }
-
-  // Método unificado mejorado para escanear depósitos
-  async scanAllNetworksForDeposits() {
-    const results = [];
-    
-    for (const [network, service] of Object.entries(this.services)) {
-      if (!service) continue;
-      
+      // ✅ ETHEREUM
       try {
-        console.log(`🔍 Escaneando ${network} para depósitos...`);
-        const startTime = Date.now();
+        const EthereumService = require('./ethereum.service');
+        const ethService = new EthereumService();
         
-        const deposits = await service.scanForDeposits();
-        const duration = Date.now() - startTime;
+        // Registrar tanto para ethereum como sepolia
+        this.services.set('ethereum', ethService);
+        this.services.set('sepolia', ethService);
         
-        results.push({
-          network,
-          success: true,
-          deposits: deposits.length,
-          data: deposits,
-          duration: `${duration}ms`
-        });
-        
-        if (deposits.length > 0) {
-          console.log(`✅ ${network}: ${deposits.length} nuevos depósitos (${duration}ms)`);
-        }
-      } catch (error) {
-        console.error(`❌ Error escaneando ${network}:`, error.message);
-        results.push({
-          network,
-          success: false,
-          error: error.message,
-          deposits: 0,
-          data: []
-        });
+        console.log('✅ Ethereum Service inicializado');
+      } catch (ethError) {
+        console.error('❌ Error inicializando Ethereum Service:', ethError.message);
       }
-    }
 
-    return results;
-  }
-
-  async processAllPendingWithdrawals() {
-    const results = [];
-    
-    for (const [network, service] of Object.entries(this.services)) {
-      if (!service) continue;
-      
+      // ✅ BSC - SOPORTE PARA MAINNET Y TESTNET
       try {
-        console.log(`💸 Procesando retiros pendientes en ${network}...`);
-        const startTime = Date.now();
+        console.log('🔧 Intentando cargar BSC Service...');
+        console.log('🔧 BSC_NETWORK:', process.env.BSC_NETWORK);
+        console.log('🔧 NODE_ENV:', process.env.NODE_ENV);
         
-        const processed = await service.processPendingWithdrawals();
-        const duration = Date.now() - startTime;
+        const BscService = require('./bsc.service');
+        console.log('✅ BSC Service requerido exitosamente');
         
-        results.push({
-          network,
-          success: true,
-          processed: processed.length,
-          data: processed,
-          duration: `${duration}ms`
-        });
+        const bscService = new BscService();
+        console.log('✅ BSC Service instanciado exitosamente');
+        console.log('🔧 BSC Service network:', bscService.network);
+        console.log('🔧 BSC Service actualNetwork:', bscService.actualNetwork);
         
-        if (processed.length > 0) {
-          console.log(`✅ ${network}: ${processed.length} retiros procesados (${duration}ms)`);
-        }
-      } catch (error) {
-        console.error(`❌ Error procesando retiros en ${network}:`, error.message);
-        results.push({
-          network,
-          success: false,
-          error: error.message,
-          processed: 0,
-          data: []
-        });
-      }
-    }
-
-    return results;
-  }
-
-  async updateAllConfirmations() {
-    const results = [];
-    
-    for (const [network, service] of Object.entries(this.services)) {
-      if (!service) continue;
-      
-      try {
-        const startTime = Date.now();
-        const updated = await service.updateConfirmations();
-        const duration = Date.now() - startTime;
+        // ✅ CORRECCIÓN: Registrar según la configuración actual
+        const isTestnet = process.env.BSC_NETWORK === 'testnet' || process.env.NODE_ENV !== 'production';
+        console.log('🔧 Es testnet:', isTestnet);
         
-        results.push({
-          network,
-          success: true,
-          updated: updated.length,
-          data: updated,
-          duration: `${duration}ms`
-        });
-        
-        if (updated.length > 0) {
-          console.log(`🔄 ${network}: ${updated.length} confirmaciones actualizadas (${duration}ms)`);
-        }
-      } catch (error) {
-        console.error(`❌ Error actualizando confirmaciones en ${network}:`, error.message);
-        results.push({
-          network,
-          success: false,
-          error: error.message,
-          updated: 0,
-          data: []
-        });
-      }
-    }
-
-    return results;
-  }
-
-  // Nuevo método para verificar salud de servicios
-  async checkServicesHealth() {
-    const health = {};
-    
-    for (const [network, service] of Object.entries(this.services)) {
-      if (!service) {
-        health[network] = { status: 'not_initialized' };
-        continue;
-      }
-      
-      try {
-        if (network === 'bitcoin') {
-          health[network] = { status: 'configured', lastBlock: 'N/A' };
+        if (isTestnet) {
+          this.services.set('bsc-testnet', bscService);
+          this.services.set('bsc', bscService); // También registrar como 'bsc' para compatibilidad
+          console.log('✅ BSC Testnet Service registrado como: bsc-testnet, bsc');
         } else {
-          const blockNumber = await service.provider.getBlockNumber();
-          const walletBalance = await service.provider.getBalance(service.wallet.address);
-          
-          health[network] = {
-            status: 'connected',
-            lastBlock: blockNumber,
-            walletBalance: require('ethers').formatEther(walletBalance),
-            walletAddress: service.wallet.address
-          };
+          this.services.set('bsc', bscService);
+          this.services.set('bsc-mainnet', bscService);
+          console.log('✅ BSC Mainnet Service registrado como: bsc, bsc-mainnet');
         }
+        
+        // Debug: verificar que se registró
+        console.log('🔧 Servicios después de BSC:', Array.from(this.services.keys()));
+        
+        console.log('✅ BSC Service inicialización completa');
+      } catch (bscError) {
+        console.error('❌ Error detallado inicializando BSC Service:', bscError.message);
+        console.error('❌ Stack trace BSC:', bscError.stack);
+      }
+
+      // ✅ BITCOIN
+      try {
+        const BitcoinService = require('./bitcoin.service');
+        const btcService = new BitcoinService();
+        
+        // Registrar tanto para bitcoin como testnet3
+        const networkName = process.env.BITCOIN_NETWORK || 'testnet3';
+        this.services.set(networkName, btcService);
+        this.services.set('bitcoin', btcService); // También como 'bitcoin' para compatibilidad
+        
+        if (networkName === 'testnet3') {
+          this.services.set('testnet3', btcService);
+        }
+        
+        console.log(`✅ Bitcoin Service inicializado para ${networkName}`);
+      } catch (btcError) {
+        console.error('❌ Error inicializando Bitcoin Service:', btcError.message);
+      }
+
+      console.log(`🔧 Servicios inicializados: ${Array.from(this.services.keys()).join(', ')}`);
+    } catch (error) {
+      console.error('❌ Error general inicializando servicios:', error.message);
+    }
+  }
+
+  // ✅ MÉTODO MEJORADO CON MEJOR LOGGING
+  getService(network) {
+    try {
+      const normalizedNetwork = network.toLowerCase();
+      
+      console.log(`🔍 Buscando servicio para red: ${normalizedNetwork}`);
+      console.log(`🔍 Servicios disponibles: ${Array.from(this.services.keys()).join(', ')}`);
+      
+      const service = this.services.get(normalizedNetwork);
+      
+      if (!service) {
+        console.error(`❌ Servicio no encontrado para red: ${normalizedNetwork}`);
+        console.error(`❌ Servicios disponibles: ${Array.from(this.services.keys()).join(', ')}`);
+        return null;
+      }
+      
+      console.log(`✅ Servicio encontrado para red: ${normalizedNetwork}`);
+      return service;
+    } catch (error) {
+      console.error(`❌ Error obteniendo servicio para ${network}:`, error.message);
+      return null;
+    }
+  }
+
+  // ✅ MÉTODO PARA OBTENER TODOS LOS SERVICIOS DISPONIBLES
+  getAvailableServices() {
+    return Array.from(this.services.keys());
+  }
+
+  // ✅ MÉTODO PARA VERIFICAR SI UN SERVICIO ESTÁ DISPONIBLE
+  hasService(network) {
+    return this.services.has(network.toLowerCase());
+  }
+
+  // ✅ MÉTODO PARA OBTENER ESTADÍSTICAS DE SERVICIOS
+  getServicesStatus() {
+    const status = {};
+    
+    for (const [network, service] of this.services) {
+      try {
+        status[network] = {
+          available: true,
+          type: service.constructor.name,
+          network: service.network || network
+        };
       } catch (error) {
-        health[network] = {
-          status: 'error',
+        status[network] = {
+          available: false,
           error: error.message
         };
       }
     }
     
-    return health;
+    return status;
+  }
+
+  // ✅ MÉTODO PARA REINICIALIZAR SERVICIOS
+  reinitialize() {
+    console.log('🔄 Reinicializando servicios blockchain...');
+    this.services.clear();
+    this.initializeServices();
+  }
+
+  // ✅ MÉTODO PARA REGISTRAR SERVICIO MANUALMENTE
+  registerService(network, service) {
+    try {
+      this.services.set(network.toLowerCase(), service);
+      console.log(`✅ Servicio registrado manualmente para ${network}`);
+    } catch (error) {
+      console.error(`❌ Error registrando servicio para ${network}:`, error.message);
+    }
   }
 }
 
-// ✅ CORRECTO: Crear la instancia DESPUÉS de declarar la clase
-console.log('🔧 EXPORT: Creando singleton...');
-module.exports = new BlockchainServiceManager();
-console.log('🔧 EXPORT: Singleton creado');
+// Crear instancia singleton
+const blockchainServiceManager = new BlockchainServiceManager();
+
+module.exports = blockchainServiceManager;

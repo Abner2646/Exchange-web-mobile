@@ -7,6 +7,7 @@ const dbConfig = config[env];
 
 // Import models
 const balanceUsuarioModel = require('./balanceUsuario.model');
+const createBlockchainStateModel = require('./blockchainState.model');
 //const categoriaReclamoModel = require('./categoriaReclamo.model');
 const criptomonedaModel = require('./criptomoneda.model.js');
 const direccionDepositoModel = require('./direccionDeposito.model');
@@ -46,6 +47,7 @@ const sequelize = new Sequelize(
 
 //Initialize models
 const BalanceUsuario = balanceUsuarioModel(sequelize);
+const BlockchainState = createBlockchainStateModel(sequelize);
 //const CategoriaReclamo = categoriaReclamoModel(sequelize);
 const Criptomoneda = criptomonedaModel(sequelize);
 const DireccionDeposito = direccionDepositoModel(sequelize);
@@ -243,6 +245,7 @@ module.exports = {
   sequelize,
   Sequelize,
   BalanceUsuario,
+  BlockchainState,
   //CategoriaReclamo,
   Criptomoneda,
   DireccionDeposito,
