@@ -25,11 +25,12 @@ class BlockchainServiceManager {
         console.error('❌ Error inicializando Ethereum Service:', ethError.message);
       }
 
-      // ✅ BSC - SOPORTE PARA MAINNET Y TESTNET
+      // ✅ BSC - SOPORTE PARA MAINNET Y TESTNET CON API V2
       try {
         console.log('🔧 Intentando cargar BSC Service...');
         console.log('🔧 BSC_NETWORK:', process.env.BSC_NETWORK);
         console.log('🔧 NODE_ENV:', process.env.NODE_ENV);
+        console.log('🔧 ETHERSCAN_API_KEY disponible:', !!process.env.ETHERSCAN_API_KEY);
         
         const BscService = require('./bsc.service');
         console.log('✅ BSC Service requerido exitosamente');
@@ -38,6 +39,7 @@ class BlockchainServiceManager {
         console.log('✅ BSC Service instanciado exitosamente');
         console.log('🔧 BSC Service network:', bscService.network);
         console.log('🔧 BSC Service actualNetwork:', bscService.actualNetwork);
+        console.log('🔧 BSC Service chainId:', bscService.chainId);
         
         // ✅ CORRECCIÓN: Registrar según la configuración actual
         const isTestnet = process.env.BSC_NETWORK === 'testnet' || process.env.NODE_ENV !== 'production';

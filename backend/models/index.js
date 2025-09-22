@@ -19,7 +19,7 @@ const direccionDepositoModel = require('./direccionDeposito.model');
 const notificacionesModel = require('./notificaciones.model');
 //const ofertaMetodoPagoModel = require('./ofertaMetodoPago.model');
 //const ofertaP2PModel = require('./ofertaP2P.model');
-//const parExchangeModel = require('./parExchange.model');
+const parExchangeModel = require('./parExchange.model');
 //const reclamoModel = require('./reclamo.model');
 const transaccionBlockchainModel = require('./transaccionBlockchain.model');
 //const transaccionP2PModel = require('./transaccionP2P.model');
@@ -59,7 +59,7 @@ const DireccionDeposito = direccionDepositoModel(sequelize);
 const Notificaciones = notificacionesModel(sequelize);
 //const OfertaMetodoPago = ofertaMetodoPagoModel(sequelize);
 //const OfertaP2P = ofertaP2PModel(sequelize);  
-//const ParExchange = parExchangeModel(sequelize);
+const ParExchange = parExchangeModel(sequelize);
 //const Reclamo = reclamoModel(sequelize);
 const TransaccionBlockchain = transaccionBlockchainModel(sequelize);
 //const TransaccionP2P = transaccionP2PModel(sequelize);
@@ -157,7 +157,7 @@ OfertaP2P.belongsTo(Criptomoneda, { foreignKey: 'criptomonedaId', as: 'criptomon
 // Criptomoneda puede estar en muchas transacciones P2P
 Criptomoneda.hasMany(TransaccionP2P, { foreignKey: 'criptomonedaId', as: 'transaccionesP2P' });
 TransaccionP2P.belongsTo(Criptomoneda, { foreignKey: 'criptomonedaId', as: 'criptomoneda' });
-
+*/
 // Criptomoneda puede ser base en pares de exchange
 Criptomoneda.hasMany(ParExchange, { foreignKey: 'criptoBaseId', as: 'paresComoBase' });
 ParExchange.belongsTo(Criptomoneda, { foreignKey: 'criptoBaseId', as: 'criptoBase' });
@@ -165,7 +165,7 @@ ParExchange.belongsTo(Criptomoneda, { foreignKey: 'criptoBaseId', as: 'criptoBas
 // Criptomoneda puede ser quote en pares de exchange
 Criptomoneda.hasMany(ParExchange, { foreignKey: 'criptoQuoteId', as: 'paresComoQuote' });
 ParExchange.belongsTo(Criptomoneda, { foreignKey: 'criptoQuoteId', as: 'criptoQuote' });
-*/
+
 // Criptomoneda puede estar en transacciones blockchain
 Criptomoneda.hasMany(TransaccionBlockchain, { foreignKey: 'criptomonedaId', as: 'transaccionesBlockchain' });
 TransaccionBlockchain.belongsTo(Criptomoneda, { foreignKey: 'criptomonedaId', as: 'criptomoneda' });
@@ -257,7 +257,7 @@ module.exports = {
   Notificaciones,
   //OfertaMetodoPago,
   //OfertaP2P,
-  //ParExchange,
+  ParExchange,
   //Reclamo,
   TransaccionBlockchain,
   //TransaccionP2P,

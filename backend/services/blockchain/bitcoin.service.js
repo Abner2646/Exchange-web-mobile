@@ -1,4 +1,4 @@
-// services/blockchain/bitcoin.service.js - VERSIÓN CORREGIDA CON TU ESTRUCTURA
+// services/blockchain/bitcoin.service.js - VERSIÓN COMPLETA ACTUALIZADA
 require('dotenv').config();
 const bitcoin = require('bitcoinjs-lib');
 const ECPair = require('ecpair');
@@ -49,10 +49,11 @@ class BitcoinService {
     }
   }
 
-  // ✅ ESCANEAR DEPÓSITOS CON TU ESTRUCTURA DE PERSISTENCIA
+  // MÉTODO PRINCIPAL DE ESCANEO
   async scanForDeposits() {
     try {
-      console.log('🔍 [BTC] Iniciando escaneo de depósitos...');
+      console.log('🔍 [BTC] =================== INICIANDO ESCANEO BITCOIN ===================');
+      console.log(`🔍 [BTC] Red: ${this.networkName}`);
       
       const direcciones = await this.getActiveUserAddresses();
       if (direcciones.length === 0) {
@@ -62,113 +63,179 @@ class BitcoinService {
 
       console.log(`🔍 [BTC] Escaneando ${direcciones.length} direcciones...`);
       
-      // ✅ Obtener último bloque desde DB usando tu estructura
+      // Obtener último bloque desde DB usando el nuevo modelo
       const lastProcessedBlock = await BlockchainState.getLastProcessedBlock(this.networkName);
       console.log(`🔍 [BTC] Escaneando desde bloque: ${lastProcessedBlock}`);
 
       const newDeposits = [];
 
-      for (const direccion of direcciones) {
+      for (let i = 0; i < direcciones.length; i++) {
+        const direccion = direcciones[i];
+        
         try {
-          const deposits = await this.scanBitcoinAddress(direccion, lastProcessedBlock);
+          console.log(`🔍 [BTC] ================== ESCANEANDO DIRECCIÓN ${i + 1}/${direcciones.length} ==================`);
+          console.log(`🔍 [BTC] Dirección: ${direccion.direccion}`);
+          console.log(`🔍 [BTC] Red en DB: ${direccion.criptomoneda.red}`);
+          console.log(`🔍 [BTC] Usuario ID: ${direccion.userId}`);
+          
+          const deposits = await this.scanBitcoinAddress(direccion);
           newDeposits.push(...deposits);
+          
+          console.log(`🔍 [BTC] Depósitos encontrados para esta dirección: ${deposits.length}`);
+          
+          // Pausa entre direcciones para evitar rate limiting de BlockCypher
+          if (i < direcciones.length - 1) {
+            console.log(`🔍 [BTC] Pausa de 1000ms antes de la siguiente dirección...`);
+            await this.sleep(1000);
+          }
+          
         } catch (error) {
           console.error(`❌ [BTC] Error escaneando ${direccion.direccion}:`, error.message);
+          console.error(`❌ [BTC] Stack trace:`, error.stack);
         }
       }
 
-      // ✅ Actualizar último bloque en DB usando tu estructura
+      // Actualizar último bloque en DB solo si hay nuevos depósitos
       if (newDeposits.length > 0) {
         try {
           // Para Bitcoin, usar el bloque más alto de las transacciones encontradas
           const maxBlockHeight = Math.max(...newDeposits
-            .filter(d => d.blockHeight)
+            .filter(d => d.blockHeight && d.blockHeight > 0)
             .map(d => d.blockHeight)
           );
           
           if (maxBlockHeight > lastProcessedBlock) {
             await BlockchainState.updateLastProcessedBlock(this.networkName, maxBlockHeight);
             await BlockchainState.incrementDepositsFound(this.networkName, newDeposits.length);
+            console.log(`✅ [BTC] Último bloque actualizado: ${maxBlockHeight}`);
           }
         } catch (blockError) {
           console.error('⚠️ [BTC] Error actualizando último bloque:', blockError.message);
         }
       }
 
-      console.log(`✅ [BTC] Escaneo completado: ${newDeposits.length} depósitos encontrados`);
+      console.log(`✅ [BTC] =================== ESCANEO BITCOIN COMPLETADO ===================`);
+      console.log(`✅ [BTC] Total depósitos encontrados: ${newDeposits.length}`);
+      console.log(`✅ [BTC] Direcciones escaneadas: ${direcciones.length}`);
+      
       return newDeposits;
 
     } catch (error) {
       console.error('❌ [BTC] Error en escaneo general:', error.message);
+      console.error('❌ [BTC] Stack trace:', error.stack);
       return [];
     }
   }
 
-  async scanBitcoinAddress(direccion, fromBlock = 0) {
+  async scanBitcoinAddress(direccion) {
     const url = `${this.baseUrl}/addrs/${direccion.direccion}/full${this.apiToken}`;
     
     try {
+      console.log(`🔍 [BTC] URL de API: ${url.replace(this.apiToken, '?token=***')}`);
+      console.log(`🔍 [BTC] Consultando BlockCypher API para ${direccion.direccion}...`);
+      
       const response = await fetch(url);
       
       if (!response.ok) {
-        throw new Error(`BlockCypher API error: ${response.status}`);
+        if (response.status === 429) {
+          console.log(`⚠️ [BTC] Rate limit alcanzado (429), pausando 10 segundos...`);
+          await this.sleep(10000);
+          return [];
+        }
+        throw new Error(`BlockCypher API error: ${response.status} ${response.statusText}`);
       }
       
       const data = await response.json();
+      console.log(`🔍 [BTC] Respuesta API:`, {
+        address: data.address,
+        balance: data.balance,
+        unconfirmed_balance: data.unconfirmed_balance,
+        total_received: data.total_received,
+        total_sent: data.total_sent,
+        n_tx: data.n_tx,
+        txs_count: data.txs ? data.txs.length : 0
+      });
 
       if (!data.txs || data.txs.length === 0) {
+        console.log(`ℹ️ [BTC] No hay transacciones para ${direccion.direccion}`);
         return [];
       }
 
       const deposits = [];
+      let incomingTransactions = 0;
+      let validDeposits = 0;
+      
+      console.log(`🔍 [BTC] Analizando ${data.txs.length} transacciones...`);
       
       for (const tx of data.txs) {
-        // ✅ Filtrar por bloque si es necesario
-        if (fromBlock > 0 && tx.block_height && tx.block_height <= fromBlock) {
-          continue;
-        }
-
+        console.log(`🔍 [BTC] TX ${tx.hash}:`);
+        console.log(`  - Block Height: ${tx.block_height || 'Sin confirmar'}`);
+        console.log(`  - Confirmations: ${tx.confirmations || 0}`);
+        console.log(`  - Received: ${tx.received || tx.confirmed}`);
+        
         // Buscar outputs hacia esta dirección
         for (let outputIndex = 0; outputIndex < tx.outputs.length; outputIndex++) {
           const output = tx.outputs[outputIndex];
+          
+          console.log(`  - Output ${outputIndex}:`, {
+            addresses: output.addresses,
+            value: output.value,
+            spent: output.spent_by !== null
+          });
           
           if (output.addresses && 
               output.addresses.includes(direccion.direccion) && 
               output.value > 0) {
             
-            // ✅ Verificar que no existe en DB
+            incomingTransactions++;
+            console.log(`  ✅ Output hacia nuestra dirección: ${output.value} satoshis`);
+            
+            // Verificar que no existe en DB
             const existing = await TransaccionBlockchain.findOne({
               where: { txHash: tx.hash }
             });
 
-            if (!existing) {
-              const amountBTC = output.value / 100000000;
-              const confirmations = tx.confirmations || 0;
-
-              const newDeposit = await this.createBitcoinDeposit(
-                direccion, 
-                amountBTC, 
-                0, 
-                tx.hash, 
-                confirmations, 
-                tx.confirmed || tx.received,
-                tx.block_height
-              );
-
-              deposits.push({
-                ...newDeposit,
-                blockHeight: tx.block_height
-              });
-              
-              console.log(`✅ [BTC] Depósito: ${amountBTC} BTC - TX: ${tx.hash} - Bloque: ${tx.block_height}`);
+            if (existing) {
+              console.log(`  ℹ️ TX ${tx.hash} ya existe en DB, saltando...`);
+              continue;
             }
+
+            validDeposits++;
+            console.log(`  ✅ TX ${tx.hash} es un depósito válido y nuevo!`);
+
+            const amountBTC = output.value / 100000000;
+            const confirmations = tx.confirmations || 0;
+
+            console.log(`💰 [BTC] Creando depósito:`);
+            console.log(`  - Usuario ID: ${direccion.userId}`);
+            console.log(`  - Cantidad: ${amountBTC} BTC`);
+            console.log(`  - Confirmaciones: ${confirmations}/${this.requiredConfirmations}`);
+            console.log(`  - Block Height: ${tx.block_height}`);
+
+            const newDeposit = await this.createBitcoinDeposit(
+              direccion, amountBTC, 0, tx.hash, confirmations, 
+              tx.confirmed || tx.received, tx.block_height
+            );
+
+            // Agregar información extra para tracking
+            newDeposit.blockHeight = tx.block_height;
+            deposits.push(newDeposit);
+            
+            console.log(`✅ [BTC] Depósito creado exitosamente con ID: ${newDeposit.id}`);
           }
         }
       }
 
+      console.log(`📊 [BTC] Resumen para ${direccion.direccion}:`);
+      console.log(`  - Total transacciones analizadas: ${data.txs.length}`);
+      console.log(`  - Outputs entrantes: ${incomingTransactions}`);
+      console.log(`  - Depósitos válidos: ${validDeposits}`);
+      console.log(`  - Depósitos nuevos creados: ${deposits.length}`);
+
       return deposits;
     } catch (error) {
       console.error(`❌ [BTC] Error API para ${direccion.direccion}:`, error.message);
+      console.error(`❌ [BTC] Stack trace:`, error.stack);
       return [];
     }
   }
@@ -188,26 +255,32 @@ class BitcoinService {
       confirmacionesRequeridas: this.requiredConfirmations
     };
 
-    // ✅ Agregar timestamp si está disponible
+    // Agregar timestamp si está disponible
     if (timestamp) {
       depositData.timestamp = new Date(timestamp);
     }
 
+    console.log(`🔧 [BTC] Datos del depósito:`, depositData);
+
     const deposit = await TransaccionBlockchain.createDeposit(depositData);
     
-    // ✅ Agregar información extra para tracking
+    console.log(`✅ [BTC] Depósito creado en DB con ID: ${deposit.id}`);
+    
+    // Agregar información extra para tracking
     deposit.blockHeight = blockHeight;
     
     return deposit;
   }
 
-  // ✅ PROCESAR RETIROS (mantenemos la lógica existente que funciona)
+  // PROCESAR RETIROS
   async processPendingWithdrawals() {
     try {
       if (!this.keyPair) {
         console.warn('[BTC] Wallet no inicializada, retiros no disponibles');
         return [];
       }
+      
+      const redesToBuscar = [this.networkName, 'bitcoin'];
       
       const pendingWithdrawals = await TransaccionBlockchain.findAll({
         where: {
@@ -218,7 +291,7 @@ class BitcoinService {
           {
             model: Criptomoneda,
             as: 'criptomoneda',
-            where: { red: this.networkName }
+            where: { red: redesToBuscar }
           }
         ]
       });
@@ -276,9 +349,12 @@ class BitcoinService {
     return updated;
   }
 
-  // ✅ ACTUALIZAR CONFIRMACIONES
+  // ACTUALIZAR CONFIRMACIONES
   async updateConfirmations() {
     try {
+      const redesToBuscar = [this.networkName, 'bitcoin'];
+      console.log(`🔄 [BTC] Buscando confirmaciones en redes: ${redesToBuscar.join(', ')}`);
+      
       const pendingTxs = await TransaccionBlockchain.findAll({
         where: {
           estado: ['pendiente', 'procesando'],
@@ -288,15 +364,19 @@ class BitcoinService {
           {
             model: Criptomoneda,
             as: 'criptomoneda',
-            where: { red: this.networkName }
+            where: { red: redesToBuscar }
           }
         ]
       });
+
+      console.log(`🔄 [BTC] Encontradas ${pendingTxs.length} transacciones pendientes para actualizar`);
 
       const updated = [];
 
       for (const tx of pendingTxs) {
         try {
+          console.log(`🔄 [BTC] Actualizando confirmaciones para TX: ${tx.txHash}`);
+          
           const url = `${this.baseUrl}/txs/${tx.txHash}${this.apiToken}`;
           const response = await fetch(url);
           
@@ -309,6 +389,8 @@ class BitcoinService {
 
           if (txData.confirmations !== undefined) {
             const confirmations = txData.confirmations;
+            
+            console.log(`🔄 [BTC] TX ${tx.txHash}: ${confirmations} confirmaciones (requiere ${tx.confirmacionesRequeridas})`);
 
             if (confirmations !== tx.confirmaciones) {
               const updatedTx = await TransaccionBlockchain.updateConfirmations(
@@ -319,6 +401,11 @@ class BitcoinService {
               updated.push(updatedTx);
               
               console.log(`✅ [BTC] Confirmaciones actualizadas ${tx.txHash}: ${confirmations}`);
+              
+              // Si es un depósito que se acaba de confirmar
+              if (tx.tipo === 'deposito' && confirmations >= tx.confirmacionesRequeridas && tx.confirmaciones < tx.confirmacionesRequeridas) {
+                console.log(`🎉 [BTC] Depósito confirmado! Balance del usuario debería actualizarse automáticamente`);
+              }
             }
           }
         } catch (error) {
@@ -332,19 +419,43 @@ class BitcoinService {
     }
   }
 
-  // MÉTODOS AUXILIARES (mantenemos los existentes que funcionan)
+  // MÉTODOS AUXILIARES
+  sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
   async getActiveUserAddresses() {
     try {
-      return await DireccionDeposito.findAll({
+      console.log(`🔧 [BTC] Buscando direcciones activas para redes: ${this.networkName}, bitcoin`);
+      
+      const redesToBuscar = [this.networkName, 'bitcoin'];
+      
+      const direcciones = await DireccionDeposito.findAll({
         where: { activa: true },
         include: [
           {
             model: Criptomoneda,
             as: 'criptomoneda',
-            where: { red: this.networkName, activa: true }
+            where: { 
+              red: redesToBuscar, 
+              activa: true 
+            }
           }
         ]
       });
+      
+      console.log(`🔧 [BTC] Direcciones encontradas: ${direcciones.length}`);
+      
+      if (direcciones.length > 0) {
+        direcciones.forEach((dir, index) => {
+          console.log(`🔧 [BTC] Dirección ${index + 1}:`);
+          console.log(`  - Dirección: ${dir.direccion}`);
+          console.log(`  - Red en DB: ${dir.criptomoneda.red}`);
+          console.log(`  - Usuario ID: ${dir.userId}`);
+        });
+      }
+      
+      return direcciones;
     } catch (error) {
       console.error('❌ [BTC] Error obteniendo direcciones:', error.message);
       return [];

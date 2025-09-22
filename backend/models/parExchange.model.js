@@ -1,3 +1,5 @@
+// /models/parExchange.model.js
+
 // Importaciones
 const initParExchange = require('./entities/parExchange.entity');
 const { Op } = require('sequelize');
@@ -73,6 +75,11 @@ function createParExchangeModel(sequelize) {
         };
       }
 
+      // Filtro por fuente de precio
+      if (filters.fuentePrecio) {
+        whereClause.fuentePrecio = filters.fuentePrecio;
+      }
+
       const pares = await ParExchange.findAll({
         where: whereClause,
         include: [
@@ -87,7 +94,7 @@ function createParExchangeModel(sequelize) {
             attributes: ['id', 'symbol', 'nombre', 'red']
           }
         ],
-        order: [['precioActual', 'DESC']]
+        order: [['volumen24h', 'DESC'], ['precioActual', 'DESC']]
       });
       
       return pares;
@@ -118,7 +125,7 @@ function createParExchangeModel(sequelize) {
           }
         ],
         limit: parseInt(limit),
-        order: [['precioActual', 'DESC']]
+        order: [['volumen24h', 'DESC'], ['precioActual', 'DESC']]
       });
       
       return pares;
@@ -171,7 +178,7 @@ function createParExchangeModel(sequelize) {
             attributes: ['id', 'symbol', 'nombre', 'red']
           }
         ],
-        order: [['precioActual', 'DESC']]
+        order: [['volumen24h', 'DESC'], ['precioActual', 'DESC']]
       });
       return pares;
     } catch (error) {
@@ -198,7 +205,7 @@ function createParExchangeModel(sequelize) {
             attributes: ['id', 'symbol', 'nombre', 'red']
           }
         ],
-        order: [['precioActual', 'DESC']]
+        order: [['volumen24h', 'DESC'], ['precioActual', 'DESC']]
       });
       return pares;
     } catch (error) {
@@ -222,7 +229,7 @@ function createParExchangeModel(sequelize) {
             attributes: ['id', 'symbol', 'nombre', 'red']
           }
         ],
-        order: [['precioActual', 'DESC']]
+        order: [['volumen24h', 'DESC'], ['precioActual', 'DESC']]
       });
       return pares;
     } catch (error) {
@@ -230,10 +237,14 @@ function createParExchangeModel(sequelize) {
     }
   };
 
+  // CORREGIDO: Ahora ordena por volumen real
   ParExchange.getTopByVolume = async (limit = 10) => {
     try {
       const pares = await ParExchange.findAll({
-        where: { activo: true },
+        where: { 
+          activo: true,
+          volumen24h: { [Op.gt]: 0 }
+        },
         include: [
           {
             model: sequelize.models.Criptomoneda,
@@ -246,7 +257,7 @@ function createParExchangeModel(sequelize) {
             attributes: ['id', 'symbol', 'nombre', 'red']
           }
         ],
-        order: [['precioActual', 'DESC']],
+        order: [['volumen24h', 'DESC']],
         limit: parseInt(limit)
       });
       return pares;
@@ -289,7 +300,8 @@ function createParExchangeModel(sequelize) {
       const pares = await ParExchange.findAll({
         where: {
           ultimaActualizacion: { [Op.lt]: cutoffTime },
-          activo: true
+          activo: true,
+          fuentePrecio: { [Op.ne]: 'manual' }
         },
         include: [
           {
@@ -311,7 +323,7 @@ function createParExchangeModel(sequelize) {
     }
   };
 
-  // Métodos de estadísticas
+  // Métodos de estadísticas ACTUALIZADOS
   ParExchange.getStats = async () => {
     try {
       const totalPares = await ParExchange.count();
@@ -333,6 +345,20 @@ function createParExchangeModel(sequelize) {
         raw: true
       });
 
+      // Estadísticas de volumen
+      const volumeStats = await ParExchange.findAll({
+        attributes: [
+          [sequelize.fn('SUM', sequelize.col('volumen24h')), 'volumenTotal'],
+          [sequelize.fn('AVG', sequelize.col('volumen24h')), 'volumenPromedio'],
+          [sequelize.fn('MAX', sequelize.col('volumen24h')), 'volumenMaximo']
+        ],
+        where: { 
+          activo: true,
+          volumen24h: { [Op.gt]: 0 }
+        },
+        raw: true
+      });
+
       // Estadísticas de comisiones
       const commissionStats = await ParExchange.findAll({
         attributes: [
@@ -344,11 +370,23 @@ function createParExchangeModel(sequelize) {
         raw: true
       });
 
+      // Distribución por fuente de precios
+      const sourceDistribution = await ParExchange.findAll({
+        attributes: [
+          'fuentePrecio',
+          [sequelize.fn('COUNT', sequelize.col('id')), 'count']
+        ],
+        where: { activo: true },
+        group: ['fuentePrecio'],
+        raw: true
+      });
+
       // Pares más populares (por cripto base)
       const paresPorBase = await ParExchange.findAll({
         attributes: [
           'criptoBaseId',
-          [sequelize.fn('COUNT', sequelize.col('criptoBaseId')), 'count']
+          [sequelize.fn('COUNT', sequelize.col('criptoBaseId')), 'count'],
+          [sequelize.fn('SUM', sequelize.col('volumen24h')), 'volumenTotal']
         ],
         include: [
           {
@@ -359,7 +397,7 @@ function createParExchangeModel(sequelize) {
         ],
         where: { activo: true },
         group: ['criptoBaseId', 'criptoBase.id'],
-        order: [[sequelize.fn('COUNT', sequelize.col('criptoBaseId')), 'DESC']],
+        order: [[sequelize.fn('SUM', sequelize.col('volumen24h')), 'DESC']],
         limit: 10,
         raw: false
       });
@@ -368,7 +406,8 @@ function createParExchangeModel(sequelize) {
       const paresPorQuote = await ParExchange.findAll({
         attributes: [
           'criptoQuoteId',
-          [sequelize.fn('COUNT', sequelize.col('criptoQuoteId')), 'count']
+          [sequelize.fn('COUNT', sequelize.col('criptoQuoteId')), 'count'],
+          [sequelize.fn('SUM', sequelize.col('volumen24h')), 'volumenTotal']
         ],
         include: [
           {
@@ -379,19 +418,51 @@ function createParExchangeModel(sequelize) {
         ],
         where: { activo: true },
         group: ['criptoQuoteId', 'criptoQuote.id'],
-        order: [[sequelize.fn('COUNT', sequelize.col('criptoQuoteId')), 'DESC']],
+        order: [[sequelize.fn('SUM', sequelize.col('volumen24h')), 'DESC']],
         limit: 10,
         raw: false
       });
+
+      // Cambios de precio (ganadores y perdedores)
+      const gainersLosers = await ParExchange.findAll({
+        where: { 
+          activo: true,
+          cambiosPorcentaje24h: { [Op.ne]: null }
+        },
+        attributes: ['id', 'cambiosPorcentaje24h'],
+        include: [
+          {
+            model: sequelize.models.Criptomoneda,
+            as: 'criptoBase',
+            attributes: ['symbol']
+          },
+          {
+            model: sequelize.models.Criptomoneda,
+            as: 'criptoQuote',
+            attributes: ['symbol']
+          }
+        ],
+        order: [['cambiosPorcentaje24h', 'DESC']],
+        limit: 20
+      });
+
+      const topGainers = gainersLosers.slice(0, 5);
+      const topLosers = gainersLosers.slice(-5).reverse();
 
       return {
         total: totalPares,
         activos: paresActivos,
         inactivos: paresInactivos,
         precios: priceStats[0] || {},
+        volumen: volumeStats[0] || {},
         comisiones: commissionStats[0] || {},
+        fuentesPrecios: sourceDistribution,
         paresPorBase: paresPorBase,
-        paresPorQuote: paresPorQuote
+        paresPorQuote: paresPorQuote,
+        mercado: {
+          topGainers: topGainers,
+          topLosers: topLosers
+        }
       };
     } catch (error) {
       throw new Error(`Error al obtener estadísticas: ${error.message}`);
@@ -426,10 +497,18 @@ function createParExchangeModel(sequelize) {
         throw new Error('Una o ambas criptomonedas no existen');
       }
 
-      const nuevoPar = await ParExchange.create({
+      // Datos por defecto mejorados
+      const createData = {
         ...data,
-        ultimaActualizacion: new Date()
-      });
+        ultimaActualizacion: new Date(),
+        fuentePrecio: data.fuentePrecio || 'manual',
+        volumen24h: data.volumen24h || 0,
+        volumenBase24h: data.volumenBase24h || 0,
+        cantidadOperaciones24h: data.cantidadOperaciones24h || 0,
+        cambiosPorcentaje24h: data.cambiosPorcentaje24h || 0
+      };
+
+      const nuevoPar = await ParExchange.create(createData);
       
       return await ParExchange.getById(nuevoPar.id);
     } catch (error) {
@@ -463,6 +542,15 @@ function createParExchangeModel(sequelize) {
         
         if (existingPar) {
           throw new Error('Ya existe un par de exchange con esas criptomonedas');
+        }
+      }
+
+      // Calcular cambio de precio si se actualiza el precio
+      if (data.precioActual) {
+        const currentPar = await ParExchange.findByPk(id);
+        if (currentPar && currentPar.precioActual) {
+          data.precioAnterior = currentPar.precioActual;
+          data.cambiosPorcentaje24h = ((data.precioActual - currentPar.precioActual) / currentPar.precioActual) * 100;
         }
       }
 
@@ -542,7 +630,7 @@ function createParExchangeModel(sequelize) {
     }
   };
 
-  // Métodos para cálculos de exchange
+  // Métodos para cálculos de exchange MEJORADOS
   ParExchange.calculateExchange = async (parId, cantidadBase, direction = 'buy') => {
     try {
       const par = await ParExchange.getById(parId);
@@ -550,60 +638,115 @@ function createParExchangeModel(sequelize) {
         throw new Error('Par de exchange no encontrado o inactivo');
       }
 
+      // Verificar que el precio no esté muy desactualizado
+      const ahora = new Date();
+      const ultimaActualizacion = new Date(par.ultimaActualizacion);
+      const minutosDesdeActualizacion = (ahora - ultimaActualizacion) / (1000 * 60);
+
+      if (minutosDesdeActualizacion > 10 && par.fuentePrecio !== 'manual') {
+        console.warn(`Precio desactualizado para el par ${par.criptoBase.symbol}/${par.criptoQuote.symbol}`);
+      }
+
       const cantidad = parseFloat(cantidadBase);
       const precio = parseFloat(par.precioActual);
       const comision = parseFloat(par.comisionPorcentaje);
 
-      let cantidadQuote, comisionMonto, cantidadFinal;
+      // Validar límites de cantidad
+      const minAmount = 0.00000001;
+      const maxAmount = 1000000;
+
+      if (cantidad < minAmount || cantidad > maxAmount) {
+        throw new Error(`La cantidad debe estar entre ${minAmount} y ${maxAmount}`);
+      }
+
+      let cantidadQuote, comisionMonto, cantidadFinal, impactoSlippage = 0;
 
       if (direction === 'buy') {
         // Comprar base con quote
         cantidadQuote = cantidad * precio;
         comisionMonto = cantidadQuote * (comision / 100);
         cantidadFinal = cantidadQuote + comisionMonto;
+        
+        // Simular slippage básico para órdenes grandes
+        if (par.volumen24h > 0) {
+          const porcentajeVolumen = cantidadQuote / par.volumen24h;
+          if (porcentajeVolumen > 0.01) { // Si es más del 1% del volumen diario
+            impactoSlippage = Math.min(porcentajeVolumen * 0.5, 0.05); // Max 5% slippage
+          }
+        }
       } else {
         // Vender base por quote
         cantidadQuote = cantidad * precio;
         comisionMonto = cantidadQuote * (comision / 100);
         cantidadFinal = cantidadQuote - comisionMonto;
+        
+        // Simular slippage para ventas
+        if (par.volumen24h > 0) {
+          const porcentajeVolumen = cantidadQuote / par.volumen24h;
+          if (porcentajeVolumen > 0.01) {
+            impactoSlippage = Math.min(porcentajeVolumen * 0.5, 0.05);
+            cantidadFinal = cantidadFinal * (1 - impactoSlippage);
+          }
+        }
       }
 
       return {
         par: {
           base: par.criptoBase.symbol,
           quote: par.criptoQuote.symbol,
-          precio: precio
+          precio: precio,
+          volumen24h: par.volumen24h,
+          ultimaActualizacion: par.ultimaActualizacion
         },
         calculo: {
           cantidadBase: cantidad,
           cantidadQuote: cantidadQuote,
           comisionPorcentaje: comision,
           comisionMonto: comisionMonto,
+          impactoSlippage: impactoSlippage,
           cantidadFinal: cantidadFinal,
-          direccion: direction
-        }
+          direccion: direction,
+          precioEfectivo: cantidadFinal / cantidad
+        },
+        advertencias: minutosDesdeActualizacion > 10 ? 
+          [`Precio con ${Math.round(minutosDesdeActualizacion)} minutos de antigüedad`] : []
       };
     } catch (error) {
       throw new Error(`Error al calcular exchange: ${error.message}`);
     }
   };
 
-  // Método para actualización masiva de precios
+  // Método para actualización masiva de precios MEJORADO
   ParExchange.bulkUpdatePrices = async (pricesData) => {
     try {
       const results = [];
       
       for (const priceData of pricesData) {
         try {
-          const { baseSymbol, quoteSymbol, price } = priceData;
+          const { baseSymbol, quoteSymbol, price, volume, change } = priceData;
           const par = await ParExchange.getBySymbols(baseSymbol, quoteSymbol);
           
           if (par && par.activo) {
-            const updated = await ParExchange.updatePrice(par.id, price);
+            const updateData = {
+              precioActual: parseFloat(price),
+              ultimaActualizacion: new Date()
+            };
+
+            if (volume !== undefined) {
+              updateData.volumen24h = parseFloat(volume);
+            }
+
+            if (change !== undefined) {
+              updateData.cambiosPorcentaje24h = parseFloat(change);
+            }
+
+            const updated = await ParExchange.updatePar(par.id, updateData);
             results.push({
               par: `${baseSymbol}/${quoteSymbol}`,
               success: true,
               newPrice: price,
+              volume: volume,
+              change: change,
               updatedAt: updated.ultimaActualizacion
             });
           } else {
@@ -626,10 +769,79 @@ function createParExchangeModel(sequelize) {
         totalProcessed: pricesData.length,
         successful: results.filter(r => r.success).length,
         failed: results.filter(r => !r.success).length,
-        results: results
+        results: results,
+        timestamp: new Date()
       };
     } catch (error) {
       throw new Error(`Error en actualización masiva de precios: ${error.message}`);
+    }
+  };
+
+  // Nuevo método: Obtener libro de órdenes más realista
+  ParExchange.getRealisticOrderBook = async (parId, depth = 10) => {
+    try {
+      const par = await ParExchange.getById(parId);
+      
+      if (!par || !par.activo) {
+        throw new Error('Par de exchange no encontrado o inactivo');
+      }
+
+      const precioBase = parseFloat(par.precioActual);
+      const volumenBase = parseFloat(par.volumen24h) || 100000;
+      
+      const bids = [];
+      const asks = [];
+      
+      // Generar libro más realista basado en volumen
+      for (let i = 1; i <= depth; i++) {
+        const factor = i * 0.001; // 0.1% por nivel
+        const volumeFactor = Math.random() * 0.3 + 0.1; // Entre 10% y 40% del volumen diario
+        
+        // Bids (órdenes de compra)
+        const bidPrice = precioBase * (1 - factor);
+        const bidQuantity = (volumenBase / 24) * volumeFactor * Math.random();
+        bids.push({
+          precio: parseFloat(bidPrice.toFixed(8)),
+          cantidad: parseFloat(bidQuantity.toFixed(8)),
+          total: parseFloat((bidPrice * bidQuantity).toFixed(8))
+        });
+        
+        // Asks (órdenes de venta)
+        const askPrice = precioBase * (1 + factor);
+        const askQuantity = (volumenBase / 24) * volumeFactor * Math.random();
+        asks.push({
+          precio: parseFloat(askPrice.toFixed(8)),
+          cantidad: parseFloat(askQuantity.toFixed(8)),
+          total: parseFloat((askPrice * askQuantity).toFixed(8))
+        });
+      }
+
+      const bestBid = Math.max(...bids.map(b => b.precio));
+      const bestAsk = Math.min(...asks.map(a => a.precio));
+      
+      return {
+        par: {
+          id: par.id,
+          base: par.criptoBase.symbol,
+          quote: par.criptoQuote.symbol,
+          precioActual: precioBase,
+          volumen24h: par.volumen24h,
+          ultimaActualizacion: par.ultimaActualizacion
+        },
+        libro: {
+          bids: bids.sort((a, b) => b.precio - a.precio),
+          asks: asks.sort((a, b) => a.precio - b.precio)
+        },
+        spread: {
+          bid: bestBid,
+          ask: bestAsk,
+          spread: bestAsk - bestBid,
+          spreadPorcentaje: ((bestAsk - bestBid) / precioBase * 100).toFixed(4)
+        },
+        timestamp: new Date()
+      };
+    } catch (error) {
+      throw new Error(`Error generando libro de órdenes: ${error.message}`);
     }
   };
 

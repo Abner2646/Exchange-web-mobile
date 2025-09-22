@@ -30,7 +30,7 @@ router.delete('/:id', authenticateToken, requireSuperAdmin, parExchangeControlle
 // Buscar pares por término
 router.get('/search/query', parExchangeController.searchParesExchange);
 
-// Obtener par por símbolos de criptomonedas
+// Obtener par por símbolos de criptomonedas (con opción de tiempo real)
 router.get('/symbols/:baseSymbol/:quoteSymbol', parExchangeController.getParBySymbols);
 
 // Obtener pares por criptomoneda base
@@ -44,7 +44,7 @@ router.get('/status/active', parExchangeController.getActiveExchangePairs);
 
 // --------------------- RUTAS DE RANKING Y ANÁLISIS --------------------- //
 
-// Obtener top pares por volumen
+// Obtener top pares por volumen (ahora usa volumen real)
 router.get('/ranking/volume', parExchangeController.getTopPairsByVolume);
 
 // Obtener pares con comisión alta
@@ -72,28 +72,36 @@ router.patch('/:id/commission', authenticateToken, requireAdmin, parExchangeCont
 // Actualización masiva de precios (webhook/API externa)
 router.post('/prices/bulk-update', apiKeyAuth, parExchangeController.bulkUpdatePrices);
 
+// --------------------- NUEVAS RUTAS DE GESTIÓN DE PRECIOS AUTOMÁTICOS --------------------- //
+
+// Gestionar actualización automática de precios (iniciar/detener)
+router.post('/prices/auto-update', authenticateToken, requireAdmin, parExchangeController.managePriceUpdates);
+
+// Forzar actualización manual de todos los precios
+router.post('/prices/force-update', authenticateToken, requireAdmin, parExchangeController.forceUpdatePrices);
+
 // --------------------- RUTAS DE TRADING Y CÁLCULOS --------------------- //
 
-// Calcular intercambio para un par
+// Calcular intercambio para un par (mejorado con slippage y validaciones)
 router.post('/:id/calculate', parExchangeController.calculateExchange);
 
-// Obtener libro de órdenes simulado
+// Obtener libro de órdenes realista
 router.get('/:id/orderbook', parExchangeController.getOrderBook);
 
 // --------------------- RUTAS DE DASHBOARD Y MÉTRICAS --------------------- //
 
-// Dashboard de exchange
+// Dashboard de exchange (mejorado con datos de volumen real)
 router.get('/dashboard/overview', authenticateToken, requireAdmin, parExchangeController.getExchangeDashboard);
 
-// Métricas del mercado
+// Métricas del mercado (mejorado con distribución de volumen)
 router.get('/dashboard/market-metrics', parExchangeController.getMarketMetrics);
 
 // --------------------- RUTAS ADMINISTRATIVAS --------------------- //
 
-// Obtener estadísticas de pares
+// Obtener estadísticas de pares (incluye stats del price service)
 router.get('/admin/stats', authenticateToken, requireAdmin, parExchangeController.getParExchangeStats);
 
-// Exportar pares a CSV
+// Exportar pares a CSV (mejorado con nuevos campos)
 router.get('/admin/export', authenticateToken, requireAdmin, parExchangeController.exportPares);
 
 module.exports = router;

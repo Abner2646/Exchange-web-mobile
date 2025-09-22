@@ -70,13 +70,15 @@ class BlockchainJobManager {
       console.log('🔬 Verificando API Keys...');
       diagnostic.apiKeys = {
         etherscan: !!process.env.ETHERSCAN_API_KEY,
-        bscscan: !!process.env.BSCSCAN_API_KEY,
         blockcypher: !!process.env.BLOCKCYPHER_TOKEN
       };
 
-      console.log(`   - Etherscan API: ${diagnostic.apiKeys.etherscan ? '✅' : '❌'}`);
-      console.log(`   - BSCScan API: ${diagnostic.apiKeys.bscscan ? '✅' : '❌'}`);
-      console.log(`   - BlockCypher API: ${diagnostic.apiKeys.blockcypher ? '✅' : '❌'}`);
+      console.log(`   - Etherscan API V2 (todas las redes EVM): ${diagnostic.apiKeys.etherscan ? '✅' : '❌'}`);
+      console.log(`   - BlockCypher API (Bitcoin): ${diagnostic.apiKeys.blockcypher ? '✅' : '❌'}`);
+      
+      if (!diagnostic.apiKeys.etherscan) {
+        console.log(`   ⚠️ Sin Etherscan API, Ethereum y BSC NO funcionarán`);
+      }
 
       // ✅ 3. Verificar estado de redes en DB
       console.log('🔬 Verificando estado de redes...');
@@ -328,11 +330,11 @@ class BlockchainJobManager {
       }
 
       // ✅ Verificar API keys necesarias
-      if (network === 'ethereum' && !diagnostic?.apiKeys?.etherscan) {
-        throw new Error('Etherscan API key requerida para escanear Ethereum');
+      if ((network === 'ethereum' || network === 'sepolia') && !diagnostic?.apiKeys?.etherscan) {
+        throw new Error('Etherscan API key requerida para escanear Ethereum/Sepolia');
       }
-      if (network === 'bsc' && !diagnostic?.apiKeys?.bscscan) {
-        throw new Error('BSCScan API key requerida para escanear BSC');
+      if ((network === 'bsc' || network === 'bsc-testnet') && !diagnostic?.apiKeys?.etherscan) {
+        throw new Error('Etherscan API key requerida para escanear BSC');
       }
       
       // Escanear usando el servicio específico

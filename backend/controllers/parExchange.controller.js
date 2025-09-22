@@ -1,4 +1,7 @@
+// controllers/parExchange.controller.js
+
 const { ParExchange } = require('../models/index.js');
+const priceService = require('../services/priceService');
 
 // Listar pares de exchange
 const getParesExchange = async (req, res) => {
@@ -23,18 +26,27 @@ const getParExchangeById = async (req, res) => {
   }
 };
 
-// Crear nuevo par de exchange (solo admin)
+// Crear nuevo par de exchange (solo admin) - MEJORADO
 const createParExchange = async (req, res) => {
   try {
-    const { criptoBaseId, criptoQuoteId, precioActual, comisionPorcentaje, activo = true } = req.body;
+    const { 
+      criptoBaseId, 
+      criptoQuoteId, 
+      precioActual, 
+      comisionPorcentaje, 
+      activo = true,
+      fuentePrecio = 'manual',
+      simboloExterno
+    } = req.body;
     
-    if (!criptoBaseId || !criptoQuoteId || !precioActual || comisionPorcentaje === undefined) {
+    if (!criptoBaseId || !criptoQuoteId || comisionPorcentaje === undefined) {
       return res.status(400).json({ 
-        error: 'Los campos criptoBaseId, criptoQuoteId, precioActual y comisionPorcentaje son requeridos' 
+        error: 'Los campos criptoBaseId, criptoQuoteId y comisionPorcentaje son requeridos' 
       });
     }
 
-    if (parseFloat(precioActual) <= 0) {
+    // Validar precio si se proporciona
+    if (precioActual && parseFloat(precioActual) <= 0) {
       return res.status(400).json({ 
         error: 'El precio actual debe ser mayor a 0' 
       });
@@ -46,13 +58,50 @@ const createParExchange = async (req, res) => {
       });
     }
 
-    const nuevoPar = await ParExchange.createPar({
+    // Validar fuente de precio
+    const validSources = ['manual', 'coingecko', 'binance', 'chainlink'];
+    if (!validSources.includes(fuentePrecio)) {
+      return res.status(400).json({ 
+        error: `La fuente de precio debe ser una de: ${validSources.join(', ')}` 
+      });
+    }
+
+    const parData = {
       criptoBaseId,
       criptoQuoteId,
-      precioActual: parseFloat(precioActual),
       comisionPorcentaje: parseFloat(comisionPorcentaje),
-      activo
-    });
+      activo,
+      fuentePrecio,
+      simboloExterno
+    };
+
+    // Si no hay precio manual y la fuente es automática, intentar obtenerlo
+    if (!precioActual && fuentePrecio !== 'manual') {
+      try {
+        // Obtener símbolos de las criptomonedas para precio inicial
+        const { Criptomoneda } = require('../models/index.js');
+        const criptoBase = await Criptomoneda.findByPk(criptoBaseId);
+        const criptoQuote = await Criptomoneda.findByPk(criptoQuoteId);
+        
+        if (criptoBase && criptoQuote) {
+          const precioTemp = await priceService.getCurrentPrice(criptoBase.symbol, criptoQuote.symbol);
+          if (precioTemp) {
+            parData.precioActual = precioTemp.precioActual;
+          } else {
+            parData.precioActual = 1.0; // Precio temporal
+          }
+        } else {
+          parData.precioActual = 1.0;
+        }
+      } catch (error) {
+        console.warn('No se pudo obtener precio inicial automático:', error.message);
+        parData.precioActual = 1.0;
+      }
+    } else {
+      parData.precioActual = parseFloat(precioActual) || 1.0;
+    }
+
+    const nuevoPar = await ParExchange.createPar(parData);
     
     res.status(201).json({ 
       message: 'Par de exchange creado exitosamente', 
@@ -63,11 +112,17 @@ const createParExchange = async (req, res) => {
   }
 };
 
-// Actualizar par de exchange por ID (solo admin)
+// Actualizar par de exchange por ID (solo admin) - MEJORADO
 const updateParExchange = async (req, res) => {
   try {
     const { id } = req.params;
-    const { precioActual, comisionPorcentaje, activo } = req.body;
+    const { 
+      precioActual, 
+      comisionPorcentaje, 
+      activo, 
+      fuentePrecio,
+      simboloExterno 
+    } = req.body;
 
     const updateData = {};
     
@@ -91,6 +146,20 @@ const updateParExchange = async (req, res) => {
 
     if (activo !== undefined) {
       updateData.activo = activo;
+    }
+
+    if (fuentePrecio !== undefined) {
+      const validSources = ['manual', 'coingecko', 'binance', 'chainlink'];
+      if (!validSources.includes(fuentePrecio)) {
+        return res.status(400).json({ 
+          error: `La fuente de precio debe ser una de: ${validSources.join(', ')}` 
+        });
+      }
+      updateData.fuentePrecio = fuentePrecio;
+    }
+
+    if (simboloExterno !== undefined) {
+      updateData.simboloExterno = simboloExterno;
     }
 
     const updatedPar = await ParExchange.updatePar(id, updateData);
@@ -131,21 +200,40 @@ const searchParesExchange = async (req, res) => {
   }
 };
 
-// Obtener estadísticas de pares de exchange
+// Obtener estadísticas de pares de exchange - MEJORADO
 const getParExchangeStats = async (req, res) => {
   try {
     const stats = await ParExchange.getStats();
-    res.json(stats);
+    const priceServiceStats = priceService.getServiceStats();
+    
+    res.json({
+      ...stats,
+      priceService: priceServiceStats
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-// Obtener par por símbolos de criptomonedas
+// Obtener par por símbolos de criptomonedas - MEJORADO
 const getParBySymbols = async (req, res) => {
   try {
     const { baseSymbol, quoteSymbol } = req.params;
-    const par = await ParExchange.getBySymbols(baseSymbol, quoteSymbol);
+    const { realtime = false } = req.query;
+    
+    let par;
+    
+    if (realtime === 'true') {
+      // Intentar obtener precio en tiempo real
+      try {
+        par = await priceService.getCurrentPrice(baseSymbol, quoteSymbol);
+      } catch (error) {
+        console.warn('Error obteniendo precio en tiempo real:', error.message);
+        par = await ParExchange.getBySymbols(baseSymbol, quoteSymbol);
+      }
+    } else {
+      par = await ParExchange.getBySymbols(baseSymbol, quoteSymbol);
+    }
     
     if (!par) {
       return res.status(404).json({ 
@@ -191,7 +279,7 @@ const getActiveExchangePairs = async (req, res) => {
   }
 };
 
-// Obtener top pares por volumen
+// Obtener top pares por volumen - CORREGIDO
 const getTopPairsByVolume = async (req, res) => {
   try {
     const { limit = 10 } = req.query;
@@ -320,7 +408,7 @@ const updateParCommission = async (req, res) => {
   }
 };
 
-// Calcular intercambio/exchange
+// Calcular intercambio/exchange - MEJORADO
 const calculateExchange = async (req, res) => {
   try {
     const { id } = req.params;
@@ -345,14 +433,14 @@ const calculateExchange = async (req, res) => {
   }
 };
 
-// Actualización masiva de precios (webhook/API externa)
+// Actualización masiva de precios (webhook/API externa) - MEJORADO
 const bulkUpdatePrices = async (req, res) => {
   try {
     const { prices } = req.body;
     
     if (!Array.isArray(prices) || prices.length === 0) {
       return res.status(400).json({ 
-        error: 'Se requiere un array de precios con formato: [{baseSymbol, quoteSymbol, price}]' 
+        error: 'Se requiere un array de precios con formato: [{baseSymbol, quoteSymbol, price, volume?, change?}]' 
       });
     }
 
@@ -372,7 +460,7 @@ const bulkUpdatePrices = async (req, res) => {
   }
 };
 
-// Dashboard de exchange
+// Dashboard de exchange - MEJORADO
 const getExchangeDashboard = async (req, res) => {
   try {
     const stats = await ParExchange.getStats();
@@ -380,13 +468,16 @@ const getExchangeDashboard = async (req, res) => {
     const topPares = await ParExchange.getTopByVolume(5);
     const preciosDesactualizados = await ParExchange.getOutdatedPrices(60);
     const comisionesAltas = await ParExchange.getHighCommission(0.02);
+    const priceServiceStats = priceService.getServiceStats();
     
     res.json({
       estadisticas: stats,
       resumen: {
         totalPares: stats.total,
         paresActivos: stats.activos,
-        paresInactivos: stats.inactivos
+        paresInactivos: stats.inactivos,
+        volumenTotal24h: stats.volumen.volumenTotal || 0,
+        promedioCambios24h: (stats.mercado.topGainers[0]?.cambiosPorcentaje24h || 0)
       },
       topPares: topPares.slice(0, 5),
       alertas: {
@@ -404,73 +495,26 @@ const getExchangeDashboard = async (req, res) => {
         precioPromedio: parseFloat(stats.precios.precioPromedio || 0).toFixed(8),
         precioMinimo: parseFloat(stats.precios.precioMinimo || 0).toFixed(8),
         precioMaximo: parseFloat(stats.precios.precioMaximo || 0).toFixed(8),
-        comisionPromedio: parseFloat(stats.comisiones.comisionPromedio || 0).toFixed(4) + '%'
-      }
+        comisionPromedio: parseFloat(stats.comisiones.comisionPromedio || 0).toFixed(4) + '%',
+        volumenTotal: parseFloat(stats.volumen.volumenTotal || 0).toFixed(2),
+        topGainers: stats.mercado.topGainers,
+        topLosers: stats.mercado.topLosers
+      },
+      priceService: priceServiceStats
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-// Obtener libro de órdenes simulado para un par
+// Obtener libro de órdenes para un par - MEJORADO
 const getOrderBook = async (req, res) => {
   try {
     const { id } = req.params;
-    const par = await ParExchange.getById(id);
+    const { depth = 10 } = req.query;
     
-    if (!par) {
-      return res.status(404).json({ error: 'Par de exchange no encontrado' });
-    }
-
-    if (!par.activo) {
-      return res.status(400).json({ error: 'Par de exchange inactivo' });
-    }
-
-    const precioBase = parseFloat(par.precioActual);
-    
-    // Generar libro de órdenes simulado
-    const bids = []; // Órdenes de compra
-    const asks = []; // Órdenes de venta
-    
-    // Generar algunos niveles alrededor del precio actual
-    for (let i = 1; i <= 10; i++) {
-      // Bids (compra) - precios menores al actual
-      const bidPrice = precioBase * (1 - (i * 0.001));
-      const bidQuantity = Math.random() * 100 + 10;
-      bids.push({
-        precio: parseFloat(bidPrice.toFixed(8)),
-        cantidad: parseFloat(bidQuantity.toFixed(8)),
-        total: parseFloat((bidPrice * bidQuantity).toFixed(8))
-      });
-      
-      // Asks (venta) - precios mayores al actual
-      const askPrice = precioBase * (1 + (i * 0.001));
-      const askQuantity = Math.random() * 100 + 10;
-      asks.push({
-        precio: parseFloat(askPrice.toFixed(8)),
-        cantidad: parseFloat(askQuantity.toFixed(8)),
-        total: parseFloat((askPrice * askQuantity).toFixed(8))
-      });
-    }
-
-    res.json({
-      par: {
-        id: par.id,
-        base: par.criptoBase.symbol,
-        quote: par.criptoQuote.symbol,
-        precioActual: precioBase,
-        comision: par.comisionPorcentaje
-      },
-      libro: {
-        bids: bids.sort((a, b) => b.precio - a.precio), // Mayor a menor
-        asks: asks.sort((a, b) => a.precio - b.precio)   // Menor a mayor
-      },
-      spread: {
-        bid: Math.max(...bids.map(b => b.precio)),
-        ask: Math.min(...asks.map(a => a.precio)),
-        spreadPorcentaje: ((Math.min(...asks.map(a => a.precio)) - Math.max(...bids.map(b => b.precio))) / precioBase * 100).toFixed(4)
-      }
-    });
+    const orderBook = await ParExchange.getRealisticOrderBook(id, parseInt(depth));
+    res.json(orderBook);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -483,15 +527,19 @@ const exportPares = async (req, res) => {
     const pares = await ParExchange.getAll(filters);
     
     // Convertir a formato CSV
-    const csvHeader = 'ID,Base,Quote,Precio Actual,Comision %,Activo,Ultima Actualizacion\n';
+    const csvHeader = 'ID,Base,Quote,Precio Actual,Precio Anterior,Volumen 24h,Cambio %,Comision %,Activo,Fuente Precio,Ultima Actualizacion\n';
     const csvData = pares.map(par => {
       return [
         par.id,
         par.criptoBase ? par.criptoBase.symbol : '',
         par.criptoQuote ? par.criptoQuote.symbol : '',
         par.precioActual,
+        par.precioAnterior || '',
+        par.volumen24h || 0,
+        par.cambiosPorcentaje24h || 0,
         par.comisionPorcentaje,
         par.activo ? 'SI' : 'NO',
+        par.fuentePrecio || 'manual',
         par.ultimaActualizacion
       ].join(',');
     }).join('\n');
@@ -507,7 +555,7 @@ const exportPares = async (req, res) => {
   }
 };
 
-// Obtener métricas del mercado
+// Obtener métricas del mercado - MEJORADO
 const getMarketMetrics = async (req, res) => {
   try {
     const { timeframe = '24h' } = req.query;
@@ -525,13 +573,32 @@ const getMarketMetrics = async (req, res) => {
       'muy_alto': 0       // > 10000
     };
     
+    // Calcular distribución de volumen
+    const volumeRanges = {
+      'sin_volumen': 0,   // 0
+      'bajo': 0,          // 0 - 1000
+      'medio': 0,         // 1000 - 100000
+      'alto': 0,          // 100000 - 1000000
+      'muy_alto': 0       // > 1000000
+    };
+    
     paresActivos.forEach(par => {
       const precio = parseFloat(par.precioActual);
+      const volumen = parseFloat(par.volumen24h || 0);
+      
+      // Clasificar por precio
       if (precio < 0.01) priceRanges.muy_bajo++;
       else if (precio < 1) priceRanges.bajo++;
       else if (precio < 100) priceRanges.medio++;
       else if (precio < 10000) priceRanges.alto++;
       else priceRanges.muy_alto++;
+      
+      // Clasificar por volumen
+      if (volumen === 0) volumeRanges.sin_volumen++;
+      else if (volumen < 1000) volumeRanges.bajo++;
+      else if (volumen < 100000) volumeRanges.medio++;
+      else if (volumen < 1000000) volumeRanges.alto++;
+      else volumeRanges.muy_alto++;
     });
 
     res.json({
@@ -541,9 +608,12 @@ const getMarketMetrics = async (req, res) => {
         paresActivos: stats.activos,
         tasaActividad: ((stats.activos / stats.total) * 100).toFixed(2) + '%',
         precioPromedio: parseFloat(stats.precios.precioPromedio || 0),
-        comisionPromedio: parseFloat(stats.comisiones.comisionPromedio || 0)
+        comisionPromedio: parseFloat(stats.comisiones.comisionPromedio || 0),
+        volumenTotal: parseFloat(stats.volumen.volumenTotal || 0),
+        volumenPromedio: parseFloat(stats.volumen.volumenPromedio || 0)
       },
       distribucionPrecios: priceRanges,
+      distribucionVolumen: volumeRanges,
       alertas: {
         preciosDesactualizados: preciosDesactualizados.length,
         necesitanActualizacion: preciosDesactualizados.length > 0
@@ -551,7 +621,59 @@ const getMarketMetrics = async (req, res) => {
       criptomonedasPopulares: {
         base: stats.paresPorBase.slice(0, 5),
         quote: stats.paresPorQuote.slice(0, 5)
+      },
+      mercado: {
+        topGainers: stats.mercado.topGainers.slice(0, 3),
+        topLosers: stats.mercado.topLosers.slice(0, 3)
       }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// NUEVOS ENDPOINTS
+
+// Iniciar/detener actualización automática de precios
+const managePriceUpdates = async (req, res) => {
+  try {
+    const { action, intervalMinutes = 1 } = req.body;
+    
+    if (!['start', 'stop'].includes(action)) {
+      return res.status(400).json({ 
+        error: 'La acción debe ser "start" o "stop"' 
+      });
+    }
+
+    if (action === 'start') {
+      priceService.startPriceUpdates(parseInt(intervalMinutes));
+      res.json({ 
+        message: `Actualización automática iniciada cada ${intervalMinutes} minuto(s)`,
+        status: 'active',
+        interval: intervalMinutes
+      });
+    } else {
+      priceService.stopPriceUpdates();
+      res.json({ 
+        message: 'Actualización automática detenida',
+        status: 'inactive'
+      });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Forzar actualización manual de precios
+const forceUpdatePrices = async (req, res) => {
+  try {
+    await priceService.updateAllPrices();
+    const stats = priceService.getServiceStats();
+    
+    res.json({ 
+      message: 'Actualización manual de precios ejecutada',
+      timestamp: new Date(),
+      serviceStats: stats
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -582,5 +704,7 @@ module.exports = {
   getExchangeDashboard,
   getOrderBook,
   exportPares,
-  getMarketMetrics
+  getMarketMetrics,
+  managePriceUpdates,
+  forceUpdatePrices
 };
