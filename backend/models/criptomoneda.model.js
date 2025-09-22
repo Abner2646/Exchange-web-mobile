@@ -1,4 +1,4 @@
-// Importaciones
+// models/criptomoneda.model.js
 const initCriptomoneda = require('./entities/criptomoneda.entity');
 const { Op } = require('sequelize');
 

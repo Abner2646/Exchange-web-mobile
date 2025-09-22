@@ -187,6 +187,9 @@ if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('combined'));
 }
 
+// Importar inicializador del servicio de precios
+const PriceServiceInitializer = require('./scripts/initPriceService.js');
+
 // Routes
 app.use('/api', routes);
 

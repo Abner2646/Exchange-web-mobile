@@ -1,4 +1,4 @@
-// Importaciones
+// models/balanceUsuario.js
 require('dotenv').config();
 
 const initBalanceUser = require('./entities/balanceUsuario.entity');

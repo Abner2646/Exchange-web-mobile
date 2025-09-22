@@ -1,4 +1,5 @@
-// Importaciones
+// models/intercambioExchange.model.js
+
 const initIntercambioExchange = require('./entities/intercambioExchange.entity');
 const { Op } = require('sequelize');
 

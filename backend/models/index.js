@@ -11,7 +11,7 @@ const createBlockchainStateModel = require('./blockchainState.model');
 //const categoriaReclamoModel = require('./categoriaReclamo.model');
 const criptomonedaModel = require('./criptomoneda.model.js');
 const direccionDepositoModel = require('./direccionDeposito.model');
-//const intercambioExchangeModel = require('./intercambioExchange.model');
+const intercambioExchangeModel = require('./intercambioExchange.model');
 //const logAdminModel = require('./logAdmin.model');
 //const logTransaccionModel = require('./logTransaccion.model');
 //const mensajeReclamoModel = require('./mensajeReclamo.model');
@@ -51,7 +51,7 @@ const BlockchainState = createBlockchainStateModel(sequelize);
 //const CategoriaReclamo = categoriaReclamoModel(sequelize);
 const Criptomoneda = criptomonedaModel(sequelize);
 const DireccionDeposito = direccionDepositoModel(sequelize);
-//const IntercambioExchange = intercambioExchangeModel(sequelize);
+const IntercambioExchange = intercambioExchangeModel(sequelize);
 //const LogAdmin = logAdminModel(sequelize);
 //const LogTransaccion = logTransaccionModel(sequelize);
 //const MensajeReclamo = mensajeReclamoModel(sequelize);
@@ -173,11 +173,11 @@ TransaccionBlockchain.belongsTo(Criptomoneda, { foreignKey: 'criptomonedaId', as
 // ================================
 // RELACIONES DE PARES EXCHANGE
 // ================================
-/*
+
 // Par exchange puede tener muchos intercambios
 ParExchange.hasMany(IntercambioExchange, { foreignKey: 'parId', as: 'intercambios' });
 IntercambioExchange.belongsTo(ParExchange, { foreignKey: 'parId', as: 'par' });
-*/
+
 // ================================
 // RELACIONES DE WALLETS
 // ================================
@@ -249,7 +249,7 @@ module.exports = {
   //CategoriaReclamo,
   Criptomoneda,
   DireccionDeposito,
-  //IntercambioExchange,
+  IntercambioExchange,
   //LogAdmin,
   //LogTransaccion,
   //MensajeReclamo,

@@ -1,37 +1,39 @@
-// routes/parExchange.routes.js
+// routes/parExchange.routes.js - VERSIÓN SIMPLE SIN MIDDLEWARES
 const { Router } = require('express');
 const router = Router();
-
-// Middleware de autenticación y autorización
-const { authenticateToken, requireAdmin, requireSuperAdmin, apiKeyAuth } = require('../middleware/authMiddleware.js');
 
 // Importa el controlador de pares de exchange
 const parExchangeController = require('../controllers/parExchange.controller.js');
 
-// --------------------- RUTAS CRUD BÁSICAS --------------------- //
+console.log('=== DEBUG RUTAS ===');
+console.log('Controlador importado:', typeof parExchangeController);
+console.log('Funciones disponibles:', Object.keys(parExchangeController || {}));
+
+// --------------------- RUTAS BÁSICAS SIN MIDDLEWARE --------------------- //
 
 // Obtener todos los pares de exchange
-router.get('/', parExchangeController.getParesExchange);
+router.get('/', parExchangeController.getParesExchange); // Bien
 
 // Obtener par específico por ID
-router.get('/:id', parExchangeController.getParExchangeById);
+router.get('/:id', parExchangeController.getParExchangeById); // Bien
 
-// Crear nuevo par de exchange (solo admin)
-router.post('/', authenticateToken, requireAdmin, parExchangeController.createParExchange);
+// Crear nuevo par de exchange - SIN MIDDLEWARE
+router.post('/', parExchangeController.createParExchange); // Bien
 
-// Actualizar par por ID (solo admin)
-router.put('/:id', authenticateToken, requireAdmin, parExchangeController.updateParExchange);
+// Actualizar par por ID - SIN MIDDLEWARE
+router.put('/:id', parExchangeController.updateParExchange);
 
-// Eliminar par por ID (solo super admin)
-router.delete('/:id', authenticateToken, requireSuperAdmin, parExchangeController.deleteParExchange);
-
-// --------------------- RUTAS DE BÚSQUEDA Y CONSULTA --------------------- //
+// Eliminar par por ID - SIN MIDDLEWARE
+router.delete('/:id', parExchangeController.deleteParExchange); // Bien
 
 // Buscar pares por término
 router.get('/search/query', parExchangeController.searchParesExchange);
 
-// Obtener par por símbolos de criptomonedas (con opción de tiempo real)
+// Obtener par por símbolos de criptomonedas
 router.get('/symbols/:baseSymbol/:quoteSymbol', parExchangeController.getParBySymbols);
+
+// Obtener precio actual rápido (optimizado para trading)
+router.get('/price/:baseSymbol/:quoteSymbol', parExchangeController.getCurrentPrice);
 
 // Obtener pares por criptomoneda base
 router.get('/base/:criptoBaseId', parExchangeController.getParesByBaseCrypto);
@@ -42,66 +44,48 @@ router.get('/quote/:criptoQuoteId', parExchangeController.getParesByQuoteCrypto)
 // Obtener solo pares activos
 router.get('/status/active', parExchangeController.getActiveExchangePairs);
 
-// --------------------- RUTAS DE RANKING Y ANÁLISIS --------------------- //
-
-// Obtener top pares por volumen (ahora usa volumen real)
+// Obtener top pares por volumen
 router.get('/ranking/volume', parExchangeController.getTopPairsByVolume);
 
-// Obtener pares con comisión alta
-router.get('/monitoring/high-commission', authenticateToken, requireAdmin, parExchangeController.getHighCommissionPairs);
+// Obtener pares con comisión alta - SIN MIDDLEWARE
+router.get('/monitoring/high-commission', parExchangeController.getHighCommissionPairs);
 
-// Obtener pares con precios desactualizados
-router.get('/monitoring/outdated-prices', authenticateToken, requireAdmin, parExchangeController.getOutdatedPricePairs);
+// Obtener pares con precios desactualizados - SIN MIDDLEWARE
+router.get('/monitoring/outdated-prices', parExchangeController.getOutdatedPricePairs);
 
-// --------------------- RUTAS DE GESTIÓN DE ESTADO --------------------- //
+// Actualizar estado del par - SIN MIDDLEWARE
+router.patch('/:id/status', parExchangeController.updateParStatus);
 
-// Actualizar estado del par
-router.patch('/:id/status', authenticateToken, requireAdmin, parExchangeController.updateParStatus);
+// Alternar estado del par - SIN MIDDLEWARE
+router.patch('/:id/toggle', parExchangeController.toggleParStatus);
 
-// Alternar estado del par (activar/desactivar)
-router.patch('/:id/toggle', authenticateToken, requireAdmin, parExchangeController.toggleParStatus);
+// Actualizar precio del par - SIN MIDDLEWARE
+router.patch('/:id/price', parExchangeController.updateParPrice);
 
-// --------------------- RUTAS DE GESTIÓN DE PRECIOS --------------------- //
+// Actualizar comisión del par - SIN MIDDLEWARE
+router.patch('/:id/commission', parExchangeController.updateParCommission);
 
-// Actualizar precio del par
-router.patch('/:id/price', authenticateToken, requireAdmin, parExchangeController.updateParPrice);
+// Actualización masiva de precios - SIN MIDDLEWARE
+router.post('/prices/bulk-update', parExchangeController.bulkUpdatePrices);
 
-// Actualizar comisión del par
-router.patch('/:id/commission', authenticateToken, requireAdmin, parExchangeController.updateParCommission);
-
-// Actualización masiva de precios (webhook/API externa)
-router.post('/prices/bulk-update', apiKeyAuth, parExchangeController.bulkUpdatePrices);
-
-// --------------------- NUEVAS RUTAS DE GESTIÓN DE PRECIOS AUTOMÁTICOS --------------------- //
-
-// Gestionar actualización automática de precios (iniciar/detener)
-router.post('/prices/auto-update', authenticateToken, requireAdmin, parExchangeController.managePriceUpdates);
-
-// Forzar actualización manual de todos los precios
-router.post('/prices/force-update', authenticateToken, requireAdmin, parExchangeController.forceUpdatePrices);
-
-// --------------------- RUTAS DE TRADING Y CÁLCULOS --------------------- //
-
-// Calcular intercambio para un par (mejorado con slippage y validaciones)
+// Calcular intercambio para un par
 router.post('/:id/calculate', parExchangeController.calculateExchange);
 
-// Obtener libro de órdenes realista
+// Obtener libro de órdenes simulado
 router.get('/:id/orderbook', parExchangeController.getOrderBook);
 
-// --------------------- RUTAS DE DASHBOARD Y MÉTRICAS --------------------- //
+// Dashboard de exchange - SIN MIDDLEWARE
+router.get('/dashboard/overview', parExchangeController.getExchangeDashboard);
 
-// Dashboard de exchange (mejorado con datos de volumen real)
-router.get('/dashboard/overview', authenticateToken, requireAdmin, parExchangeController.getExchangeDashboard);
-
-// Métricas del mercado (mejorado con distribución de volumen)
+// Métricas del mercado
 router.get('/dashboard/market-metrics', parExchangeController.getMarketMetrics);
 
-// --------------------- RUTAS ADMINISTRATIVAS --------------------- //
+// Obtener estadísticas de pares - SIN MIDDLEWARE
+router.get('/admin/stats', parExchangeController.getParExchangeStats);
 
-// Obtener estadísticas de pares (incluye stats del price service)
-router.get('/admin/stats', authenticateToken, requireAdmin, parExchangeController.getParExchangeStats);
+// Exportar pares a CSV - SIN MIDDLEWARE
+router.get('/admin/export', parExchangeController.exportPares);
 
-// Exportar pares a CSV (mejorado con nuevos campos)
-router.get('/admin/export', authenticateToken, requireAdmin, parExchangeController.exportPares);
+console.log('=== RUTAS CONFIGURADAS ===');
 
 module.exports = router;

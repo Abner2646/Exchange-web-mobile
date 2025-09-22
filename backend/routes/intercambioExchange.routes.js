@@ -1,3 +1,4 @@
+// routes/intercambioExchange.routes.js
 const express = require('express');
 const router = express.Router();
 const intercambioController = require('../controllers/intercambioExchange.controller');

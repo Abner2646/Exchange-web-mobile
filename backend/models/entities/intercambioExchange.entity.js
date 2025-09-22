@@ -1,3 +1,4 @@
+// models/entites/intercambioExchange.entity.js
 const { DataTypes, Model } = require('sequelize');
 
 class IntercambioExchange extends Model {}

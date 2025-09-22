@@ -1,4 +1,4 @@
-// Importaciones
+// models/walletMaestra.model.js
 const initWalletMaestra = require('./entities/walletMaestra.entity');
 const { Op, Transaction } = require('sequelize');
 const crypto = require('crypto');

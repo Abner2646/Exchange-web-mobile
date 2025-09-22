@@ -1,4 +1,4 @@
-// Importaciones
+// models/usuario.model.js
 const initUsuario = require('./entities/usuario.entity');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
