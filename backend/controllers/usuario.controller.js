@@ -1,25 +1,22 @@
+// controllers/usuario.controller.js
 const { Usuario, Criptomoneda, WalletMaestra, DireccionDeposito, BalanceUsuario, Notificaciones } = require('../models/index.js');
 const { Op } = require('sequelize');
-//const sequelize = require('../config/database'); // Para transacciones (Esto estaba así antes y lo cambié por esto:)
-// Usa la ruta correcta a tu archivo de configuración de sequelize:
 const { sequelize } = require('../models/index.js');
+const emailService = require('../services/email.service.js');
 
 // Función helper para generar dirección única
 const generarDireccionDerivada = async (walletMaestra, usuarioId, derivationIndex) => {
-  // Esta función debe implementarse según tu librería crypto específica
-  // Por ahora devuelvo una dirección simulada
   const crypto = require('crypto');
   const hash = crypto.createHash('sha256')
     .update(`${walletMaestra.direccionPublica}-${usuarioId}-${derivationIndex}`)
     .digest('hex');
   
-  // Simular dirección según el tipo de red
   switch (walletMaestra.criptomoneda.red) {
     case 'bitcoin':
-      return `1${hash.substring(0, 33)}`; // Dirección Bitcoin simulada
+      return `1${hash.substring(0, 33)}`;
     case 'ethereum':
     case 'erc20':
-      return `0x${hash.substring(0, 40)}`; // Dirección Ethereum simulada
+      return `0x${hash.substring(0, 40)}`;
     default:
       return hash.substring(0, 34);
   }
@@ -28,7 +25,6 @@ const generarDireccionDerivada = async (walletMaestra, usuarioId, derivationInde
 // Función helper para inicializar todo lo del usuario nuevo
 const inicializarUsuarioCompleto = async (usuario, transaction) => {
   try {
-    // 1. Obtener todas las criptomonedas activas
     const criptomonedasActivas = await Criptomoneda.getActive();
     
     if (criptomonedasActivas.length === 0) {
@@ -38,9 +34,7 @@ const inicializarUsuarioCompleto = async (usuario, transaction) => {
     const direccionesCreadas = [];
     const balancesCreados = [];
 
-    // 2. Para cada criptomoneda, crear dirección de depósito y balance
     for (const criptomoneda of criptomonedasActivas) {
-      // 2a. Buscar wallet maestra para esta criptomoneda
       const walletMaestra = await WalletMaestra.getByCriptomoneda(criptomoneda.id);
       
       if (!walletMaestra) {
@@ -48,17 +42,14 @@ const inicializarUsuarioCompleto = async (usuario, transaction) => {
         continue;
       }
 
-      // 2b. Obtener siguiente índice de derivación
       const derivationIndex = await DireccionDeposito.getNextDerivationIndex(walletMaestra.id);
       
-      // 2c. Generar dirección única derivada
       const nuevaDireccion = await generarDireccionDerivada(
         { ...walletMaestra, criptomoneda }, 
         usuario.id, 
         derivationIndex
       );
 
-      // 2d. Crear dirección de depósito
       const direccionDeposito = await DireccionDeposito.create({
         usuarioId: usuario.id,
         criptomonedaId: criptomoneda.id,
@@ -73,7 +64,6 @@ const inicializarUsuarioCompleto = async (usuario, transaction) => {
         direccion: nuevaDireccion
       });
 
-      // 2e. Crear balance inicial (en 0)
       const balanceInicial = await BalanceUsuario.create({
         usuarioId: usuario.id,
         criptomonedaId: criptomoneda.id,
@@ -87,7 +77,6 @@ const inicializarUsuarioCompleto = async (usuario, transaction) => {
       });
     }
 
-    // 3. Crear notificación de bienvenida con info útil
     const mensajeBienvenida = `¡Bienvenido al Exchange! Tu cuenta ha sido creada exitosamente. 
     
 Se han generado ${direccionesCreadas.length} direcciones de depósito para las siguientes criptomonedas: ${direccionesCreadas.map(d => d.criptomoneda).join(', ')}.
@@ -96,6 +85,7 @@ Para comenzar a operar:
 1. Completa tu verificación KYC
 2. Realiza tu primer depósito
 3. ¡Comienza a intercambiar!`;
+    
     const {Notificaciones} = require('../models/index.js');
     await Notificaciones.createNotification({
       usuarioId: usuario.id,
@@ -142,9 +132,7 @@ const getUsuarioById = async (req, res) => {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    // Los usuarios normales solo pueden ver su propio perfil completo
     if (req.user.rol === 'normal' && req.user.id !== id) {
-      // Devolver versión pública limitada
       const publicProfile = {
         id: result.id,
         username: result.username,
@@ -162,23 +150,18 @@ const getUsuarioById = async (req, res) => {
   }
 };
 
-// Registrar nuevo usuario - ADAPTADO con inicialización completa
+// Registrar nuevo usuario
 const registerUsuario = async (req, res) => {
   const transaction = await sequelize.transaction();
   
   try {
     const userData = req.body;
-    
-    // 1. Crear usuario básico
     const { user, token } = await Usuario.createWithPassword(userData);
     
-    // 2. Inicializar todo lo relacionado al usuario
-    //const inicializacionResult = await inicializarUsuarioCompleto(user, transaction); //<-- Comentar para crear el primer usuario porque no están creados campos en "criptomoneda", "walletMaestra", etc... Además debería checkear si se crean bien esos campos automáticamente.
+    // const inicializacionResult = await inicializarUsuarioCompleto(user, transaction);
     
-    // 3. Si todo salió bien, confirmar transacción
     await transaction.commit();
 
-    // 4. Respuesta exitosa con información completa
     res.status(201).json({
       message: 'Usuario registrado exitosamente',
       user: {
@@ -191,15 +174,13 @@ const registerUsuario = async (req, res) => {
       },
       token,
       inicializacion: {
-        //direccionesCreadas: inicializacionResult.direccionesCreadas.length, //<-- Comentar para crear el primer usuario
-        //balancesCreados: inicializacionResult.balancesCreados.length, //<-- Comentar para crear el primer usuario
-        //criptomonedas: inicializacionResult.direccionesCreadas.map(d => d.criptomoneda) //<-- Comentar para crear el primer usuario
+        // direccionesCreadas: inicializacionResult.direccionesCreadas.length,
+        // balancesCreados: inicializacionResult.balancesCreados.length,
+        // criptomonedas: inicializacionResult.direccionesCreadas.map(d => d.criptomoneda)
       }
     });
   } catch (error) {
-    // Si algo falla, hacer rollback
     await transaction.rollback();
-    
     console.error('Error en registro de usuario:', error);
     res.status(400).json({ 
       error: error.message,
@@ -208,14 +189,13 @@ const registerUsuario = async (req, res) => {
   }
 };
 
-// Login de usuario
+// Login de usuario (método original mantenido para compatibilidad)
 const loginUsuario = async (req, res) => {
   try {
     const { emailOrUsername, password } = req.body;
     const { user, token } = await Usuario.findByCredentials(emailOrUsername, password);
     
-    // Actualizar última conexión
-    await user.update({ updated_at: new Date() });
+    await user.update({ ultimoLogin: new Date() });
 
     res.json({
       message: 'Login exitoso',
@@ -234,14 +214,12 @@ const loginUsuario = async (req, res) => {
   }
 };
 
-// Login con Google - ADAPTADO con inicialización completa
+// Login con Google
 const loginWithGoogle = async (req, res) => {
   const transaction = await sequelize.transaction();
   
   try {
     const { googleId, email, username, pais } = req.body;
-    
-    // 1. Crear o encontrar usuario con Google
     const { user, token, isNew } = await Usuario.createWithProvider({
       googleId,
       email,
@@ -251,15 +229,12 @@ const loginWithGoogle = async (req, res) => {
 
     let inicializacionResult = null;
     
-    // 2. Si es usuario nuevo, inicializar todo
     if (isNew) {
       inicializacionResult = await inicializarUsuarioCompleto(user, transaction);
     }
     
-    // 3. Confirmar transacción
     await transaction.commit();
 
-    // 4. Respuesta diferenciada según si es nuevo o existente
     const response = {
       message: isNew ? 'Usuario registrado con Google exitosamente' : 'Login exitoso con Google',
       user: {
@@ -275,7 +250,6 @@ const loginWithGoogle = async (req, res) => {
       isNew
     };
 
-    // Si es nuevo, agregar info de inicialización
     if (isNew && inicializacionResult) {
       response.inicializacion = {
         direccionesCreadas: inicializacionResult.direccionesCreadas.length,
@@ -286,9 +260,7 @@ const loginWithGoogle = async (req, res) => {
 
     res.json(response);
   } catch (error) {
-    // Si algo falla, hacer rollback
     await transaction.rollback();
-    
     console.error('Error en login con Google:', error);
     res.status(400).json({ 
       error: error.message,
@@ -296,6 +268,306 @@ const loginWithGoogle = async (req, res) => {
     });
   }
 };
+
+// --------------------- MÉTODOS DE RECUPERACIÓN DE CONTRASEÑA --------------------- //
+
+// Solicitar código de recuperación de contraseña
+const requestPasswordReset = async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'Email es requerido' });
+    }
+
+    const result = await Usuario.requestPasswordReset(email);
+    
+    if (result.sent && result.codigo) {
+      try {
+        await emailService.enviarCodigoRecuperacion(
+          email, 
+          result.codigo, 
+          result.user.username
+        );
+      } catch (emailError) {
+        console.error('Error enviando email:', emailError);
+      }
+    }
+
+    res.json({ 
+      message: 'Si el email existe en nuestro sistema, recibirás un código de recuperación en tu bandeja de entrada' 
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+// Verificar código de recuperación
+const verifyResetCode = async (req, res) => {
+  try {
+    const { email, codigo } = req.body;
+    
+    if (!email || !codigo) {
+      return res.status(400).json({ error: 'Email y código son requeridos' });
+    }
+
+    const result = await Usuario.verifyResetCode(email, codigo);
+    
+    res.json({
+      message: 'Código verificado correctamente',
+      valid: result.valid
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+// Resetear contraseña con código
+const resetPassword = async (req, res) => {
+  try {
+    const { email, codigo, newPassword, confirmPassword } = req.body;
+    
+    if (!email || !codigo || !newPassword || !confirmPassword) {
+      return res.status(400).json({ 
+        error: 'Email, código, nueva contraseña y confirmación son requeridos' 
+      });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ error: 'Las contraseñas no coinciden' });
+    }
+
+    const { user, token } = await Usuario.resetPasswordWithCode(email, codigo, newPassword);
+    
+    try {
+      await emailService.notificarCambioPassword(user.email, user.username);
+    } catch (emailError) {
+      console.error('Error enviando notificación:', emailError);
+    }
+
+    res.json({
+      message: 'Contraseña restablecida exitosamente',
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        rol: user.rol
+      },
+      token
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+// --------------------- MÉTODOS DE AUTENTICACIÓN EN DOS PASOS --------------------- //
+
+// Activar/desactivar autenticación en dos pasos
+const toggle2FA = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { activar, currentPassword } = req.body;
+    
+    if (activar === undefined) {
+      return res.status(400).json({ error: 'El parámetro "activar" es requerido' });
+    }
+
+    if (!currentPassword) {
+      return res.status(400).json({ error: 'Contraseña actual requerida para cambios de seguridad' });
+    }
+
+    const user = await Usuario.findByPk(userId);
+    if (!user.passwordHash) {
+      return res.status(400).json({ error: 'Usuarios OAuth no pueden usar 2FA por email' });
+    }
+
+    const bcrypt = require('bcrypt');
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isPasswordValid) {
+      return res.status(400).json({ error: 'Contraseña actual incorrecta' });
+    }
+
+    const { user: updatedUser, token, activado } = await Usuario.toggle2FA(userId, activar);
+    
+    try {
+      await emailService.notificar2FAChange(user.email, user.username, activado);
+    } catch (emailError) {
+      console.error('Error enviando notificación:', emailError);
+    }
+
+    res.json({
+      message: `Autenticación en dos pasos ${activado ? 'activada' : 'desactivada'} exitosamente`,
+      dosFactoresActivado: activado,
+      token
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+// Login paso 1 - Verificar credenciales
+// Login paso 1 - Verificar credenciales (ACTUALIZADO)
+const loginStep1 = async (req, res) => {
+  try {
+    const { emailOrUsername, password } = req.body;
+    
+    if (!emailOrUsername || !password) {
+      return res.status(400).json({ error: 'Email/username y contraseña son requeridos' });
+    }
+
+    const result = await Usuario.loginStep1(emailOrUsername, password);
+    
+    if (result.loginComplete) {
+      // Login sin 2FA - respuesta normal
+      res.json({
+        message: 'Login exitoso',
+        user: {
+          id: result.user.id,
+          email: result.user.email,
+          username: result.user.username,
+          rol: result.user.rol,
+          kycVerificado: result.user.kycVerificado,
+          reputacionPromedio: result.user.reputacionPromedio,
+          dosFactoresActivado: result.user.dosFactoresActivado
+        },
+        token: result.token,
+        requires2FA: false
+      });
+    } else {
+      // REQUIERE 2FA - Generar token temporal de pre-autenticación
+      const { codigo } = await Usuario.generateAndSave2FACode(result.userId);
+      
+      // Token temporal que SOLO sirve para verificar 2FA
+      const jwt = require('jsonwebtoken');
+      const preAuthToken = jwt.sign(
+        { 
+          userId: result.userId, 
+          purpose: 'pre-auth-2fa',
+          email: result.email 
+        }, 
+        process.env.JWT_SECRET, 
+        { expiresIn: '10m' }
+      );
+      
+      try {
+        await emailService.enviarCodigo2FA(result.email, codigo, result.username);
+      } catch (emailError) {
+        console.error('Error enviando código 2FA:', emailError);
+        return res.status(500).json({ error: 'Error enviando código de verificación' });
+      }
+
+      res.json({
+        message: 'Credenciales correctas. Revisa tu email para el código de verificación',
+        requires2FA: true,
+        preAuthToken: preAuthToken
+      });
+    }
+  } catch (error) {
+    res.status(401).json({ error: error.message });
+  }
+};
+
+// Verificar código 2FA y completar login (ACTUALIZADO)
+const verify2FA = async (req, res) => {
+  try {
+    // Opción 1: Con Bearer (estándar)
+    //const authHeader = req.headers['authorization'];
+    //const preAuthToken = authHeader && authHeader.split(' ')[1];
+    
+    // Opción 2: Sin Bearer (directo)
+    const preAuthToken = req.headers['authorization'];
+
+    const { codigo } = req.body;
+    
+    if (!preAuthToken || !codigo) {
+      return res.status(400).json({ error: 'Token de pre-autenticación y código son requeridos' });
+    }
+
+    // Verificar token temporal
+    let decoded;
+    try {
+      const jwt = require('jsonwebtoken');
+      decoded = jwt.verify(preAuthToken, process.env.JWT_SECRET);
+    } catch (error) {
+      return res.status(401).json({ error: 'Token de pre-autenticación inválido o expirado' });
+    }
+    
+    if (decoded.purpose !== 'pre-auth-2fa') {
+      return res.status(401).json({ error: 'Token inválido' });
+    }
+
+    // Verificar código 2FA
+    const { user, token } = await Usuario.verify2FACode(decoded.userId, codigo);
+    
+    res.json({
+      message: 'Login exitoso con verificación 2FA',
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        rol: user.rol,
+        kycVerificado: user.kycVerificado,
+        reputacionPromedio: user.reputacionPromedio,
+        dosFactoresActivado: user.dosFactoresActivado
+      },
+      token
+    });
+  } catch (error) {
+    res.status(401).json({ error: error.message });
+  }
+};
+
+// Reenviar código 2FA (NUEVO - SEGURO)
+const resend2FACode = async (req, res) => {
+  try {
+    const { preAuthToken } = req.body;
+    
+    if (!preAuthToken) {
+      return res.status(400).json({ error: 'Token de pre-autenticación requerido' });
+    }
+
+    // Verificar token temporal
+    let decoded;
+    try {
+      const jwt = require('jsonwebtoken');
+      decoded = jwt.verify(preAuthToken, process.env.JWT_SECRET);
+    } catch (error) {
+      return res.status(401).json({ error: 'Token de pre-autenticación inválido o expirado' });
+    }
+    
+    if (decoded.purpose !== 'pre-auth-2fa') {
+      return res.status(401).json({ error: 'Token inválido para reenvío' });
+    }
+
+    // Verificar que el usuario existe y tiene 2FA activado
+    const user = await Usuario.findByPk(decoded.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    
+    if (!user.dosFactoresActivado) {
+      return res.status(400).json({ error: 'Usuario no tiene 2FA activado' });
+    }
+
+    // Generar nuevo código y enviarlo
+    const { codigo } = await Usuario.generateAndSave2FACode(decoded.userId);
+    
+    try {
+      await emailService.enviarCodigo2FA(user.email, codigo, user.username);
+    } catch (emailError) {
+      console.error('Error enviando código 2FA:', emailError);
+      return res.status(500).json({ error: 'Error enviando código de verificación' });
+    }
+
+    res.json({
+      message: 'Nuevo código de verificación enviado a tu email'
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// --------------------- MÉTODOS EXISTENTES (mantenidos sin cambio) --------------------- //
 
 // Actualizar perfil propio
 const updateMyProfile = async (req, res) => {
@@ -306,9 +578,7 @@ const updateMyProfile = async (req, res) => {
     const { user, token } = await Usuario.updateProfile(userId, updateData);
     
     res.json({
-      message: 'Perfil actualizado exitosamente' //No se muestra QUE se actualizó. Para verlo, llamar a GET /me.
-      //user, //Dato sensible
-      //token //Dato sensible
+      message: 'Perfil actualizado exitosamente'
     });
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -326,7 +596,7 @@ const getMyProfile = async (req, res) => {
   }
 };
 
-// Obtener mis direcciones de depósito - NUEVO
+// Obtener mis direcciones de depósito
 const getMyDepositAddresses = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -355,14 +625,13 @@ const getMyDepositAddresses = async (req, res) => {
   }
 };
 
-// Obtener mis balances - NUEVO
+// Obtener mis balances
 const getMyBalances = async (req, res) => {
   try {
     const userId = req.user.id;
     
     const balances = await BalanceUsuario.getByUserId(userId);
     
-    // Obtener información de criptomonedas para cada balance
     const balancesDetallados = await Promise.all(
       balances.map(async (balance) => {
         const criptomoneda = await Criptomoneda.getById(balance.criptomonedaId);
@@ -383,7 +652,6 @@ const getMyBalances = async (req, res) => {
       })
     );
 
-    // Filtrar solo balances que tienen algo (disponible o bloqueado > 0)
     const balancesConFondos = balancesDetallados.filter(
       balance => balance.balanceTotal > 0
     );
@@ -398,7 +666,7 @@ const getMyBalances = async (req, res) => {
   }
 };
 
-// Cambiar contraseña
+// Cambiar contraseña (actualizado con notificación por email)
 const changePassword = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -406,15 +674,11 @@ const changePassword = async (req, res) => {
     
     const { user, token } = await Usuario.changePassword(userId, currentPassword, newPassword);
 
-    //--
-    /*await Notificaciones.createNotification({
-      usuarioId: userId,
-      tipo: 'sistema',
-      titulo: 'Contraseña cambiada',
-      mensaje: 'mensajeBienvenida',
-      importante: true,
-    });*/
-    //--
+    try {
+      await emailService.notificarCambioPassword(user.email, user.username);
+    } catch (emailError) {
+      console.error('Error enviando notificación:', emailError);
+    }
     
     res.json({
       message: 'Contraseña cambiada exitosamente',
@@ -425,7 +689,7 @@ const changePassword = async (req, res) => {
   }
 };
 
-// Actualizar estado de usuario (admin)
+// Resto de métodos administrativos (sin cambios)
 const updateUsuarioStatus = async (req, res) => {
   try {
     const { id } = req.params;
@@ -443,13 +707,11 @@ const updateUsuarioStatus = async (req, res) => {
   }
 };
 
-// Actualizar rol de usuario (super_admin)
 const updateUsuarioRole = async (req, res) => {
   try {
     const { id } = req.params;
     const { rol } = req.body;
     
-    // Solo super_admin puede cambiar roles
     if (req.user.rol !== 'super_admin') {
       return res.status(403).json({ error: 'Solo super administradores pueden cambiar roles' });
     }
@@ -466,7 +728,6 @@ const updateUsuarioRole = async (req, res) => {
   }
 };
 
-// Buscar usuarios
 const searchUsuarios = async (req, res) => {
   try {
     const { q: term, limit = 10 } = req.query;
@@ -482,7 +743,6 @@ const searchUsuarios = async (req, res) => {
   }
 };
 
-// Actualizar KYC (admin)
 const updateUsuarioKYC = async (req, res) => {
   try {
     const { id } = req.params;
@@ -500,13 +760,11 @@ const updateUsuarioKYC = async (req, res) => {
   }
 };
 
-// Verificar límite de transacción
 const checkTransactionLimit = async (req, res) => {
   try {
     const userId = req.params.userId || req.user.id;
     const { amount } = req.query;
     
-    // Solo admin puede verificar límites de otros usuarios
     if (req.user.rol !== 'admin' && userId !== req.user.id) {
       return res.status(403).json({ error: 'Sin permisos para verificar este límite' });
     }
@@ -522,7 +780,6 @@ const checkTransactionLimit = async (req, res) => {
   }
 };
 
-// Actualizar límite diario (admin)
 const updateDailyLimit = async (req, res) => {
   try {
     const { id } = req.params;
@@ -540,13 +797,11 @@ const updateDailyLimit = async (req, res) => {
   }
 };
 
-// Obtener volumen diario
 const getDailyVolume = async (req, res) => {
   try {
     const userId = req.params.userId || req.user.id;
     const { fecha } = req.query;
     
-    // Solo admin puede ver volúmenes de otros usuarios
     if (req.user.rol !== 'admin' && userId !== req.user.id) {
       return res.status(403).json({ error: 'Sin permisos para ver este volumen' });
     }
@@ -564,7 +819,6 @@ const getDailyVolume = async (req, res) => {
   }
 };
 
-// Obtener estadísticas de usuarios (admin)
 const getUsuariosStats = async (req, res) => {
   try {
     const stats = await Usuario.getStats();
@@ -574,7 +828,6 @@ const getUsuariosStats = async (req, res) => {
   }
 };
 
-// Obtener top traders
 const getTopTraders = async (req, res) => {
   try {
     const { limit = 10, period = '30d' } = req.query;
@@ -585,7 +838,6 @@ const getTopTraders = async (req, res) => {
   }
 };
 
-// Desactivar usuarios inactivos (admin)
 const deactivateInactiveUsers = async (req, res) => {
   try {
     const { days = 365 } = req.query;
@@ -601,7 +853,6 @@ const deactivateInactiveUsers = async (req, res) => {
   }
 };
 
-// Actualizar reputación (sistema interno)
 const updateUsuarioReputation = async (req, res) => {
   try {
     const { id } = req.params;
@@ -619,17 +870,14 @@ const updateUsuarioReputation = async (req, res) => {
   }
 };
 
-// Eliminar usuario (solo super_admin)
 const deleteUsuario = async (req, res) => {
   try {
     const { id } = req.params;
     
-    // Solo super_admin puede eliminar usuarios
     if (req.user.rol !== 'super_admin') {
       return res.status(403).json({ error: 'Solo super administradores pueden eliminar usuarios' });
     }
 
-    // No permitir auto-eliminación
     if (req.user.id === id) {
       return res.status(400).json({ error: 'No puedes eliminar tu propia cuenta' });
     }
@@ -639,7 +887,6 @@ const deleteUsuario = async (req, res) => {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    // Verificar que no tenga transacciones activas
     const { TransaccionP2P } = require('../models/index.js');
     const activeTransactions = await TransaccionP2P.count({
       where: {
@@ -657,7 +904,6 @@ const deleteUsuario = async (req, res) => {
       });
     }
 
-    // Desactivar en lugar de eliminar (para mantener integridad referencial)
     await user.update({ 
       activo: false,
       email: `deleted_${Date.now()}_${user.email}`,
@@ -670,7 +916,6 @@ const deleteUsuario = async (req, res) => {
   }
 };
 
-// Renovar token
 const renewToken = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -699,7 +944,6 @@ const renewToken = async (req, res) => {
   }
 };
 
-// Obtener perfil público de usuario
 const getPublicProfile = async (req, res) => {
   try {
     const { id } = req.params;
@@ -724,7 +968,6 @@ const getPublicProfile = async (req, res) => {
   }
 };
 
-// Verificar disponibilidad de email
 const checkEmailAvailability = async (req, res) => {
   try {
     const { email } = req.query;
@@ -746,7 +989,6 @@ const checkEmailAvailability = async (req, res) => {
   }
 };
 
-// Verificar disponibilidad de username
 const checkUsernameAvailability = async (req, res) => {
   try {
     const { username } = req.query;
@@ -768,7 +1010,6 @@ const checkUsernameAvailability = async (req, res) => {
   }
 };
 
-// Solicitar verificación KYC
 const requestKYCVerification = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -776,7 +1017,6 @@ const requestKYCVerification = async (req, res) => {
     
     const { user, token } = await Usuario.updateKYC(userId, kycData, false);
     
-    // Notificar a admins sobre nueva solicitud KYC
     await Notificaciones.notifyUsersByRole('admin', {
       tipo: 'kyc',
       titulo: 'Nueva solicitud de verificación KYC',
@@ -794,36 +1034,32 @@ const requestKYCVerification = async (req, res) => {
   }
 };
 
-// Logout (invalidar token - opcional)
 const logout = async (req, res) => {
   try {
-    // En una implementación real, podrías mantener una lista negra de tokens
-    // Por ahora, solo confirmamos el logout del lado cliente
-    res.json({ message: 'Logout exitoso' });
+    const userId = req.user.id;
+    const result = await Usuario.logout(userId);
+    
+    res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-// Regenerar dirección de depósito (admin) - NUEVO
 const regenerateDepositAddress = async (req, res) => {
   const transaction = await sequelize.transaction();
   
   try {
     const { userId, criptomonedaId } = req.body;
     
-    // Verificar permisos admin
     if (req.user.rol !== 'admin' && req.user.rol !== 'super_admin') {
       return res.status(403).json({ error: 'Solo administradores pueden regenerar direcciones' });
     }
     
-    // 1. Desactivar dirección actual
     const direccionActual = await DireccionDeposito.getByUserAndCrypto(userId, criptomonedaId);
     if (direccionActual) {
       await direccionActual.update({ activa: false }, { transaction });
     }
     
-    // 2. Obtener wallet maestra y generar nueva dirección
     const criptomoneda = await Criptomoneda.getById(criptomonedaId);
     const walletMaestra = await WalletMaestra.getByCriptomoneda(criptomonedaId);
     
@@ -838,7 +1074,6 @@ const regenerateDepositAddress = async (req, res) => {
       derivationIndex
     );
     
-    // 3. Crear nueva dirección
     const nuevaDireccionDeposito = await DireccionDeposito.create({
       usuarioId: userId,
       criptomonedaId: criptomonedaId,
@@ -848,7 +1083,6 @@ const regenerateDepositAddress = async (req, res) => {
       activa: true
     }, { transaction });
     
-    // 4. Notificar al usuario
     const {Notificaciones} = require('../models/index.js');
     await Notificaciones.createNotification({
       usuarioId: userId,
@@ -875,12 +1109,10 @@ const regenerateDepositAddress = async (req, res) => {
   }
 };
 
-// Verificar estado de inicialización del usuario - NUEVO
 const checkUserInitialization = async (req, res) => {
   try {
     const userId = req.user.id;
     
-    // Verificar direcciones creadas
     const direcciones = await DireccionDeposito.getByUser(userId);
     const balances = await BalanceUsuario.getByUserId(userId);
     const notificaciones = await Notificaciones.getUserNotifications(userId, { limit: 1 });
@@ -905,14 +1137,12 @@ const checkUserInitialization = async (req, res) => {
   }
 };
 
-// Completar inicialización faltante (admin) - NUEVO
 const completeUserInitialization = async (req, res) => {
   const transaction = await sequelize.transaction();
   
   try {
     const { userId } = req.params;
     
-    // Solo admin puede completar inicialización de otros usuarios
     if (req.user.rol !== 'admin' && req.user.rol !== 'super_admin' && req.user.id !== userId) {
       return res.status(403).json({ error: 'Sin permisos para completar esta inicialización' });
     }
@@ -947,12 +1177,23 @@ module.exports = {
   getUsuariosStats,
   getTopTraders,
   
-  // Métodos de autenticación (ADAPTADOS con inicialización completa)
+  // Métodos de autenticación
   registerUsuario,
   loginUsuario,
   loginWithGoogle,
   logout,
   renewToken,
+  
+  // Métodos de recuperación de contraseña (NUEVOS)
+  requestPasswordReset,
+  verifyResetCode,
+  resetPassword,
+  
+  // Métodos de 2FA (NUEVOS)
+  toggle2FA,
+  loginStep1,
+  verify2FA,
+  resend2FACode,
   
   // Métodos de perfil de usuario
   updateMyProfile,
@@ -960,7 +1201,7 @@ module.exports = {
   getPublicProfile,
   changePassword,
   
-  // Métodos de wallets y balances (NUEVOS)
+  // Métodos de wallets y balances
   getMyDepositAddresses,
   getMyBalances,
   regenerateDepositAddress,

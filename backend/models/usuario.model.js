@@ -11,7 +11,7 @@ const secretWord = process.env.JWT_SECRET;
 function createUsuarioModel(sequelize) {
   const Usuario = initUsuario(sequelize);
 
-  // Función para generar JWT actualizado
+  // Función para generar JWT actualizado (instancia)
   Usuario.prototype.generateUpdatedJWT = function() {
     const payload = {
       id: this.id,
@@ -21,7 +21,8 @@ function createUsuarioModel(sequelize) {
       kycVerificado: this.kycVerificado,
       activo: this.activo,
       reputacionPromedio: this.reputacionPromedio,
-      pais: this.pais
+      pais: this.pais,
+      dosFactoresActivado: this.dosFactoresActivado || false
     };
 
     return jwt.sign(payload, secretWord, { 
@@ -41,7 +42,8 @@ function createUsuarioModel(sequelize) {
       kycVerificado: userData.kycVerificado,
       activo: userData.activo,
       reputacionPromedio: userData.reputacionPromedio,
-      pais: userData.pais
+      pais: userData.pais,
+      dosFactoresActivado: userData.dosFactoresActivado || false
     };
 
     return jwt.sign(payload, secretWord, { 
@@ -51,7 +53,7 @@ function createUsuarioModel(sequelize) {
     });
   };
 
-  // Métodos de autenticación
+  // Métodos de autenticación existentes
   Usuario.findByCredentials = async (emailOrUsername, password) => {
     try {
       const user = await Usuario.findOne({
@@ -73,7 +75,6 @@ function createUsuarioModel(sequelize) {
         throw new Error('Credenciales inválidas');
       }
 
-      // Generar token actualizado
       const token = user.generateUpdatedJWT();
       return { user, token };
     } catch (error) {
@@ -90,7 +91,6 @@ function createUsuarioModel(sequelize) {
   Usuario.createWithPassword = async (data) => {
     const { email, username, password, pais, ...otherData } = data;
 
-    // Validar que el email y username no existan
     const existingUser = await Usuario.findOne({
       where: {
         [Op.or]: [
@@ -104,12 +104,10 @@ function createUsuarioModel(sequelize) {
       throw new Error('Email o username ya están en uso');
     }
 
-    // Validar contraseña
     if (!password || password.length < 8) {
       throw new Error('La contraseña debe tener al menos 8 caracteres');
     }
 
-    // Hash de la contraseña
     const saltRounds = 12;
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
@@ -130,7 +128,6 @@ function createUsuarioModel(sequelize) {
   Usuario.createWithProvider = async (providerData) => {
     const { googleId, email, username, pais, ...otherData } = providerData;
 
-    // Verificar si ya existe el usuario
     let user = await Usuario.findOne({
       where: { googleId }
     });
@@ -140,13 +137,12 @@ function createUsuarioModel(sequelize) {
       return { user, token, isNew: false };
     }
 
-    // Crear nuevo usuario con proveedor
     const userData = {
       email: email.toLowerCase(),
       username: username || email.split('@')[0].toLowerCase(),
       googleId,
       pais,
-      passwordHash: null, // No requiere contraseña para OAuth
+      passwordHash: null,
       ...otherData
     };
 
@@ -156,6 +152,239 @@ function createUsuarioModel(sequelize) {
     return { user: newUser, token, isNew: true };
   };
 
+  // --------------------- MÉTODOS PARA RECUPERACIÓN DE CONTRASEÑA --------------------- //
+  
+  Usuario.requestPasswordReset = async (email) => {
+    const user = await Usuario.findOne({
+      where: { 
+        email: email.toLowerCase(),
+        activo: true,
+        passwordHash: { [Op.ne]: null }
+      }
+    });
+
+    if (!user) {
+      return { 
+        message: 'Si el email existe, recibirás un código de recuperación',
+        sent: false 
+      };
+    }
+
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    if (user.ultimoIntentoRecuperacion && 
+        user.ultimoIntentoRecuperacion > oneHourAgo && 
+        user.intentosRecuperacion >= 3) {
+      throw new Error('Demasiados intentos. Espera 1 hora antes de intentar nuevamente');
+    }
+
+    const codigo = await user.generarCodigoRecuperacion();
+    
+    const nuevosIntentos = user.ultimoIntentoRecuperacion && 
+                          user.ultimoIntentoRecuperacion > oneHourAgo ? 
+                          user.intentosRecuperacion + 1 : 1;
+    
+    await user.update({
+      intentosRecuperacion: nuevosIntentos,
+      ultimoIntentoRecuperacion: new Date()
+    });
+
+    return {
+      user,
+      codigo,
+      message: 'Código de recuperación enviado',
+      sent: true
+    };
+  };
+
+  Usuario.verifyResetCode = async (email, codigo) => {
+    const user = await Usuario.findOne({
+      where: { 
+        email: email.toLowerCase(),
+        activo: true
+      }
+    });
+
+    if (!user) {
+      throw new Error('Código inválido o expirado');
+    }
+
+    if (!user.validarCodigoRecuperacion(codigo)) {
+      throw new Error('Código inválido o expirado');
+    }
+
+    return { valid: true, userId: user.id };
+  };
+
+  Usuario.resetPasswordWithCode = async (email, codigo, newPassword) => {
+    const user = await Usuario.findOne({
+      where: { 
+        email: email.toLowerCase(),
+        activo: true
+      }
+    });
+
+    if (!user || !user.validarCodigoRecuperacion(codigo)) {
+      throw new Error('Código inválido o expirado');
+    }
+
+    if (!newPassword || newPassword.length < 8) {
+      throw new Error('La nueva contraseña debe tener al menos 8 caracteres');
+    }
+
+    const saltRounds = 12;
+    const newPasswordHash = await bcrypt.hash(newPassword, saltRounds);
+
+    await user.update({ 
+      passwordHash: newPasswordHash,
+      tokenRecuperacion: null,
+      tokenExpiracion: null,
+      intentosRecuperacion: 0
+    });
+
+    const token = user.generateUpdatedJWT();
+    
+    return { user, token };
+  };
+
+  // --------------------- MÉTODOS PARA LOGOUT CON INVALIDACIÓN DE TOKENS --------------------- //
+
+  Usuario.logout = async (userId) => {
+    const user = await Usuario.findByPk(userId);
+    if (!user) {
+      throw new Error('Usuario no encontrado');
+    }
+
+    await user.update({ ultimoLogout: new Date() });
+    
+    return { 
+      message: 'Logout exitoso - Tokens anteriores invalidados',
+      logoutTime: new Date()
+    };
+  };
+
+  Usuario.isTokenValidAfterLogout = async (userId, tokenIssuedAt) => {
+    const user = await Usuario.findByPk(userId);
+    
+    if (!user) {
+      return false;
+    }
+    
+    // Si nunca hizo logout, el token es válido
+    if (!user.ultimoLogout) {
+      return true;
+    }
+    
+    // Comparar timestamp del token vs último logout
+    const tokenTimestamp = tokenIssuedAt * 1000; // JWT usa segundos, JS usa milisegundos
+    const logoutTimestamp = user.ultimoLogout.getTime();
+    
+    // Token es válido si fue emitido DESPUÉS del logout
+    return tokenTimestamp > logoutTimestamp;
+  };
+
+  // --------------------- MÉTODOS PARA AUTENTICACIÓN EN DOS PASOS --------------------- //
+
+  Usuario.toggle2FA = async (id, activar) => {
+    const user = await Usuario.findByPk(id);
+    if (!user) {
+      throw new Error('Usuario no encontrado');
+    }
+
+    await user.update({ 
+      dosFactoresActivado: activar,
+      codigo2FA: null,
+      codigo2FAExpiracion: null
+    });
+
+    const token = user.generateUpdatedJWT();
+    return { user, token, activado: activar };
+  };
+
+  Usuario.generateAndSave2FACode = async (id) => {
+    const user = await Usuario.findByPk(id);
+    if (!user) {
+      throw new Error('Usuario no encontrado');
+    }
+
+    const codigo = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiracion = new Date(Date.now() + 5 * 60 * 1000); // 5 minutos
+
+    await user.update({
+      codigo2FA: codigo,
+      codigo2FAExpiracion: expiracion
+    });
+
+    return { codigo, user };
+  };
+
+  Usuario.verify2FACode = async (id, codigo) => {
+    const user = await Usuario.findByPk(id);
+    if (!user) {
+      throw new Error('Usuario no encontrado');
+    }
+
+    if (!user.codigo2FA || 
+        user.codigo2FA !== codigo || 
+        !user.codigo2FAExpiracion || 
+        new Date() > user.codigo2FAExpiracion) {
+      throw new Error('Código 2FA inválido o expirado');
+    }
+
+    await user.update({
+      codigo2FA: null,
+      codigo2FAExpiracion: null,
+      ultimoLogin: new Date()
+    });
+
+    const token = user.generateUpdatedJWT();
+    return { user, token };
+  };
+
+  Usuario.loginStep1 = async (emailOrUsername, password) => {
+    try {
+      const user = await Usuario.findOne({
+        where: {
+          [Op.or]: [
+            { email: emailOrUsername.toLowerCase() },
+            { username: emailOrUsername.toLowerCase() }
+          ],
+          activo: true
+        }
+      });
+
+      if (!user || !user.passwordHash) {
+        throw new Error('Credenciales inválidas');
+      }
+
+      const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+      if (!isPasswordValid) {
+        throw new Error('Credenciales inválidas');
+      }
+
+      if (!user.dosFactoresActivado) {
+        await user.update({ ultimoLogin: new Date() });
+        const token = user.generateUpdatedJWT();
+        return { 
+          user, 
+          token, 
+          requires2FA: false,
+          loginComplete: true 
+        };
+      }
+
+      return { 
+        userId: user.id,
+        username: user.username,
+        email: user.email,
+        requires2FA: true,
+        loginComplete: false
+      };
+    } catch (error) {
+      throw new Error('Credenciales inválidas');
+    }
+  };
+
+  // Métodos de consulta y gestión existentes
   Usuario.getById = async (id) => {
     const user = await Usuario.findByPk(id, {
       attributes: { exclude: ['passwordHash'] },
@@ -169,7 +398,7 @@ function createUsuarioModel(sequelize) {
           limit: 5,
           order: [['created_at', 'DESC']],
           include: [{
-            association: 'evaluador',  // Este alias sí existe
+            association: 'evaluador',
             attributes: ['id', 'username', 'reputacionPromedio']
           }]
         }
@@ -196,14 +425,12 @@ function createUsuarioModel(sequelize) {
     const where = {};
     const offset = (page - 1) * limit;
 
-    // Filtros básicos
     if (rol) where.rol = rol;
     if (kycVerificado !== undefined) where.kycVerificado = kycVerificado;
     if (activo !== undefined) where.activo = activo;
     if (pais) where.pais = pais;
     if (reputacionMin) where.reputacionPromedio = { [Op.gte]: reputacionMin };
 
-    // Búsqueda por email o username
     if (search) {
       where[Op.or] = [
         { email: { [Op.iLike]: `%${search}%` } },
@@ -243,7 +470,7 @@ function createUsuarioModel(sequelize) {
     });
   };
 
-  // Métodos administrativos
+  // Métodos administrativos existentes
   Usuario.updateStatus = async (id, newStatus) => {
     const user = await Usuario.findByPk(id);
     if (!user) {
@@ -288,14 +515,13 @@ function createUsuarioModel(sequelize) {
     return { user, token };
   };
 
-  // Métodos de perfil de usuario
+  // Métodos de perfil de usuario existentes
   Usuario.updateProfile = async (id, data) => {
     const user = await Usuario.findByPk(id);
     if (!user) {
       throw new Error('Usuario no encontrado');
     }
 
-    // Campos permitidos para actualización
     const allowedFields = ['username', 'pais'];
     const updateData = {};
 
@@ -305,7 +531,6 @@ function createUsuarioModel(sequelize) {
       }
     });
 
-    // Validar username único si se está actualizando
     if (updateData.username && updateData.username !== user.username) {
       const existingUser = await Usuario.findOne({
         where: { 
@@ -332,37 +557,32 @@ function createUsuarioModel(sequelize) {
       throw new Error('Usuario no encontrado');
     }
 
-    // Si el usuario usa OAuth, no puede cambiar contraseña
     if (!user.passwordHash) {
       throw new Error('Usuario de OAuth no puede cambiar contraseña');
     }
 
-    // Verificar contraseña actual
     const isCurrentValid = await bcrypt.compare(currentPassword, user.passwordHash);
     if (!isCurrentValid) {
       throw new Error('Contraseña actual incorrecta');
     }
 
-    // Validar nueva contraseña
     if (!newPassword || newPassword.length < 8) {
       throw new Error('La nueva contraseña debe tener al menos 8 caracteres');
     }
 
-    // Hash de la nueva contraseña
     const saltRounds = 12;
     const newPasswordHash = await bcrypt.hash(newPassword, saltRounds);
 
     await user.update({ passwordHash: newPasswordHash });
     const token = user.generateUpdatedJWT();
 
-    // Crear notificación de seguridad
     const { Notificaciones } = require('./index');
     await Notificaciones.notifySecurityEvent(id, 'cambio_password');
     
     return { user, token };
   };
 
-  // Métodos relacionados con KYC
+  // Métodos relacionados con KYC existentes
   Usuario.updateKYC = async (id, kycData, verified = false) => {
     const user = await Usuario.findByPk(id);
     if (!user) {
@@ -377,7 +597,6 @@ function createUsuarioModel(sequelize) {
     await user.update(updateData);
     const token = user.generateUpdatedJWT();
 
-    // Crear notificación
     const { Notificaciones } = require('./index');
     const template = verified ? 'KYC_APROBADO' : 'KYC_RECHAZADO';
     await Notificaciones.createNotification({
@@ -388,7 +607,7 @@ function createUsuarioModel(sequelize) {
     return { user, token };
   };
 
-  // Métodos relacionados con transacciones
+  // Métodos relacionados con transacciones existentes
   Usuario.getDailyVolume = async (id, fecha = new Date()) => {
     const startOfDay = new Date(fecha);
     startOfDay.setHours(0, 0, 0, 0);
@@ -455,7 +674,7 @@ function createUsuarioModel(sequelize) {
     return { user, token };
   };
 
-  // Métodos de estadísticas
+  // Métodos de estadísticas existentes
   Usuario.getStats = async () => {
     const stats = await Usuario.findAll({
       attributes: [
@@ -518,7 +737,7 @@ function createUsuarioModel(sequelize) {
     return topTraders;
   };
 
-  // Método para desactivar usuarios inactivos
+  // Método para desactivar usuarios inactivos existente
   Usuario.deactivateInactiveUsers = async (daysSinceLogin = 365) => {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - daysSinceLogin);
@@ -529,7 +748,7 @@ function createUsuarioModel(sequelize) {
         where: {
           activo: true,
           updated_at: { [Op.lt]: cutoffDate },
-          rol: 'normal' // No desactivar admins automáticamente
+          rol: 'normal'
         }
       }
     );

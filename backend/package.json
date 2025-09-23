@@ -39,6 +39,7 @@
     "sequelize": "^6.32.1",
     "ecpair": "^2.1.0",
     "tiny-secp256k1": "^2.2.4",
+    "nodemailer": "^6.9.7",
     "axios": "^1.6.8"
   },
   "devDependencies": {

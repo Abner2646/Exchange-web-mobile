@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 
 // Import routes
-const variablesEnvRoutes = require('./a-variablesEntorno.routes.js')
 const balanceUsuarioRoutes = require('./balanceUsuario.routes.js')
 //const categoriaReclamoRoutes = require('./categoriaReclamo.routes.js')
 const criptomonedaRoutes = require('./criptomoneda.routes.js')
@@ -25,7 +24,6 @@ const usuarioRoutes = require('./usuario.routes.js')
 const walletMaestraRoutes = require('./walletMaestra.routes.js')
 
 // Derive routes
-router.use('/env', variablesEnvRoutes)
 router.use('/balances', balanceUsuarioRoutes)
 //router.use('/categoriaReclamo', categoriaReclamoRoutes)
 router.use('/criptomoneda', criptomonedaRoutes)
