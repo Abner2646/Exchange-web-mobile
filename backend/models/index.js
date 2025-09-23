@@ -93,11 +93,12 @@ TransaccionP2P.belongsTo(Usuario, { foreignKey: 'compradorId', as: 'comprador' }
 // Usuario puede ser vendedor en transacciones P2P
 Usuario.hasMany(TransaccionP2P, { foreignKey: 'vendedorId', as: 'ventas' });
 TransaccionP2P.belongsTo(Usuario, { foreignKey: 'vendedorId', as: 'vendedor' });
+*/
 
 // Usuario puede hacer muchos intercambios con el exchange
 Usuario.hasMany(IntercambioExchange, { foreignKey: 'usuarioId', as: 'intercambios' });
 IntercambioExchange.belongsTo(Usuario, { foreignKey: 'usuarioId', as: 'usuario' });
-*/
+
 // Usuario puede evaluar a otros usuarios
 Usuario.hasMany(Valoracion, { foreignKey: 'usuarioEvaluadorId', as: 'valoracionesDadas' });
 Valoracion.belongsTo(Usuario, { foreignKey: 'usuarioEvaluadorId', as: 'evaluador' });

@@ -34,7 +34,7 @@ router.get('/user/:userId/crypto/:criptomonedaId/total', authenticateToken, bala
 router.get('/user/:userId/crypto/:criptomonedaId/check', authenticateToken, balanceUserController.checkAvailableBalance);
 
 // RUTAS DE MODIFICACIÓN
-// PUT /api/balances/user/:userId/crypto/:criptomonedaId - Actualizar balance
+// PUT /api/balances/user/:userId/crypto/:criptomonedaId - Actualizar balance (en realidad añadir, suma)
 router.put('/user/:userId/crypto/:criptomonedaId', authenticateToken, balanceUserController.updateBalance); //<---- Para añadir balances
 
 // POST /api/balances/user/:userId/crypto/:criptomonedaId/block - Bloquear balance

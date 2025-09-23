@@ -34,7 +34,7 @@ const createDireccionDeposito = async (req, res) => {
     // Validación básica de entrada
     if (!userId) {
       return res.status(400).json({ 
-        error: 'Usuario no autentic"ado' 
+        error: 'Usuario no autenticado' 
       });
     }
 

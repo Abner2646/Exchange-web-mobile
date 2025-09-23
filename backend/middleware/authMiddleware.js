@@ -254,9 +254,15 @@ const { Usuario } = require('../models');
 // Middleware para autenticar usuario
 const authenticateToken = async (req, res, next) => {
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
+    let token = req.header('Authorization');
+    
     if (!token) {
       return res.status(401).json({ success: false, message: 'Token de acceso requerido' });
+    }
+    
+    // Quitar "Bearer " si existe
+    if (token.startsWith('Bearer ')) {
+      token = token.replace('Bearer ', '');
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
