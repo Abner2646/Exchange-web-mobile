@@ -1,0 +1,308 @@
+/* REGISTER.CSS */
+.register-container {
+  min-height: calc(100vh - 80px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-md) var(--spacing-lg);
+  padding-top: var(--spacing-lg);
+  background: var(--bg-primary);
+}
+
+.register-card {
+  width: 100%;
+  max-width: 480px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: var(--spacing-xl);
+  text-align: center;
+}
+
+.register-title {
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-sm) 0;
+}
+
+.register-description {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin: 0 0 var(--spacing-xl) 0;
+}
+
+.register-google-button {
+  width: 100%;
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border: 2px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.register-google-button:hover {
+  background: var(--bg-secondary);
+  border-color: var(--border-focus);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.register-google-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.register-divider {
+  position: relative;
+  text-align: center;
+  margin: var(--spacing-xl) 0;
+}
+
+.register-divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--border-secondary);
+}
+
+.register-divider span {
+  background: var(--bg-elevated);
+  padding: 0 var(--spacing-md);
+  color: var(--text-tertiary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  position: relative;
+  z-index: 1;
+}
+
+.register-error {
+  background: var(--error-bg);
+  border: 1px solid var(--error);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+}
+
+.register-error span:first-child {
+  color: var(--error);
+  font-weight: 600;
+}
+
+.register-error span:last-child {
+  color: var(--error);
+  font-size: 0.875rem;
+}
+
+.register-form {
+  text-align: left;
+  margin: var(--spacing-lg) 0;
+}
+
+.register-form-group {
+  margin-bottom: var(--spacing-md);
+}
+
+.register-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.register-input {
+  width: 100%;
+  padding: var(--spacing-md);
+  font-size: 1rem;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  outline: none;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.register-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.register-input:focus {
+  border-color: var(--brand-primary);
+  background: var(--bg-primary);
+  box-shadow: 0 0 0 3px var(--brand-tertiary);
+}
+
+.register-input:hover:not(:focus) {
+  border-color: var(--border-focus);
+}
+
+/* Estado de error en inputs */
+.register-input.error {
+  border-color: var(--error);
+  background: var(--error-bg);
+}
+
+.register-input.error:focus {
+  border-color: var(--error);
+  box-shadow: 0 0 0 3px var(--error-bg);
+}
+
+.register-field-error {
+  display: block;
+  color: var(--error);
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-top: var(--spacing-xs);
+  margin-left: var(--spacing-xs);
+}
+
+/* Select específico */
+.register-input select,
+select.register-input {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right var(--spacing-md) center;
+  background-size: 16px;
+  padding-right: calc(var(--spacing-md) + 24px);
+}
+
+.register-submit-button {
+  width: 100%;
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-inverse);
+  background: var(--brand-primary);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-lg);
+}
+
+.register-submit-button:hover:not(:disabled) {
+  background: var(--brand-secondary);
+  transform: translateY(-1px);
+}
+
+.register-submit-button:disabled {
+  background: var(--interactive-disabled);
+  color: var(--text-disabled);
+  cursor: not-allowed;
+  transform: none;
+}
+
+.register-terms-message {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  text-align: center;
+  margin: var(--spacing-md) 0 0 0;
+  line-height: 1.4;
+}
+
+.register-terms-link {
+  color: var(--brand-primary);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.register-terms-link:hover {
+  color: var(--brand-secondary);
+  text-decoration: underline;
+}
+
+.register-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.register-terms {
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--border-secondary);
+}
+
+.register-terms p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.register-login-link {
+  color: var(--brand-primary);
+  text-decoration: none;
+  font-weight: 600;
+  margin-left: var(--spacing-sm);
+  transition: color 0.2s ease;
+}
+
+.register-login-link:hover {
+  color: var(--brand-secondary);
+  text-decoration: underline;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .register-container {
+    padding: var(--spacing-md);
+  }
+  
+  .register-card {
+    padding: var(--spacing-xl);
+  }
+  
+  .register-title {
+    font-size: 2rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .register-card {
+    padding: var(--spacing-lg);
+    border-radius: var(--radius-md);
+  }
+  
+  .register-title {
+    font-size: 1.75rem;
+  }
+  
+  .register-form-group {
+    margin-bottom: var(--spacing-md);
+  }
+}

@@ -1,4 +1,6 @@
 // routes/criptomoneda.routes.js
+// Prefijo: /criptomoneda
+
 const { Router } = require('express');
 const router = Router();
 

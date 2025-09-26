@@ -1,3 +1,6 @@
+// Balance usuario 
+// Prefijo: balances
+
 const express = require('express');
 const router = express.Router();
 const balanceUserController = require('../controllers/balanceUsuario.controller');
@@ -5,6 +8,16 @@ const balanceUserController = require('../controllers/balanceUsuario.controller'
 // Middleware
 const { authenticateToken } = require('../middleware/authMiddleware.js');
 const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
+
+// =============== ÚTILES POR AHORA ===============
+// GET /api/balances/my/balances - Obtener mis balances
+router.get('/my/balances', authenticateToken, balanceUserController.getMyBalances); //Bien
+
+// PUT /api/balances/user/:userId/crypto/:criptomonedaId - Actualizar balance (en realidad añadir, suma)
+router.put('/user/:userId/crypto/:criptomonedaId', authenticateToken, balanceUserController.updateBalance);
+
+
+// =============== NO TESTEADO ===============
 
 // RUTAS PÚBLICAS/ADMIN
 // GET /api/balances - Listar todos los balances (admin)
@@ -16,9 +29,7 @@ router.get('/stats', isAdmin, balanceUserController.getBalanceStats);
 // GET /api/balances/:id - Obtener balance por ID (admin)
 router.get('/:id', isAdmin, balanceUserController.getBalanceById);
 
-// RUTAS DE USUARIO AUTENTICADO
-// GET /api/balances/my/balances - Obtener mis balances
-router.get('/my/balances', authenticateToken, balanceUserController.getMyBalances); //Bien
+// =============== RUTAS DE USUARIO AUTENTICADO ===============
 
 // RUTAS POR USUARIO
 // GET /api/balances/user/:userId - Obtener balances de un usuario específico
@@ -33,9 +44,7 @@ router.get('/user/:userId/crypto/:criptomonedaId/total', authenticateToken, bala
 // GET /api/balances/user/:userId/crypto/:criptomonedaId/check - Verificar balance disponible
 router.get('/user/:userId/crypto/:criptomonedaId/check', authenticateToken, balanceUserController.checkAvailableBalance);
 
-// RUTAS DE MODIFICACIÓN
-// PUT /api/balances/user/:userId/crypto/:criptomonedaId - Actualizar balance (en realidad añadir, suma)
-router.put('/user/:userId/crypto/:criptomonedaId', authenticateToken, balanceUserController.updateBalance); //<---- Para añadir balances
+// =============== RUTAS DE MODIFICACIÓN (admin) ===============
 
 // POST /api/balances/user/:userId/crypto/:criptomonedaId/block - Bloquear balance
 router.post('/user/:userId/crypto/:criptomonedaId/block', authenticateToken, balanceUserController.blockBalance);

@@ -1,26 +1,85 @@
-import { createContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 
-export const AuthContext = createContext();
+const AuthContext = createContext();
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) throw new Error('useAuth debe estar dentro de AuthProvider');
+  return context;
+};
 
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(() => {
-        const savedUser = localStorage.getItem('user');
-        return savedUser ? JSON.parse(savedUser) : null;
-    });
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
+  const API_URL = 'http://localhost:5000'; // Cambia al puerto de tu backend
 
-    const login = (userData) => {
-        setUser(userData);
-        localStorage.setItem('user', JSON.stringify(userData));
-    };
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      verifyToken(token);
+    } else {
+      setLoading(false);
+    }
+  }, []);
 
-    const logout = () => {
-        setUser(null);
-        localStorage.removeItem('user');
-    };
+  const verifyToken = async (token) => {
+    try {
+      // Decodificar el JWT para obtener info del usuario
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      setUser({
+        id: payload.userId,
+        email: payload.email,
+        username: payload.username,
+        role: payload.role,
+        companyId: payload.companyId
+      });
+    } catch (error) {
+      console.error('Error verificando token:', error);
+      localStorage.removeItem('token');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    return (
-        <AuthContext.Provider value={{ user, login, logout }}>
-            {children}
-        </AuthContext.Provider>
-    );
+  // ✅ AGREGA ESTA FUNCIÓN
+  const login = (userData) => {
+    setUser(userData);
+  };
+
+  const loginWithGoogle = () => {
+    // Redirige a tu backend para iniciar el flujo OAuth
+    window.location.href = `${API_URL}/auth/google`;
+  };
+
+  const logout = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`${API_URL}/auth/logout`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+    } finally {
+      localStorage.removeItem('token');
+      setUser(null);
+    }
+  };
+
+  const value = {
+    user,
+    login, // ✅ AGREGA ESTO AL VALUE
+    loginWithGoogle,
+    logout,
+    isAuthenticated: !!user
+  };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {!loading && children}
+    </AuthContext.Provider>
+  );
 };

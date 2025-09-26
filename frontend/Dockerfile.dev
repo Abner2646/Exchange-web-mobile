@@ -23,5 +23,5 @@ COPY . .
 # Expose port
 EXPOSE 3000
 
-# Command with hot reload enabled
+# Command with hot reload enabled (sin --host porque se configura con ENV)
 CMD ["npm", "start"]

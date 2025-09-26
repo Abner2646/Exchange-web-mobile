@@ -71,6 +71,7 @@ services:
       - WDS_SOCKET_HOST=localhost
       - WDS_SOCKET_PORT=3000
       - WDS_SOCKET_PATH=/ws
+      - HOST=0.0.0.0
     ports:
       - "3000:3000"
     volumes:

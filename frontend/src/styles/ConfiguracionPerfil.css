@@ -1,0 +1,429 @@
+/* ========================= CONFIGURACIÓN PERFIL ========================= */
+
+.configuracion-perfil {
+  padding: var(--spacing-xl);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* ========================= HEADER ========================= */
+
+.configuracion-header {
+  margin-bottom: var(--spacing-xxl);
+  padding-bottom: var(--spacing-lg);
+  border-bottom: 1px solid var(--border-secondary);
+}
+
+.configuracion-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-sm);
+  margin: 0;
+}
+
+.configuracion-subtitle {
+  font-size: 1.125rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* ========================= MENSAJES ========================= */
+
+.configuracion-message {
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  animation: slideDown 0.3s ease;
+}
+
+.configuracion-message.success {
+  background: var(--success-bg);
+  border: 1px solid var(--success);
+  color: var(--success);
+}
+
+.configuracion-message.error {
+  background: var(--error-bg);
+  border: 1px solid var(--error);
+  color: var(--error);
+}
+
+.configuracion-message-icon {
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+/* ========================= GRID PRINCIPAL ========================= */
+
+.configuracion-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: var(--spacing-xl);
+}
+
+/* ========================= CARDS ========================= */
+
+.configuracion-card {
+  background: var(--bg-elevated);
+  padding: var(--spacing-lg);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-primary);
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+}
+
+.configuracion-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.configuracion-card-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: var(--spacing-lg);
+  color: var(--text-primary);
+  margin-top: 0;
+}
+
+.configuracion-activity-card {
+  margin-top: var(--spacing-xl);
+  grid-column: 1 / -1;
+}
+
+/* ========================= FORMULARIOS ========================= */
+
+.configuracion-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.configuracion-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.configuracion-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.configuracion-input {
+  width: 100%;
+  padding: var(--spacing-md);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 1rem;
+  outline: none;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.configuracion-input:focus {
+  border-color: var(--border-focus);
+  background: var(--bg-primary);
+}
+
+.configuracion-input-readonly {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  cursor: not-allowed;
+}
+
+/* ========================= SECCIÓN 2FA ========================= */
+
+.configuracion-2fa-section {
+  padding: var(--spacing-md);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.configuracion-2fa-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-sm);
+}
+
+.configuracion-2fa-info {
+  flex: 1;
+}
+
+.configuracion-2fa-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-xs);
+  margin-top: 0;
+}
+
+.configuracion-2fa-description {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.configuracion-2fa-toggle {
+  border: none;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-full);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 110px;
+}
+
+.configuracion-2fa-toggle.active {
+  background: var(--success);
+  color: var(--text-inverse);
+}
+
+.configuracion-2fa-toggle.inactive {
+  background: var(--border-primary);
+  color: var(--text-secondary);
+}
+
+.configuracion-2fa-toggle.loading {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.configuracion-2fa-toggle:not(.loading):hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ========================= SECCIÓN CONTRASEÑA ========================= */
+
+.configuracion-password-section {
+  margin-top: var(--spacing-md);
+}
+
+.configuracion-password-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.configuracion-password-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.configuracion-password-form {
+  padding: var(--spacing-lg);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  animation: slideDown 0.3s ease;
+}
+
+/* ========================= BOTONES ========================= */
+
+.configuracion-btn-primary {
+  background: var(--brand-primary);
+  color: var(--text-inverse);
+  border: none;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  align-self: flex-start;
+}
+
+.configuracion-btn-primary:not(.loading):hover {
+  background: var(--brand-secondary);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.configuracion-btn-primary.loading {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.configuracion-btn-secondary {
+  background: var(--brand-primary);
+  color: var(--text-inverse);
+  border: none;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.configuracion-btn-secondary:hover {
+  background: var(--brand-secondary);
+  transform: translateY(-1px);
+}
+
+/* ========================= BADGES ========================= */
+
+.configuracion-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.configuracion-badge.secure {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.configuracion-badge.basic {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.configuracion-badge.active {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+/* ========================= ACTIVIDAD ========================= */
+
+.configuracion-activity-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+.configuracion-activity-icon {
+  width: 48px;
+  height: 48px;
+  background: var(--info-bg);
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: var(--info);
+  flex-shrink: 0;
+}
+
+.configuracion-activity-info {
+  flex: 1;
+}
+
+.configuracion-activity-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-xs);
+  margin-top: 0;
+}
+
+.configuracion-activity-description {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* ========================= ANIMACIONES ========================= */
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ========================= RESPONSIVE ========================= */
+
+@media (max-width: 768px) {
+  .configuracion-perfil {
+    padding: var(--spacing-lg);
+  }
+  
+  .configuracion-grid {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-lg);
+  }
+  
+  .configuracion-title {
+    font-size: 2rem;
+  }
+  
+  .configuracion-2fa-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+  }
+  
+  .configuracion-2fa-toggle {
+    align-self: flex-end;
+  }
+  
+  .configuracion-password-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+  }
+  
+  .configuracion-activity-item {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .configuracion-activity-info {
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .configuracion-perfil {
+    padding: var(--spacing-md);
+  }
+  
+  .configuracion-title {
+    font-size: 1.75rem;
+  }
+  
+  .configuracion-subtitle {
+    font-size: 1rem;
+  }
+  
+  .configuracion-card {
+    padding: var(--spacing-md);
+  }
+  
+  .configuracion-2fa-header,
+  .configuracion-password-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .configuracion-2fa-toggle,
+  .configuracion-btn-secondary {
+    width: 100%;
+  }
+}

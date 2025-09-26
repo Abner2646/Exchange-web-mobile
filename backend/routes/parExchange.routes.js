@@ -1,4 +1,6 @@
 // routes/parExchange.routes.js - VERSIÓN SIMPLE SIN MIDDLEWARES
+//Prefijo: /parExchange
+
 const { Router } = require('express');
 const router = Router();
 

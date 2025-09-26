@@ -1,4 +1,5 @@
 // routes/intercambioExchange.routes.js
+// Prefijo: /intercambioExchange
 
 const express = require('express');
 const router = express.Router();

@@ -1,40 +1,34 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Home from './pages/home';
-import Login from './pages/login';
-import Products from './pages/products';
-import Categories from './pages/categories';
-import Transactions from './pages/transactions';
-import SingUp from './pages/signUp.jsx';
-import Company from './pages/company.jsx'
-import AuthSuccess from './components/AuthSuccess';
-import { AuthProvider } from './context/AuthContext';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Layout from './components/layout/Layout.jsx'
+import Home from './pages/Home';
+import Login from './pages/Login';
+import Register from './pages/Register.jsx'
+import Swap from './pages/Swap.jsx'
+import ConfiguracionPerfil from './pages/ConfiguracionPerfil.jsx';
+import AuthSuccess from './pages/AuthSuccess';
+import { AuthProvider } from './context/AuthContext.jsx';
 import { ThemeProvider } from './context/ThemeContext';
-import ThemeToggle from './components/ThemeToggle';
-import './styles/theme-system.css';
-
+import './styles/global.css';
 
 function App() {
-    return (
-        <ThemeProvider>
-            <AuthProvider>
-                <Router>
-                    {/* Floating theme switcher button available on all pages */}
-                    <ThemeToggle />
-                    
-                    <Routes>
-                        <Route path="/" element={<Home />} />
-                        <Route path="/login" element={<Login />} />
-                        <Route path="/products" element={<Products />} />
-                        <Route path="/categories" element={<Categories />} />
-                        <Route path="/transactions" element={<Transactions />} />
-                        <Route path="/register" element={<SingUp />} />
-                        <Route path="/company" element={<Company />} />
-                        <Route path="/auth-success" element={<AuthSuccess />} />
-                    </Routes>
-                </Router>
-            </AuthProvider>
-        </ThemeProvider>
-    );
+  return (
+    <ThemeProvider>
+      <AuthProvider>
+        <BrowserRouter>
+            <Routes>
+                <Route path="/" element={<Layout />}>
+                    <Route path="login" element={<Login />} />
+                    <Route path="register" element={<Register />} />
+                    <Route path="" element={<Home />} />
+                    <Route path="swap" element={<Swap />} />
+                    <Route path="profile" element={<ConfiguracionPerfil />} />
+                    <Route path="auth-success" element={<AuthSuccess />} />
+                </Route>
+            </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </ThemeProvider>
+  );
 }
 
 export default App;
