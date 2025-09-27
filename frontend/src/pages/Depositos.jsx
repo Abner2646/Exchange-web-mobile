@@ -11,9 +11,6 @@ const Deposits = () => {
   const [recentDeposits, setRecentDeposits] = useState([]);
   const [showMoreInfo, setShowMoreInfo] = useState(false);
 
-  // Simular token de autenticación (en la app real vendría del contexto de auth)
-  const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
-
   // Cargar criptomonedas activas al montar
   useEffect(() => {
     loadCriptomonedas();
@@ -29,7 +26,7 @@ const Deposits = () => {
   const loadCriptomonedas = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:3001/criptomoneda/public/active');
+      const response = await fetch('http://localhost:3001/api/criptomoneda/public/active');
       
       if (!response.ok) {
         throw new Error(`Error ${response.status}: ${response.statusText}`);
@@ -38,7 +35,7 @@ const Deposits = () => {
       const data = await response.json();
       console.log('Respuesta API criptomonedas:', data);
       
-      // Validar que la respuesta sea un array o tenga una propiedad data que sea array
+      // Validar que la respuesta sea un array
       let cryptoArray = [];
       if (Array.isArray(data)) {
         cryptoArray = data;
@@ -53,109 +50,67 @@ const Deposits = () => {
       
       setCriptomonedas(cryptoArray);
       
-      // Seleccionar USDT por defecto si existe
-      const usdt = cryptoArray.find(crypto => crypto.symbol === 'USDT');
-      if (usdt) {
-        setSelectedCrypto(usdt);
-        setSelectedNetwork(usdt.red);
+      // Seleccionar primera criptomoneda por defecto si existe
+      if (cryptoArray.length > 0) {
+        setSelectedCrypto(cryptoArray[0]);
+        setSelectedNetwork(cryptoArray[0].red);
       }
     } catch (error) {
       console.error('Error cargando criptomonedas:', error);
-      setCriptomonedas([]); // Asegurar que sea array vacío en caso de error
+      setCriptomonedas([]);
     } finally {
       setLoading(false);
     }
   };
 
   const loadDepositAddress = async (criptomonedaId) => {
+    console.log('=== GET SIMPLE ===');
+    console.log('CriptomonedaId:', criptomonedaId);
+    
     setLoadingAddress(true);
+    setDepositAddress(null);
+    
     try {
-      // Primero intentar obtener la dirección existente
-      const response = await fetch(
-        `http://localhost:3001/direccion-deposito/user/me/crypto/${criptomonedaId}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
+      const miToken = localStorage.getItem('token');
+      console.log('Token obtenido:', miToken ? 'Existe' : 'No existe');
+      
+      if (!miToken) {
+        console.error('No hay token en localStorage');
+        setDepositAddress(null);
+        setLoadingAddress(false);
+        return;
+      }
+      
+      const url = `http://localhost:3001/api/direccionDeposito/user/me/crypto/${criptomonedaId}`;
+      console.log('URL completa:', url);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${miToken}`,
+          'Content-Type': 'application/json'
         }
-      );
+      });
+      
+      console.log('Status:', response.status);
+      console.log('OK:', response.ok);
       
       if (response.ok) {
         const data = await response.json();
-        console.log('Dirección obtenida:', data);
-        
-        // Si la dirección existe y no es "none", usarla
-        if (data && data.direccion && data.direccion !== 'none') {
-          setDepositAddress(data);
-          return;
-        }
+        console.log('Datos:', data);
+        setDepositAddress(data);
+      } else {
+        const errorText = await response.text();
+        console.log('Error response:', errorText);
+        setDepositAddress(null);
       }
-      
-      // Si no existe dirección o es "none", crear una nueva
-      console.log('Creando nueva dirección para criptomoneda:', criptomonedaId);
-      const createResponse = await fetch(
-        'http://localhost:3001/direccion-deposito/',
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            criptomonedaId: criptomonedaId
-          })
-        }
-      );
-      
-      if (!createResponse.ok) {
-        throw new Error(`Error creando dirección: ${createResponse.status}`);
-      }
-      
-      const createData = await createResponse.json();
-      console.log('Dirección creada:', createData);
-      
-      // Según tus comentarios, hay que hacer un GET después del POST para recuperar correctamente
-      // Esperar un momento y volver a intentar obtener la dirección
-      setTimeout(async () => {
-        try {
-          const finalResponse = await fetch(
-            `http://localhost:3001/direccion-deposito/user/me/crypto/${criptomonedaId}`,
-            {
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-              }
-            }
-          );
-          
-          if (finalResponse.ok) {
-            const finalData = await finalResponse.json();
-            console.log('Dirección final obtenida:', finalData);
-            setDepositAddress(finalData);
-          } else {
-            // Si falla, usar la dirección del response de creación
-            if (createData.data && createData.data.direccion) {
-              setDepositAddress(createData.data);
-            } else {
-              throw new Error('No se pudo obtener la dirección creada');
-            }
-          }
-        } catch (finalError) {
-          console.error('Error en GET final:', finalError);
-          // Fallback: usar la dirección del response de creación si existe
-          if (createData.data && createData.data.direccion) {
-            setDepositAddress(createData.data);
-          }
-        } finally {
-          setLoadingAddress(false);
-        }
-      }, 1000); // Esperar 1 segundo antes del GET final
       
     } catch (error) {
-      console.error('Error cargando/creando dirección:', error);
+      console.error('Error:', error.message);
       setDepositAddress(null);
+    } finally {
       setLoadingAddress(false);
+      console.log('=== FIN GET ===');
     }
   };
 
@@ -167,23 +122,10 @@ const Deposits = () => {
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
-    // Aquí podrías agregar una notificación de "copiado"
   };
 
   const generateQRCode = (address) => {
-    // Generar QR code simple usando un servicio externo
     return `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${address}`;
-  };
-
-  const formatAddress = (address) => {
-    if (!address) return '';
-    return `${address.slice(0, 6)}...${address.slice(-6)}`;
-  };
-
-  const truncateAddress = (address, start = 10, end = 8) => {
-    if (!address) return '';
-    if (address.length <= start + end) return address;
-    return `${address.slice(0, start)}...${address.slice(-end)}`;
   };
 
   return (
@@ -303,7 +245,7 @@ const Deposits = () => {
               </div>
               
               {loadingAddress ? (
-                <div className="loading-address">Generando dirección...</div>
+                <div className="loading-address">Obteniendo dirección...</div>
               ) : depositAddress ? (
                 <div className="address-display">
                   <div className="qr-section">
@@ -334,7 +276,7 @@ const Deposits = () => {
                   </div>
                 </div>
               ) : (
-                <div className="no-address">No se pudo generar la dirección</div>
+                <div className="no-address">No se pudo obtener la dirección</div>
               )}
               
               <div className="deposit-info">
