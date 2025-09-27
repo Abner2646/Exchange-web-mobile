@@ -319,6 +319,23 @@
   display: inline-block;
 }
 
+/* ==================== ADVERTENCIA MISMA MONEDA ==================== */
+.same-currency-warning {
+  margin-bottom: var(--spacing-lg);
+  text-align: center;
+}
+
+.same-currency-warning span {
+  color: var(--warning);
+  font-size: 0.875rem;
+  background: var(--warning-bg);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--warning);
+  display: inline-block;
+  font-weight: 500;
+}
+
 /* ==================== BOTÓN CONFIRMAR ==================== */
 .swap-confirm-btn {
   width: 100%;
@@ -437,7 +454,7 @@
 
 /* ==================== DETALLES DEL MODAL ==================== */
 .modal-details {
-  margin-bottom: var(--spacing-xl);
+  margin-bottom: var(--spacing-lg);
 }
 
 .detail-row {
@@ -462,6 +479,23 @@
   font-size: 0.875rem;
   font-weight: 500;
   text-align: right;
+}
+
+/* ==================== ADVERTENCIA DE PRECIO ==================== */
+.price-warning {
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-md);
+  background: var(--warning-bg);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
+.price-warning span {
+  color: var(--warning);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.4;
 }
 
 /* ==================== INFORMACIÓN DE REFRESH ==================== */
@@ -497,6 +531,169 @@
   background: var(--interactive-disabled);
   transform: none;
   box-shadow: none;
+}
+
+/* ==================== BANNER DE ÉXITO ==================== */
+.success-banner {
+  position: fixed;
+  top: var(--spacing-lg);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1100;
+  width: 90%;
+  max-width: 500px;
+  animation: slideDown 0.3s ease-out;
+}
+
+.success-content {
+  background: var(--success-bg);
+  border: 2px solid var(--success);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  box-shadow: var(--shadow-lg);
+}
+
+.success-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.success-text {
+  flex: 1;
+}
+
+.success-title {
+  color: var(--success);
+  font-weight: 600;
+  font-size: 1rem;
+  margin-bottom: var(--spacing-xs);
+}
+
+.success-subtitle {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.success-close {
+  background: none;
+  border: none;
+  color: var(--success);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.success-close:hover {
+  background: var(--success);
+  color: var(--text-inverse);
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* ==================== ERROR HANDLING ==================== */
+.error-banner {
+  background: var(--error-bg);
+  border: 1px solid var(--error);
+  color: var(--error);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-lg);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.error-close {
+  background: none;
+  border: none;
+  color: var(--error);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+}
+
+.error-close:hover {
+  background: var(--error);
+  color: var(--text-inverse);
+}
+
+.balance-error {
+  color: var(--error);
+  font-size: 0.75rem;
+  margin-top: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--error-bg);
+  border-radius: var(--radius-sm);
+}
+
+.no-options {
+  padding: var(--spacing-md);
+  color: var(--text-secondary);
+  text-align: center;
+  font-size: 0.875rem;
+}
+
+.calculating {
+  color: var(--text-secondary);
+  font-style: italic;
+  font-size: 1.25rem;
+}
+
+/* ==================== LOADING STATES ==================== */
+.swap-confirm-btn:disabled,
+.modal-convert-btn:disabled {
+  background: var(--interactive-disabled);
+  color: var(--text-disabled);
+  cursor: not-allowed;
+}
+
+.swap-confirm-btn:disabled:hover,
+.modal-convert-btn:disabled:hover {
+  background: var(--interactive-disabled);
+  transform: none;
+  box-shadow: none;
+}
+
+.amount-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.max-btn:disabled {
+  background: var(--interactive-disabled);
+  color: var(--text-disabled);
+  cursor: not-allowed;
+}
+
+.max-btn:disabled:hover {
+  background: var(--interactive-disabled);
+  transform: none;
+}
+
+.swap-currencies-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.swap-currencies-btn:disabled:hover {
+  transform: none;
 }
 
 /* ==================== RESPONSIVE ==================== */

@@ -18,6 +18,7 @@ const Footer = () => {
               <li><a href="#">Sobre Nosotros</a></li>
               <li><a href="#">Servicios</a></li>
               <li><a href="#">Contacto</a></li>
+              <li><a href="#">Términos y condiciones del servicio</a></li>
             </ul>
           </div>
           

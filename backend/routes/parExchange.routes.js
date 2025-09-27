@@ -21,6 +21,14 @@ router.get('/:id', parExchangeController.getParExchangeById); // Bien
 
 // Crear nuevo par de exchange - SIN MIDDLEWARE
 router.post('/', parExchangeController.createParExchange); // Bien
+/*
+{
+"criptoBaseId":""
+"criptoQuoteId":""
+"comisionPorcentaje":""
+"simboloExterno":""
+}
+*/
 
 // Actualizar par por ID - SIN MIDDLEWARE
 router.put('/:id', parExchangeController.updateParExchange);

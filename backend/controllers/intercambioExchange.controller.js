@@ -18,6 +18,7 @@ const isValidUUID = (uuid) => {
   return uuidRegex.test(uuid);
 };
 
+/*
 // Crear nueva orden
 const createOrder = async (req, res) => {
   const transaction = await sequelize.transaction();
@@ -213,6 +214,277 @@ const createOrder = async (req, res) => {
     await transaction.rollback();
     console.error('Error creating exchange:', error);
     res.status(400).json({ error: error.message });
+  }
+};*/
+
+// Crear nueva orden - HARDCODEADO PARA tipo "VENTA" SIEMPRE
+const createOrder = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  
+  try {
+    console.log('Iniciando creación de orden (HARDCODED VENTA)')
+    const usuarioId = req.user.id;
+    const { parId, tipo, cantidadBase } = req.body;
+    
+    // Validar campos requeridos (sin precio)
+    console.log('Validando campos requeridos')
+    if (!parId || !tipo || !cantidadBase) {
+      await transaction.rollback();
+      return res.status(400).json({ error: 'parId, tipo y cantidadBase son requeridos' });
+    }
+    
+    // Validar UUID
+    console.log('Validadndo UUID========')
+    if (!isValidUUID(parId)) {
+      await transaction.rollback();
+      return res.status(400).json({ error: 'parId debe ser un UUID válido' });
+    }
+    
+    // Validar tipo (pero ignorarlo después)
+    console.log('Validadno tipo======== (IGNORADO - SIEMPRE VENTA)')
+    if (!['compra', 'venta'].includes(tipo)) {
+      await transaction.rollback();
+      return res.status(400).json({ error: 'tipo debe ser "compra" o "venta"' });
+    }
+
+    // Validar cantidadBase
+    console.log('Validadno transacción base========')
+    if (typeof cantidadBase !== 'number' || cantidadBase <= 0) {
+      await transaction.rollback();
+      return res.status(400).json({ error: 'cantidadBase debe ser un número mayor a 0' });
+    }
+
+    // Validar decimales
+    console.log('Validando decimales========')
+    const baseDecimals = (cantidadBase.toString().split('.')[1] || '').length;
+    if (baseDecimals > 8) {
+      await transaction.rollback();
+      return res.status(400).json({ error: 'cantidadBase no puede tener más de 8 decimales' });
+    }
+    
+    // Obtener información del par con precio actual
+    console.log('Validando info del par con precio actual========')
+    const par = await ParExchange.findByPk(parId, { 
+      include: [
+        { model: Criptomoneda, as: 'criptoBase' },
+        { model: Criptomoneda, as: 'criptoQuote' }
+      ],
+      transaction 
+    });
+    
+    if (!par || !par.activo) {
+      await transaction.rollback();
+      return res.status(404).json({ error: 'Par de intercambio no encontrado o inactivo' });
+    }
+
+    // Usar el precio actual del par
+    const precio = parseFloat(par.precioActual);
+    if (!precio || precio <= 0) {
+      await transaction.rollback();
+      return res.status(400).json({ error: 'El par no tiene un precio válido configurado' });
+    }
+
+    // Obtener usuario para verificar límites
+    const usuario = await Usuario.findByPk(usuarioId, { transaction });
+    if (!usuario || !usuario.activo) {
+      await transaction.rollback();
+      return res.status(404).json({ error: 'Usuario no encontrado o inactivo' });
+    }
+    
+    // Calcular valores con el precio actual
+    const cantidadQuote = parseFloat((cantidadBase * precio).toFixed(8));
+    const comisionPorcentaje = parseFloat(par.comisionPorcentaje || 0.1);
+    const comisionMonto = parseFloat((cantidadQuote * (comisionPorcentaje / 100)).toFixed(8));
+    
+    console.log(`HARDCODED VENTA - Vendiendo ${cantidadBase} ${par.criptoBase.symbol} por ${cantidadQuote} ${par.criptoQuote.symbol}`);
+    
+    // Verificar límite diario
+    const dailyVolume = await IntercambioExchange.getDailyVolume(usuarioId, new Date(), transaction);
+    const newDailyVolume = dailyVolume + cantidadQuote;
+    
+    if (newDailyVolume > usuario.limiteDiarioUsd) {
+      await transaction.rollback();
+      return res.status(400).json({ 
+        error: 'Límite diario excedido',
+        dailyVolume,
+        limit: usuario.limiteDiarioUsd,
+        requestedAmount: cantidadQuote,
+        currentPrice: precio
+      });
+    }
+
+    // Determinar qué criptomonedas se necesitan
+    const criptoBaseId = par.criptoBaseId;
+    const criptoQuoteId = par.criptoQuoteId;
+    
+    // 🔥 HARDCODED: SIEMPRE EJECUTAR LÓGICA DE VENTA
+    console.log('========== EJECUTANDO VENTA HARDCODEADA ==========');
+    
+    // Para vender: necesito criptomoneda base
+    const balanceBase = await BalanceUsuario.findOne({
+      where: { userId: usuarioId, criptomonedaId: criptoBaseId },
+      transaction
+    });
+    
+    if (!balanceBase || parseFloat(balanceBase.balanceDisponible) < cantidadBase) {
+      await transaction.rollback();
+      return res.status(400).json({ 
+        error: 'Saldo insuficiente en moneda base',
+        required: cantidadBase,
+        available: balanceBase ? parseFloat(balanceBase.balanceDisponible) : 0,
+        currency: par.criptoBase.symbol,
+        currentPrice: precio
+      });
+    }
+    
+    // Verificar que existe balance quote o crearlo
+    let balanceQuote = await BalanceUsuario.findOne({
+      where: { userId: usuarioId, criptomonedaId: criptoQuoteId },
+      transaction
+    });
+    
+    if (!balanceQuote) {
+      console.log(`Creando balance para ${par.criptoQuote.symbol}`);
+      balanceQuote = await BalanceUsuario.create({
+        userId: usuarioId,
+        criptomonedaId: criptoQuoteId,
+        balanceDisponible: 0,
+        balanceBloqueado: 0
+      }, { transaction });
+    }
+    
+    // Ejecutar la transacción de VENTA
+    console.log(`Restando ${cantidadBase} ${par.criptoBase.symbol}`);
+    await BalanceUsuario.updateBalance(usuarioId, criptoBaseId, -cantidadBase, 'disponible', transaction);
+    
+    const netAmount = cantidadQuote - comisionMonto;
+    console.log(`Sumando ${netAmount} ${par.criptoQuote.symbol} (${cantidadQuote} - ${comisionMonto} comisión)`);
+    await BalanceUsuario.updateBalance(usuarioId, criptoQuoteId, netAmount, 'disponible', transaction);
+    
+    // Agregar comisión a la wallet maestra (quote)
+    const walletMaestraQuote = await WalletMaestra.findOne({
+      where: { criptomonedaId: criptoQuoteId },
+      transaction
+    });
+    
+    if (walletMaestraQuote) {
+      console.log(`Agregando comisión ${comisionMonto} ${par.criptoQuote.symbol} a wallet maestra`);
+      await WalletMaestra.addToBalance(walletMaestraQuote.id, comisionMonto, transaction);
+    } else {
+      console.warn(`⚠️  No se encontró wallet maestra para ${par.criptoQuote.symbol}`);
+    }
+
+    // Crear el registro del intercambio como completado
+    // 🔥 NOTA: Guardamos "venta" en la BD independientemente del parámetro recibido
+    const newOrder = await IntercambioExchange.create({
+      usuarioId,
+      parId,
+      tipo: 'venta', // ← HARDCODED: siempre guardar como venta
+      cantidadBase,
+      cantidadQuote,
+      precio, // Precio obtenido automáticamente del par
+      comisionMonto,
+      comisionPorcentaje,
+      estado: 'completado',
+      completedAt: new Date()
+    }, { transaction });
+
+    await transaction.commit();
+    
+    console.log('========== VENTA COMPLETADA EXITOSAMENTE ==========');
+    
+    res.status(201).json({ 
+      message: 'Intercambio realizado exitosamente (VENTA)', 
+      data: {
+        ...newOrder.toJSON(),
+        precioUsado: precio,
+        comisionCalculada: comisionMonto,
+        // Debug info
+        operacionReal: 'VENTA',
+        vendiste: `${cantidadBase} ${par.criptoBase.symbol}`,
+        recibiste: `${netAmount} ${par.criptoQuote.symbol}`,
+        comisionPagada: `${comisionMonto} ${par.criptoQuote.symbol}`
+      }
+    });
+  } catch (error) {
+    await transaction.rollback();
+    console.error('Error creating exchange:', error);
+    res.status(400).json({ error: error.message });
+  }
+};
+
+// TAMBIÉN CREAR FUNCIÓN PARA REVERTIR LA TRANSACCIÓN SI ES NECESARIO
+const revertLastExchange = async (intercambioId) => {
+  const transaction = await sequelize.transaction();
+  
+  try {
+    const intercambio = await IntercambioExchange.findByPk(intercambioId, {
+      include: [
+        { 
+          model: ParExchange,
+          include: [
+            { model: Criptomoneda, as: 'criptoBase' },
+            { model: Criptomoneda, as: 'criptoQuote' }
+          ]
+        }
+      ],
+      transaction
+    });
+    
+    if (!intercambio) {
+      throw new Error('Intercambio no encontrado');
+    }
+    
+    console.log(`Revirtiendo intercambio ${intercambioId}...`);
+    
+    // Revertir las operaciones según el tipo
+    if (intercambio.tipo === 'compra') {
+      // Revertir compra: devolver quote, quitar base
+      await BalanceUsuario.updateBalance(
+        intercambio.usuarioId, 
+        intercambio.ParExchange.criptoQuoteId, 
+        intercambio.cantidadQuote + intercambio.comisionMonto, 
+        'disponible', 
+        transaction
+      );
+      await BalanceUsuario.updateBalance(
+        intercambio.usuarioId, 
+        intercambio.ParExchange.criptoBaseId, 
+        -intercambio.cantidadBase, 
+        'disponible', 
+        transaction
+      );
+    } else {
+      // Revertir venta: devolver base, quitar quote neto
+      await BalanceUsuario.updateBalance(
+        intercambio.usuarioId, 
+        intercambio.ParExchange.criptoBaseId, 
+        intercambio.cantidadBase, 
+        'disponible', 
+        transaction
+      );
+      await BalanceUsuario.updateBalance(
+        intercambio.usuarioId, 
+        intercambio.ParExchange.criptoQuoteId, 
+        -(intercambio.cantidadQuote - intercambio.comisionMonto), 
+        'disponible', 
+        transaction
+      );
+    }
+    
+    // Marcar como revertido
+    await intercambio.update({ 
+      estado: 'revertido',
+      revertedAt: new Date()
+    }, { transaction });
+    
+    await transaction.commit();
+    console.log('✅ Intercambio revertido exitosamente');
+    
+  } catch (error) {
+    await transaction.rollback();
+    console.error('❌ Error revirtiendo intercambio:', error);
+    throw error;
   }
 };
 

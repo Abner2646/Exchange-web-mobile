@@ -60,16 +60,18 @@ const getParExchangeById = async (req, res) => {
   }
 };
 
+//MÉTODO VIEJO
+/*
 // Crear nuevo par de exchange (solo admin)
 const createParExchange = async (req, res) => {
   try {
     const { 
       criptoBaseId, 
       criptoQuoteId, 
-      precioActual,      // OPCIONAL - si no se proporciona, se obtiene automáticamente
+      //precioActual,      // OPCIONAL - si no se proporciona, se obtiene automáticamente
       comisionPorcentaje, 
       activo = true,
-      fuentePrecio,      // OPCIONAL - se auto-detecta si no se especifica
+      //fuentePrecio,      // OPCIONAL - se auto-detecta si no se especifica
       simboloExterno
     } = req.body;
     
@@ -97,7 +99,7 @@ const createParExchange = async (req, res) => {
     }
 
     let finalPrice = null;
-    let finalSource = fuentePrecio || 'manual';
+    let finalSource = 'manual';
 
     // AUTO-DETECTAR FUENTE Y PRECIO si no se proporcionan
     if (!precioActual || !fuentePrecio) {
@@ -118,7 +120,7 @@ const createParExchange = async (req, res) => {
       }
     }
 
-    // Si aún no hay precio, usar el proporcionado o calcular uno básico
+    // Si aún no hay precio, usar el proporcionado o calcular uno básico <----------- SIEMRE debería detectar precios automáticamente
     if (!finalPrice) {
       if (precioActual) {
         if (parseFloat(precioActual) <= 0) {
@@ -159,6 +161,104 @@ const createParExchange = async (req, res) => {
         precioObtenidoAutomaticamente: !precioActual,
         fuenteDetectada: finalSource,
         simboloGenerado: !simboloExterno
+      }
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+*/
+
+// Crear nuevo par de exchange (solo admin)
+const createParExchange = async (req, res) => {
+  try {
+    const { 
+      criptoBaseId, 
+      criptoQuoteId, 
+      comisionPorcentaje, 
+      activo = true,
+      simboloExterno
+    } = req.body;
+    
+    if (!criptoBaseId || !criptoQuoteId || comisionPorcentaje === undefined) {
+      return res.status(400).json({ 
+        error: 'Los campos criptoBaseId, criptoQuoteId y comisionPorcentaje son requeridos' 
+      });
+    }
+
+    if (parseFloat(comisionPorcentaje) < 0 || parseFloat(comisionPorcentaje) > 100) {
+      return res.status(400).json({ 
+        error: 'La comisión debe estar entre 0 y 100%' 
+      });
+    }
+
+    // Obtener información de las criptomonedas
+    const { Criptomoneda } = require('../models/index.js');
+    const criptoBase = await Criptomoneda.findByPk(criptoBaseId);
+    const criptoQuote = await Criptomoneda.findByPk(criptoQuoteId);
+    
+    if (!criptoBase || !criptoQuote) {
+      return res.status(400).json({ 
+        error: 'Una o ambas criptomonedas no existen' 
+      });
+    }
+
+    // OBTENER PRECIO AUTOMÁTICAMENTE DESDE LA API (OBLIGATORIO)
+    console.log(`Obteniendo precio automático para ${criptoBase.symbol}/${criptoQuote.symbol}...`);
+    
+    let finalPrice = null;
+    let finalSource = null;
+    
+    try {
+      const priceService = require('../services/priceService');
+      const priceResult = await priceService.getPrice(criptoBase.symbol, criptoQuote.symbol);
+      
+      if (priceResult && priceResult.price > 0) {
+        finalPrice = priceResult.price;
+        finalSource = priceResult.source;
+        console.log(`✓ Precio obtenido de ${priceResult.source}: ${finalPrice}`);
+      } else {
+        throw new Error('El servicio de precios no devolvió un precio válido');
+      }
+    } catch (error) {
+      console.error(`❌ Error obteniendo precio automático: ${error.message}`);
+      return res.status(400).json({ 
+        error: `No se pudo obtener el precio automáticamente para el par ${criptoBase.symbol}/${criptoQuote.symbol}. Error: ${error.message}` 
+      });
+    }
+
+    // Validar que se obtuvo un precio válido
+    if (!finalPrice || finalPrice <= 0) {
+      return res.status(400).json({ 
+        error: `No se pudo obtener un precio válido para el par ${criptoBase.symbol}/${criptoQuote.symbol}` 
+      });
+    }
+
+    // Validar fuente
+    const validSources = ['manual', 'coingecko', 'binance', 'chainlink'];
+    if (!validSources.includes(finalSource)) {
+      console.warn(`⚠️ Fuente desconocida: ${finalSource}, usando 'manual' como fallback`);
+      finalSource = 'manual';
+    }
+
+    const nuevoPar = await ParExchange.createPar({
+      criptoBaseId,
+      criptoQuoteId,
+      precioActual: finalPrice,
+      comisionPorcentaje: parseFloat(comisionPorcentaje),
+      activo,
+      fuentePrecio: finalSource,
+      simboloExterno: simboloExterno || `${criptoBase.symbol}${criptoQuote.symbol}`
+    });
+    
+    res.status(201).json({ 
+      message: 'Par de exchange creado exitosamente', 
+      data: nuevoPar,
+      info: {
+        precioObtenidoAutomaticamente: true,
+        fuenteDetectada: finalSource,
+        simboloGenerado: !simboloExterno,
+        precio: finalPrice
       }
     });
   } catch (error) {

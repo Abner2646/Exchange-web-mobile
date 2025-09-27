@@ -1,0 +1,636 @@
+/* src/styles/deposits.css */
+
+/* Container principal */
+.deposits-container {
+  padding: var(--spacing-xl);
+  max-width: 1440px;
+  margin: 0 auto;
+  min-height: 100vh;
+}
+
+/* Header */
+.deposits-header {
+  margin-bottom: var(--spacing-xxl);
+  padding-bottom: var(--spacing-lg);
+  border-bottom: 1px solid var(--border-secondary);
+}
+
+.deposits-title {
+  fontSize: 2.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-sm);
+  margin: 0;
+}
+
+.deposits-subtitle {
+  fontSize: 1.125rem;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* Layout principal */
+.deposits-content {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--spacing-xl);
+}
+
+@media (max-width: 1024px) {
+  .deposits-content {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-lg);
+  }
+}
+
+/* Panel de depósito */
+.deposit-panel {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+  border: 1px solid var(--border-primary);
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+}
+
+.deposit-panel:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* Secciones de pasos */
+.step-section {
+  margin-bottom: var(--spacing-xxl);
+}
+
+.step-section:last-child {
+  margin-bottom: 0;
+}
+
+.step-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.step-number {
+  background: var(--brand-primary);
+  color: var(--text-inverse);
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.step-title {
+  fontSize: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+  flex: 1;
+}
+
+.manage-btn {
+  background: transparent;
+  color: var(--brand-primary);
+  border: 1px solid var(--brand-primary);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  fontSize: 0.875rem;
+}
+
+.manage-btn:hover {
+  background: var(--brand-primary);
+  color: var(--text-inverse);
+  transform: translateY(-1px);
+}
+
+/* Selector de criptomoneda */
+.crypto-selector {
+  position: relative;
+}
+
+.loading-selector {
+  padding: var(--spacing-lg);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.custom-select {
+  position: relative;
+}
+
+.select-display {
+  padding: var(--spacing-md);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.2s ease;
+}
+
+.select-display:hover {
+  border-color: var(--border-focus);
+  background: var(--bg-primary);
+}
+
+.select-display:focus-within {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--brand-tertiary);
+}
+
+.selected-crypto {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.crypto-icon {
+  width: 2rem;
+  height: 2rem;
+  background: var(--brand-primary);
+  color: var(--text-inverse);
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.crypto-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.crypto-symbol {
+  font-weight: 600;
+  color: var(--text-primary);
+  fontSize: 1rem;
+}
+
+.crypto-name {
+  fontSize: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.select-placeholder {
+  color: var(--text-tertiary);
+}
+
+.select-arrow {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.select-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  z-index: 100;
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: var(--spacing-xs);
+  display: none;
+}
+
+.custom-select:hover .select-dropdown {
+  display: block;
+}
+
+.select-option {
+  padding: var(--spacing-md);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.select-option:hover {
+  background: var(--interactive-hover);
+}
+
+/* Selector de red */
+.network-selector {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+}
+
+.network-display {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.network-name {
+  font-weight: 600;
+  color: var(--text-primary);
+  fontSize: 1rem;
+}
+
+.network-description {
+  fontSize: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.contract-info {
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--border-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.contract-label {
+  fontSize: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.contract-address {
+  fontSize: 0.875rem;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.copy-btn {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  padding: 0.25rem;
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.copy-btn:hover {
+  background: var(--interactive-hover);
+  transform: scale(1.1);
+}
+
+/* Dirección de depósito */
+.loading-address {
+  padding: var(--spacing-xl);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.no-address {
+  padding: var(--spacing-xl);
+  background: var(--error-bg);
+  border: 1px solid var(--error);
+  border-radius: var(--radius-md);
+  color: var(--error);
+  text-align: center;
+}
+
+.address-display {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--spacing-lg);
+  align-items: start;
+}
+
+@media (max-width: 768px) {
+  .address-display {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+}
+
+.qr-section {
+  display: flex;
+  justify-content: center;
+}
+
+.qr-code {
+  width: 120px;
+  height: 120px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-secondary);
+}
+
+.address-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.address-label {
+  fontSize: 0.875rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.address-container {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.address-input {
+  flex: 1;
+  padding: var(--spacing-md);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: 'Monaco', 'Menlo', monospace;
+  font-size: 0.875rem;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.address-input:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--brand-tertiary);
+}
+
+.copy-address-btn {
+  background: var(--brand-primary);
+  color: var(--text-inverse);
+  border: none;
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+}
+
+.copy-address-btn:hover {
+  background: var(--brand-secondary);
+  transform: translateY(-1px);
+}
+
+.address-dropdown {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+/* Información de depósito */
+.deposit-info {
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--border-secondary);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.min-deposit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.info-label {
+  fontSize: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.info-value {
+  fontSize: 0.875rem;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.more-info-btn {
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: color 0.2s ease;
+}
+
+.more-info-btn:hover {
+  color: var(--text-primary);
+}
+
+.extra-info {
+  margin-top: var(--spacing-lg);
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.info-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+}
+
+.info-card h4 {
+  margin: 0 0 var(--spacing-md) 0;
+  fontSize: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.info-card ul {
+  margin: 0;
+  padding-left: var(--spacing-lg);
+  color: var(--text-secondary);
+  fontSize: 0.875rem;
+  line-height: 1.6;
+}
+
+.info-card li {
+  margin-bottom: var(--spacing-xs);
+}
+
+/* Panel de depósitos recientes */
+.recent-deposits-panel {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+  border: 1px solid var(--border-primary);
+  box-shadow: var(--shadow-sm);
+  height: fit-content;
+  transition: all 0.2s ease;
+}
+
+.recent-deposits-panel:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.recent-title {
+  fontSize: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-lg) 0;
+}
+
+.deposits-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.deposit-item {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.deposit-item:hover {
+  background: var(--interactive-hover);
+  transform: translateY(-1px);
+}
+
+.deposit-crypto {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.deposit-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.deposit-amount {
+  font-weight: 600;
+  color: var(--text-primary);
+  fontSize: 0.875rem;
+}
+
+.deposit-network {
+  fontSize: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.deposit-status {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  align-items: flex-end;
+}
+
+.status-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-full);
+  fontSize: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-pending {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.status-completed {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.status-failed {
+  background: var(--error-bg);
+  color: var(--error);
+}
+
+.deposit-time {
+  fontSize: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+.no-deposits {
+  padding: var(--spacing-xxl);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.no-deposits-icon {
+  font-size: 3rem;
+  opacity: 0.5;
+}
+
+.no-deposits-text {
+  fontSize: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.no-deposits-subtitle {
+  fontSize: 0.875rem;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.6;
+  max-width: 300px;
+}
+
+/* Estados de carga y responsividad */
+@media (max-width: 768px) {
+  .deposits-container {
+    padding: var(--spacing-lg);
+  }
+  
+  .deposit-panel,
+  .recent-deposits-panel {
+    padding: var(--spacing-lg);
+  }
+  
+  .step-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+  }
+  
+  .address-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .deposit-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+  }
+}

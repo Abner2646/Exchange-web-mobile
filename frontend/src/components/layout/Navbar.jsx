@@ -1,11 +1,20 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import ThemeSwitcher from '../ThemeSwitcher';
 import '../../styles/Navbar.css';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleDepositar = () => {
+    if (user) {
+      navigate('/depositos');
+    } else {
+      navigate('/login');
+    }
+  };
 
   return (
     <nav className="navbar">
@@ -55,7 +64,10 @@ const Navbar = () => {
 
           <div className="navbar-actions">
             {/* Botón Depositar */}
-            <button className="navbar-deposit-btn">
+            <button 
+              className="navbar-deposit-btn" 
+              onClick={handleDepositar}
+            >
               Depositar
             </button>
             
