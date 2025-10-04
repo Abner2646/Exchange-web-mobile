@@ -4,8 +4,10 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register.jsx'
 import Swap from './pages/Swap.jsx'
+import Activos from './pages/Activos.jsx'
 import ConfiguracionPerfil from './pages/ConfiguracionPerfil.jsx';
 import Depositos from './pages/Depositos.jsx';
+import Withdrawal from './pages/Retiros.jsx';
 import AuthSuccess from './pages/AuthSuccess';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { ThemeProvider } from './context/ThemeContext';
@@ -22,8 +24,10 @@ function App() {
                     <Route path="register" element={<Register />} />
                     <Route path="" element={<Home />} />
                     <Route path="swap" element={<Swap />} />
+                    <Route path="activos" element={<Activos />} />
                     <Route path="profile" element={<ConfiguracionPerfil />} />
                     <Route path="depositos" element={<Depositos />} />
+                    <Route path="retiros" element={<Withdrawal />} />
                     <Route path="auth-success" element={<AuthSuccess />} />
                 </Route>
             </Routes>

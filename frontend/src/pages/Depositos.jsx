@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import QRCode from 'react-qr-code';
 import '../styles/deposits.css';
 
 const Deposits = () => {
@@ -124,10 +125,6 @@ const Deposits = () => {
     navigator.clipboard.writeText(text);
   };
 
-  const generateQRCode = (address) => {
-    return `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${address}`;
-  };
-
   return (
     <div className="deposits-container">
       {/* Header */}
@@ -249,10 +246,19 @@ const Deposits = () => {
               ) : depositAddress ? (
                 <div className="address-display">
                   <div className="qr-section">
-                    <img 
-                      src={generateQRCode(depositAddress.direccion)}
-                      alt="QR Code"
-                      className="qr-code"
+                    <QRCode
+                      value={depositAddress.direccion}
+                      size={120}
+                      style={{ 
+                        height: "120px", 
+                        width: "120px",
+                        border: `1px solid var(--border-secondary)`,
+                        borderRadius: 'var(--radius-md)',
+                        padding: 'var(--spacing-sm)',
+                        background: 'var(--bg-primary)'
+                      }}
+                      fgColor="var(--text-primary)"
+                      bgColor="var(--bg-primary)"
                     />
                   </div>
                   

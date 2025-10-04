@@ -1,0 +1,480 @@
+/* BalancePage.css */
+
+/* Container Principal */
+.balance-page {
+  padding: var(--spacing-xl);
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+/* Estados de Carga y Error */
+.loading-state,
+.error-state {
+  text-align: center;
+  padding: var(--spacing-xxl);
+  color: var(--text-secondary);
+}
+
+.error-state h3 {
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: var(--spacing-md);
+}
+
+.error-state p {
+  margin-bottom: var(--spacing-lg);
+  color: var(--error);
+}
+
+/* ========== HEADER DE BALANCE ========== */
+.balance-header {
+  margin-bottom: var(--spacing-xl);
+}
+
+.balance-header-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--spacing-xl);
+  align-items: start;
+}
+
+/* Balance Info */
+.balance-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.balance-label {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.balance-label h2 {
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
+.icon-eye {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+.icon-eye:hover {
+  color: var(--text-primary);
+}
+
+.balance-amount {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-sm);
+}
+
+.balance-amount h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.balance-currency {
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.balance-fiat {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.balance-pnl {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.pnl-label {
+  font-size: 0.875rem;
+  color: var(--text-tertiary);
+}
+
+.icon-info {
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.icon-info:hover {
+  color: var(--text-primary);
+}
+
+.pnl-value {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.pnl-value.positive {
+  color: var(--success);
+}
+
+.pnl-value.negative {
+  color: var(--error);
+}
+
+/* Action Buttons */
+.balance-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.action-btn {
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.action-btn:hover {
+  background: var(--interactive-hover);
+  border-color: var(--border-focus);
+  transform: translateY(-1px);
+}
+
+.action-btn:active {
+  transform: translateY(0);
+}
+
+/* ========== SECCIÓN DE ACTIVOS ========== */
+.assets-section {
+  /* Usa clase .card del global.css */
+}
+
+.assets-header {
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-lg);
+  border-bottom: 1px solid var(--border-secondary);
+}
+
+.assets-header h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-lg) 0;
+}
+
+.assets-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Tabs */
+.assets-tabs {
+  display: flex;
+  gap: var(--spacing-lg);
+}
+
+.tab {
+  background: none;
+  border: none;
+  padding: var(--spacing-sm) 0;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.tab:hover {
+  color: var(--text-primary);
+}
+
+.tab.active {
+  color: var(--brand-primary);
+  border-bottom-color: var(--brand-primary);
+}
+
+/* Filters */
+.assets-filters {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+}
+
+.search-btn {
+  background: none;
+  border: none;
+  padding: var(--spacing-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 1.25rem;
+  transition: all 0.2s ease;
+}
+
+.search-btn:hover {
+  color: var(--text-primary);
+}
+
+.hide-small-checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.hide-small-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--brand-primary);
+}
+
+/* ========== TABLA DE ACTIVOS ========== */
+.assets-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.assets-table thead tr {
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.assets-table th {
+  padding: var(--spacing-md);
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.th-amount,
+.th-price,
+.th-pnl {
+  text-align: right;
+}
+
+.th-price {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spacing-xs);
+}
+
+/* Filas */
+.asset-row {
+  border-bottom: 1px solid var(--border-secondary);
+  transition: all 0.2s ease;
+}
+
+.asset-row:hover {
+  background: var(--interactive-hover);
+}
+
+.assets-table td {
+  padding: var(--spacing-md);
+}
+
+/* Columna Moneda */
+.coin-cell {
+  /* padding heredado de td */
+}
+
+.coin-info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.coin-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  background: var(--brand-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--brand-primary);
+}
+
+.coin-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.coin-symbol {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.coin-name {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+/* Columna Importe */
+.amount-cell {
+  text-align: right;
+}
+
+.amount-crypto {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.amount-fiat {
+  font-size: 0.875rem;
+  color: var(--text-tertiary);
+}
+
+/* Columna Precio */
+.price-cell {
+  text-align: right;
+}
+
+.price-current {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.price-cost {
+  font-size: 0.875rem;
+  color: var(--text-tertiary);
+}
+
+/* Columna PnL */
+.pnl-cell {
+  text-align: right;
+}
+
+.pnl-amount {
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.pnl-amount.positive {
+  color: var(--success);
+}
+
+.pnl-amount.negative {
+  color: var(--error);
+}
+
+/* Columna Acciones */
+.actions-cell {
+  text-align: right;
+}
+
+.expand-btn {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 1.25rem;
+  padding: var(--spacing-xs);
+  transition: all 0.2s ease;
+}
+
+.expand-btn:hover {
+  color: var(--text-primary);
+  transform: scale(1.1);
+}
+
+/* Estado Vacío */
+.empty-state {
+  padding: var(--spacing-xl);
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 1024px) {
+  .balance-header-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .balance-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 768px) {
+  .balance-page {
+    padding: var(--spacing-md);
+  }
+
+  .balance-amount h1 {
+    font-size: 2rem;
+  }
+
+  .assets-controls {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+  }
+
+  .assets-tabs {
+    width: 100%;
+  }
+
+  .assets-filters {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  /* Simplificar tabla en móvil */
+  .assets-table {
+    font-size: 0.875rem;
+  }
+
+  .assets-table th,
+  .assets-table td {
+    padding: var(--spacing-sm);
+  }
+
+  .coin-avatar {
+    width: 24px;
+    height: 24px;
+    font-size: 0.75rem;
+  }
+}

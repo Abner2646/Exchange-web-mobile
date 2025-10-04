@@ -15,7 +15,7 @@ router.get('/my/balances', authenticateToken, balanceUserController.getMyBalance
 
 // PUT /api/balances/user/:userId/crypto/:criptomonedaId - Actualizar balance (en realidad añadir, suma)
 router.put('/user/:userId/crypto/:criptomonedaId', authenticateToken, balanceUserController.updateBalance);
-
+// {"amount": 5}
 
 // =============== NO TESTEADO ===============
 
