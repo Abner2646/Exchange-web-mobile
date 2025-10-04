@@ -12,7 +12,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   
-  const API_URL = 'http://localhost:5000'; // Cambia al puerto de tu backend
+  const API_URL = 'http://localhost:3001'; // Cambia al puerto de tu backend
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -28,11 +28,11 @@ export const AuthProvider = ({ children }) => {
       // Decodificar el JWT para obtener info del usuario
       const payload = JSON.parse(atob(token.split('.')[1]));
       setUser({
-        id: payload.userId,
+        id: payload.id,
         email: payload.email,
         username: payload.username,
         role: payload.role,
-        companyId: payload.companyId
+        companyId: payload.rol
       });
     } catch (error) {
       console.error('Error verificando token:', error);
