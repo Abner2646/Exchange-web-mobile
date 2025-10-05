@@ -30,6 +30,9 @@ router.post('/', parExchangeController.createParExchange); // Bien
 }
 */
 
+// ✨ NUEVA RUTA: Generar todos los pares automáticamente
+router.post('/generate-all', /*authenticateToken, isAdmin,*/ parExchangeController.generateAllPairs);
+
 // Actualizar par por ID - SIN MIDDLEWARE
 router.put('/:id', parExchangeController.updateParExchange);
 

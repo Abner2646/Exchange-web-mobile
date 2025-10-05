@@ -10,26 +10,183 @@ const bip32 = BIP32Factory(ecc);
 
 // =================== CONFIGURACIÓN DE CRIPTOMONEDAS BÁSICAS ===================
 const CRIPTOMONEDAS_BASICAS = [
+  // ========== NATIVAS CON WALLET ==========
   {
     symbol: 'BTC',
     nombre: 'Bitcoin',
     red: 'bitcoin',
-    derivationPath: "m/84'/1'/0'", //En minnet usar otro
+    derivationPath: "m/84'/1'/0'",
     decimales: 8,
+    direccionContrato: null,
+    tieneWallet: true
   },
   {
     symbol: 'ETH',
     nombre: 'Ethereum',
     red: 'ethereum',
     derivationPath: "m/44'/60'/0'",
-    decimales: 18
+    decimales: 18,
+    direccionContrato: null,
+    tieneWallet: true
   },
   {
     symbol: 'BNB',
     nombre: 'BNB Smart Chain',
     red: 'bsc',
     derivationPath: "m/44'/60'/0'",
-    decimales: 18
+    decimales: 18,
+    direccionContrato: null,
+    tieneWallet: true
+  },
+  
+  // ========== STABLECOINS (TOKENS ERC-20) ==========
+  {
+    symbol: 'USDT',
+    nombre: 'Tether USD',
+    red: 'ethereum',
+    decimales: 6,
+    direccionContrato: process.env.USDT_CONTRACT_ADDRESS || '0x7169D38820dfd117C3FA1f22a697dBA58d90BA06',
+    tieneWallet: false
+  },
+  {
+    symbol: 'USDC',
+    nombre: 'USD Coin',
+    red: 'ethereum',
+    decimales: 6,
+    direccionContrato: process.env.USDC_CONTRACT_ADDRESS || null,
+    tieneWallet: false
+  },
+  {
+    symbol: 'DAI',
+    nombre: 'Dai Stablecoin',
+    red: 'ethereum',
+    decimales: 18,
+    direccionContrato: process.env.DAI_CONTRACT_ADDRESS || null,
+    tieneWallet: false
+  },
+  
+  // ========== DEFI TOKENS (ERC-20) ==========
+  {
+    symbol: 'LINK',
+    nombre: 'Chainlink',
+    red: 'ethereum',
+    decimales: 18,
+    direccionContrato: process.env.LINK_CONTRACT_ADDRESS || null,
+    tieneWallet: false
+  },
+  {
+    symbol: 'UNI',
+    nombre: 'Uniswap',
+    red: 'ethereum',
+    decimales: 18,
+    direccionContrato: process.env.UNI_CONTRACT_ADDRESS || null,
+    tieneWallet: false
+  },
+  {
+    symbol: 'WBTC',
+    nombre: 'Wrapped Bitcoin',
+    red: 'ethereum',
+    decimales: 8,
+    direccionContrato: process.env.WBTC_CONTRACT_ADDRESS || null,
+    tieneWallet: false
+  },
+  {
+    symbol: 'AAVE',
+    nombre: 'Aave',
+    red: 'ethereum',
+    decimales: 18,
+    direccionContrato: process.env.AAVE_CONTRACT_ADDRESS || null,
+    tieneWallet: false
+  },
+  {
+    symbol: 'MKR',
+    nombre: 'Maker',
+    red: 'ethereum',
+    decimales: 18,
+    direccionContrato: process.env.MKR_CONTRACT_ADDRESS || null,
+    tieneWallet: false
+  },
+  
+  // ========== MEME & POPULAR TOKENS (ERC-20) ==========
+  {
+    symbol: 'SHIB',
+    nombre: 'Shiba Inu',
+    red: 'ethereum',
+    decimales: 18,
+    direccionContrato: process.env.SHIB_CONTRACT_ADDRESS || null,
+    tieneWallet: false
+  },
+  {
+    symbol: 'PEPE',
+    nombre: 'Pepe',
+    red: 'ethereum',
+    decimales: 18,
+    direccionContrato: process.env.PEPE_CONTRACT_ADDRESS || null,
+    tieneWallet: false
+  },
+  
+  // ========== LAYER 2 & SCALING (TOKENS) ==========
+  {
+    symbol: 'MATIC',
+    nombre: 'Polygon',
+    red: 'ethereum',
+    decimales: 18,
+    direccionContrato: process.env.MATIC_CONTRACT_ADDRESS || null,
+    tieneWallet: false
+  },
+  {
+    symbol: 'ARB',
+    nombre: 'Arbitrum',
+    red: 'ethereum',
+    decimales: 18,
+    direccionContrato: process.env.ARB_CONTRACT_ADDRESS || null,
+    tieneWallet: false
+  },
+  {
+    symbol: 'OP',
+    nombre: 'Optimism',
+    red: 'ethereum',
+    decimales: 18,
+    direccionContrato: process.env.OP_CONTRACT_ADDRESS || null,
+    tieneWallet: false
+  },
+  
+  // ========== OTRAS IMPORTANTES (SOLO PARA TRADING) ==========
+  {
+    symbol: 'SOL',
+    nombre: 'Solana',
+    red: 'solana',
+    decimales: 9,
+    direccionContrato: null,
+    tieneWallet: false,
+    soloTrading: true
+  },
+  {
+    symbol: 'ADA',
+    nombre: 'Cardano',
+    red: 'cardano',
+    decimales: 6,
+    direccionContrato: null,
+    tieneWallet: false,
+    soloTrading: true
+  },
+  {
+    symbol: 'XRP',
+    nombre: 'Ripple',
+    red: 'ripple',
+    decimales: 6,
+    direccionContrato: null,
+    tieneWallet: false,
+    soloTrading: true
+  },
+  {
+    symbol: 'DOGE',
+    nombre: 'Dogecoin',
+    red: 'dogecoin',
+    decimales: 8,
+    direccionContrato: null,
+    tieneWallet: false,
+    soloTrading: true
   }
 ];
 
@@ -373,25 +530,48 @@ const executeCompleteSetup = async (req, res) => {
       });
       
       if (!criptomoneda) {
+        // Crear criptomoneda con iconUrl auto-generado
         criptomoneda = await Criptomoneda.create({
           symbol: config.symbol,
           nombre: config.nombre,
           red: config.red,
           decimales: config.decimales,
+          direccionContrato: config.direccionContrato,
           activa: true
+          // iconUrl se genera automáticamente en el modelo
         }, { transaction });
-        console.log(`✅ Criptomoneda ${config.symbol} creada`);
+        console.log(`✅ Criptomoneda ${config.symbol} creada con icono`);
       } else {
-        console.log(`✅ Criptomoneda ${config.symbol} ya existe`);
+        // Actualizar iconUrl Y direccionContrato si no existen
+        const updateData = {};
+        
+        if (!criptomoneda.iconUrl) {
+          updateData.iconUrl = `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/svg/color/${config.symbol.toLowerCase()}.svg`;
+        }
+        
+        // ✨ AGREGADO: Actualizar direccionContrato si no existe
+        if (!criptomoneda.direccionContrato && config.direccionContrato) {
+          updateData.direccionContrato = config.direccionContrato;
+        }
+        
+        if (Object.keys(updateData).length > 0) {
+          await criptomoneda.update(updateData, { transaction });
+          console.log(`✅ Datos actualizados para ${config.symbol} (${Object.keys(updateData).join(', ')})`);
+        } else {
+          console.log(`✅ Criptomoneda ${config.symbol} ya existe completa`);
+        }
       }
-      
       criptomonedas[config.symbol] = criptomoneda;
     }
     
-    // PASO 2: Crear wallets maestras
+    // PASO 2: Crear wallets maestras (solo para las que tienen derivationPath de wallet)
     console.log('💰 Generando wallets maestras...');
     
-    for (const config of CRIPTOMONEDAS_BASICAS) {
+    // Solo crear wallets para BTC, ETH, BNB (no para USDT que es un token)
+    //const walletsToCreate = CRIPTOMONEDAS_BASICAS.filter(c => ['BTC', 'ETH', 'BNB'].includes(c.symbol)); //Ante estaba esta línea
+    const walletsToCreate = CRIPTOMONEDAS_BASICAS.filter(c => c.tieneWallet === true);
+
+    for (const config of walletsToCreate) {
       const criptomoneda = criptomonedas[config.symbol];
       
       try {
@@ -402,7 +582,6 @@ const executeCompleteSetup = async (req, res) => {
         
         switch (config.symbol) {
           case 'BTC':
-            // BTC: Tomar todos los datos del .env (como ETH)
             walletData = WalletSetupGenerator.getBTCWalletFromEnv();
             method = 'env-complete-data';
             break;
@@ -436,7 +615,7 @@ const executeCompleteSetup = async (req, res) => {
           metadata: {
             createdAt: new Date(),
             method: method,
-            version: '4.0',
+            version: '4.1',
             source: 'complete_setup',
             setupTimestamp: Date.now()
           }
@@ -503,8 +682,17 @@ const executeCompleteSetup = async (req, res) => {
         criptomonedasCreadas: CRIPTOMONEDAS_BASICAS.length,
         walletsCreadas: resultados.length,
         wallets: resultados,
+        criptomonedas: Object.values(criptomonedas).map(c => ({
+          id: c.id,
+          symbol: c.symbol,
+          nombre: c.nombre,
+          red: c.red,
+          decimales: c.decimales,
+          direccionContrato: c.direccionContrato,
+          iconUrl: c.iconUrl
+        })),
         timestamp: new Date(),
-        version: '4.0'
+        version: '4.1'
       },
       warning: 'Datos privados loggeados en servidor - guardar y limpiar logs inmediatamente'
     });
@@ -531,9 +719,14 @@ const checkSetupStatus = async (req, res) => {
       include: [{
         model: Criptomoneda,
         as: 'criptomoneda',
-        attributes: ['symbol', 'nombre', 'red']
+        attributes: ['symbol', 'nombre', 'red', 'iconUrl']
       }],
       attributes: ['id', 'nombre', 'symbol', 'red', 'activa', 'created_at', 'balanceTotal'],
+      order: [['symbol', 'ASC']]
+    });
+    
+    const criptomonedas = await Criptomoneda.findAll({
+      attributes: ['id', 'symbol', 'nombre', 'red', 'decimales', 'direccionContrato', 'iconUrl', 'activa'],
       order: [['symbol', 'ASC']]
     });
     
@@ -562,7 +755,18 @@ const checkSetupStatus = async (req, res) => {
           red: w.red,
           activa: w.activa,
           balance: w.balanceTotal,
-          created_at: w.created_at
+          created_at: w.created_at,
+          iconUrl: w.criptomoneda?.iconUrl
+        })),
+        criptomonedas: criptomonedas.map(c => ({
+          id: c.id,
+          symbol: c.symbol,
+          nombre: c.nombre,
+          red: c.red,
+          decimales: c.decimales,
+          direccionContrato: c.direccionContrato,
+          iconUrl: c.iconUrl,
+          activa: c.activa
         })),
         environmentStatus: {
           allVariablesPresent: envErrors.length === 0,

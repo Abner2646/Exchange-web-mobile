@@ -1,6 +1,7 @@
 // controllers/parExchange.controller.js
 
-const { ParExchange } = require('../models/index.js');
+const { ParExchange, Criptomoneda } = require('../models/index.js');
+const priceService = require('../services/priceService');
 
 // Listar pares de exchange
 const getParesExchange = async (req, res) => {
@@ -873,6 +874,7 @@ const getCurrentPrice = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
 const getMarketMetrics = async (req, res) => {
   try {
     const { timeframe = '24h' } = req.query;
@@ -921,9 +923,161 @@ const getMarketMetrics = async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+}
+
+  // ✨ NUEVA FUNCIÓN: Generar todos los pares automáticamente
+  const generateAllPairs = async (req, res) => {
+    const { Criptomoneda } = require('../models/index.js')  // ✅ BIEN
+    try {
+      console.log('🚀 Iniciando generación automática de pares...');
+      
+      // Obtener comisión por defecto del .env
+      const defaultFee = parseFloat(process.env.EXCHANGE_FEE_PERCENTAGE || 0.1);
+      
+      // Obtener todas las criptomonedas activas
+      const criptomonedas = await Criptomoneda.findAll({
+        where: { activa: true },
+        attributes: ['id', 'symbol', 'nombre'],
+        order: [['symbol', 'ASC']]
+      });
+      
+      if (criptomonedas.length < 2) {
+        return res.status(400).json({
+          success: false,
+          error: 'Se necesitan al menos 2 criptomonedas activas para generar pares'
+        });
+      }
+      
+      const results = {
+        total: 0,
+        created: 0,
+        skipped: 0,
+        failed: 0,
+        details: []
+      };
+      
+      // Generar todas las combinaciones (bidireccionales)
+      for (let i = 0; i < criptomonedas.length; i++) {
+        for (let j = 0; j < criptomonedas.length; j++) {
+          // Saltar si es la misma criptomoneda
+          if (i === j) continue;
+          
+          const base = criptomonedas[i];
+          const quote = criptomonedas[j];
+          
+          results.total++;
+          
+          try {
+            // Verificar si ya existe el par
+            const existingPar = await ParExchange.findOne({
+              where: {
+                criptoBaseId: base.id,
+                criptoQuoteId: quote.id
+              }
+            });
+            
+            if (existingPar) {
+              results.skipped++;
+              results.details.push({
+                pair: `${base.symbol}/${quote.symbol}`,
+                status: 'skipped',
+                reason: 'Ya existe'
+              });
+              continue;
+            }
+            
+            // Intentar obtener precio desde las APIs
+            console.log(`⚡ Verificando precio para ${base.symbol}/${quote.symbol}...`);
+            
+            let priceResult;
+            try {
+              priceResult = await priceService.getPrice(base.symbol, quote.symbol);
+            } catch (priceError) {
+              results.skipped++;
+              results.details.push({
+                pair: `${base.symbol}/${quote.symbol}`,
+                status: 'skipped',
+                reason: `No disponible en APIs: ${priceError.message}`
+              });
+              continue;
+            }
+            
+            if (!priceResult || !priceResult.price || priceResult.price <= 0) {
+              results.skipped++;
+              results.details.push({
+                pair: `${base.symbol}/${quote.symbol}`,
+                status: 'skipped',
+                reason: 'Precio inválido o cero'
+              });
+              continue;
+            }
+            
+            // Crear el par
+            const nuevoPar = await ParExchange.create({
+              criptoBaseId: base.id,
+              criptoQuoteId: quote.id,
+              precioActual: priceResult.price,
+              comisionPorcentaje: defaultFee,
+              fuentePrecio: priceResult.source || 'binance',
+              simboloExterno: `${base.symbol}${quote.symbol}`,
+              activo: true,
+              ultimaActualizacion: new Date()
+            });
+            
+            results.created++;
+            results.details.push({
+              pair: `${base.symbol}/${quote.symbol}`,
+              status: 'created',
+              price: priceResult.price,
+              source: priceResult.source,
+              id: nuevoPar.id
+            });
+            
+            console.log(`✅ Par creado: ${base.symbol}/${quote.symbol} - Precio: ${priceResult.price}`);
+            
+          } catch (error) {
+            results.failed++;
+            results.details.push({
+              pair: `${base.symbol}/${quote.symbol}`,
+              status: 'failed',
+              error: error.message
+            });
+            console.error(`❌ Error creando par ${base.symbol}/${quote.symbol}:`, error.message);
+          }
+        }
+      }
+      
+      console.log('✅ Generación de pares completada');
+      
+      res.status(201).json({
+        success: true,
+        message: 'Generación de pares completada',
+        summary: {
+          totalCombinaciones: results.total,
+          creados: results.created,
+          saltados: results.skipped,
+          fallidos: results.failed,
+          comisionDefecto: `${defaultFee}%`,
+          criptomonedasProcesadas: criptomonedas.length
+        },
+        details: results.details
+      });
+      
+    } catch (error) {
+      console.error('❌ Error en generación de pares:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Error generando pares automáticamente',
+        details: error.message
+      });
+    }
+
 };
 
+
+
 module.exports = {
+  generateAllPairs,
   getParesExchange,
   getParExchangeById,
   createParExchange,
