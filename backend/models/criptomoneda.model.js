@@ -187,6 +187,16 @@ function createCriptomonedaModel(sequelize) {
     }
   };
 
+  // ✨ Método helper para generar URL de icono
+  Criptomoneda.generateIconUrl = (symbol) => {
+    // Usar SVG transparente de jsDelivr
+    return `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/svg/color/${symbol.toLowerCase()}.svg`;
+    
+    // O si preferís PNG 128x128:
+    // return `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/${symbol.toLowerCase()}.png`;
+  };
+
+  // Crear criptomoneda (MÉTODO ÚNICO CORREGIDO)
   Criptomoneda.createCriptomoneda = async (data) => {
     try {
       // Verificar si ya existe una criptomoneda con el mismo símbolo
@@ -209,7 +219,12 @@ function createCriptomonedaModel(sequelize) {
         }
       }
 
-      // Convertir símbolo a mayúsculas
+      // ✨ Auto-generar iconUrl si no se proporciona
+      if (!data.iconUrl) {
+        data.iconUrl = Criptomoneda.generateIconUrl(data.symbol);
+      }
+
+      // Convertir símbolo a mayúsculas y crear
       const nuevaCriptomoneda = await Criptomoneda.create({
         ...data,
         symbol: data.symbol.toUpperCase()

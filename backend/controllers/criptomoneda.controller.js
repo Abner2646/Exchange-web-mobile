@@ -26,7 +26,15 @@ const getCriptomonedaById = async (req, res) => {
 // Crear nueva criptomoneda
 const createCriptomoneda = async (req, res) => {
   try {
-    const { symbol, nombre, red, direccionContrato, decimales = 18, activa = true } = req.body;
+    const { 
+      symbol, 
+      nombre, 
+      red, 
+      direccionContrato, 
+      decimales = 18, 
+      activa = true,
+      iconUrl // ✨ NUEVO
+    } = req.body;
     
     if (!symbol || !nombre || !red) {
       return res.status(400).json({ 
@@ -40,7 +48,8 @@ const createCriptomoneda = async (req, res) => {
       red,
       direccionContrato,
       decimales,
-      activa
+      activa,
+      iconUrl // ✨ NUEVO
     });
     
     res.status(201).json({ 
@@ -56,7 +65,15 @@ const createCriptomoneda = async (req, res) => {
 const updateCriptomoneda = async (req, res) => {
   try {
     const { id } = req.params;
-    const { symbol, nombre, red, direccionContrato, decimales, activa } = req.body;
+    const { 
+      symbol, 
+      nombre, 
+      red, 
+      direccionContrato, 
+      decimales, 
+      activa,
+      iconUrl // ✨ NUEVO
+    } = req.body;
 
     const updatedCriptomoneda = await Criptomoneda.updateCriptomoneda(id, {
       ...(symbol && { symbol }),
@@ -64,7 +81,8 @@ const updateCriptomoneda = async (req, res) => {
       ...(red && { red }),
       ...(direccionContrato !== undefined && { direccionContrato }),
       ...(decimales !== undefined && { decimales }),
-      ...(activa !== undefined && { activa })
+      ...(activa !== undefined && { activa }),
+      ...(iconUrl !== undefined && { iconUrl }) // ✨ NUEVO
     });
 
     res.json({ 
@@ -231,6 +249,53 @@ const validateForTransaction = async (req, res) => {
   }
 };
 
+// ✨ NUEVO: Generar URL de icono automáticamente
+const generateIconUrl = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const criptomoneda = await Criptomoneda.getById(id);
+    
+    if (!criptomoneda) {
+      return res.status(404).json({ error: 'Criptomoneda no encontrada' });
+    }
+
+    // SVG transparente
+    const iconUrl = `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/svg/color/${criptomoneda.symbol.toLowerCase()}.svg`;
+    
+    const updated = await Criptomoneda.updateCriptomoneda(id, { iconUrl });
+    
+    res.json({
+      message: 'URL de icono SVG transparente generada',
+      data: updated
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+// ✨ Generar todos con SVG transparente
+const generateAllIconUrls = async (req, res) => {
+  try {
+    const criptomonedas = await Criptomoneda.getAll({});
+    const updated = [];
+    
+    for (const crypto of criptomonedas) {
+      if (!crypto.iconUrl) {
+        const iconUrl = `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/svg/color/${crypto.symbol.toLowerCase()}.svg`;
+        const updatedCrypto = await Criptomoneda.updateCriptomoneda(crypto.id, { iconUrl });
+        updated.push(updatedCrypto);
+      }
+    }
+    
+    res.json({
+      message: `${updated.length} iconos SVG transparentes generados`,
+      data: updated
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 module.exports = {
   getCriptomonedas,
   getCriptomonedaById,
@@ -245,5 +310,7 @@ module.exports = {
   getCriptomonedaBySymbol,
   getCriptomonedasByNetwork,
   getCriptomonedaByContract,
-  validateForTransaction
+  validateForTransaction,
+  generateIconUrl, // ✨ NUEVO
+  generateAllIconUrls // ✨ NUEVO
 };

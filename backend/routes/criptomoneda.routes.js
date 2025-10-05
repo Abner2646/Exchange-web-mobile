@@ -40,6 +40,20 @@ router.put('/:id', authenticateToken, criptomonedaController.updateCriptomoneda)
 // Eliminar criptomoneda por ID
 router.delete('/:id', authenticateToken, criptomonedaController.deleteCriptomoneda);
 
+// ----------------------- DE LOS ICONOS -------------------------
+// Generar icono para una cripto específica
+router.post('/:id/generate-icon', criptomonedaController.generateIconUrl);
+
+// Generar iconos para todas las criptos sin icono
+router.post('/generate-all-icons', criptomonedaController.generateAllIconUrls);
+
+/*Lista de simbolos de Cyptolcons.org soporta (más comunes):
+BTC, ETH, USDT, BNB, USDC, XRP, ADA, DOGE, SOL, DOT, MATIC, 
+SHIB, TRX, AVAX, LINK, UNI, ATOM, LTC, XMR, ETC, BCH, XLM, 
+ALGO, VET, ICP, FIL, APT, NEAR, HBAR, QNT, ARB, OP, IMX, 
+SAND, MANA, AXS, GALA, CHZ, ENJ, FLOW, etc.
+*/
+
 // --------------------- RUTAS DE BÚSQUEDA Y CONSULTA --------------------- //
 
 // Buscar criptomonedas por término

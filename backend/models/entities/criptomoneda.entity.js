@@ -34,6 +34,13 @@ function initCriptomoneda(sequelize) {
     activa: {
       type: DataTypes.BOOLEAN,
       defaultValue: true
+    },
+    // ✨ NUEVO CAMPO
+    iconUrl: {
+      type: DataTypes.STRING(500),
+      allowNull: true,
+      field: 'icon_url',
+      comment: 'URL del icono de la criptomoneda'
     }
   }, {
     sequelize,
