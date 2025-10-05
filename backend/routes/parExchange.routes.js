@@ -13,6 +13,9 @@ console.log('Funciones disponibles:', Object.keys(parExchangeController || {}));
 
 // --------------------- RUTAS BÁSICAS SIN MIDDLEWARE --------------------- //
 
+// ✨ NUEVA RUTA: Generar todos los pares automáticamente
+router.post('/generate-all', /*authenticateToken, isAdmin,*/ parExchangeController.generateAllPairs);
+
 // Obtener todos los pares de exchange
 router.get('/', parExchangeController.getParesExchange); // Bien
 
@@ -30,8 +33,6 @@ router.post('/', parExchangeController.createParExchange); // Bien
 }
 */
 
-// ✨ NUEVA RUTA: Generar todos los pares automáticamente
-router.post('/generate-all', /*authenticateToken, isAdmin,*/ parExchangeController.generateAllPairs);
 
 // Actualizar par por ID - SIN MIDDLEWARE
 router.put('/:id', parExchangeController.updateParExchange);

@@ -88,7 +88,7 @@ const Navbar = () => {
                       <span className="navbar-dropdown-icon">💼</span>
                       Activos
                     </Link>
-                    <Link to="/configuracion" className="navbar-dropdown-item">
+                    <Link to="/perfil" className="navbar-dropdown-item">
                       <span className="navbar-dropdown-icon">⚙️</span>
                       Configuración
                     </Link>

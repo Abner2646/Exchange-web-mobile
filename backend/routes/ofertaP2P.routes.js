@@ -25,20 +25,23 @@ router.get('/criptomoneda/:criptomonedaId', authenticateToken, ofertaP2PControll
 
 // --------------------- RUTAS CRUD BÁSICAS --------------------- //
 
-// Obtener todas las ofertas (con filtros)
-router.get('/', authenticateToken, ofertaP2PController.getOfertas);
+// Obtener todas las ofertas activas e inactivas (con filtros)
+router.get('/', authenticateToken, ofertaP2PController.getOfertas); // Bien
 
-// Obtener oferta por ID
-router.get('/:id', authenticateToken, ofertaP2PController.getOfertaById);
+// Obtener todas las ofertas activas (con filtros)
+router.get('/', authenticateToken, ofertaP2PController.getOfertasActivas); // <------------
+
+// Obtener oferta por ID aunque esté desactivada
+router.get('/:id', authenticateToken, ofertaP2PController.getOfertaById); // <------------
 
 // Crear nueva oferta
-router.post('/', authenticateToken, ofertaP2PController.createOferta);
+router.post('/', authenticateToken, ofertaP2PController.createOferta); // Bien
 
 // Actualizar oferta por ID
-router.put('/:id', authenticateToken, ofertaP2PController.updateOferta);
+router.put('/:id', authenticateToken, ofertaP2PController.updateOferta); // Bien
 
 // Eliminar/Desactivar oferta por ID
-router.delete('/:id', authenticateToken, ofertaP2PController.deleteOferta);
+router.delete('/:id', authenticateToken, ofertaP2PController.deleteOferta); // <------------
 
 // --------------------- RUTAS ESPECÍFICAS DEL USUARIO --------------------- //
 

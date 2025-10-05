@@ -15,10 +15,10 @@ const intercambioExchangeModel = require('./intercambioExchange.model');
 //const logAdminModel = require('./logAdmin.model');
 //const logTransaccionModel = require('./logTransaccion.model');
 //const mensajeReclamoModel = require('./mensajeReclamo.model');
-//const metodoPagoModel = require('./metodoPago.model');
+const metodoPagoModel = require('./metodoPago.model');
 const notificacionesModel = require('./notificaciones.model');
-//const ofertaMetodoPagoModel = require('./ofertaMetodoPago.model');
-//const ofertaP2PModel = require('./ofertaP2P.model');
+const ofertaMetodoPagoModel = require('./ofertaMetodoPago.model');
+const ofertaP2PModel = require('./ofertaP2P.model');
 const parExchangeModel = require('./parExchange.model');
 //const reclamoModel = require('./reclamo.model');
 const transaccionBlockchainModel = require('./transaccionBlockchain.model');
@@ -55,10 +55,10 @@ const IntercambioExchange = intercambioExchangeModel(sequelize);
 //const LogAdmin = logAdminModel(sequelize);
 //const LogTransaccion = logTransaccionModel(sequelize);
 //const MensajeReclamo = mensajeReclamoModel(sequelize);
-//const MetodoPago = metodoPagoModel(sequelize);
+const MetodoPago = metodoPagoModel(sequelize);
 const Notificaciones = notificacionesModel(sequelize);
-//const OfertaMetodoPago = ofertaMetodoPagoModel(sequelize);
-//const OfertaP2P = ofertaP2PModel(sequelize);  
+const OfertaMetodoPago = ofertaMetodoPagoModel(sequelize);
+const OfertaP2P = ofertaP2PModel(sequelize);  
 const ParExchange = parExchangeModel(sequelize);
 //const Reclamo = reclamoModel(sequelize);
 const TransaccionBlockchain = transaccionBlockchainModel(sequelize);
@@ -81,11 +81,11 @@ BalanceUsuario.belongsTo(Usuario, { foreignKey: 'usuarioId', as: 'usuario' });
 // Usuario puede tener muchas direcciones de depósito
 Usuario.hasMany(DireccionDeposito, { foreignKey: 'usuarioId', as: 'direccionesDeposito' });
 DireccionDeposito.belongsTo(Usuario, { foreignKey: 'userId', as: 'usuario' }); //Antes: (Usuario, { foreignKey: 'usuarioId', as: 'usuario' })
-/*
+
 // Usuario puede crear muchas ofertas P2P
 Usuario.hasMany(OfertaP2P, { foreignKey: 'usuarioId', as: 'ofertas' });
 OfertaP2P.belongsTo(Usuario, { foreignKey: 'usuarioId', as: 'usuario' });
-
+/*
 // Usuario puede ser comprador en transacciones P2P
 Usuario.hasMany(TransaccionP2P, { foreignKey: 'compradorId', as: 'compras' });
 TransaccionP2P.belongsTo(Usuario, { foreignKey: 'compradorId', as: 'comprador' });
@@ -150,11 +150,11 @@ DireccionDeposito.belongsTo(Criptomoneda, { foreignKey: 'criptomonedaId', as: 'c
 // Criptomoneda puede tener muchos balances de usuarios
 Criptomoneda.hasMany(BalanceUsuario, { foreignKey: 'criptomonedaId', as: 'balances' });
 BalanceUsuario.belongsTo(Criptomoneda, { foreignKey: 'criptomonedaId', as: 'criptomoneda' });
-/*
+
 // Criptomoneda puede estar en muchas ofertas P2P
 Criptomoneda.hasMany(OfertaP2P, { foreignKey: 'criptomonedaId', as: 'ofertas' });
 OfertaP2P.belongsTo(Criptomoneda, { foreignKey: 'criptomonedaId', as: 'criptomoneda' });
-
+/*
 // Criptomoneda puede estar en muchas transacciones P2P
 Criptomoneda.hasMany(TransaccionP2P, { foreignKey: 'criptomonedaId', as: 'transaccionesP2P' });
 TransaccionP2P.belongsTo(Criptomoneda, { foreignKey: 'criptomonedaId', as: 'criptomoneda' });
@@ -194,6 +194,7 @@ DireccionDeposito.belongsTo(WalletMaestra, { foreignKey: 'walletMaestraId', as: 
 // Oferta P2P puede tener muchas transacciones P2P
 OfertaP2P.hasMany(TransaccionP2P, { foreignKey: 'ofertaId', as: 'transacciones' });
 TransaccionP2P.belongsTo(OfertaP2P, { foreignKey: 'ofertaId', as: 'oferta' });
+*/
 
 // Oferta P2P puede tener muchos métodos de pago (relación many-to-many)
 OfertaP2P.belongsToMany(MetodoPago, { 
@@ -215,11 +216,12 @@ OfertaMetodoPago.belongsTo(OfertaP2P, { foreignKey: 'ofertaId', as: 'oferta' });
 
 MetodoPago.hasMany(OfertaMetodoPago, { foreignKey: 'metodoPagoId', as: 'ofertasAsignadas' });
 OfertaMetodoPago.belongsTo(MetodoPago, { foreignKey: 'metodoPagoId', as: 'metodoPago' });
-
+/*
 // Transacción P2P puede usar un método de pago específico
 MetodoPago.hasMany(TransaccionP2P, { foreignKey: 'metodoPagoId', as: 'transacciones' });
 TransaccionP2P.belongsTo(MetodoPago, { foreignKey: 'metodoPagoId', as: 'metodoPago' });
-
+*/
+/*
 // Transacción P2P puede tener muchas valoraciones
 TransaccionP2P.hasMany(Valoracion, { foreignKey: 'transaccionP2PId', as: 'valoraciones' });
 Valoracion.belongsTo(TransaccionP2P, { foreignKey: 'transaccionP2PId', as: 'transaccion' });
@@ -254,10 +256,10 @@ module.exports = {
   //LogAdmin,
   //LogTransaccion,
   //MensajeReclamo,
-  //MetodoPago,
+  MetodoPago,
   Notificaciones,
-  //OfertaMetodoPago,
-  //OfertaP2P,
+  OfertaMetodoPago,
+  OfertaP2P,
   ParExchange,
   //Reclamo,
   TransaccionBlockchain,

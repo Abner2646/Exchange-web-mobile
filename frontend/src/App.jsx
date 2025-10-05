@@ -25,7 +25,7 @@ function App() {
                     <Route path="" element={<Home />} />
                     <Route path="swap" element={<Swap />} />
                     <Route path="activos" element={<Activos />} />
-                    <Route path="profile" element={<ConfiguracionPerfil />} />
+                    <Route path="perfil" element={<ConfiguracionPerfil />} />
                     <Route path="depositos" element={<Depositos />} />
                     <Route path="retiros" element={<Withdrawal />} />
                     <Route path="auth-success" element={<AuthSuccess />} />

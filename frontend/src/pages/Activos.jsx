@@ -7,18 +7,11 @@ const BalancePage = () => {
   const navigate = useNavigate();
   const [balances, setBalances] = useState([]);
   const [criptomonedas, setCriptomonedas] = useState([]);
+  const [prices, setPrices] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('moneda');
   const [hideSmallBalances, setHideSmallBalances] = useState(false);
-
-  const mockPrices = {
-    'BTC': 100000,
-    'ETH': 3000,
-    'USDT': 0.85,
-    'SOL': 193.36,
-    'USDC': 0.85
-  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -31,6 +24,7 @@ const BalancePage = () => {
       try {
         setLoading(true);
         
+        // 1. Obtener balances del usuario
         const balancesResponse = await fetch('http://localhost:3001/api/balances/my/balances', {
           method: 'GET',
           headers: {
@@ -45,23 +39,89 @@ const BalancePage = () => {
         
         const balancesData = await balancesResponse.json();
         console.log('Balances recibidos:', balancesData);
-        setBalances(Array.isArray(balancesData) ? balancesData : []);
+        const validBalances = Array.isArray(balancesData) ? balancesData : [];
+        setBalances(validBalances);
 
-        const cryptoResponse = await fetch('http://localhost:3001/api/criptomoneda/', {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
+        // 2. Extraer IDs únicos de criptomonedas que el usuario TIENE
+        const cryptoIds = [...new Set(validBalances.map(b => b.criptomonedaId))];
+        console.log('IDs de criptos con balance:', cryptoIds);
+
+        if (cryptoIds.length === 0) {
+          setCriptomonedas([]);
+          setPrices({});
+          setLoading(false);
+          return;
+        }
+
+        // 3. Obtener SOLO las criptomonedas que tiene el usuario (en paralelo)
+        const cryptoPromises = cryptoIds.map(id =>
+          fetch(`http://localhost:3001/api/criptomoneda/${id}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }).then(res => res.ok ? res.json() : null)
+        );
+
+        const cryptoResults = await Promise.all(cryptoPromises);
+        const cryptoData = cryptoResults.filter(c => c !== null);
+        console.log('Criptomonedas obtenidas:', cryptoData);
+        setCriptomonedas(cryptoData);
+
+        // 4. Obtener precios de las criptos que tiene + BTC (para conversión)
+        const pricesMap = {};
+        
+        // SIEMPRE obtener precio de BTC para el cálculo del balance total
+        const cryptosToFetch = [...cryptoData];
+        const hasBTC = cryptoData.some(c => c.symbol === 'BTC');
+        
+        // Si no tiene BTC, agregarlo para obtener su precio
+        if (!hasBTC) {
+          try {
+            const btcResponse = await fetch('http://localhost:3001/api/criptomoneda/symbol/BTC', {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            });
+            if (btcResponse.ok) {
+              const btcData = await btcResponse.json();
+              cryptosToFetch.push(btcData);
+            }
+          } catch (error) {
+            console.warn('No se pudo obtener info de BTC');
+          }
+        }
+
+        const pricePromises = cryptosToFetch.map(async (crypto) => {
+          if (crypto.symbol === 'USDT') {
+            pricesMap['USDT'] = 1;
+            return;
+          }
+
+          try {
+            const priceResponse = await fetch(
+              `http://localhost:3001/api/parExchange/price/${crypto.symbol}/USDT`,
+              {
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                }
+              }
+            );
+            
+            if (priceResponse.ok) {
+              const priceData = await priceResponse.json();
+              pricesMap[crypto.symbol] = priceData.price;
+              console.log(`Precio ${crypto.symbol}/USDT:`, priceData.price);
+            }
+          } catch (error) {
+            console.warn(`No se pudo obtener precio para ${crypto.symbol}/USDT`);
           }
         });
-        
-        if (!cryptoResponse.ok) {
-          throw new Error(`Error ${cryptoResponse.status}: ${await cryptoResponse.text()}`);
-        }
-        
-        const cryptoData = await cryptoResponse.json();
-        console.log('Criptomonedas recibidas:', cryptoData);
-        setCriptomonedas(Array.isArray(cryptoData) ? cryptoData : []);
+
+        await Promise.all(pricePromises);
+        setPrices(pricesMap);
         
       } catch (error) {
         console.error('Error al cargar datos:', error);
@@ -75,20 +135,27 @@ const BalancePage = () => {
   }, [token]);
 
   const calcularTotales = () => {
-    if (balances.length === 0) return { total: 0, pnl: 0 };
+    if (balances.length === 0) return { totalUSDT: 0, totalBTC: 0 };
 
-    const total = balances.reduce((acc, balance) => {
+    const totalUSDT = balances.reduce((acc, balance) => {
       const crypto = criptomonedas.find(c => c.id === balance.criptomonedaId);
-      const price = mockPrices[crypto?.symbol] || 0;
+      const price = prices[crypto?.symbol] || 0;
       return acc + (parseFloat(balance.balanceDisponible) * price);
     }, 0);
 
-    const pnl = total * -0.0082;
+    const btcPrice = prices['BTC'];
+    
+    // Si no hay precio de BTC, no podemos calcular
+    if (!btcPrice || btcPrice === 0) {
+      return { totalUSDT, totalBTC: 0, btcPriceError: true };
+    }
+    
+    const totalBTC = totalUSDT / btcPrice;
 
-    return { total, pnl };
+    return { totalUSDT, totalBTC, btcPriceError: false };
   };
 
-  const { total: balanceTotal, pnl: pnlToday } = calcularTotales();
+  const { totalUSDT, totalBTC, btcPriceError } = calcularTotales();
 
   const handleNavigation = (path) => {
     if (token) {
@@ -103,24 +170,22 @@ const BalancePage = () => {
       const crypto = criptomonedas.find(c => c.id === balance.criptomonedaId);
       if (!crypto) return null;
 
-      const price = mockPrices[crypto.symbol] || 0;
+      const price = prices[crypto.symbol] || 0;
       const balanceAmount = parseFloat(balance.balanceDisponible);
-      const valueInEur = balanceAmount * price;
-      const pnlToday = valueInEur * (Math.random() * 0.1 - 0.05);
+      const valueInUSDT = balanceAmount * price;
 
       return {
         ...balance,
         crypto,
         price,
-        valueInEur,
-        pnlToday,
+        valueInUSDT,
         balanceAmount
       };
     })
     .filter(b => b !== null)
     .filter(b => {
       if (hideSmallBalances) {
-        return b.valueInEur >= 1;
+        return b.valueInUSDT >= 1;
       }
       return true;
     });
@@ -160,19 +225,14 @@ const BalancePage = () => {
             </div>
 
             <div className="balance-amount">
-              <h1>{(balanceTotal / mockPrices.BTC).toFixed(8)}</h1>
+              <h1>{btcPriceError ? '---' : totalBTC.toFixed(8)}</h1>
               <span className="balance-currency">BTC ▼</span>
             </div>
 
-            <p className="balance-fiat">≈ {balanceTotal.toFixed(2)} €</p>
-
-            <div className="balance-pnl">
-              <span className="pnl-label">PnL de hoy</span>
-              <span className="icon-info">ℹ</span>
-              <span className={`pnl-value ${pnlToday < 0 ? 'negative' : 'positive'}`}>
-                {pnlToday.toFixed(2)} € ({((pnlToday / balanceTotal) * 100).toFixed(2)}%)
-              </span>
-            </div>
+            <p className="balance-fiat">
+              ≈ {totalUSDT.toFixed(2)} USDT
+              {btcPriceError && <span style={{ color: 'var(--warning)', fontSize: '0.75rem', marginLeft: 'var(--spacing-xs)' }}>(Sin precio BTC)</span>}
+            </p>
           </div>
 
           <div className="balance-actions">
@@ -232,17 +292,16 @@ const BalancePage = () => {
               <th className="th-coin">Moneda</th>
               <th className="th-amount">Importe</th>
               <th className="th-price">
-                Precio de la moneda / Precio de coste
+                Valor
                 <span className="icon-info">ℹ</span>
               </th>
-              <th className="th-pnl">PnL de hoy</th>
               <th className="th-actions"></th>
             </tr>
           </thead>
           <tbody>
             {enrichedBalances.length === 0 ? (
               <tr>
-                <td colSpan="5" className="empty-state">
+                <td colSpan="4" className="empty-state">
                   No tienes activos disponibles
                 </td>
               </tr>
@@ -252,7 +311,20 @@ const BalancePage = () => {
                   <td className="coin-cell">
                     <div className="coin-info">
                       <div className="coin-avatar">
-                        {balance.crypto.symbol.charAt(0)}
+                        {balance.crypto.iconUrl ? (
+                          <img 
+                            src={balance.crypto.iconUrl} 
+                            alt={balance.crypto.symbol}
+                            className="coin-icon"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'flex';
+                            }}
+                          />
+                        ) : null}
+                        <span className="coin-fallback">
+                          {balance.crypto.symbol.charAt(0)}
+                        </span>
                       </div>
                       <div className="coin-details">
                         <div className="coin-symbol">{balance.crypto.symbol}</div>
@@ -262,16 +334,11 @@ const BalancePage = () => {
                   </td>
                   <td className="amount-cell">
                     <div className="amount-crypto">{balance.balanceAmount.toFixed(8)}</div>
-                    <div className="amount-fiat">{balance.valueInEur.toFixed(2)} €</div>
+                    <div className="amount-fiat">{balance.valueInUSDT.toFixed(2)} USDT</div>
                   </td>
                   <td className="price-cell">
-                    <div className="price-current">{balance.price.toFixed(2)} €</div>
+                    <div className="price-current">{balance.price.toFixed(2)} USDT</div>
                     <div className="price-cost">--</div>
-                  </td>
-                  <td className="pnl-cell">
-                    <div className={`pnl-amount ${balance.pnlToday >= 0 ? 'positive' : 'negative'}`}>
-                      {balance.pnlToday >= 0 ? '+' : ''}{balance.pnlToday.toFixed(2)} €
-                    </div>
                   </td>
                   <td className="actions-cell">
                     <button className="expand-btn">▼</button>

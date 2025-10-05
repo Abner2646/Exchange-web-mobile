@@ -103,46 +103,6 @@
   margin: 0;
 }
 
-.balance-pnl {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-}
-
-.pnl-label {
-  font-size: 0.875rem;
-  color: var(--text-tertiary);
-}
-
-.icon-info {
-  width: 14px;
-  height: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-tertiary);
-  cursor: pointer;
-  font-size: 0.75rem;
-  transition: all 0.2s ease;
-}
-
-.icon-info:hover {
-  color: var(--text-primary);
-}
-
-.pnl-value {
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.pnl-value.positive {
-  color: var(--success);
-}
-
-.pnl-value.negative {
-  color: var(--error);
-}
-
 /* Action Buttons */
 .balance-actions {
   display: flex;
@@ -280,8 +240,7 @@
 }
 
 .th-amount,
-.th-price,
-.th-pnl {
+.th-price {
   text-align: right;
 }
 
@@ -325,6 +284,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+
+.coin-icon {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.coin-fallback {
+  display: none;
   font-weight: 600;
   font-size: 0.875rem;
   color: var(--brand-primary);
@@ -379,24 +351,6 @@
 .price-cost {
   font-size: 0.875rem;
   color: var(--text-tertiary);
-}
-
-/* Columna PnL */
-.pnl-cell {
-  text-align: right;
-}
-
-.pnl-amount {
-  font-size: 1rem;
-  font-weight: 500;
-}
-
-.pnl-amount.positive {
-  color: var(--success);
-}
-
-.pnl-amount.negative {
-  color: var(--error);
 }
 
 /* Columna Acciones */

@@ -19,20 +19,18 @@ function createOfertaP2PModel(sequelize) {
       metodosPagoIds = []
     } = data;
 
-    // Validar que cantidadMin sea menor que cantidadMax
+    // Validaciones
     if (parseFloat(cantidadMin) >= parseFloat(cantidadMax)) {
       throw new Error('La cantidad mínima debe ser menor que la cantidad máxima');
     }
 
-    // Validar precio unitario positivo
     if (parseFloat(precioUnitario) <= 0) {
       throw new Error('El precio unitario debe ser mayor a 0');
     }
 
-    const transaction = await sequelize.transaction();
-    
-    try {
-      const oferta = await OfertaP2P.create({
+    // ✅ Transacción gestionada automáticamente
+    const oferta = await sequelize.transaction(async (t) => {
+      const nuevaOferta = await OfertaP2P.create({
         usuarioId,
         tipo,
         criptomonedaId,
@@ -42,19 +40,18 @@ function createOfertaP2PModel(sequelize) {
         monedaFiat,
         condicionesAdicionales,
         activa: true
-      }, { transaction });
+      }, { transaction: t });
 
-      // Asociar métodos de pago si se proporcionaron
+      // Asociar métodos de pago
       if (metodosPagoIds.length > 0) {
-        await oferta.setMetodosPago(metodosPagoIds, { transaction });
+        await nuevaOferta.setMetodosPago(metodosPagoIds, { transaction: t });
       }
 
-      await transaction.commit();
-      return await OfertaP2P.getById(oferta.id);
-    } catch (error) {
-      await transaction.rollback();
-      throw error;
-    }
+      return nuevaOferta;
+    });
+
+    // Cargar con relaciones
+    return await OfertaP2P.getById(oferta.id);
   };
 
   // Métodos de consulta
@@ -63,20 +60,20 @@ function createOfertaP2PModel(sequelize) {
       include: [
         {
           association: 'usuario',
-          attributes: ['id', 'nombre', 'email', 'reputacion']
+          attributes: ['id', 'username', 'email', /*'reputacion'*/] // Todavía no está desarrollada la reputación
         },
         {
           association: 'criptomoneda',
-          attributes: ['id', 'nombre', 'simbolo']
+          attributes: ['id', 'nombre', 'symbol']
         },
         {
           association: 'metodosPago',
-          attributes: ['id', 'nombre', 'tipo']
-        },
-        {
-          association: 'transacciones',
-          attributes: ['id', 'estado', 'cantidadCrypto', 'montoFiat', 'created_at']
+          attributes: ['id', 'nombre', /*'tipo'*/]
         }
+        //{
+        //  association: 'transacciones', // ⚠️ Esta está comentada en tus relaciones
+        //  attributes: ['id', 'estado', 'cantidadCrypto', 'montoFiat', 'created_at']
+        //}
       ]
     });
   };
@@ -126,15 +123,15 @@ function createOfertaP2PModel(sequelize) {
       include: [
         {
           association: 'usuario',
-          attributes: ['id', 'nombre', 'reputacion']
+          attributes: ['id', 'username'/*, 'reputacion'*/]
         },
         {
           association: 'criptomoneda',
-          attributes: ['id', 'nombre', 'simbolo']
+          attributes: ['id', 'nombre', 'symbol']
         },
         {
           association: 'metodosPago',
-          attributes: ['id', 'nombre', 'tipo']
+          attributes: ['id', 'nombre'/*, 'tipo'*/]
         }
       ],
       order: [[orderBy, orderDirection]],
@@ -164,11 +161,11 @@ function createOfertaP2PModel(sequelize) {
       include: [
         {
           association: 'usuario',
-          attributes: ['id', 'nombre']
+          attributes: ['id', 'username']
         },
         {
           association: 'criptomoneda',
-          attributes: ['id', 'nombre', 'simbolo']
+          attributes: ['id', 'nombre', 'symbol']
         }
       ],
       limit,
@@ -191,15 +188,15 @@ function createOfertaP2PModel(sequelize) {
     const include = [
       {
         association: 'usuario',
-        attributes: ['id', 'nombre', 'reputacion']
+        attributes: ['id', 'username'/*, 'reputacion'*/]
       },
       {
         association: 'criptomoneda',
-        attributes: ['id', 'nombre', 'simbolo']
+        attributes: ['id', 'nombre', 'symbol']
       },
       {
         association: 'metodosPago',
-        attributes: ['id', 'nombre', 'tipo'],
+        attributes: ['id', 'nombre', /*'tipo'*/],
         where: metodoPagoId ? { id: metodoPagoId } : undefined,
         required: metodoPagoId ? true : false
       }

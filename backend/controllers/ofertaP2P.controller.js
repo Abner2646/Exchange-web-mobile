@@ -26,7 +26,7 @@ const getOfertaById = async (req, res) => {
 // Crear nueva oferta
 const createOferta = async (req, res) => {
   try {
-    const usuarioId = req.user.id; // Obtenido del middleware de autenticación
+    const usuarioId = req.user.id;
     const ofertaData = { ...req.body, usuarioId };
     
     const nuevaOferta = await OfertaP2P.createOffer(ofertaData);
