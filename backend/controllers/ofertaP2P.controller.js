@@ -11,6 +11,17 @@ const getOfertas = async (req, res) => {
   }
 };
 
+// Obtener ofertas activas con filtros
+const getOfertasActivas = async (req, res) => {
+  try {
+    const filters = { ...req.query, activa: true };
+    const result = await OfertaP2P.getAll(filters);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 // Obtener oferta por ID
 const getOfertaById = async (req, res) => {
   try {
@@ -27,7 +38,29 @@ const getOfertaById = async (req, res) => {
 const createOferta = async (req, res) => {
   try {
     const usuarioId = req.user.id;
-    const ofertaData = { ...req.body, usuarioId };
+    const { tipo, direccionFiat, metodosPagoIds, ...restBody } = req.body;
+
+    // Validación explícita en el controller
+    if (tipo === 'venta' && !direccionFiat) {
+      return res.status(400).json({ 
+        error: 'La dirección de pago (direccionFiat) es obligatoria para ofertas de venta. Debe proporcionar CBU, CVU, Alias, email de PayPal, etc.' 
+      });
+    }
+
+    // Validación de métodos de pago
+    if (!metodosPagoIds || !Array.isArray(metodosPagoIds) || metodosPagoIds.length === 0) {
+      return res.status(400).json({ 
+        error: 'Debe proporcionar al menos un método de pago (metodosPagoIds como array de UUIDs)' 
+      });
+    }
+
+    const ofertaData = { 
+      ...restBody, 
+      tipo,
+      direccionFiat,
+      metodosPagoIds,
+      usuarioId 
+    };
     
     const nuevaOferta = await OfertaP2P.createOffer(ofertaData);
     res.status(201).json({
@@ -46,10 +79,75 @@ const updateOferta = async (req, res) => {
     const usuarioId = req.user.id;
     const updateData = req.body;
 
+    // Validación si cambia a tipo venta
+    if (updateData.tipo === 'venta') {
+      const ofertaActual = await OfertaP2P.findByPk(id);
+      if (ofertaActual && !updateData.direccionFiat && !ofertaActual.direccionFiat) {
+        return res.status(400).json({ 
+          error: 'La dirección de pago (direccionFiat) es obligatoria para ofertas de venta' 
+        });
+      }
+    }
+
+    // Validación de métodos de pago si se están actualizando
+    if (updateData.metodosPagoIds !== undefined) {
+      if (!Array.isArray(updateData.metodosPagoIds) || updateData.metodosPagoIds.length === 0) {
+        return res.status(400).json({ 
+          error: 'Debe mantener al menos un método de pago' 
+        });
+      }
+    }
+
     const updated = await OfertaP2P.updateOffer(id, updateData, usuarioId);
     res.json({ 
-      message: 'Oferta actualizada exitosamente', 
+      message: 'Oferta actualizada exitosamente. La fecha de publicación ha sido renovada.', 
       data: updated 
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+// Agregar métodos de pago a una oferta
+const addMetodosPago = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const usuarioId = req.user.id;
+    const { metodosPagoIds } = req.body;
+
+    if (!metodosPagoIds || !Array.isArray(metodosPagoIds) || metodosPagoIds.length === 0) {
+      return res.status(400).json({ 
+        error: 'Debe proporcionar al menos un método de pago (metodosPagoIds como array de UUIDs)' 
+      });
+    }
+
+    const updated = await OfertaP2P.addMetodosPago(id, metodosPagoIds, usuarioId);
+    res.json({
+      message: 'Métodos de pago agregados exitosamente',
+      data: updated
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+// Eliminar métodos de pago de una oferta
+const removeMetodosPago = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const usuarioId = req.user.id;
+    const { metodosPagoIds } = req.body;
+
+    if (!metodosPagoIds || !Array.isArray(metodosPagoIds) || metodosPagoIds.length === 0) {
+      return res.status(400).json({ 
+        error: 'Debe proporcionar al menos un método de pago para eliminar (metodosPagoIds como array de UUIDs)' 
+      });
+    }
+
+    const updated = await OfertaP2P.removeMetodosPago(id, metodosPagoIds, usuarioId);
+    res.json({
+      message: 'Métodos de pago eliminados exitosamente',
+      data: updated
     });
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -62,7 +160,6 @@ const deleteOferta = async (req, res) => {
     const { id } = req.params;
     const usuarioId = req.user.id;
 
-    // Verificar propiedad antes de desactivar
     const oferta = await OfertaP2P.findByPk(id);
     if (!oferta) {
       return res.status(404).json({ error: 'Oferta no encontrada' });
@@ -86,8 +183,13 @@ const updateOfertaStatus = async (req, res) => {
     const { activa } = req.body;
     
     const updated = await OfertaP2P.updateStatus(id, activa);
+    
+    const message = activa 
+      ? 'Oferta activada exitosamente. La fecha de publicación ha sido renovada.'
+      : 'Oferta desactivada exitosamente';
+    
     res.json({ 
-      message: 'Estado actualizado exitosamente', 
+      message, 
       data: updated 
     });
   } catch (error) {
@@ -191,8 +293,13 @@ const toggleMyOferta = async (req, res) => {
     }
 
     const updated = await OfertaP2P.updateStatus(id, !oferta.activa);
+    
+    const message = updated.activa 
+      ? 'Oferta activada exitosamente. La fecha de publicación ha sido renovada.'
+      : 'Oferta desactivada exitosamente';
+    
     res.json({ 
-      message: `Oferta ${updated.activa ? 'activada' : 'desactivada'} exitosamente`,
+      message,
       data: updated
     });
   } catch (error) {
@@ -231,9 +338,12 @@ const getOfertasByTipo = async (req, res) => {
 
 module.exports = {
   getOfertas,
+  getOfertasActivas,
   getOfertaById,
   createOferta,
   updateOferta,
+  addMetodosPago,
+  removeMetodosPago,
   deleteOferta,
   updateOfertaStatus,
   searchOfertas,

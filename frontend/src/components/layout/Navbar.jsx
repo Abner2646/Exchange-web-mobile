@@ -31,6 +31,7 @@ const Navbar = () => {
             <Link to="/p2p" className="navbar-link">
               P2P
             </Link>
+            {/*
             <Link to="/ordenes" className="navbar-link">
               Ordenes
             </Link>
@@ -38,7 +39,6 @@ const Navbar = () => {
               Launchpad
             </Link>
             
-            {/* Dropdown Más */}
             <div className="navbar-dropdown">
               <span className="navbar-link navbar-dropdown-trigger">
                 Más
@@ -60,6 +60,7 @@ const Navbar = () => {
                 </Link>
               </div>
             </div>
+            */}
           </div>
 
           <div className="navbar-actions">

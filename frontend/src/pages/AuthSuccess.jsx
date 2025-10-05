@@ -39,7 +39,7 @@ const AuthSuccess = () => {
         
         // 5. Redirigir según tipo de usuario
         if (isNewUser) {
-          navigate('/onboarding', { replace: true });
+          navigate('/', { replace: true });
         } else {
           navigate('/', { replace: true });
         }

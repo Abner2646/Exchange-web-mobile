@@ -14,68 +14,74 @@ function createTransaccionP2PModel(sequelize) {
     'cancelada': []
   };
 
-  // Métodos de creación y validación
-  TransaccionP2P.createTransaction = async (data) => {
-    const { 
-      ofertaId, 
-      compradorId, 
-      vendedorId, 
-      criptomonedaId, 
-      cantidad, 
-      precioUnitario, 
-      metodoPagoId 
-    } = data;
+TransaccionP2P.createTransaction = async (data) => {
+  const { 
+    ofertaId, 
+    compradorId, 
+    vendedorId, 
+    criptomonedaId, 
+    cantidad, 
+    precioUnitario, 
+    metodoPagoId 
+  } = data;
 
-    // Validar que comprador y vendedor sean diferentes
-    if (compradorId === vendedorId) {
-      throw new Error('El comprador y vendedor no pueden ser el mismo usuario');
+  // Validación básica
+  if (compradorId === vendedorId) {
+    throw new Error('El comprador y vendedor no pueden ser el mismo usuario');
+  }
+
+  const transaction = await sequelize.transaction();
+  
+  try {
+    // Obtener oferta para validaciones
+    const { OfertaP2P } = require('./index');
+    const oferta = await OfertaP2P.findByPk(ofertaId, { transaction });
+    
+    if (!oferta) {
+      throw new Error('Oferta no encontrada');
+    }
+
+    if (!oferta.activa) {
+      throw new Error('La oferta no está activa');
+    }
+
+    // Validar cantidad
+    if (parseFloat(cantidad) < parseFloat(oferta.cantidadMin) || 
+        parseFloat(cantidad) > parseFloat(oferta.cantidadMax)) {
+      throw new Error(`La cantidad debe estar entre ${oferta.cantidadMin} y ${oferta.cantidadMax}`);
     }
 
     // Calcular monto fiat
     const montoFiat = parseFloat(cantidad) * parseFloat(precioUnitario);
 
-    const transaction = await sequelize.transaction();
+    // Crear la transacción
+    const nuevaTransaccion = await TransaccionP2P.create({
+      ofertaId,
+      compradorId,
+      vendedorId,
+      criptomonedaId,
+      cantidad,
+      precioUnitario,
+      montoFiat,
+      monedaFiat: oferta.monedaFiat,
+      metodoPagoId,
+      estado: 'iniciada'
+    }, { transaction });
+
+    // ✅ COMMIT antes de consultar
+    await transaction.commit();
     
-    try {
-      // Obtener datos de la oferta para validaciones
-      const { OfertaP2P } = require('./index');
-      const oferta = await OfertaP2P.findByPk(ofertaId, { transaction });
-      
-      if (!oferta) {
-        throw new Error('Oferta no encontrada');
-      }
-
-      if (!oferta.activa) {
-        throw new Error('La oferta no está activa');
-      }
-
-      // Validar cantidad dentro del rango de la oferta
-      if (parseFloat(cantidad) < parseFloat(oferta.cantidadMin) || 
-          parseFloat(cantidad) > parseFloat(oferta.cantidadMax)) {
-        throw new Error(`La cantidad debe estar entre ${oferta.cantidadMin} y ${oferta.cantidadMax}`);
-      }
-
-      // Crear la transacción
-      const nuevaTransaccion = await TransaccionP2P.create({
-        ofertaId,
-        compradorId,
-        vendedorId,
-        criptomonedaId,
-        cantidad,
-        precioUnitario,
-        montoFiat,
-        monedaFiat: oferta.monedaFiat,
-        metodoPagoId,
-        estado: 'iniciada'
-      }, { transaction });
-
-      await transaction.commit();
-      return await TransaccionP2P.getById(nuevaTransaccion.id);
-    } catch (error) {
+    // ✅ Consultar DESPUÉS del commit (fuera de la transacción)
+    return await TransaccionP2P.getById(nuevaTransaccion.id);
+    
+  } catch (error) {
+    // ✅ Solo hacer rollback si la transacción NO fue commiteada
+    if (!transaction.finished) {
       await transaction.rollback();
-      throw error;
     }
-  };
+    throw error;
+  }
+};
 
   // Métodos de consulta
   TransaccionP2P.getById = async (id) => {
@@ -87,28 +93,28 @@ function createTransaccionP2PModel(sequelize) {
         },
         {
           association: 'comprador',
-          attributes: ['id', 'nombre', 'email', 'reputacion']
+          attributes: ['id', 'username', 'email'/*, 'reputacion'*/]
         },
         {
           association: 'vendedor',
-          attributes: ['id', 'nombre', 'email', 'reputacion']
+          attributes: ['id', 'username', 'email'/*, 'reputacion'*/]
         },
         {
           association: 'criptomoneda',
-          attributes: ['id', 'nombre', 'simbolo']
+          attributes: ['id', 'nombre', 'symbol']
         },
         {
           association: 'metodoPago',
-          attributes: ['id', 'nombre', 'tipo', 'detalles']
-        },
-        {
+          attributes: ['id', 'nombre'/*, 'tipo', 'detalles'*/]
+        }
+        /*{
           association: 'valoraciones',
           attributes: ['id', 'puntuacion', 'comentario', 'usuarioEvaluadorId']
         },
         {
           association: 'reclamos',
           attributes: ['id', 'estado', 'descripcion', 'created_at']
-        }
+        }*/
       ]
     });
   };
