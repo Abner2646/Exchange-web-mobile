@@ -202,6 +202,12 @@ const P2PMarketplace = () => {
         >
           Vender
         </button>
+        <button 
+          className="tab"
+          onClick={() => navigate('/p2p/crearOferta')}
+        >
+          Crear Oferta
+        </button>
       </div>
 
       {/* Pills de criptomonedas con iconos */}

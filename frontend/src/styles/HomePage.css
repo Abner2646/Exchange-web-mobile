@@ -163,11 +163,25 @@
   margin-bottom: var(--spacing-sm);
 }
 
+.balance-amount-container {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-xs);
+}
+
 .balance-amount {
   font-size: 3rem;
   font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: var(--spacing-xs);
+  margin: 0;
+}
+
+.balance-currency {
+  font-size: 1.5rem !important;
+  font-weight: 500 !important;
+  color: var(--text-secondary) !important;
+  display: inline-block !important;
 }
 
 .balance-btc {
@@ -279,7 +293,7 @@
 /* MARKETS SECTION */
 
 .markets-section {
-  padding: var(--spacing-xxl) var(--spacing-xl);
+  padding: var(--spacing-xl) var(--spacing-xl) var(--spacing-xxl) var(--spacing-xl);
   max-width: 1440px;
   margin: 0 auto;
   background: var(--bg-primary);
@@ -296,6 +310,20 @@
   padding: var(--spacing-xl);
   text-align: center;
   color: var(--text-secondary);
+}
+
+.empty-markets {
+  padding: var(--spacing-xxl);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-lg);
+}
+
+.empty-markets p {
+  color: var(--text-secondary);
+  font-size: 1rem;
 }
 
 .markets-table {
@@ -316,6 +344,10 @@
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+.markets-table th.text-center {
+  text-align: center !important;
 }
 
 .market-row {
@@ -364,11 +396,13 @@
 .price-cell {
   font-weight: 600;
   font-size: 1rem;
+  text-align: center !important;
 }
 
 .change-cell {
   font-weight: 600;
   font-size: 0.875rem;
+  text-align: center !important;
 }
 
 .change-cell.positive {
@@ -383,6 +417,212 @@
 .marketcap-cell {
   font-size: 0.875rem;
   color: var(--text-secondary);
+}
+
+/* SKELETON LOADING */
+
+.skeleton-row {
+  pointer-events: none;
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-secondary) 0%,
+    var(--bg-elevated) 50%,
+    var(--bg-secondary) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.skeleton-text {
+  height: 14px;
+  margin: 4px 0;
+}
+
+.skeleton-text-short {
+  width: 60px;
+}
+
+.skeleton-text-medium {
+  width: 100px;
+}
+
+.skeleton-text-long {
+  width: 120px;
+}
+
+/* PAGINATION */
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  border-top: 1px solid var(--border-secondary);
+  background: var(--bg-secondary);
+}
+
+.pagination-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--bg-elevated) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-primary) !important;
+  border-radius: var(--radius-md) !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: var(--interactive-hover) !important;
+  border-color: var(--brand-primary) !important;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+
+.pagination-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.pagination-pages {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.pagination-page {
+  width: 36px !important;
+  height: 36px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: var(--bg-elevated) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-primary) !important;
+  border-radius: var(--radius-md) !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.pagination-page:hover {
+  background: var(--interactive-hover) !important;
+  border-color: var(--brand-primary) !important;
+}
+
+.pagination-page.active {
+  background: var(--brand-primary) !important;
+  color: var(--text-inverse) !important;
+  border-color: var(--brand-primary) !important;
+}
+
+/* FAQ SECTION */
+
+.faq-section {
+  padding: var(--spacing-xxl) var(--spacing-xl);
+  max-width: 900px;
+  margin: 0 auto;
+  background: var(--bg-primary);
+}
+
+.faq-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.faq-item {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.faq-item:hover {
+  border-color: var(--border-primary);
+}
+
+.faq-question {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-lg);
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.faq-question:hover {
+  color: var(--brand-primary);
+}
+
+.faq-question.active {
+  color: var(--brand-primary);
+}
+
+.faq-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  transition: transform 0.3s ease;
+  color: var(--text-secondary);
+}
+
+.faq-icon.rotated {
+  transform: rotate(180deg);
+}
+
+.faq-answer {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease, padding 0.3s ease;
+}
+
+.faq-answer.open {
+  max-height: 500px;
+  padding: 0 var(--spacing-lg) var(--spacing-lg) var(--spacing-lg);
+}
+
+.faq-answer p {
+  color: var(--text-secondary);
+  line-height: 1.6;
+  font-size: 0.9375rem;
+  margin: 0;
 }
 
 /* RESPONSIVE */
@@ -413,7 +653,8 @@
 
   .features-section,
   .dashboard-section,
-  .markets-section {
+  .markets-section,
+  .faq-section {
     padding: var(--spacing-xl) var(--spacing-md);
   }
 
@@ -441,6 +682,22 @@
   .volume-cell,
   .marketcap-cell {
     display: none;
+  }
+
+  .pagination {
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+  }
+
+  .pagination-btn {
+    font-size: 0.75rem !important;
+    padding: var(--spacing-xs) var(--spacing-sm) !important;
+  }
+
+  .pagination-page {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 0.75rem !important;
   }
 }
 

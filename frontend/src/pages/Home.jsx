@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { BuildingOfficeIcon, ShieldCheckIcon, LockClosedIcon, UserCircleIcon } from '@heroicons/react/24/outline';
+import { BuildingOfficeIcon, ShieldCheckIcon, LockClosedIcon, UserCircleIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import '../styles/HomePage.css';
 
 const HomePage = () => {
@@ -18,6 +18,18 @@ const HomePage = () => {
   // Estados para tabla de mercados
   const [marketData, setMarketData] = useState([]);
   const [loadingMarket, setLoadingMarket] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages] = useState(3);
+  const cryptosPerPage = 10;
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [cachedData, setCachedData] = useState([]);
+
+  // Estado para FAQ
+  const [openFaqIndex, setOpenFaqIndex] = useState(null);
+
+  // Ref para CountUp
+  const portfolioRef = useRef(null);
+  const [hasAnimated, setHasAnimated] = useState(false);
 
   // Fetch data para usuario logueado (SOLO UNA VEZ)
   useEffect(() => {
@@ -36,12 +48,26 @@ const HomePage = () => {
     }
   }, [isAuthenticated, token, criptomonedas]);
 
-  // Fetch data para tabla de mercados (CoinGecko)
+  // Fetch data para tabla de mercados (CoinGecko) - CARGA INICIAL
   useEffect(() => {
     fetchMarketData();
-    const interval = setInterval(fetchMarketData, 30000); // 30 seg
-    return () => clearInterval(interval);
   }, []);
+
+  // Actualizar tabla cuando cambia la página
+  useEffect(() => {
+    if (currentPage !== 1) {
+      fetchMarketData(true);
+      scrollToMarketsTable();
+    }
+  }, [currentPage]);
+
+  // Auto-refresh cada 30 segundos (solo si no está cambiando de página)
+  useEffect(() => {
+    if (!isTransitioning) {
+      const interval = setInterval(() => fetchMarketData(false), 30000);
+      return () => clearInterval(interval);
+    }
+  }, [currentPage, isTransitioning]);
 
   const fetchUserData = async () => {
     try {
@@ -165,18 +191,32 @@ const HomePage = () => {
     }
   };
 
-  const fetchMarketData = async () => {
+  const fetchMarketData = async (isPageChange = false) => {
     try {
-      setLoadingMarket(true);
+      if (isPageChange) {
+        setIsTransitioning(true);
+        setCachedData(marketData);
+      } else {
+        setLoadingMarket(true);
+      }
+
       const response = await fetch(
-        'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=10&page=1&sparkline=false'
+        `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=${cryptosPerPage}&page=${currentPage}&sparkline=false`
       );
       const data = await response.json();
+      
+      if (isPageChange) {
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+      
       setMarketData(data);
+      setCachedData([]);
     } catch (error) {
       console.error('Error fetching market data:', error);
+      setMarketData(cachedData.length > 0 ? cachedData : marketData);
     } finally {
       setLoadingMarket(false);
+      setIsTransitioning(false);
     }
   };
 
@@ -227,6 +267,89 @@ const HomePage = () => {
   const { totalUSDT, totalBTC } = calcularTotales();
   const topAssets = getTopAssets();
 
+  useEffect(() => {
+    if (isAuthenticated && !hasAnimated && totalUSDT > 0) {
+      animateValue(0, totalUSDT, 1500);
+      setHasAnimated(true);
+    }
+  }, [totalUSDT, isAuthenticated, hasAnimated]);
+
+  const animateValue = (start, end, duration) => {
+    const range = end - start;
+    const increment = range / (duration / 16);
+    let current = start;
+    
+    const timer = setInterval(() => {
+      current += increment;
+      if ((increment > 0 && current >= end) || (increment < 0 && current <= end)) {
+        current = end;
+        clearInterval(timer);
+      }
+      if (portfolioRef.current) {
+        portfolioRef.current.textContent = current.toFixed(2);
+      }
+    }, 16);
+  };
+
+  const scrollToMarketsTable = () => {
+    const marketsSection = document.getElementById('markets-section');
+    if (marketsSection) {
+      const offset = 80;
+      const elementPosition = marketsSection.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - offset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage !== currentPage && newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+    }
+  };
+
+  const toggleFaq = (index) => {
+    setOpenFaqIndex(openFaqIndex === index ? null : index);
+  };
+
+  const faqData = [
+    {
+      question: "¿Qué es un exchange de criptomonedas?",
+      answer: "Un exchange de criptomonedas es una plataforma digital que permite comprar, vender e intercambiar criptomonedas. Funciona como intermediario entre compradores y vendedores, ofreciendo un entorno seguro para realizar transacciones con activos digitales como Bitcoin, Ethereum y otras criptomonedas."
+    },
+    {
+      question: "¿Cómo comprar Bitcoin en nuestro exchange?",
+      answer: "Para comprar Bitcoin, primero debes crear una cuenta y verificar tu identidad. Luego, deposita fondos mediante transferencia bancaria o tarjeta. Una vez que tengas saldo disponible, dirígete a la sección de Mercados o Swap, selecciona Bitcoin (BTC), ingresa la cantidad que deseas comprar y confirma la transacción."
+    },
+    {
+      question: "¿Es seguro operar en este exchange?",
+      answer: "Sí, implementamos múltiples capas de seguridad: autenticación de dos factores (2FA), encriptación de datos, almacenamiento en frío para la mayoría de fondos, y auditorías de seguridad regulares. Además, cumplimos con regulaciones financieras internacionales para proteger tus activos."
+    },
+    {
+      question: "¿Qué comisiones cobra el exchange?",
+      answer: "Nuestras comisiones son competitivas y transparentes. Cobramos una comisión por transacción que varía entre 0.1% y 0.5% dependiendo del volumen de trading mensual. Los depósitos suelen ser gratuitos, mientras que los retiros tienen una tarifa mínima de red. Consulta nuestra página de tarifas para más detalles."
+    },
+    {
+      question: "¿Cómo verifico mi cuenta?",
+      answer: "La verificación de cuenta es un proceso simple: 1) Proporciona tu información personal básica, 2) Sube una foto de tu documento de identidad vigente, 3) Realiza una selfie para verificación facial. El proceso usualmente toma entre 24-48 horas hábiles."
+    },
+    {
+      question: "¿Cuánto tiempo tarda un retiro?",
+      answer: "Los retiros de criptomonedas generalmente se procesan en 15-30 minutos después de la confirmación. Los retiros en moneda fiat (dinero tradicional) pueden tardar de 1 a 5 días hábiles dependiendo del método bancario. Todos los retiros pasan por verificaciones de seguridad para proteger tus fondos."
+    },
+    {
+      question: "¿Qué métodos de pago aceptan?",
+      answer: "Aceptamos múltiples métodos de pago: transferencias bancarias, tarjetas de crédito/débito, y depósitos en criptomonedas desde otras wallets. También ofrecemos opciones de pago locales en diferentes países para facilitar el acceso a nuestros servicios."
+    },
+    {
+      question: "¿Puedo operar desde mi país?",
+      answer: "Operamos en la mayoría de países de Latinoamérica y el mundo. Sin embargo, por regulaciones locales, algunos países pueden tener restricciones. Puedes verificar si tu país está disponible durante el proceso de registro o contactando a nuestro equipo de soporte."
+    }
+  ];
+
   const handleCryptoClick = (symbol) => {
     navigate(`/swap?from=${symbol}&to=USDT`);
   };
@@ -246,7 +369,6 @@ const HomePage = () => {
   return (
     <div className="home-page">
       {!isAuthenticated ? (
-        // VISTA NO LOGUEADO
         <>
           <section className="hero-section">
             <div className="hero-content">
@@ -269,14 +391,17 @@ const HomePage = () => {
           </section>
         </>
       ) : (
-        // VISTA LOGUEADO
         <section className="dashboard-section">
           <div className="dashboard-grid">
             <div className="balance-card card">
               <div className="balance-header">
                 <div>
                   <h3 className="balance-label">Portfolio</h3>
-                  <h1 className="balance-amount">${totalUSDT.toFixed(2)}</h1>
+                  <div className="balance-amount-container">
+                    <span className="balance-currency">$</span>
+                    <h1 className="balance-amount" ref={portfolioRef}>{totalUSDT.toFixed(2)}</h1>
+                    <span className="balance-currency">USD</span>
+                  </div>
                   <p className="balance-btc">≈ {totalBTC.toFixed(8)} BTC</p>
                 </div>
               </div>
@@ -327,10 +452,8 @@ const HomePage = () => {
 
       <section className="markets-section" id="markets-section">
         <h2 className="section-title">Mercados Populares</h2>
-        <div className="markets-table-container">
-          {loadingMarket ? (
-            <p className="loading-text">Cargando mercados...</p>
-          ) : (
+        <div className={`markets-table-container ${isTransitioning ? 'transitioning' : ''}`}>
+          {loadingMarket && cachedData.length === 0 ? (
             <table className="markets-table">
               <thead>
                 <tr>
@@ -342,38 +465,107 @@ const HomePage = () => {
                 </tr>
               </thead>
               <tbody>
-                {marketData.map((coin) => (
-                  <tr 
-                    key={coin.id} 
-                    className="market-row"
-                    onClick={() => handleCryptoClick(coin.symbol.toUpperCase())}
-                  >
+                {[...Array(10)].map((_, i) => (
+                  <tr key={i} className="skeleton-row">
                     <td className="coin-cell">
                       <div className="coin-info">
-                        <img src={coin.image} alt={coin.name} className="home-crypto-icon" />
+                        <div className="skeleton skeleton-icon"></div>
                         <div>
-                          <div className="coin-symbol">{coin.symbol.toUpperCase()}</div>
-                          <div className="coin-name">{coin.name}</div>
+                          <div className="skeleton skeleton-text skeleton-text-short"></div>
+                          <div className="skeleton skeleton-text skeleton-text-long"></div>
                         </div>
                       </div>
                     </td>
-                    <td className="price-cell">
-                      ${coin.current_price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </td>
-                    <td className={`change-cell ${coin.price_change_percentage_24h >= 0 ? 'positive' : 'negative'}`}>
-                      {coin.price_change_percentage_24h >= 0 ? '+' : ''}
-                      {coin.price_change_percentage_24h.toFixed(2)}%
-                    </td>
-                    <td className="volume-cell">
-                      ${(coin.total_volume / 1000000).toFixed(2)}M
-                    </td>
-                    <td className="marketcap-cell">
-                      ${(coin.market_cap / 1000000000).toFixed(2)}B
-                    </td>
+                    <td><div className="skeleton skeleton-text skeleton-text-medium"></div></td>
+                    <td><div className="skeleton skeleton-text skeleton-text-short"></div></td>
+                    <td><div className="skeleton skeleton-text skeleton-text-medium"></div></td>
+                    <td><div className="skeleton skeleton-text skeleton-text-medium"></div></td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          ) : (
+            <>
+              {isTransitioning && <div className="table-overlay" />}
+              <div className={`table-content ${isTransitioning ? 'fading' : ''}`}>
+                <table className="markets-table">
+                  <thead>
+                    <tr>
+                      <th>Moneda</th>
+                      <th>Precio</th>
+                      <th>Cambio 24h</th>
+                      <th>Volumen 24h</th>
+                      <th>Cap. Mercado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(cachedData.length > 0 && isTransitioning ? cachedData : marketData).map((coin) => (
+                      <tr 
+                        key={coin.id} 
+                        className="market-row"
+                        onClick={() => handleCryptoClick(coin.symbol.toUpperCase())}
+                      >
+                        <td className="coin-cell">
+                          <div className="coin-info">
+                            <img src={coin.image} alt={coin.name} className="home-crypto-icon" />
+                            <div>
+                              <div className="coin-symbol">{coin.symbol.toUpperCase()}</div>
+                              <div className="coin-name">{coin.name}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="price-cell">
+                          ${coin.current_price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                        <td className={`change-cell ${coin.price_change_percentage_24h >= 0 ? 'positive' : 'negative'}`}>
+                          {coin.price_change_percentage_24h >= 0 ? '+' : ''}
+                          {coin.price_change_percentage_24h.toFixed(2)}%
+                        </td>
+                        <td className="volume-cell">
+                          ${(coin.total_volume / 1000000).toFixed(2)}M
+                        </td>
+                        <td className="marketcap-cell">
+                          ${(coin.market_cap / 1000000000).toFixed(2)}B
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              
+              <div className="pagination">
+                <button 
+                  className="pagination-btn"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1 || isTransitioning}
+                >
+                  <ChevronLeftIcon className="pagination-icon" />
+                  Anterior
+                </button>
+                
+                <div className="pagination-pages">
+                  {[...Array(totalPages)].map((_, i) => (
+                    <button
+                      key={i + 1}
+                      className={`pagination-page ${currentPage === i + 1 ? 'active' : ''}`}
+                      onClick={() => handlePageChange(i + 1)}
+                      disabled={isTransitioning}
+                    >
+                      {i + 1}
+                    </button>
+                  ))}
+                </div>
+                
+                <button 
+                  className="pagination-btn"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages || isTransitioning}
+                >
+                  Siguiente
+                  <ChevronRightIcon className="pagination-icon" />
+                </button>
+              </div>
+            </>
           )}
         </div>
       </section>
@@ -413,6 +605,26 @@ const HomePage = () => {
           </div>
         </section>
       )}
+
+      <section className="faq-section">
+        <h2 className="section-title">Preguntas Frecuentes</h2>
+        <div className="faq-container">
+          {faqData.map((faq, index) => (
+            <div key={index} className="faq-item">
+              <button 
+                className={`faq-question ${openFaqIndex === index ? 'active' : ''}`}
+                onClick={() => toggleFaq(index)}
+              >
+                <span>{faq.question}</span>
+                <ChevronDownIcon className={`faq-icon ${openFaqIndex === index ? 'rotated' : ''}`} />
+              </button>
+              <div className={`faq-answer ${openFaqIndex === index ? 'open' : ''}`}>
+                <p>{faq.answer}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
     </div>
   );
 };

@@ -343,3 +343,260 @@
     gap: var(--spacing-sm);
   }
 }
+
+/* Agrega estos estilos a tu archivo Navbar.css */
+
+/* Iconos para los enlaces de navegación */
+.navbar-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.navbar-link-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+/* Icono para el botón de depositar */
+.navbar-deposit-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.navbar-deposit-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* Icono para el avatar de usuario */
+.navbar-user-avatar-icon {
+  width: 24px;
+  height: 24px;
+  color: var(--text-primary);
+}
+
+/* Iconos para los items del dropdown */
+.navbar-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.navbar-dropdown-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+/* Estilos para la campana de notificaciones */
+.navbar-notifications-trigger {
+  position: relative;
+  background: none;
+  border: none;
+  padding: 8px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text-primary);
+}
+
+.navbar-notifications-trigger:hover {
+  background: var(--interactive-hover);
+}
+
+.navbar-notifications-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.navbar-notifications-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: var(--brand-primary);
+  color: var(--text-inverse);
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  font-size: 0.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+}
+
+/* Menú de notificaciones */
+.navbar-notifications-menu {
+  min-width: 320px;
+  right: 0;
+}
+
+.navbar-notifications-header {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--border-primary);
+  display: flex;
+  justify-content: between;
+  align-items: center;
+}
+
+.navbar-notifications-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.navbar-notifications-count {
+  font-size: 0.8rem;
+  color: var(--brand-primary);
+  font-weight: 500;
+}
+
+.navbar-notifications-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.navbar-notification-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--border-secondary);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.navbar-notification-item:hover {
+  background: var(--interactive-hover);
+}
+
+.navbar-notification-item:last-child {
+  border-bottom: none;
+}
+
+.navbar-notification-icon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.navbar-notification-content {
+  flex: 1;
+}
+
+.navbar-notification-content p {
+  margin: 0 0 4px 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.navbar-notification-content span {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.navbar-notifications-view-all {
+  display: block;
+  text-align: center;
+  padding: var(--spacing-md);
+  color: var(--brand-primary);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-top: 1px solid var(--border-primary);
+  transition: all 0.2s ease;
+}
+
+.navbar-notifications-view-all:hover {
+  background: var(--interactive-hover);
+  color: var(--brand-secondary);
+}
+
+/* Mejoras para los dropdowns - Ahora son clickeables */
+.navbar-user-profile-trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+}
+
+.navbar-user-profile-trigger:hover {
+  background: var(--interactive-hover);
+}
+
+.navbar-user-dropdown-arrow {
+  width: 14px;
+  height: 14px;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.navbar-user-dropdown.open .navbar-user-dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+.navbar-user-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Los dropdowns ahora se controlan por estado React */
+.navbar-dropdown-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: var(--spacing-sm);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  min-width: 200px;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+/* Mantener los estilos responsive existentes */
+@media (max-width: 768px) {
+  .navbar-link-icon,
+  .navbar-deposit-icon,
+  .navbar-dropdown-icon {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .navbar-user-avatar-icon {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .navbar-notifications-menu {
+    position: fixed;
+    top: 64px;
+    left: var(--spacing-md);
+    right: var(--spacing-md);
+    min-width: auto;
+  }
+  
+  .navbar-user-dropdown-menu {
+    position: fixed;
+    top: 64px;
+    left: var(--spacing-md);
+    right: var(--spacing-md);
+    min-width: auto;
+  }
+}
