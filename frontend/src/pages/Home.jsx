@@ -1,239 +1,420 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import '../styles/Home.css';
+import { useAuth } from '../context/AuthContext';
+import { BuildingOfficeIcon, ShieldCheckIcon, LockClosedIcon, UserCircleIcon } from '@heroicons/react/24/outline';
+import '../styles/HomePage.css';
 
-const Home = () => {
-    const { user, isAuthenticated } = useAuth();
-    const navigate = useNavigate();
-    const [cryptoData, setCryptoData] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [selectedTimeframe, setSelectedTimeframe] = useState('24h');
+const HomePage = () => {
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const token = localStorage.getItem('token');
 
-    // Mock data - aquí conectarías tu API real de precios
-    useEffect(() => {
-        const fetchCryptoData = async () => {
-            // Simular llamada a API
-            setTimeout(() => {
-                setCryptoData([
-                    { symbol: 'BTC/USDT', price: '45,678.90', change: '+5.32', changePercent: '+5.32%', volume: '1.2B', isPositive: true },
-                    { symbol: 'ETH/USDT', price: '2,345.67', change: '-2.15', changePercent: '-2.15%', volume: '845M', isPositive: false },
-                    { symbol: 'BNB/USDT', price: '312.45', change: '+1.87', changePercent: '+1.87%', volume: '234M', isPositive: true },
-                    { symbol: 'XRP/USDT', price: '0.6234', change: '+3.45', changePercent: '+3.45%', volume: '156M', isPositive: true },
-                    { symbol: 'ADA/USDT', price: '0.4567', change: '-1.23', changePercent: '-1.23%', volume: '89M', isPositive: false },
-                    { symbol: 'SOL/USDT', price: '98.76', change: '+7.89', changePercent: '+7.89%', volume: '445M', isPositive: true },
-                ]);
-                setLoading(false);
-            }, 1000);
-        };
+  // Estados para usuario logueado
+  const [balances, setBalances] = useState([]);
+  const [criptomonedas, setCriptomonedas] = useState([]);
+  const [prices, setPrices] = useState({});
+  const [loadingAuth, setLoadingAuth] = useState(true);
 
-        fetchCryptoData();
-    }, []);
+  // Estados para tabla de mercados
+  const [marketData, setMarketData] = useState([]);
+  const [loadingMarket, setLoadingMarket] = useState(true);
 
-    const handleTradeClick = (symbol) => {
-        if (!isAuthenticated) {
-            navigate('/login');
-        } else {
-            navigate(`/trade/${symbol.replace('/', '-')}`);
+  // Fetch data para usuario logueado (SOLO UNA VEZ)
+  useEffect(() => {
+    if (isAuthenticated && token) {
+      fetchUserData();
+    } else {
+      setLoadingAuth(false);
+    }
+  }, [isAuthenticated, token]);
+
+  // Actualizar SOLO precios cada 30 seg
+  useEffect(() => {
+    if (isAuthenticated && token && criptomonedas.length > 0) {
+      const interval = setInterval(updatePricesOnly, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [isAuthenticated, token, criptomonedas]);
+
+  // Fetch data para tabla de mercados (CoinGecko)
+  useEffect(() => {
+    fetchMarketData();
+    const interval = setInterval(fetchMarketData, 30000); // 30 seg
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchUserData = async () => {
+    try {
+      setLoadingAuth(true);
+
+      // 1. Balances
+      const balancesRes = await fetch('http://localhost:3001/api/balances/my/balances', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
-    };
+      });
+      const balancesData = await balancesRes.json();
+      const validBalances = Array.isArray(balancesData) ? balancesData : [];
+      setBalances(validBalances);
 
+      // 2. Cryptos del usuario
+      const cryptoIds = [...new Set(validBalances.map(b => b.criptomonedaId))];
+      
+      if (cryptoIds.length === 0) {
+        setCriptomonedas([]);
+        setPrices({});
+        setLoadingAuth(false);
+        return;
+      }
+
+      const cryptoPromises = cryptoIds.map(id =>
+        fetch(`http://localhost:3001/api/criptomoneda/${id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }).then(res => res.ok ? res.json() : null)
+      );
+
+      const cryptoResults = await Promise.all(cryptoPromises);
+      const cryptoData = cryptoResults.filter(c => c !== null);
+      setCriptomonedas(cryptoData);
+
+      // 3. Precios
+      const pricesMap = {};
+      const cryptosToFetch = [...cryptoData];
+      const hasBTC = cryptoData.some(c => c.symbol === 'BTC');
+
+      if (!hasBTC) {
+        const btcRes = await fetch('http://localhost:3001/api/criptomoneda/symbol/BTC', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (btcRes.ok) {
+          cryptosToFetch.push(await btcRes.json());
+        }
+      }
+
+      await Promise.all(
+        cryptosToFetch.map(async (crypto) => {
+          if (crypto.symbol === 'USDT') {
+            pricesMap['USDT'] = 1;
+            return;
+          }
+
+          try {
+            const priceRes = await fetch(
+              `http://localhost:3001/api/parExchange/price/${crypto.symbol}/USDT`,
+              { headers: { 'Authorization': `Bearer ${token}` } }
+            );
+            if (priceRes.ok) {
+              const priceData = await priceRes.json();
+              pricesMap[crypto.symbol] = priceData.price;
+            }
+          } catch (err) {
+            console.warn(`Error precio ${crypto.symbol}:`, err);
+          }
+        })
+      );
+
+      setPrices(pricesMap);
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+    } finally {
+      setLoadingAuth(false);
+    }
+  };
+
+  const updatePricesOnly = async () => {
+    try {
+      const pricesMap = {};
+      const cryptosToFetch = [...criptomonedas];
+      const hasBTC = criptomonedas.some(c => c.symbol === 'BTC');
+
+      if (!hasBTC) {
+        const btcRes = await fetch('http://localhost:3001/api/criptomoneda/symbol/BTC', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (btcRes.ok) {
+          cryptosToFetch.push(await btcRes.json());
+        }
+      }
+
+      await Promise.all(
+        cryptosToFetch.map(async (crypto) => {
+          if (crypto.symbol === 'USDT') {
+            pricesMap['USDT'] = 1;
+            return;
+          }
+
+          try {
+            const priceRes = await fetch(
+              `http://localhost:3001/api/parExchange/price/${crypto.symbol}/USDT`,
+              { headers: { 'Authorization': `Bearer ${token}` } }
+            );
+            if (priceRes.ok) {
+              const priceData = await priceRes.json();
+              pricesMap[crypto.symbol] = priceData.price;
+            }
+          } catch (err) {
+            console.warn(`Error actualizando precio ${crypto.symbol}:`, err);
+          }
+        })
+      );
+
+      setPrices(pricesMap);
+    } catch (error) {
+      console.error('Error actualizando precios:', error);
+    }
+  };
+
+  const fetchMarketData = async () => {
+    try {
+      setLoadingMarket(true);
+      const response = await fetch(
+        'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=10&page=1&sparkline=false'
+      );
+      const data = await response.json();
+      setMarketData(data);
+    } catch (error) {
+      console.error('Error fetching market data:', error);
+    } finally {
+      setLoadingMarket(false);
+    }
+  };
+
+  const calcularTotales = () => {
+    if (balances.length === 0) return { totalUSDT: 0, totalBTC: 0 };
+
+    const totalUSDT = balances.reduce((acc, balance) => {
+      const crypto = criptomonedas.find(c => c.id === balance.criptomonedaId);
+      const price = prices[crypto?.symbol] || 0;
+      return acc + (parseFloat(balance.balanceDisponible) * price);
+    }, 0);
+
+    const btcPrice = prices['BTC'];
+    const totalBTC = btcPrice && btcPrice > 0 ? totalUSDT / btcPrice : 0;
+
+    return { totalUSDT, totalBTC };
+  };
+
+  const getPieChartData = () => {
+    return balances
+      .map(balance => {
+        const crypto = criptomonedas.find(c => c.id === balance.criptomonedaId);
+        if (!crypto) return null;
+
+        const price = prices[crypto.symbol] || 0;
+        const value = parseFloat(balance.balanceDisponible) * price;
+
+        return {
+          symbol: crypto.symbol,
+          value: value,
+          percentage: 0
+        };
+      })
+      .filter(item => item !== null && item.value > 0)
+      .sort((a, b) => b.value - a.value);
+  };
+
+  const getTopAssets = () => {
+    const data = getPieChartData();
+    const total = data.reduce((sum, item) => sum + item.value, 0);
+    
+    return data.slice(0, 5).map(item => ({
+      ...item,
+      percentage: ((item.value / total) * 100).toFixed(1)
+    }));
+  };
+
+  const { totalUSDT, totalBTC } = calcularTotales();
+  const topAssets = getTopAssets();
+
+  const handleCryptoClick = (symbol) => {
+    navigate(`/swap?from=${symbol}&to=USDT`);
+  };
+
+  const scrollToMarkets = () => {
+    document.getElementById('markets-section')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  if (isAuthenticated && loadingAuth) {
     return (
-        <div className="home-container">
-            {/* Hero Section */}
-            <section className="home-hero">
-                <div className="home-hero-content">
-                    <div className="home-hero-text">
-                        <h1 className="home-hero-title">
-                            Tu Gateway al Futuro de las Criptomonedas
-                        </h1>
-                        <p className="home-hero-description">
-                            Opera con confianza en el exchange más seguro y avanzado de Latinoamérica. 
-                            Accede a las mejores criptomonedas con spreads competitivos y tecnología de vanguardia.
-                        </p>
-                        <div className="home-hero-buttons">
-                            <button 
-                                className="btn-primary home-hero-cta"
-                                onClick={() => isAuthenticated ? navigate('/trade') : navigate('/register')}
-                            >
-                                {isAuthenticated ? 'Comenzar a Operar' : 'Crear Cuenta Gratis'}
-                            </button>
-                            <button className="home-hero-secondary">
-                                Ver Mercados
-                            </button>
-                        </div>
-                    </div>
-                    <div className="home-hero-visual">
-                        <div className="home-hero-card">
-                            <div className="home-hero-card-header">
-                                <h3>Portfolio</h3>
-                                <span className="home-hero-card-balance">$12,345.67</span>
-                            </div>
-                            <div className="home-hero-card-change">
-                                <span className="text-success">+$1,234.56 (+11.23%)</span>
-                                <span className="home-hero-timeframe">24h</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* Market Overview */}
-            <section className="home-market">
-                <div className="home-section-header">
-                    <h2 className="home-section-title">Mercados en Tiempo Real</h2>
-                    <div className="home-timeframe-selector">
-                        {['24h', '7d', '30d'].map((timeframe) => (
-                            <button 
-                                key={timeframe}
-                                className={`home-timeframe-btn ${selectedTimeframe === timeframe ? 'active' : ''}`}
-                                onClick={() => setSelectedTimeframe(timeframe)}
-                            >
-                                {timeframe}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="home-market-table">
-                    <div className="home-market-header">
-                        <div className="home-market-col">Par</div>
-                        <div className="home-market-col">Precio</div>
-                        <div className="home-market-col">Cambio 24h</div>
-                        <div className="home-market-col">Volumen</div>
-                        <div className="home-market-col">Acción</div>
-                    </div>
-                    
-                    {loading ? (
-                        <div className="home-market-loading">
-                            <div className="home-loading-spinner"></div>
-                            <span>Cargando precios en tiempo real...</span>
-                        </div>
-                    ) : (
-                        cryptoData.map((crypto, index) => (
-                            <div key={index} className="home-market-row">
-                                <div className="home-market-col">
-                                    <div className="home-crypto-info">
-                                        <div className="home-crypto-icon">
-                                            {crypto.symbol.split('/')[0].slice(0, 2)}
-                                        </div>
-                                        <div>
-                                            <div className="home-crypto-name">{crypto.symbol}</div>
-                                            <div className="home-crypto-full">{crypto.symbol.split('/')[0]}</div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="home-market-col">
-                                    <span className="home-crypto-price">${crypto.price}</span>
-                                </div>
-                                <div className="home-market-col">
-                                    <span className={`home-crypto-change ${crypto.isPositive ? 'text-success' : 'text-error'}`}>
-                                        {crypto.changePercent}
-                                    </span>
-                                </div>
-                                <div className="home-market-col">
-                                    <span className="home-crypto-volume">${crypto.volume}</span>
-                                </div>
-                                <div className="home-market-col">
-                                    <button 
-                                        className="btn-buy"
-                                        onClick={() => handleTradeClick(crypto.symbol)}
-                                    >
-                                        Operar
-                                    </button>
-                                </div>
-                            </div>
-                        ))
-                    )}
-                </div>
-            </section>
-
-            {/* Stats Section */}
-            <section className="home-stats">
-                <div className="home-stats-grid">
-                    <div className="home-stat-card">
-                        <div className="home-stat-icon">📊</div>
-                        <div className="home-stat-content">
-                            <h3 className="home-stat-number">$2.4B+</h3>
-                            <p className="home-stat-label">Volumen 24h</p>
-                        </div>
-                    </div>
-                    <div className="home-stat-card">
-                        <div className="home-stat-icon">👥</div>
-                        <div className="home-stat-content">
-                            <h3 className="home-stat-number">150K+</h3>
-                            <p className="home-stat-label">Usuarios Activos</p>
-                        </div>
-                    </div>
-                    <div className="home-stat-card">
-                        <div className="home-stat-icon">🔒</div>
-                        <div className="home-stat-content">
-                            <h3 className="home-stat-number">100%</h3>
-                            <p className="home-stat-label">Fondos Seguros</p>
-                        </div>
-                    </div>
-                    <div className="home-stat-card">
-                        <div className="home-stat-icon">⚡</div>
-                        <div className="home-stat-content">
-                            <h3 className="home-stat-number">&lt; 10ms</h3>
-                            <p className="home-stat-label">Latencia</p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* Features Section */}
-            <section className="home-features">
-                <h2 className="home-section-title">¿Por qué elegir nuestro Exchange?</h2>
-                <div className="home-features-grid">
-                    <div className="home-feature-card">
-                        <div className="home-feature-icon">🛡️</div>
-                        <h3 className="home-feature-title">Máxima Seguridad</h3>
-                        <p className="home-feature-description">
-                            Protección multicapa con autenticación 2FA, almacenamiento en frío y seguros para todos los fondos.
-                        </p>
-                    </div>
-                    <div className="home-feature-card">
-                        <div className="home-feature-icon">📈</div>
-                        <h3 className="home-feature-title">Trading Avanzado</h3>
-                        <p className="home-feature-description">
-                            Herramientas profesionales, gráficos en tiempo real y órdenes avanzadas para maximizar tus ganancias.
-                        </p>
-                    </div>
-                    <div className="home-feature-card">
-                        <div className="home-feature-icon">💎</div>
-                        <h3 className="home-feature-title">Mejores Precios</h3>
-                        <p className="home-feature-description">
-                            Spreads competitivos y alta liquidez para que siempre obtengas los mejores precios del mercado.
-                        </p>
-                    </div>
-                    <div className="home-feature-card">
-                        <div className="home-feature-icon">🎯</div>
-                        <h3 className="home-feature-title">Soporte 24/7</h3>
-                        <p className="home-feature-description">
-                            Atención al cliente en español las 24 horas, con expertos listos para ayudarte en todo momento.
-                        </p>
-                    </div>
-                </div>
-            </section>
-
-            {/* CTA Section */}
-            <section className="home-cta">
-                <div className="home-cta-content">
-                    <h2 className="home-cta-title">Comienza tu Aventura Crypto Hoy</h2>
-                    <p className="home-cta-description">
-                        Únete a miles de traders que confían en nuestra plataforma para hacer crecer su patrimonio
-                    </p>
-                    <button 
-                        className="btn-primary home-cta-button"
-                        onClick={() => isAuthenticated ? navigate('/trade') : navigate('/register')}
-                    >
-                        {isAuthenticated ? 'Ir al Trading' : 'Registrarse Gratis'}
-                    </button>
-                </div>
-            </section>
-        </div>
+      <div className="home-loading">
+        <p>Cargando dashboard...</p>
+      </div>
     );
+  }
+
+  return (
+    <div className="home-page">
+      {!isAuthenticated ? (
+        // VISTA NO LOGUEADO
+        <>
+          <section className="hero-section">
+            <div className="hero-content">
+              <h1 className="hero-title">
+                Tu Gateway al Futuro de las Criptomonedas
+              </h1>
+              <p className="hero-subtitle">
+                Opera con confianza en el exchange más seguro y avanzado de Latinoamérica. 
+                Accede a las mejores criptomonedas con spreads competitivos y tecnología de vanguardia.
+              </p>
+              <div className="hero-actions">
+                <button className="btn-primary" onClick={() => navigate('/register')}>
+                  Comenzar a Operar
+                </button>
+                <button className="home-btn-secondary" onClick={scrollToMarkets}>
+                  Ver Mercados
+                </button>
+              </div>
+            </div>
+          </section>
+        </>
+      ) : (
+        // VISTA LOGUEADO
+        <section className="dashboard-section">
+          <div className="dashboard-grid">
+            <div className="balance-card card">
+              <div className="balance-header">
+                <div>
+                  <h3 className="balance-label">Portfolio</h3>
+                  <h1 className="balance-amount">${totalUSDT.toFixed(2)}</h1>
+                  <p className="balance-btc">≈ {totalBTC.toFixed(8)} BTC</p>
+                </div>
+              </div>
+              <div className="balance-actions">
+                <button className="home-action-btn" onClick={() => navigate('/depositos')}>
+                  Depositar
+                </button>
+                <button className="home-action-btn" onClick={() => navigate('/retiros')}>
+                  Retirar
+                </button>
+                <button className="home-action-btn" onClick={() => navigate('/transferir')}>
+                  Transferir
+                </button>
+                <button className="home-action-btn primary" onClick={() => navigate('/swap')}>
+                  Swap
+                </button>
+                <button className="home-action-btn primary" onClick={() => navigate('/p2p')}>
+                  P2P
+                </button>
+              </div>
+            </div>
+
+            {topAssets.length > 0 && (
+              <div className="assets-card card">
+                <h3>Top Activos</h3>
+                <div className="assets-list">
+                  {topAssets.map((asset, index) => (
+                    <div key={index} className="asset-item">
+                      <div className="asset-info">
+                        <span className="asset-symbol">{asset.symbol}</span>
+                        <span className="asset-percentage">{asset.percentage}%</span>
+                      </div>
+                      <div className="asset-bar">
+                        <div 
+                          className="asset-bar-fill" 
+                          style={{ width: `${asset.percentage}%` }}
+                        />
+                      </div>
+                      <span className="asset-value">${asset.value.toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      <section className="markets-section" id="markets-section">
+        <h2 className="section-title">Mercados Populares</h2>
+        <div className="markets-table-container">
+          {loadingMarket ? (
+            <p className="loading-text">Cargando mercados...</p>
+          ) : (
+            <table className="markets-table">
+              <thead>
+                <tr>
+                  <th>Moneda</th>
+                  <th>Precio</th>
+                  <th>Cambio 24h</th>
+                  <th>Volumen 24h</th>
+                  <th>Cap. Mercado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {marketData.map((coin) => (
+                  <tr 
+                    key={coin.id} 
+                    className="market-row"
+                    onClick={() => handleCryptoClick(coin.symbol.toUpperCase())}
+                  >
+                    <td className="coin-cell">
+                      <div className="coin-info">
+                        <img src={coin.image} alt={coin.name} className="home-crypto-icon" />
+                        <div>
+                          <div className="coin-symbol">{coin.symbol.toUpperCase()}</div>
+                          <div className="coin-name">{coin.name}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="price-cell">
+                      ${coin.current_price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td className={`change-cell ${coin.price_change_percentage_24h >= 0 ? 'positive' : 'negative'}`}>
+                      {coin.price_change_percentage_24h >= 0 ? '+' : ''}
+                      {coin.price_change_percentage_24h.toFixed(2)}%
+                    </td>
+                    <td className="volume-cell">
+                      ${(coin.total_volume / 1000000).toFixed(2)}M
+                    </td>
+                    <td className="marketcap-cell">
+                      ${(coin.market_cap / 1000000000).toFixed(2)}B
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </section>
+
+      {!isAuthenticated && (
+        <section className="features-section">
+          <h2 className="section-title">¿Por qué somos la compañía más confiable?</h2>
+          <div className="features-grid">
+            <div className="feature-card">
+              <div className="feature-icon">
+                <BuildingOfficeIcon className="icon-size" />
+              </div>
+              <h3>La empresa crypto pública más grande del mundo</h3>
+              <p>Operamos con transparencia financiera.</p>
+            </div>
+            <div className="feature-card">
+              <div className="feature-icon">
+                <ShieldCheckIcon className="icon-size" />
+              </div>
+              <h3>Tus activos están protegidos</h3>
+              <p>Nuestras medidas de gestión de riesgos están diseñadas para proteger tus activos.</p>
+            </div>
+            <div className="feature-card">
+              <div className="feature-icon">
+                <LockClosedIcon className="icon-size" />
+              </div>
+              <h3>Funcionalidades de seguridad avanzadas</h3>
+              <p>Utilizamos las mejores prácticas de la industria para aumentar la seguridad de nuestra plataforma.</p>
+            </div>
+            <div className="feature-card">
+              <div className="feature-icon">
+                <UserCircleIcon className="icon-size" />
+              </div>
+              <h3>Respetamos tu privacidad</h3>
+              <p>Solo recopilamos los datos personales para brindarte la mejor protección y los mejores servicios posibles.</p>
+            </div>
+          </div>
+        </section>
+      )}
+    </div>
+  );
 };
 
-export default Home;
+export default HomePage;

@@ -1,0 +1,459 @@
+/* HOME PAGE STYLES */
+
+.home-page {
+  min-height: 100vh;
+  background: var(--bg-primary);
+}
+
+.home-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  color: var(--text-secondary);
+}
+
+/* HERO SECTION - NO LOGUEADO */
+
+.hero-section {
+  padding: var(--spacing-xxl) var(--spacing-xl);
+  max-width: 1440px;
+  margin: 0 auto;
+  min-height: 60vh;
+  display: flex;
+  align-items: center;
+  background: var(--bg-primary);
+}
+
+.hero-content {
+  max-width: 700px;
+}
+
+.hero-title {
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-lg);
+  line-height: 1.2;
+}
+
+.hero-subtitle {
+  font-size: 1.25rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: var(--spacing-xxl);
+}
+
+.hero-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.home-btn-secondary {
+  background: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-primary) !important;
+  padding: var(--spacing-sm) var(--spacing-xl) !important;
+  border-radius: var(--radius-md) !important;
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.home-btn-secondary:hover {
+  background: var(--bg-elevated) !important;
+  border-color: var(--border-focus) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* FEATURES SECTION */
+
+.features-section {
+  padding: var(--spacing-xxl) var(--spacing-xl);
+  max-width: 1440px;
+  margin: 0 auto;
+  background: var(--bg-secondary);
+}
+
+.section-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-align: center;
+  margin-bottom: var(--spacing-xxl);
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.feature-card {
+  background: var(--bg-elevated);
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-secondary);
+  transition: all 0.2s ease;
+}
+
+.feature-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-primary);
+}
+
+.feature-icon {
+  margin-bottom: var(--spacing-md);
+  color: var(--brand-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-size {
+  width: 48px;
+  height: 48px;
+  stroke-width: 1.5;
+}
+
+.feature-card h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.feature-card p {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* DASHBOARD SECTION - LOGUEADO */
+
+.dashboard-section {
+  padding: var(--spacing-xl);
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-xxl);
+}
+
+.balance-card {
+  padding: var(--spacing-xl);
+}
+
+.balance-header {
+  margin-bottom: var(--spacing-xl);
+}
+
+.balance-label {
+  font-size: 0.875rem;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--spacing-sm);
+}
+
+.balance-amount {
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.balance-btc {
+  font-size: 1rem;
+  color: var(--text-secondary);
+}
+
+.balance-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.home-action-btn {
+  flex: 1 !important;
+  min-width: 100px !important;
+  padding: var(--spacing-sm) var(--spacing-md) !important;
+  background: var(--bg-elevated) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-focus) !important;
+  border-radius: var(--radius-md) !important;
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.home-action-btn:hover {
+  background: var(--interactive-hover) !important;
+  border-color: var(--brand-primary) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+.home-action-btn.primary {
+  background: var(--brand-primary) !important;
+  color: var(--text-inverse) !important;
+  border-color: var(--brand-primary) !important;
+}
+
+.home-action-btn.primary:hover {
+  background: var(--brand-secondary) !important;
+  border-color: var(--brand-secondary) !important;
+}
+
+/* CHART CARD */
+
+.assets-card {
+  padding: var(--spacing-xl);
+}
+
+.assets-card h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-lg);
+}
+
+.assets-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.asset-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.asset-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.asset-symbol {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+}
+
+.asset-percentage {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.asset-bar {
+  height: 8px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.asset-bar-fill {
+  height: 100%;
+  background: var(--brand-primary);
+  border-radius: var(--radius-full);
+  transition: width 0.3s ease;
+}
+
+.asset-value {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  text-align: right;
+}
+
+/* MARKETS SECTION */
+
+.markets-section {
+  padding: var(--spacing-xxl) var(--spacing-xl);
+  max-width: 1440px;
+  margin: 0 auto;
+  background: var(--bg-primary);
+}
+
+.markets-table-container {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-primary);
+  overflow: hidden;
+}
+
+.loading-text {
+  padding: var(--spacing-xl);
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.markets-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.markets-table thead tr {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.markets-table th {
+  padding: var(--spacing-md);
+  text-align: left;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.market-row {
+  border-bottom: 1px solid var(--border-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.market-row:hover {
+  background: var(--interactive-hover);
+}
+
+.markets-table td {
+  padding: var(--spacing-md);
+  color: var(--text-primary);
+}
+
+.coin-cell {
+  min-width: 200px;
+}
+
+.coin-info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.home-crypto-icon {
+  width: 24px !important;
+  height: 24px !important;
+  border-radius: var(--radius-full) !important;
+  flex-shrink: 0 !important;
+}
+
+.coin-symbol {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+}
+
+.coin-name {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+.price-cell {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.change-cell {
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.change-cell.positive {
+  color: var(--success);
+}
+
+.change-cell.negative {
+  color: var(--error);
+}
+
+.volume-cell,
+.marketcap-cell {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 1024px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-title {
+    font-size: 2.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .hero-section {
+    padding: var(--spacing-xl) var(--spacing-md);
+    min-height: auto;
+  }
+
+  .hero-title {
+    font-size: 2rem;
+  }
+
+  .hero-subtitle {
+    font-size: 1rem;
+  }
+
+  .features-section,
+  .dashboard-section,
+  .markets-section {
+    padding: var(--spacing-xl) var(--spacing-md);
+  }
+
+  .balance-amount {
+    font-size: 2rem;
+  }
+
+  .balance-actions {
+    flex-direction: column;
+  }
+
+  .home-action-btn {
+    width: 100% !important;
+  }
+
+  .markets-table {
+    font-size: 0.875rem;
+  }
+
+  .markets-table th,
+  .markets-table td {
+    padding: var(--spacing-sm);
+  }
+
+  .volume-cell,
+  .marketcap-cell {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-title {
+    font-size: 1.75rem;
+  }
+
+  .features-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .coin-name {
+    display: none;
+  }
+}

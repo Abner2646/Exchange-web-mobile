@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/layout/Layout.jsx'
-import Home from './pages/Home';
+import HomePage from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register.jsx'
 import Swap from './pages/Swap.jsx'
@@ -25,7 +25,7 @@ function App() {
                 <Route path="/" element={<Layout />}>
                     <Route path="login" element={<Login />} />
                     <Route path="register" element={<Register />} />
-                    <Route path="" element={<Home />} />
+                    <Route path="" element={<HomePage />} />
                     <Route path="swap" element={<Swap />} />
                     <Route path="activos" element={<Activos />} />
                     <Route path="perfil" element={<ConfiguracionPerfil />} />
