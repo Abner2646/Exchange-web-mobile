@@ -85,34 +85,35 @@ function createBalanceUserModel(sequelize) {
     }
   };
 
-  BalanceUser.updateBalance = async (userId, criptomonedaId, amount, type = 'disponible') => {
-    try {
-      const [balance] = await BalanceUser.findOrCreate({
-        where: { userId, criptomonedaId },
-        defaults: {
-          userId,
-          criptomonedaId,
-          balanceDisponible: 0,
-          balanceBloqueado: 0
-        }
-      });
+BalanceUser.updateBalance = async (userId, criptomonedaId, amount, type = 'disponible', transaction = null) => {
+  try {
+    const [balance] = await BalanceUser.findOrCreate({
+      where: { userId, criptomonedaId },
+      defaults: {
+        userId,
+        criptomonedaId,
+        balanceDisponible: 0,
+        balanceBloqueado: 0
+      },
+      transaction // ← AGREGAR AQUÍ
+    });
 
-      const field = type === 'disponible' ? 'balanceDisponible' : 'balanceBloqueado';
-      const currentBalance = parseFloat(balance[field]) || 0;
-      const newBalance = currentBalance + parseFloat(amount);
+    const field = type === 'disponible' ? 'balanceDisponible' : 'balanceBloqueado';
+    const currentBalance = parseFloat(balance[field]) || 0;
+    const newBalance = currentBalance + parseFloat(amount);
 
-      if (newBalance < 0) {
-        throw new Error('Balance insuficiente para esta operación');
-      }
-
-      balance[field] = newBalance;
-      await balance.save();
-
-      return balance;
-    } catch (error) {
-      throw new Error(`Error al actualizar balance: ${error.message}`);
+    if (newBalance < 0) {
+      throw new Error('Balance insuficiente para esta operación');
     }
-  };
+
+    balance[field] = newBalance;
+    await balance.save({ transaction }); // ← Y AQUÍ
+
+    return balance;
+  } catch (error) {
+    throw new Error(`Error al actualizar balance: ${error.message}`);
+  }
+};
 
   BalanceUser.blockBalance = async (userId, criptomonedaId, amount) => {
     try {
