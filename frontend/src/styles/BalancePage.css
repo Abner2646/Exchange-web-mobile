@@ -1,38 +1,61 @@
-/* BalancePage.css */
+/* BalancePage.css - Estilos con prefijo único bp- */
 
 /* Container Principal */
-.balance-page {
+.bp-page {
   padding: var(--spacing-xl);
   max-width: 1440px;
   margin: 0 auto;
 }
 
 /* Estados de Carga y Error */
-.loading-state,
-.error-state {
+.bp-loading-state,
+.bp-error-state {
   text-align: center;
   padding: var(--spacing-xxl);
   color: var(--text-secondary);
 }
 
-.error-state h3 {
+.bp-error-state h3 {
   color: var(--text-primary);
   font-size: 1.5rem;
   font-weight: 600;
   margin-bottom: var(--spacing-md);
 }
 
-.error-state p {
+.bp-error-state p {
   margin-bottom: var(--spacing-lg);
   color: var(--error);
 }
 
+.bp-btn-primary {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--brand-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.bp-warning-text {
+  color: var(--warning);
+  font-size: 0.75rem;
+  margin-left: var(--spacing-xs);
+}
+
 /* ========== HEADER DE BALANCE ========== */
-.balance-header {
+.bp-header {
   margin-bottom: var(--spacing-xl);
 }
 
-.balance-header-grid {
+.bp-card {
+  background: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.bp-header-grid {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: var(--spacing-xl);
@@ -40,19 +63,19 @@
 }
 
 /* Balance Info */
-.balance-info {
+.bp-info {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
 }
 
-.balance-label {
+.bp-label {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
 }
 
-.balance-label h2 {
+.bp-label h2 {
   font-size: 0.875rem;
   font-weight: 400;
   color: var(--text-secondary);
@@ -61,7 +84,7 @@
   margin: 0;
 }
 
-.icon-eye {
+.bp-icon-eye {
   width: 16px;
   height: 16px;
   display: flex;
@@ -73,17 +96,17 @@
   transition: all 0.2s ease;
 }
 
-.icon-eye:hover {
+.bp-icon-eye:hover {
   color: var(--text-primary);
 }
 
-.balance-amount {
+.bp-amount {
   display: flex;
   align-items: baseline;
   gap: var(--spacing-sm);
 }
 
-.balance-amount h1 {
+.bp-amount h1 {
   font-size: 2.5rem;
   font-weight: 700;
   color: var(--text-primary);
@@ -91,25 +114,25 @@
   margin: 0;
 }
 
-.balance-currency {
+.bp-currency {
   font-size: 1.25rem;
   font-weight: 500;
   color: var(--text-secondary);
 }
 
-.balance-fiat {
+.bp-fiat {
   font-size: 1rem;
   color: var(--text-secondary);
   margin: 0;
 }
 
 /* Action Buttons */
-.balance-actions {
+.bp-actions {
   display: flex;
   gap: var(--spacing-sm);
 }
 
-.action-btn {
+.bp-action-btn {
   padding: var(--spacing-sm) var(--spacing-md);
   font-size: 0.875rem;
   font-weight: 500;
@@ -121,47 +144,47 @@
   transition: all 0.2s ease;
 }
 
-.action-btn:hover {
+.bp-action-btn:hover {
   background: var(--interactive-hover);
   border-color: var(--border-focus);
   transform: translateY(-1px);
 }
 
-.action-btn:active {
+.bp-action-btn:active {
   transform: translateY(0);
 }
 
 /* ========== SECCIÓN DE ACTIVOS ========== */
-.assets-section {
-  /* Usa clase .card del global.css */
+.bp-assets-section {
+  margin-top: var(--spacing-xl);
 }
 
-.assets-header {
+.bp-assets-header {
   margin-bottom: var(--spacing-lg);
   padding-bottom: var(--spacing-lg);
   border-bottom: 1px solid var(--border-secondary);
 }
 
-.assets-header h2 {
+.bp-assets-header h2 {
   font-size: 1.5rem;
   font-weight: 600;
   color: var(--text-primary);
   margin: 0 0 var(--spacing-lg) 0;
 }
 
-.assets-controls {
+.bp-assets-controls {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
 /* Tabs */
-.assets-tabs {
+.bp-assets-tabs {
   display: flex;
   gap: var(--spacing-lg);
 }
 
-.tab {
+.bp-tab {
   background: none;
   border: none;
   padding: var(--spacing-sm) 0;
@@ -173,37 +196,23 @@
   transition: all 0.2s ease;
 }
 
-.tab:hover {
+.bp-tab:hover {
   color: var(--text-primary);
 }
 
-.tab.active {
+.bp-tab.bp-active {
   color: var(--brand-primary);
   border-bottom-color: var(--brand-primary);
 }
 
 /* Filters */
-.assets-filters {
+.bp-assets-filters {
   display: flex;
   align-items: center;
   gap: var(--spacing-lg);
 }
 
-.search-btn {
-  background: none;
-  border: none;
-  padding: var(--spacing-sm);
-  color: var(--text-secondary);
-  cursor: pointer;
-  font-size: 1.25rem;
-  transition: all 0.2s ease;
-}
-
-.search-btn:hover {
-  color: var(--text-primary);
-}
-
-.hide-small-checkbox {
+.bp-hide-small-checkbox {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
@@ -212,7 +221,7 @@
   cursor: pointer;
 }
 
-.hide-small-checkbox input[type="checkbox"] {
+.bp-hide-small-checkbox input[type="checkbox"] {
   width: 16px;
   height: 16px;
   cursor: pointer;
@@ -220,16 +229,17 @@
 }
 
 /* ========== TABLA DE ACTIVOS ========== */
-.assets-table {
+.bp-assets-table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
 }
 
-.assets-table thead tr {
+.bp-assets-table thead tr {
   border-bottom: 1px solid var(--border-primary);
 }
 
-.assets-table th {
+.bp-assets-table th {
   padding: var(--spacing-md);
   text-align: left;
   font-size: 0.75rem;
@@ -239,44 +249,61 @@
   letter-spacing: 0.05em;
 }
 
-.th-amount,
-.th-price {
+/* Definir anchos de columnas */
+.bp-th-coin {
+  width: 35%;
+  text-align: left;
+}
+
+.bp-th-amount {
+  width: 25%;
+  text-align: right !important;
+}
+
+.bp-th-value {
+  width: 30%;
+  text-align: right !important;
+}
+
+.bp-th-actions {
+  width: 10%;
+  text-align: right !important;
+}
+
+/* Alinear Importe y Valor a la derecha */
+.bp-th-amount,
+.bp-th-value,
+.bp-th-actions {
   text-align: right;
 }
 
-.th-price {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--spacing-xs);
-}
-
 /* Filas */
-.asset-row {
+.bp-asset-row {
   border-bottom: 1px solid var(--border-secondary);
   transition: all 0.2s ease;
 }
 
-.asset-row:hover {
+.bp-asset-row:hover {
   background: var(--interactive-hover);
 }
 
-.assets-table td {
+.bp-assets-table td {
   padding: var(--spacing-md);
+  vertical-align: top;
 }
 
 /* Columna Moneda */
-.coin-cell {
-  /* padding heredado de td */
+.bp-coin-cell {
+  width: 35%;
 }
 
-.coin-info {
+.bp-coin-info {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
 }
 
-.coin-avatar {
+.bp-coin-avatar {
   width: 32px;
   height: 32px;
   border-radius: var(--radius-full);
@@ -286,79 +313,91 @@
   justify-content: center;
   overflow: hidden;
   position: relative;
+  flex-shrink: 0;
 }
 
-.coin-icon {
+.bp-coin-icon {
   width: 100%;
   height: 100%;
   object-fit: contain;
   display: block;
 }
 
-.coin-fallback {
+.bp-coin-fallback {
   display: none;
   font-weight: 600;
   font-size: 0.875rem;
   color: var(--brand-primary);
 }
 
-.coin-details {
+.bp-coin-details {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  min-width: 0;
 }
 
-.coin-symbol {
+.bp-coin-symbol {
   font-size: 1rem;
   font-weight: 600;
   color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.coin-name {
+.bp-coin-name {
   font-size: 0.75rem;
   color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Columna Importe */
-.amount-cell {
-  text-align: right;
+.bp-amount-cell {
+  width: 25%;
+  text-align: right !important;
+  vertical-align: top;
 }
 
-.amount-crypto {
+.bp-amount-crypto {
   font-size: 1rem;
   font-weight: 500;
   color: var(--text-primary);
   margin-bottom: 0.25rem;
-}
-
-.amount-fiat {
-  font-size: 0.875rem;
-  color: var(--text-tertiary);
-}
-
-/* Columna Precio */
-.price-cell {
   text-align: right;
 }
 
-.price-current {
+/* Columna Valor */
+.bp-value-cell {
+  width: 30%;
+  text-align: right !important;
+  vertical-align: top;
+}
+
+.bp-value-amount {
   font-size: 1rem;
   font-weight: 500;
   color: var(--text-primary);
   margin-bottom: 0.25rem;
+  text-align: right;
 }
 
-.price-cost {
+.bp-value-price {
   font-size: 0.875rem;
   color: var(--text-tertiary);
+  text-align: right;
 }
 
 /* Columna Acciones */
-.actions-cell {
-  text-align: right;
+.bp-actions-cell {
+  width: 10%;
+  text-align: right !important;
+  vertical-align: top;
 }
 
-.expand-btn {
+.bp-expand-btn {
   background: none;
   border: none;
   color: var(--text-tertiary);
@@ -368,13 +407,13 @@
   transition: all 0.2s ease;
 }
 
-.expand-btn:hover {
+.bp-expand-btn:hover {
   color: var(--text-primary);
   transform: scale(1.1);
 }
 
 /* Estado Vacío */
-.empty-state {
+.bp-empty-state {
   padding: var(--spacing-xl);
   text-align: center;
   color: var(--text-secondary);
@@ -382,53 +421,57 @@
 
 /* ========== RESPONSIVE ========== */
 @media (max-width: 1024px) {
-  .balance-header-grid {
+  .bp-header-grid {
     grid-template-columns: 1fr;
   }
 
-  .balance-actions {
+  .bp-actions {
     justify-content: flex-start;
     flex-wrap: wrap;
   }
 }
 
 @media (max-width: 768px) {
-  .balance-page {
+  .bp-page {
     padding: var(--spacing-md);
   }
 
-  .balance-amount h1 {
+  .bp-amount h1 {
     font-size: 2rem;
   }
 
-  .assets-controls {
+  .bp-assets-controls {
     flex-direction: column;
     align-items: flex-start;
     gap: var(--spacing-md);
   }
 
-  .assets-tabs {
+  .bp-assets-tabs {
     width: 100%;
   }
 
-  .assets-filters {
+  .bp-assets-filters {
     width: 100%;
     justify-content: space-between;
   }
 
   /* Simplificar tabla en móvil */
-  .assets-table {
+  .bp-assets-table {
     font-size: 0.875rem;
   }
 
-  .assets-table th,
-  .assets-table td {
+  .bp-assets-table th,
+  .bp-assets-table td {
     padding: var(--spacing-sm);
   }
 
-  .coin-avatar {
+  .bp-coin-avatar {
     width: 24px;
     height: 24px;
     font-size: 0.75rem;
+  }
+  
+  .bp-assets-table {
+    table-layout: auto;
   }
 }

@@ -55,7 +55,8 @@ const HomePage = () => {
 
   // Actualizar tabla cuando cambia la página
   useEffect(() => {
-    if (currentPage !== 1) {
+    const isInitialLoad = currentPage === 1 && marketData.length === 0;
+    if (!isInitialLoad && currentPage >= 1) {
       fetchMarketData(true);
       scrollToMarketsTable();
     }

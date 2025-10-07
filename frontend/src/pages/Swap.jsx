@@ -131,7 +131,7 @@ const Swap = () => {
       )}
 
       {/* Tipo de orden */}
-      <div className="order-types">
+      {/*<div className="order-types">
         {['Instantáneo', 'Recurrente', 'Límite'].map((type, index) => (
           <button
             key={type}
@@ -140,7 +140,7 @@ const Swap = () => {
             {type}
           </button>
         ))}
-      </div>
+      </div>*/}
 
       {/* Contenedor principal del swap */}
       <div className="swap-main-container">

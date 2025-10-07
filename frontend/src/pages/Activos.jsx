@@ -192,8 +192,8 @@ const BalancePage = () => {
 
   if (loading) {
     return (
-      <div className="balance-page">
-        <div className="loading-state">
+      <div className="bp-page">
+        <div className="bp-loading-state">
           <p>Cargando balances...</p>
         </div>
       </div>
@@ -202,11 +202,11 @@ const BalancePage = () => {
 
   if (error) {
     return (
-      <div className="balance-page">
-        <div className="error-state">
+      <div className="bp-page">
+        <div className="bp-error-state">
           <h3>Error al cargar datos</h3>
           <p>{error}</p>
-          <button className="btn-primary" onClick={() => window.location.reload()}>
+          <button className="bp-btn-primary" onClick={() => window.location.reload()}>
             Reintentar
           </button>
         </div>
@@ -215,66 +215,59 @@ const BalancePage = () => {
   }
 
   return (
-    <div className="balance-page">
-      <div className="balance-header card">
-        <div className="balance-header-grid">
-          <div className="balance-info">
-            <div className="balance-label">
+    <div className="bp-page">
+      <div className="bp-header bp-card">
+        <div className="bp-header-grid">
+          <div className="bp-info">
+            <div className="bp-label">
               <h2>Balance estimado</h2>
-              <span className="icon-eye">👁</span>
+              <span className="bp-icon-eye">👁</span>
             </div>
 
-            <div className="balance-amount">
+            <div className="bp-amount">
               <h1>{btcPriceError ? '---' : totalBTC.toFixed(8)}</h1>
-              <span className="balance-currency">BTC ▼</span>
+              <span className="bp-currency">BTC ▼</span>
             </div>
 
-            <p className="balance-fiat">
+            <p className="bp-fiat">
               ≈ {totalUSDT.toFixed(2)} USDT
-              {btcPriceError && <span style={{ color: 'var(--warning)', fontSize: '0.75rem', marginLeft: 'var(--spacing-xs)' }}>(Sin precio BTC)</span>}
+              {btcPriceError && <span className="bp-warning-text">(Sin precio BTC)</span>}
             </p>
           </div>
 
-          <div className="balance-actions">
-            <button className="action-btn" onClick={() => handleNavigation('/depositos')}>
+          <div className="bp-actions">
+            <button className="bp-action-btn" onClick={() => handleNavigation('/depositos')}>
               Depositar
             </button>
-            <button className="action-btn" onClick={() => handleNavigation('/retiros')}>
+            <button className="bp-action-btn" onClick={() => handleNavigation('/retiros')}>
               Retirar
             </button>
-            <button className="action-btn" onClick={() => handleNavigation('/transferir')}>
-              Transferir
+            <button className="bp-action-btn" onClick={() => handleNavigation('/transferir')}>
+              Transferir*
             </button>
-            <button className="action-btn" onClick={() => handleNavigation('/historial')}>
-              Historial
+            <button className="bp-action-btn" onClick={() => handleNavigation('/historial')}>
+              Historial*
             </button>
           </div>
         </div>
       </div>
 
-      <div className="assets-section card">
-        <header className="assets-header">
+      <div className="bp-assets-section bp-card">
+        <header className="bp-assets-header">
           <h2>Mis activos</h2>
 
-          <div className="assets-controls">
-            <div className="assets-tabs">
+          <div className="bp-assets-controls">
+            <div className="bp-assets-tabs">
               <button
-                className={`tab ${activeTab === 'moneda' ? 'active' : ''}`}
+                className={`bp-tab ${activeTab === 'moneda' ? 'bp-active' : ''}`}
                 onClick={() => setActiveTab('moneda')}
               >
                 Vista por moneda
               </button>
-              <button
-                className={`tab ${activeTab === 'cuenta' ? 'active' : ''}`}
-                onClick={() => setActiveTab('cuenta')}
-              >
-                Vista de cuenta
-              </button>
             </div>
 
-            <div className="assets-filters">
-              <button className="search-btn">🔍</button>
-              <label className="hide-small-checkbox">
+            <div className="bp-assets-filters">
+              <label className="bp-hide-small-checkbox">
                 <input
                   type="checkbox"
                   checked={hideSmallBalances}
@@ -286,62 +279,58 @@ const BalancePage = () => {
           </div>
         </header>
 
-        <table className="assets-table">
+        <table className="bp-assets-table">
           <thead>
             <tr>
-              <th className="th-coin">Moneda</th>
-              <th className="th-amount">Importe</th>
-              <th className="th-price">
-                Valor
-                <span className="icon-info">ℹ</span>
-              </th>
-              <th className="th-actions"></th>
+              <th className="bp-th-coin">Moneda</th>
+              <th className="bp-th-amount">Importe</th>
+              <th className="bp-th-value">Valor</th>
+              <th className="bp-th-actions"></th>
             </tr>
           </thead>
           <tbody>
             {enrichedBalances.length === 0 ? (
               <tr>
-                <td colSpan="4" className="empty-state">
+                <td colSpan="4" className="bp-empty-state">
                   No tienes activos disponibles
                 </td>
               </tr>
             ) : (
               enrichedBalances.map((balance) => (
-                <tr key={balance.id} className="asset-row">
-                  <td className="coin-cell">
-                    <div className="coin-info">
-                      <div className="coin-avatar">
+                <tr key={balance.id} className="bp-asset-row">
+                  <td className="bp-coin-cell">
+                    <div className="bp-coin-info">
+                      <div className="bp-coin-avatar">
                         {balance.crypto.iconUrl ? (
                           <img 
                             src={balance.crypto.iconUrl} 
                             alt={balance.crypto.symbol}
-                            className="coin-icon"
+                            className="bp-coin-icon"
                             onError={(e) => {
                               e.target.style.display = 'none';
                               e.target.nextSibling.style.display = 'flex';
                             }}
                           />
                         ) : null}
-                        <span className="coin-fallback">
+                        <span className="bp-coin-fallback">
                           {balance.crypto.symbol.charAt(0)}
                         </span>
                       </div>
-                      <div className="coin-details">
-                        <div className="coin-symbol">{balance.crypto.symbol}</div>
-                        <div className="coin-name">{balance.crypto.nombre}</div>
+                      <div className="bp-coin-details">
+                        <div className="bp-coin-symbol">{balance.crypto.symbol}</div>
+                        <div className="bp-coin-name">{balance.crypto.nombre}</div>
                       </div>
                     </div>
                   </td>
-                  <td className="amount-cell">
-                    <div className="amount-crypto">{balance.balanceAmount.toFixed(8)}</div>
-                    <div className="amount-fiat">{balance.valueInUSDT.toFixed(2)} USDT</div>
+                  <td className="bp-amount-cell">
+                    <div className="bp-amount-crypto">{balance.balanceAmount.toFixed(8)}</div>
                   </td>
-                  <td className="price-cell">
-                    <div className="price-current">{balance.price.toFixed(2)} USDT</div>
-                    <div className="price-cost">--</div>
+                  <td className="bp-value-cell">
+                    <div className="bp-value-amount">{balance.valueInUSDT.toFixed(2)} USDT</div>
+                    <div className="bp-value-price">{balance.price.toFixed(2)} USDT</div>
                   </td>
-                  <td className="actions-cell">
-                    <button className="expand-btn">▼</button>
+                  <td className="bp-actions-cell">
+                    <button className="bp-expand-btn">⋯</button>
                   </td>
                 </tr>
               ))

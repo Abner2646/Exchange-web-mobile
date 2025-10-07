@@ -16,7 +16,7 @@ const P2PMarketplace = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [ofertaExpandida, setOfertaExpandida] = useState(null);
-  const [usuariosCache, setUsuariosCache] = useState({}); // ← Cache de usuarios
+  const [usuariosCache, setUsuariosCache] = useState({});
 
   // Estados de filtros
   const [tipoOperacion, setTipoOperacion] = useState('compra');
@@ -27,11 +27,18 @@ const P2PMarketplace = () => {
   const [ordenarPor, setOrdenarPor] = useState('precio');
 
   useEffect(() => {
+    // Verificar si el usuario está autenticado
+    if (!token) {
+      navigate('/login');
+      return;
+    }
     cargarDatosIniciales();
   }, []);
 
   useEffect(() => {
-    cargarOfertas();
+    if (token && cryptoSeleccionada) {
+      cargarOfertas();
+    }
   }, [tipoOperacion, cryptoSeleccionada, monedaFiat, metodoPagoFiltro, cantidadBuscar, ordenarPor]);
 
   const cargarDatosIniciales = async () => {
@@ -43,23 +50,36 @@ const P2PMarketplace = () => {
         fetch('http://localhost:3001/api/metodoPago/status/active')
       ]);
 
+      // Verificar si las respuestas son exitosas
+      if (!resCryptos.ok) {
+        throw new Error('Error al cargar criptomonedas');
+      }
+      if (!resMetodos.ok) {
+        throw new Error('Error al cargar métodos de pago');
+      }
+
       const cryptos = await resCryptos.json();
       const metodos = await resMetodos.json();
 
-      setCriptomonedas(cryptos);
-      setMetodosPago(metodos);
+      // ✅ Validar que sean arrays antes de asignar
+      setCriptomonedas(Array.isArray(cryptos) ? cryptos : []);
+      setMetodosPago(Array.isArray(metodos) ? metodos : []);
       
-      if (cryptos.length > 0) {
+      // ✅ Solo establecer crypto seleccionada si hay datos
+      if (Array.isArray(cryptos) && cryptos.length > 0) {
         setCryptoSeleccionada(cryptos[0].id);
       }
     } catch (err) {
       console.error('Error cargando datos iniciales:', err);
+      setError(err.message);
+      // Si hay error de autenticación, redirigir al login
+      if (err.message.includes('autenticación') || err.message.includes('token')) {
+        navigate('/login');
+      }
     }
   };
 
-  // ✅ Función para cargar perfil público de usuario
   const cargarPerfilUsuario = async (usuarioId) => {
-    // Si ya está en cache, devolverlo
     if (usuariosCache[usuarioId]) {
       return usuariosCache[usuarioId];
     }
@@ -73,7 +93,6 @@ const P2PMarketplace = () => {
 
       const userData = await response.json();
       
-      // Guardar en cache
       setUsuariosCache(prev => ({
         ...prev,
         [usuarioId]: userData
@@ -107,6 +126,11 @@ const P2PMarketplace = () => {
       const data = await response.json();
       let ofertasFiltradas = data.data || data;
 
+      // ✅ Validar que sea un array
+      if (!Array.isArray(ofertasFiltradas)) {
+        ofertasFiltradas = [];
+      }
+
       // Filtrar por método de pago
       if (metodoPagoFiltro) {
         ofertasFiltradas = ofertasFiltradas.filter(oferta =>
@@ -132,7 +156,6 @@ const P2PMarketplace = () => {
         return 0;
       });
 
-      // ⚠️ AQUÍ VIENE EL PROBLEMA N+1: Cargar usuarios de todas las ofertas
       const usuariosPromises = ofertasFiltradas.map(oferta => 
         cargarPerfilUsuario(oferta.usuarioId)
       );
@@ -185,6 +208,11 @@ const P2PMarketplace = () => {
       esPropio: false
     };
   };
+
+  // ✅ Si no hay token, no renderizar nada (el useEffect redirige)
+  if (!token) {
+    return null;
+  }
 
   return (
     <div className="p2p-marketplace-binance">

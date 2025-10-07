@@ -420,8 +420,8 @@
   background: var(--brand-primary);
   color: var(--text-inverse);
   border-radius: 50%;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   font-size: 0.7rem;
   display: flex;
   align-items: center;
@@ -433,13 +433,14 @@
 .navbar-notifications-menu {
   min-width: 320px;
   right: 0;
+  padding: 0;
 }
 
 .navbar-notifications-header {
   padding: var(--spacing-md) var(--spacing-lg);
   border-bottom: 1px solid var(--border-primary);
   display: flex;
-  justify-content: between;
+  justify-content: space-between;
   align-items: center;
 }
 
@@ -450,10 +451,18 @@
   color: var(--text-primary);
 }
 
-.navbar-notifications-count {
-  font-size: 0.8rem;
+.navbar-notifications-mark-read {
+  background: none;
+  border: none;
   color: var(--brand-primary);
-  font-weight: 500;
+  font-size: 0.75rem;
+  cursor: pointer;
+  text-decoration: underline;
+  transition: all 0.2s ease;
+}
+
+.navbar-notifications-mark-read:hover {
+  color: var(--brand-secondary);
 }
 
 .navbar-notifications-list {
@@ -479,6 +488,11 @@
   border-bottom: none;
 }
 
+.navbar-notification-unread {
+  background: var(--interactive-hover);
+  border-left: 3px solid var(--brand-primary);
+}
+
 .navbar-notification-icon {
   font-size: 1.2rem;
   flex-shrink: 0;
@@ -501,6 +515,13 @@
   color: var(--text-secondary);
 }
 
+.navbar-notification-empty {
+  padding: var(--spacing-lg);
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
 .navbar-notifications-view-all {
   display: block;
   text-align: center;
@@ -518,7 +539,7 @@
   color: var(--brand-secondary);
 }
 
-/* Mejoras para los dropdowns - Ahora son clickeables */
+/* Mejoras para los dropdowns - Ahora con hover y delay */
 .navbar-user-profile-trigger {
   display: flex;
   align-items: center;
@@ -552,7 +573,7 @@
   justify-content: center;
 }
 
-/* Los dropdowns ahora se controlan por estado React */
+/* Los dropdowns ahora se controlan por hover con delay */
 .navbar-dropdown-menu {
   opacity: 1;
   visibility: visible;
@@ -568,6 +589,7 @@
   min-width: 200px;
   z-index: 1000;
   overflow: hidden;
+  transition: all 0.2s ease;
 }
 
 /* Mantener los estilos responsive existentes */
@@ -598,5 +620,9 @@
     left: var(--spacing-md);
     right: var(--spacing-md);
     min-width: auto;
+  }
+  
+  .navbar-user-info {
+    display: none;
   }
 }
