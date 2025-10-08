@@ -11,7 +11,6 @@ const Swap = () => {
     fromAmount,
     toAmount,
     exchangeRate,
-    exchangeData,
     
     // Estados de la UI
     loading,
@@ -23,7 +22,7 @@ const Swap = () => {
     clearError,
     getAvailableFromCryptos,
     getAvailableToCryptos,
-    calculateDetailedExchange,
+    checkPairExists,
     
     // Handlers
     handleFromCryptoChange,
@@ -34,7 +33,8 @@ const Swap = () => {
     
     // Validaciones
     hasInsufficientBalance,
-    isSameCurrency
+    isSameCurrency,
+    isPairValid
   } = useSwap();
 
   // Estados locales de la UI
@@ -57,7 +57,7 @@ const Swap = () => {
 
   // Manejar confirmación del swap
   const handleConfirm = () => {
-    if (!fromAmount || !fromCrypto || !toCrypto || hasInsufficientBalance || isSameCurrency) return;
+    if (!fromAmount || !fromCrypto || !toCrypto || hasInsufficientBalance || isSameCurrency || !isPairValid) return;
     
     setShowConfirmModal(true);
   };
@@ -92,28 +92,18 @@ const Swap = () => {
   };
 
   return (
-    <div className="swap-container">
-      {/* Header */}
-      <header className="swap-header">
-        <h1 className="swap-title">
-          Intercambiar Criptomonedas
-        </h1>
-        <p className="swap-subtitle">
-          Precio inmediato | Precio garantizado | Cualquier par
-        </p>
-      </header>
-
+    <div className="swap-page-container">
       {/* Banner de éxito */}
       {showSuccessBanner && (
-        <div className="success-banner">
-          <div className="success-content">
-            <div className="success-icon">✅</div>
-            <div className="success-text">
-              <div className="success-title">¡Intercambio realizado exitosamente!</div>
-              <div className="success-subtitle">Tus balances han sido actualizados</div>
+        <div className="swap-page-success-banner">
+          <div className="swap-page-success-content">
+            <div className="swap-page-success-icon">✅</div>
+            <div className="swap-page-success-text">
+              <div className="swap-page-success-title">¡Intercambio realizado exitosamente!</div>
+              <div className="swap-page-success-subtitle">Tus balances han sido actualizados</div>
             </div>
             <button 
-              className="success-close"
+              className="swap-page-success-close"
               onClick={() => setShowSuccessBanner(false)}
             >
               ✕
@@ -124,40 +114,50 @@ const Swap = () => {
 
       {/* Mostrar error global si existe */}
       {error && (
-        <div className="error-banner">
+        <div className="swap-page-error-banner">
           <span>{error}</span>
-          <button onClick={clearError} className="error-close">×</button>
+          <button onClick={clearError} className="swap-page-error-close">×</button>
         </div>
       )}
 
+      {/* Header */}
+      <header className="swap-page-header">
+        <h1 className="swap-page-title">
+          Intercambiar Criptomonedas
+        </h1>
+        <p className="swap-page-subtitle">
+          Precio inmediato | Precio garantizado | Cualquier par
+        </p>
+      </header>
+
       {/* Tipo de orden */}
-      {/*<div className="order-types">
+      <div className="swap-page-order-types">
         {['Instantáneo', 'Recurrente', 'Límite'].map((type, index) => (
           <button
             key={type}
-            className={`order-type-btn ${index === 0 ? 'active' : ''}`}
+            className={`swap-page-order-type-btn ${index === 0 ? 'active' : ''}`}
           >
             {type}
           </button>
         ))}
-      </div>*/}
+      </div>
 
       {/* Contenedor principal del swap */}
-      <div className="swap-main-container">
+      <div className="swap-page-main-container">
         {/* Campo "De" */}
-        <div className="swap-field">
-          <div className="swap-field-header">
-            <span className="field-label">De</span>
-            <span className="balance-text">
+        <div className="swap-page-field">
+          <div className="swap-page-field-header">
+            <span className="swap-page-field-label">De</span>
+            <span className="swap-page-balance-text">
               Saldo disponible {fromCrypto ? getBalance(fromCrypto.symbol).toFixed(8) : '0.00000000'} {fromCrypto?.symbol || ''}
             </span>
           </div>
           
-          <div className="swap-input-container">
+          <div className="swap-page-input-container">
             {/* Selector de criptomoneda origen */}
-            <div className="crypto-selector">
+            <div className="swap-page-crypto-selector">
               <button
-                className="crypto-select-btn"
+                className="swap-page-crypto-select-btn"
                 onClick={(e) => {
                   e.stopPropagation();
                   setShowFromDropdown(!showFromDropdown);
@@ -166,42 +166,70 @@ const Swap = () => {
               >
                 {fromCrypto ? (
                   <>
-                    <div className={`crypto-icon ${fromCrypto.symbol.toLowerCase()}`}>
+                    {fromCrypto.iconUrl ? (
+                      <img 
+                        src={fromCrypto.iconUrl} 
+                        alt={fromCrypto.symbol}
+                        className="swap-page-crypto-icon"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.nextSibling.style.display = 'flex';
+                        }}
+                      />
+                    ) : null}
+                    <div 
+                      className="swap-page-crypto-icon placeholder" 
+                      style={{ display: fromCrypto.iconUrl ? 'none' : 'flex' }}
+                    >
                       {fromCrypto.symbol.charAt(0)}
                     </div>
-                    <span className="crypto-symbol">{fromCrypto.symbol}</span>
+                    <span className="swap-page-crypto-symbol">{fromCrypto.symbol}</span>
                   </>
                 ) : (
-                  <span className="crypto-symbol">Seleccionar</span>
+                  <span className="swap-page-crypto-symbol">Seleccionar</span>
                 )}
-                <span className="dropdown-arrow">▼</span>
+                <span className="swap-page-dropdown-arrow">▼</span>
               </button>
 
               {/* Dropdown origen */}
               {showFromDropdown && (
-                <div className="crypto-dropdown">
+                <div className="swap-page-crypto-dropdown">
                   {getAvailableFromCryptos().length > 0 ? (
                     getAvailableFromCryptos().map(crypto => (
                       <button
                         key={crypto.id}
-                        className="crypto-option"
+                        className="swap-page-crypto-option"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleFromCryptoChange(crypto);
                           setShowFromDropdown(false);
                         }}
                       >
-                        <div className={`crypto-icon ${crypto.symbol.toLowerCase()}`}>
+                        {crypto.iconUrl ? (
+                          <img 
+                            src={crypto.iconUrl} 
+                            alt={crypto.symbol}
+                            className="swap-page-crypto-icon"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'flex';
+                            }}
+                          />
+                        ) : null}
+                        <div 
+                          className="swap-page-crypto-icon placeholder" 
+                          style={{ display: crypto.iconUrl ? 'none' : 'flex' }}
+                        >
                           {crypto.symbol.charAt(0)}
                         </div>
-                        <div className="crypto-info">
-                          <div className="crypto-symbol">{crypto.symbol}</div>
-                          <div className="crypto-name">{crypto.nombre}</div>
+                        <div className="swap-page-crypto-info">
+                          <div className="swap-page-crypto-symbol">{crypto.symbol}</div>
+                          <div className="swap-page-crypto-name">{crypto.nombre}</div>
                         </div>
                       </button>
                     ))
                   ) : (
-                    <div className="no-options">No hay criptomonedas disponibles</div>
+                    <div className="swap-page-no-options">No hay criptomonedas disponibles</div>
                   )}
                 </div>
               )}
@@ -213,13 +241,14 @@ const Swap = () => {
               value={fromAmount}
               onChange={handleAmountChange}
               placeholder="0"
-              className="amount-input"
+              className="swap-page-amount-input"
               disabled={loading}
+              step="any"
             />
 
             {/* Botón Max */}
             <button 
-              className="max-btn"
+              className="swap-page-max-btn"
               onClick={handleUseMaxBalance}
               disabled={!fromCrypto || loading}
             >
@@ -229,37 +258,37 @@ const Swap = () => {
 
           {/* Mostrar error de balance insuficiente */}
           {hasInsufficientBalance && (
-            <div className="balance-error">
+            <div className="swap-page-balance-error">
               Balance insuficiente. Disponible: {getBalance(fromCrypto.symbol).toFixed(8)} {fromCrypto.symbol}
             </div>
           )}
         </div>
 
         {/* Botón intercambiar */}
-        <div className="swap-button-container">
+        <div className="swap-page-button-container">
           <button 
-            className="swap-currencies-btn" 
+            className="swap-page-currencies-btn" 
             onClick={handleSwapCryptos}
             disabled={loading}
           >
-            <span className="swap-icon">⇅</span>
+            <span className="swap-page-icon">⇅</span>
           </button>
         </div>
 
         {/* Campo "A" */}
-        <div className="swap-field">
-          <div className="swap-field-header">
-            <span className="field-label">A</span>
-            <span className="balance-text">
+        <div className="swap-page-field">
+          <div className="swap-page-field-header">
+            <span className="swap-page-field-label">A</span>
+            <span className="swap-page-balance-text">
               Saldo disponible {toCrypto ? getBalance(toCrypto.symbol).toFixed(8) : '0.00000000'} {toCrypto?.symbol || ''}
             </span>
           </div>
           
-          <div className="swap-input-container">
+          <div className="swap-page-input-container">
             {/* Selector de criptomoneda destino */}
-            <div className="crypto-selector">
+            <div className="swap-page-crypto-selector">
               <button
-                className="crypto-select-btn"
+                className="swap-page-crypto-select-btn"
                 onClick={(e) => {
                   e.stopPropagation();
                   setShowToDropdown(!showToDropdown);
@@ -268,51 +297,79 @@ const Swap = () => {
               >
                 {toCrypto ? (
                   <>
-                    <div className={`crypto-icon ${toCrypto.symbol.toLowerCase()}`}>
+                    {toCrypto.iconUrl ? (
+                      <img 
+                        src={toCrypto.iconUrl} 
+                        alt={toCrypto.symbol}
+                        className="swap-page-crypto-icon"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.nextSibling.style.display = 'flex';
+                        }}
+                      />
+                    ) : null}
+                    <div 
+                      className="swap-page-crypto-icon placeholder" 
+                      style={{ display: toCrypto.iconUrl ? 'none' : 'flex' }}
+                    >
                       {toCrypto.symbol.charAt(0)}
                     </div>
-                    <span className="crypto-symbol">{toCrypto.symbol}</span>
+                    <span className="swap-page-crypto-symbol">{toCrypto.symbol}</span>
                   </>
                 ) : (
-                  <span className="crypto-symbol">Seleccionar</span>
+                  <span className="swap-page-crypto-symbol">Seleccionar</span>
                 )}
-                <span className="dropdown-arrow">▼</span>
+                <span className="swap-page-dropdown-arrow">▼</span>
               </button>
 
               {/* Dropdown destino */}
               {showToDropdown && (
-                <div className="crypto-dropdown">
+                <div className="swap-page-crypto-dropdown">
                   {getAvailableToCryptos().length > 0 ? (
                     getAvailableToCryptos().map(crypto => (
                       <button
                         key={crypto.id}
-                        className="crypto-option"
+                        className="swap-page-crypto-option"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleToCryptoChange(crypto);
                           setShowToDropdown(false);
                         }}
                       >
-                        <div className={`crypto-icon ${crypto.symbol.toLowerCase()}`}>
+                        {crypto.iconUrl ? (
+                          <img 
+                            src={crypto.iconUrl} 
+                            alt={crypto.symbol}
+                            className="swap-page-crypto-icon"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'flex';
+                            }}
+                          />
+                        ) : null}
+                        <div 
+                          className="swap-page-crypto-icon placeholder" 
+                          style={{ display: crypto.iconUrl ? 'none' : 'flex' }}
+                        >
                           {crypto.symbol.charAt(0)}
                         </div>
-                        <div className="crypto-info">
-                          <div className="crypto-symbol">{crypto.symbol}</div>
-                          <div className="crypto-name">{crypto.nombre}</div>
+                        <div className="swap-page-crypto-info">
+                          <div className="swap-page-crypto-symbol">{crypto.symbol}</div>
+                          <div className="swap-page-crypto-name">{crypto.nombre}</div>
                         </div>
                       </button>
                     ))
                   ) : (
-                    <div className="no-options">No hay criptomonedas disponibles</div>
+                    <div className="swap-page-no-options">No hay criptomonedas disponibles</div>
                   )}
                 </div>
               )}
             </div>
 
             {/* Output de cantidad */}
-            <div className="amount-output">
+            <div className="swap-page-amount-output">
               {loading && fromAmount ? (
-                <span className="calculating">Calculando...</span>
+                <span className="swap-page-calculating">Calculando...</span>
               ) : (
                 toAmount || '0.00000000'
               )}
@@ -321,9 +378,9 @@ const Swap = () => {
         </div>
 
         {/* Información de tasa */}
-        {exchangeRate && fromCrypto && toCrypto && !isSameCurrency && (
-          <div className="exchange-info">
-            <span className="exchange-rate">
+        {exchangeRate && fromCrypto && toCrypto && !isSameCurrency && isPairValid && (
+          <div className="swap-page-exchange-info">
+            <span className="swap-page-exchange-rate">
               Tasa: 1 {fromCrypto.symbol} ≈ {exchangeRate.toFixed(8)} {toCrypto.symbol}
             </span>
           </div>
@@ -331,20 +388,28 @@ const Swap = () => {
 
         {/* Advertencia de misma moneda */}
         {isSameCurrency && (
-          <div className="same-currency-warning">
+          <div className="swap-page-same-currency-warning">
             <span>⚠️ No puedes intercambiar la misma criptomoneda</span>
+          </div>
+        )}
+
+        {/* Advertencia de par inválido */}
+        {!isSameCurrency && fromCrypto && toCrypto && !isPairValid && (
+          <div className="swap-page-invalid-pair-warning">
+            <span>❌ El par {fromCrypto.symbol}/{toCrypto.symbol} no está disponible para intercambio</span>
           </div>
         )}
 
         {/* Botón confirmar */}
         <button 
-          className="btn-primary swap-confirm-btn"
+          className="btn-primary swap-page-confirm-btn"
           onClick={handleConfirm}
-          disabled={!fromAmount || !fromCrypto || !toCrypto || hasInsufficientBalance || isSameCurrency || loading || swapLoading}
+          disabled={!fromAmount || !fromCrypto || !toCrypto || hasInsufficientBalance || isSameCurrency || !isPairValid || loading || swapLoading}
         >
           {swapLoading ? 'Obteniendo detalles...' :
            loading ? 'Cargando...' : 
            isSameCurrency ? 'Selecciona monedas diferentes' :
+           !isPairValid && fromCrypto && toCrypto ? 'Par no disponible' :
            hasInsufficientBalance ? 'Balance insuficiente' :
            'Vista previa'}
         </button>
@@ -352,12 +417,12 @@ const Swap = () => {
 
       {/* Modal de confirmación */}
       {showConfirmModal && fromCrypto && toCrypto && fromAmount && toAmount && exchangeRate && (
-        <div className="modal-overlay">
-          <div className="modal-container">
-            <div className="modal-header">
-              <h2 className="modal-title">Confirmar</h2>
+        <div className="swap-page-modal-overlay">
+          <div className="swap-page-modal-container">
+            <div className="swap-page-modal-header">
+              <h2 className="swap-page-modal-title">Confirmar</h2>
               <button 
-                className="modal-close-btn"
+                className="swap-page-modal-close-btn"
                 onClick={() => setShowConfirmModal(false)}
                 disabled={swapLoading}
               >
@@ -365,65 +430,93 @@ const Swap = () => {
               </button>
             </div>
 
-            <div className="modal-content">
+            <div className="swap-page-modal-content">
               {/* Iconos de conversión */}
-              <div className="conversion-display">
-                <div className="conversion-from">
-                  <div className={`crypto-icon large ${fromCrypto.symbol.toLowerCase()}`}>
+              <div className="swap-page-conversion-display">
+                <div className="swap-page-conversion-from">
+                  {fromCrypto.iconUrl ? (
+                    <img 
+                      src={fromCrypto.iconUrl} 
+                      alt={fromCrypto.symbol}
+                      className="swap-page-crypto-icon large"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                      }}
+                    />
+                  ) : null}
+                  <div 
+                    className="swap-page-crypto-icon large placeholder" 
+                    style={{ display: fromCrypto.iconUrl ? 'none' : 'flex' }}
+                  >
                     {fromCrypto.symbol.charAt(0)}
                   </div>
-                  <span className="conversion-label">De</span>
-                  <span className="conversion-amount">
+                  <span className="swap-page-conversion-label">De</span>
+                  <span className="swap-page-conversion-amount">
                     {fromAmount} {fromCrypto.symbol}
                   </span>
                 </div>
 
-                <div className="conversion-arrow">→</div>
+                <div className="swap-page-conversion-arrow">→</div>
 
-                <div className="conversion-to">
-                  <div className={`crypto-icon large ${toCrypto.symbol.toLowerCase()}`}>
+                <div className="swap-page-conversion-to">
+                  {toCrypto.iconUrl ? (
+                    <img 
+                      src={toCrypto.iconUrl} 
+                      alt={toCrypto.symbol}
+                      className="swap-page-crypto-icon large"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                      }}
+                    />
+                  ) : null}
+                  <div 
+                    className="swap-page-crypto-icon large placeholder" 
+                    style={{ display: toCrypto.iconUrl ? 'none' : 'flex' }}
+                  >
                     {toCrypto.symbol.charAt(0)}
                   </div>
-                  <span className="conversion-label">A</span>
-                  <span className="conversion-amount">
+                  <span className="swap-page-conversion-label">A</span>
+                  <span className="swap-page-conversion-amount">
                     {toAmount} {toCrypto.symbol}
                   </span>
                 </div>
               </div>
 
               {/* Detalles */}
-              <div className="modal-details">
-                <div className="detail-row">
-                  <span className="detail-label">Tasa</span>
-                  <span className="detail-value">
+              <div className="swap-page-modal-details">
+                <div className="swap-page-detail-row">
+                  <span className="swap-page-detail-label">Tasa</span>
+                  <span className="swap-page-detail-value">
                     1 {fromCrypto.symbol} ≈ {exchangeRate ? exchangeRate.toFixed(8) : '0.00000000'} {toCrypto.symbol}
                   </span>
                 </div>
-                <div className="detail-row">
-                  <span className="detail-label">Método de pago</span>
-                  <span className="detail-value">{fromCrypto.nombre} ({fromCrypto.symbol})</span>
+                <div className="swap-page-detail-row">
+                  <span className="swap-page-detail-label">Método de pago</span>
+                  <span className="swap-page-detail-value">{fromCrypto.nombre} ({fromCrypto.symbol})</span>
                 </div>
-                <div className="detail-row">
-                  <span className="detail-label">Comisiones de transacción</span>
-                  <span className="detail-value">
-                    {exchangeData?.comision || '0'} {toCrypto.symbol}
+                <div className="swap-page-detail-row">
+                  <span className="swap-page-detail-label">Comisiones de transacción</span>
+                  <span className="swap-page-detail-value">
+                    0 {toCrypto.symbol}
                   </span>
                 </div>
               </div>
 
               {/* Advertencia sobre cambio de cotización */}
-              <div className="price-warning">
-                <span>IMPORTANTE: La cotización puede cambiar al momento de ejecutar la conversión debido a las fluctuaciones del mercado.</span>
+              <div className="swap-page-price-warning">
+                <span>⚠️ IMPORTANTE: La cotización puede cambiar al momento de ejecutar la conversión debido a las fluctuaciones del mercado.</span>
               </div>
 
               {/* Contador de actualización */}
-              <div className="refresh-info">
+              <div className="swap-page-refresh-info">
                 <span>Los precios se actualizan en tiempo real</span>
               </div>
 
               {/* Botón convertir */}
               <button 
-                className="btn-primary modal-convert-btn"
+                className="btn-primary swap-page-modal-convert-btn"
                 onClick={handleExecuteSwap}
                 disabled={swapLoading}
               >

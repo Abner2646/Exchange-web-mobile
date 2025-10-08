@@ -175,11 +175,57 @@ const cancelTransaction = async (req, res) => {
 const getMyTransacciones = async (req, res) => {
   try {
     const usuarioId = req.user.id;
-    const filters = { ...req.query };
+    const { page = 1, limit = 10, estado } = req.query;
     
-    const result = await TransaccionP2P.getUserTransactions(usuarioId, filters);
-    res.json(result);
+    const whereCondition = {
+      [Op.or]: [
+        { compradorId: usuarioId },
+        { vendedorId: usuarioId }
+      ]
+    };
+
+    if (estado && estado !== 'todas') {
+      whereCondition.estado = estado;
+    }
+
+    const { count, rows: transacciones } = await TransaccionP2P.findAndCountAll({
+      where: whereCondition,
+      include: [
+        {
+          model: Criptomoneda,
+          as: 'criptomoneda',
+          attributes: ['id', 'symbol', 'nombre', 'iconUrl']
+        },
+        {
+          model: Usuario,
+          as: 'comprador',
+          attributes: ['id', 'username', 'reputacionPromedio']
+        },
+        {
+          model: Usuario,
+          as: 'vendedor',
+          attributes: ['id', 'username', 'reputacionPromedio']
+        }
+      ],
+      order: [['created_at', 'DESC']],
+      limit: parseInt(limit),
+      offset: (parseInt(page) - 1) * parseInt(limit)
+    });
+
+    // Agregar campo esComprador a cada transacción
+    const transaccionesConRol = transacciones.map(t => ({
+      ...t.toJSON(),
+      esComprador: t.compradorId === usuarioId
+    }));
+
+    res.json({
+      transacciones: transaccionesConRol,
+      total: count,
+      page: parseInt(page),
+      limit: parseInt(limit)
+    });
   } catch (error) {
+    console.error('Error en getMyTransacciones:', error);
     res.status(500).json({ error: error.message });
   }
 };

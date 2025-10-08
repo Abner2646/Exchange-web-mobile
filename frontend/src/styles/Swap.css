@@ -1,5 +1,5 @@
 /* ==================== CONTENEDOR PRINCIPAL ==================== */
-.swap-container {
+.swap-page-container {
   padding: var(--spacing-xl);
   max-width: 600px;
   margin: 0 auto;
@@ -7,12 +7,12 @@
 }
 
 /* ==================== HEADER ==================== */
-.swap-header {
+.swap-page-header {
   margin-bottom: var(--spacing-xxl);
   text-align: center;
 }
 
-.swap-title {
+.swap-page-title {
   font-size: 2.5rem;
   font-weight: 700;
   color: var(--text-primary);
@@ -20,521 +20,14 @@
   margin: 0 0 var(--spacing-sm) 0;
 }
 
-.swap-subtitle {
+.swap-page-subtitle {
   font-size: 1.125rem;
   color: var(--text-secondary);
   margin: 0;
-}
-
-/* ==================== TIPOS DE ORDEN ==================== */
-.order-types {
-  display: flex;
-  gap: var(--spacing-lg);
-  margin-bottom: var(--spacing-xl);
-  justify-content: center;
-}
-
-.order-type-btn {
-  padding: var(--spacing-sm) var(--spacing-lg);
-  background: transparent;
-  color: var(--text-secondary);
-  border: none;
-  border-radius: var(--radius-md);
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.order-type-btn.active {
-  background: var(--brand-primary);
-  color: var(--text-inverse);
-}
-
-.order-type-btn:not(.active):hover {
-  background: var(--interactive-hover);
-  color: var(--text-primary);
-}
-
-/* ==================== CONTENEDOR PRINCIPAL SWAP ==================== */
-.swap-main-container {
-  background: var(--bg-elevated);
-  padding: var(--spacing-xl);
-  border-radius: var(--radius-lg);
-  border: 2px solid var(--brand-primary);
-  box-shadow: var(--shadow-md);
-}
-
-/* ==================== CAMPOS DE SWAP ==================== */
-.swap-field {
-  margin-bottom: var(--spacing-lg);
-}
-
-.swap-field:last-of-type {
-  margin-bottom: var(--spacing-xl);
-}
-
-.swap-field-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--spacing-sm);
-}
-
-.field-label {
-  color: var(--text-secondary);
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.balance-text {
-  color: var(--text-tertiary);
-  font-size: 0.875rem;
-}
-
-/* ==================== CONTENEDOR DE INPUTS ==================== */
-.swap-input-container {
-  display: flex;
-  align-items: center;
-  background: var(--bg-secondary);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-primary);
-  padding: var(--spacing-md);
-  transition: all 0.2s ease;
-}
-
-.swap-input-container:focus-within {
-  border-color: var(--border-focus);
-  background: var(--bg-primary);
-}
-
-/* ==================== SELECTOR DE CRIPTOMONEDAS ==================== */
-.crypto-selector {
-  position: relative;
-}
-
-.crypto-select-btn {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: var(--spacing-sm);
-  border-radius: var(--radius-md);
-  transition: all 0.2s ease;
-}
-
-.crypto-select-btn:hover {
-  background: var(--interactive-hover);
-}
-
-.crypto-icon {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: var(--brand-primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--text-inverse);
-}
-
-/* Colores específicos por crypto */
-.crypto-icon.usdt {
-  background: #26a17b;
-}
-
-.crypto-icon.btc {
-  background: #f7931a;
-}
-
-.crypto-icon.eth {
-  background: #627eea;
-}
-
-.crypto-icon.bnb {
-  background: #f3ba2f;
-}
-
-.crypto-icon.large {
-  width: 40px;
-  height: 40px;
-  font-size: 1rem;
-}
-
-.crypto-symbol {
-  color: var(--text-primary);
-  font-weight: 600;
-  font-size: 1rem;
-}
-
-.dropdown-arrow {
-  color: var(--text-secondary);
-  font-size: 0.75rem;
-  transition: transform 0.2s ease;
-}
-
-/* ==================== DROPDOWN ==================== */
-.crypto-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
-  z-index: 1000;
-  min-width: 200px;
-  margin-top: var(--spacing-xs);
-  max-height: 300px;
-  overflow-y: auto;
-}
-
-.crypto-option {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-md);
-  background: none;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border-bottom: 1px solid var(--border-secondary);
-}
-
-.crypto-option:last-child {
-  border-bottom: none;
-}
-
-.crypto-option:hover {
-  background: var(--interactive-hover);
-}
-
-.crypto-info {
-  text-align: left;
-  flex: 1;
-}
-
-.crypto-name {
-  color: var(--text-secondary);
-  font-size: 0.75rem;
-  margin-top: 2px;
-}
-
-/* ==================== INPUTS ==================== */
-.amount-input {
-  flex: 1;
-  background: none;
-  border: none;
-  color: var(--text-primary);
-  font-size: 1.5rem;
-  font-weight: 600;
-  text-align: right;
-  outline: none;
-  margin-left: var(--spacing-md);
-}
-
-.amount-input::placeholder {
-  color: var(--text-tertiary);
-}
-
-.amount-output {
-  flex: 1;
-  color: var(--text-primary);
-  font-size: 1.5rem;
-  font-weight: 600;
-  text-align: right;
-  margin-left: var(--spacing-md);
-  padding: var(--spacing-xs) 0;
-}
-
-/* ==================== BOTÓN MAX ==================== */
-.max-btn {
-  background: var(--brand-tertiary);
-  color: var(--brand-primary);
-  border: none;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-sm);
-  font-size: 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-  margin-left: var(--spacing-sm);
-  transition: all 0.2s ease;
-}
-
-.max-btn:hover {
-  background: var(--brand-primary);
-  color: var(--text-inverse);
-  transform: translateY(-1px);
-}
-
-/* ==================== BOTÓN INTERCAMBIAR ==================== */
-.swap-button-container {
-  display: flex;
-  justify-content: center;
-  margin: var(--spacing-md) 0;
-}
-
-.swap-currencies-btn {
-  width: 40px;
-  height: 40px;
-  background: var(--bg-secondary);
-  border: 2px solid var(--border-primary);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.swap-currencies-btn:hover {
-  background: var(--interactive-hover);
-  border-color: var(--border-focus);
-  transform: rotate(180deg);
-}
-
-.swap-icon {
-  color: var(--text-primary);
-  font-size: 1.2rem;
-  font-weight: 600;
-}
-
-/* ==================== INFORMACIÓN DE TASA ==================== */
-.exchange-info {
-  margin-bottom: var(--spacing-lg);
-  text-align: center;
-}
-
-.exchange-rate {
-  color: var(--text-secondary);
-  font-size: 0.875rem;
-  background: var(--bg-secondary);
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: var(--radius-md);
-  display: inline-block;
-}
-
-/* ==================== ADVERTENCIA MISMA MONEDA ==================== */
-.same-currency-warning {
-  margin-bottom: var(--spacing-lg);
-  text-align: center;
-}
-
-.same-currency-warning span {
-  color: var(--warning);
-  font-size: 0.875rem;
-  background: var(--warning-bg);
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--warning);
-  display: inline-block;
-  font-weight: 500;
-}
-
-/* ==================== BOTÓN CONFIRMAR ==================== */
-.swap-confirm-btn {
-  width: 100%;
-  padding: var(--spacing-md) var(--spacing-lg);
-  font-size: 1.125rem;
-  font-weight: 600;
-  margin-top: var(--spacing-md);
-}
-
-.swap-confirm-btn:disabled {
-  background: var(--interactive-disabled);
-  color: var(--text-disabled);
-  cursor: not-allowed;
-}
-
-.swap-confirm-btn:disabled:hover {
-  background: var(--interactive-disabled);
-  transform: none;
-  box-shadow: none;
-}
-
-/* ==================== MODAL ==================== */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--spacing-lg);
-  z-index: 1000;
-  backdrop-filter: blur(4px);
-}
-
-.modal-container {
-  background: var(--bg-elevated);
-  border-radius: var(--radius-lg);
-  padding: var(--spacing-xl);
-  max-width: 500px;
-  width: 100%;
-  box-shadow: var(--shadow-xl);
-  border: 1px solid var(--border-primary);
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--spacing-xl);
-}
-
-.modal-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.modal-close-btn {
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  font-size: 1.5rem;
-  cursor: pointer;
-  padding: var(--spacing-xs);
-  border-radius: var(--radius-sm);
-  transition: all 0.2s ease;
-}
-
-.modal-close-btn:hover {
-  background: var(--interactive-hover);
-  color: var(--text-primary);
-}
-
-/* ==================== DISPLAY DE CONVERSIÓN ==================== */
-.conversion-display {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--spacing-xl);
-  padding: var(--spacing-lg);
-  background: var(--bg-secondary);
-  border-radius: var(--radius-md);
-}
-
-.conversion-from,
-.conversion-to {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--spacing-sm);
-  flex: 1;
-}
-
-.conversion-arrow {
-  color: var(--text-secondary);
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin: 0 var(--spacing-md);
-}
-
-.conversion-label {
-  color: var(--text-tertiary);
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.conversion-amount {
-  color: var(--text-primary);
-  font-size: 1.25rem;
-  font-weight: 600;
-  text-align: center;
-}
-
-/* ==================== DETALLES DEL MODAL ==================== */
-.modal-details {
-  margin-bottom: var(--spacing-lg);
-}
-
-.detail-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--spacing-md) 0;
-  border-bottom: 1px solid var(--border-secondary);
-}
-
-.detail-row:last-child {
-  border-bottom: none;
-}
-
-.detail-label {
-  color: var(--text-secondary);
-  font-size: 0.875rem;
-}
-
-.detail-value {
-  color: var(--text-primary);
-  font-size: 0.875rem;
-  font-weight: 500;
-  text-align: right;
-}
-
-/* ==================== ADVERTENCIA DE PRECIO ==================== */
-.price-warning {
-  margin-bottom: var(--spacing-lg);
-  padding: var(--spacing-md);
-  background: var(--warning-bg);
-  border: 1px solid var(--warning);
-  border-radius: var(--radius-md);
-  text-align: center;
-}
-
-.price-warning span {
-  color: var(--warning);
-  font-size: 0.75rem;
-  font-weight: 500;
-  line-height: 1.4;
-}
-
-/* ==================== INFORMACIÓN DE REFRESH ==================== */
-.refresh-info {
-  text-align: center;
-  margin-bottom: var(--spacing-lg);
-}
-
-.refresh-info span {
-  color: var(--text-tertiary);
-  font-size: 0.75rem;
-  background: var(--bg-secondary);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-sm);
-  display: inline-block;
-}
-
-/* ==================== BOTÓN CONVERTIR ==================== */
-.modal-convert-btn {
-  width: 100%;
-  padding: var(--spacing-md) var(--spacing-lg);
-  font-size: 1.125rem;
-  font-weight: 600;
-}
-
-.modal-convert-btn:disabled {
-  background: var(--interactive-disabled);
-  color: var(--text-disabled);
-  cursor: not-allowed;
-}
-
-.modal-convert-btn:disabled:hover {
-  background: var(--interactive-disabled);
-  transform: none;
-  box-shadow: none;
 }
 
 /* ==================== BANNER DE ÉXITO ==================== */
-.success-banner {
+.swap-page-success-banner {
   position: fixed;
   top: var(--spacing-lg);
   left: 50%;
@@ -545,7 +38,7 @@
   animation: slideDown 0.3s ease-out;
 }
 
-.success-content {
+.swap-page-success-content {
   background: var(--success-bg);
   border: 2px solid var(--success);
   border-radius: var(--radius-lg);
@@ -556,28 +49,28 @@
   box-shadow: var(--shadow-lg);
 }
 
-.success-icon {
+.swap-page-success-icon {
   font-size: 1.5rem;
   flex-shrink: 0;
 }
 
-.success-text {
+.swap-page-success-text {
   flex: 1;
 }
 
-.success-title {
+.swap-page-success-title {
   color: var(--success);
   font-weight: 600;
   font-size: 1rem;
   margin-bottom: var(--spacing-xs);
 }
 
-.success-subtitle {
+.swap-page-success-subtitle {
   color: var(--text-secondary);
   font-size: 0.875rem;
 }
 
-.success-close {
+.swap-page-success-close {
   background: none;
   border: none;
   color: var(--success);
@@ -589,7 +82,7 @@
   flex-shrink: 0;
 }
 
-.success-close:hover {
+.swap-page-success-close:hover {
   background: var(--success);
   color: var(--text-inverse);
 }
@@ -606,7 +99,7 @@
 }
 
 /* ==================== ERROR HANDLING ==================== */
-.error-banner {
+.swap-page-error-banner {
   background: var(--error-bg);
   border: 1px solid var(--error);
   color: var(--error);
@@ -618,7 +111,7 @@
   align-items: center;
 }
 
-.error-close {
+.swap-page-error-close {
   background: none;
   border: none;
   color: var(--error);
@@ -629,12 +122,12 @@
   transition: all 0.2s ease;
 }
 
-.error-close:hover {
+.swap-page-error-close:hover {
   background: var(--error);
   color: var(--text-inverse);
 }
 
-.balance-error {
+.swap-page-balance-error {
   color: var(--error);
   font-size: 0.75rem;
   margin-top: var(--spacing-xs);
@@ -643,109 +136,626 @@
   border-radius: var(--radius-sm);
 }
 
-.no-options {
+.swap-page-no-options {
   padding: var(--spacing-md);
   color: var(--text-secondary);
   text-align: center;
   font-size: 0.875rem;
 }
 
-.calculating {
+.swap-page-calculating {
   color: var(--text-secondary);
   font-style: italic;
   font-size: 1.25rem;
 }
 
-/* ==================== LOADING STATES ==================== */
-.swap-confirm-btn:disabled,
-.modal-convert-btn:disabled {
+/* ==================== TIPOS DE ORDEN ==================== */
+.swap-page-order-types {
+  display: flex;
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+  justify-content: center;
+}
+
+.swap-page-order-type-btn {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.swap-page-order-type-btn.active {
+  background: var(--brand-primary);
+  color: var(--text-inverse);
+}
+
+.swap-page-order-type-btn:not(.active):hover {
+  background: var(--interactive-hover);
+  color: var(--text-primary);
+}
+
+/* ==================== CONTENEDOR PRINCIPAL SWAP ==================== */
+.swap-page-main-container {
+  background: var(--bg-elevated);
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--brand-primary);
+  box-shadow: var(--shadow-md);
+}
+
+/* ==================== CAMPOS DE SWAP ==================== */
+.swap-page-field {
+  margin-bottom: var(--spacing-lg);
+}
+
+.swap-page-field:last-of-type {
+  margin-bottom: var(--spacing-xl);
+}
+
+.swap-page-field-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-sm);
+}
+
+.swap-page-field-label {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.swap-page-balance-text {
+  color: var(--text-tertiary);
+  font-size: 0.875rem;
+}
+
+/* ==================== CONTENEDOR DE INPUTS ==================== */
+.swap-page-input-container {
+  display: flex;
+  align-items: center;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-primary);
+  padding: var(--spacing-md);
+  gap: var(--spacing-sm);
+  transition: all 0.2s ease;
+}
+
+.swap-page-input-container:focus-within {
+  border-color: var(--border-focus);
+  background: var(--bg-primary);
+}
+
+/* ==================== SELECTOR DE CRIPTOMONEDAS ==================== */
+.swap-page-crypto-selector {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.swap-page-crypto-select-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+}
+
+.swap-page-crypto-select-btn:hover {
+  background: var(--interactive-hover);
+}
+
+.swap-page-crypto-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+.swap-page-crypto-icon.placeholder {
+  background: var(--brand-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-inverse);
+}
+
+.swap-page-crypto-icon.large {
+  width: 48px;
+  height: 48px;
+  font-size: 1.25rem;
+}
+
+.swap-page-crypto-symbol {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.swap-page-dropdown-arrow {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  transition: transform 0.2s ease;
+}
+
+/* ==================== DROPDOWN ==================== */
+.swap-page-crypto-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  z-index: 1000;
+  min-width: 250px;
+  margin-top: var(--spacing-xs);
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.swap-page-crypto-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid var(--border-secondary);
+}
+
+.swap-page-crypto-option:last-child {
+  border-bottom: none;
+}
+
+.swap-page-crypto-option:hover {
+  background: var(--interactive-hover);
+}
+
+.swap-page-crypto-info {
+  text-align: left;
+  flex: 1;
+}
+
+.swap-page-crypto-name {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  margin-top: 2px;
+}
+
+/* ==================== INPUTS - OCULTAR FLECHAS ==================== */
+.swap-page-amount-input {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  font-weight: 600;
+  text-align: right;
+  outline: none;
+  margin-left: var(--spacing-sm);
+  margin-right: var(--spacing-sm);
+  min-width: 0;
+}
+
+/* Ocultar flechas de input number en Chrome, Safari, Edge, Opera */
+.swap-page-amount-input::-webkit-outer-spin-button,
+.swap-page-amount-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Ocultar flechas de input number en Firefox */
+.swap-page-amount-input[type=number] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.swap-page-amount-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.swap-page-amount-output {
+  flex: 1;
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  font-weight: 600;
+  text-align: right;
+  margin-left: var(--spacing-sm);
+  padding: var(--spacing-xs) 0;
+  min-width: 0;
+  word-break: break-all;
+}
+
+/* ==================== BOTÓN MAX ==================== */
+.swap-page-max-btn {
+  background: var(--brand-tertiary);
+  color: var(--brand-primary);
+  border: none;
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.swap-page-max-btn:hover {
+  background: var(--brand-primary);
+  color: var(--text-inverse);
+  transform: translateY(-1px);
+}
+
+.swap-page-max-btn:disabled {
   background: var(--interactive-disabled);
   color: var(--text-disabled);
   cursor: not-allowed;
 }
 
-.swap-confirm-btn:disabled:hover,
-.modal-convert-btn:disabled:hover {
+.swap-page-max-btn:disabled:hover {
+  background: var(--interactive-disabled);
+  transform: none;
+}
+
+/* ==================== BOTÓN INTERCAMBIAR ==================== */
+.swap-page-button-container {
+  display: flex;
+  justify-content: center;
+  margin: var(--spacing-md) 0;
+}
+
+.swap-page-currencies-btn {
+  width: 40px;
+  height: 40px;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.swap-page-currencies-btn:hover {
+  background: var(--interactive-hover);
+  border-color: var(--border-focus);
+  transform: rotate(180deg);
+}
+
+.swap-page-currencies-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.swap-page-currencies-btn:disabled:hover {
+  transform: none;
+}
+
+.swap-page-icon {
+  color: var(--text-primary);
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+/* ==================== INFORMACIÓN DE TASA ==================== */
+.swap-page-exchange-info {
+  margin-bottom: var(--spacing-lg);
+  text-align: center;
+}
+
+.swap-page-exchange-rate {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  background: var(--bg-secondary);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  display: inline-block;
+}
+
+/* ==================== ADVERTENCIA MISMA MONEDA ==================== */
+.swap-page-same-currency-warning {
+  margin-bottom: var(--spacing-lg);
+  text-align: center;
+}
+
+.swap-page-same-currency-warning span {
+  color: var(--warning);
+  font-size: 0.875rem;
+  background: var(--warning-bg);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--warning);
+  display: inline-block;
+  font-weight: 500;
+}
+
+/* ==================== ADVERTENCIA PAR INVÁLIDO ==================== */
+.swap-page-invalid-pair-warning {
+  margin-bottom: var(--spacing-lg);
+  text-align: center;
+}
+
+.swap-page-invalid-pair-warning span {
+  color: var(--error);
+  font-size: 0.875rem;
+  background: var(--error-bg);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--error);
+  display: inline-block;
+  font-weight: 500;
+}
+
+/* ==================== BOTÓN CONFIRMAR ==================== */
+.swap-page-confirm-btn {
+  width: 100%;
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-top: var(--spacing-md);
+}
+
+.swap-page-confirm-btn:disabled {
+  background: var(--interactive-disabled);
+  color: var(--text-disabled);
+  cursor: not-allowed;
+}
+
+.swap-page-confirm-btn:disabled:hover {
   background: var(--interactive-disabled);
   transform: none;
   box-shadow: none;
 }
 
-.amount-input:disabled {
+.swap-page-amount-input:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-.max-btn:disabled {
+/* ==================== MODAL ==================== */
+.swap-page-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-lg);
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.swap-page-modal-container {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+  max-width: 500px;
+  width: 100%;
+  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--border-primary);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.swap-page-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-xl);
+}
+
+.swap-page-modal-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.swap-page-modal-close-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+}
+
+.swap-page-modal-close-btn:hover {
+  background: var(--interactive-hover);
+  color: var(--text-primary);
+}
+
+/* ==================== DISPLAY DE CONVERSIÓN ==================== */
+.swap-page-conversion-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-xl);
+  padding: var(--spacing-lg);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+.swap-page-conversion-from,
+.swap-page-conversion-to {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex: 1;
+}
+
+.swap-page-conversion-arrow {
+  color: var(--text-secondary);
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0 var(--spacing-md);
+}
+
+.swap-page-conversion-label {
+  color: var(--text-tertiary);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.swap-page-conversion-amount {
+  color: var(--text-primary);
+  font-size: 1.25rem;
+  font-weight: 600;
+  text-align: center;
+  word-break: break-word;
+}
+
+/* ==================== DETALLES DEL MODAL ==================== */
+.swap-page-modal-details {
+  margin-bottom: var(--spacing-lg);
+}
+
+.swap-page-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md) 0;
+  border-bottom: 1px solid var(--border-secondary);
+}
+
+.swap-page-detail-row:last-child {
+  border-bottom: none;
+}
+
+.swap-page-detail-label {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.swap-page-detail-value {
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: right;
+}
+
+/* ==================== ADVERTENCIA DE PRECIO ==================== */
+.swap-page-price-warning {
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-md);
+  background: var(--warning-bg);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
+.swap-page-price-warning span {
+  color: var(--warning);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+/* ==================== INFORMACIÓN DE REFRESH ==================== */
+.swap-page-refresh-info {
+  text-align: center;
+  margin-bottom: var(--spacing-lg);
+}
+
+.swap-page-refresh-info span {
+  color: var(--text-tertiary);
+  font-size: 0.75rem;
+  background: var(--bg-secondary);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  display: inline-block;
+}
+
+/* ==================== BOTÓN CONVERTIR ==================== */
+.swap-page-modal-convert-btn {
+  width: 100%;
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.swap-page-modal-convert-btn:disabled {
   background: var(--interactive-disabled);
   color: var(--text-disabled);
   cursor: not-allowed;
 }
 
-.max-btn:disabled:hover {
+.swap-page-modal-convert-btn:disabled:hover {
   background: var(--interactive-disabled);
   transform: none;
-}
-
-.swap-currencies-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.swap-currencies-btn:disabled:hover {
-  transform: none;
+  box-shadow: none;
 }
 
 /* ==================== RESPONSIVE ==================== */
 @media (max-width: 768px) {
-  .swap-container {
+  .swap-page-container {
     padding: var(--spacing-md);
   }
   
-  .swap-main-container {
+  .swap-page-main-container {
     padding: var(--spacing-lg);
   }
   
-  .order-types {
+  .swap-page-order-types {
     flex-direction: column;
     gap: var(--spacing-sm);
   }
   
-  .conversion-display {
+  .swap-page-conversion-display {
     flex-direction: column;
     gap: var(--spacing-md);
   }
   
-  .conversion-arrow {
+  .swap-page-conversion-arrow {
     transform: rotate(90deg);
   }
   
-  .modal-container {
+  .swap-page-modal-container {
     margin: var(--spacing-md);
     padding: var(--spacing-lg);
   }
   
-  .crypto-dropdown {
+  .swap-page-crypto-dropdown {
     right: 0;
     left: auto;
   }
 }
 
 @media (max-width: 480px) {
-  .swap-title {
+  .swap-page-title {
     font-size: 2rem;
   }
   
-  .amount-input,
-  .amount-output {
+  .swap-page-amount-input,
+  .swap-page-amount-output {
     font-size: 1.25rem;
   }
   
-  .crypto-symbol {
+  .swap-page-crypto-symbol {
     font-size: 0.875rem;
   }
   
-  .conversion-amount {
+  .swap-page-conversion-amount {
     font-size: 1rem;
   }
 }

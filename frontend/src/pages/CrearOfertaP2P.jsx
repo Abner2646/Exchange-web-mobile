@@ -16,7 +16,6 @@ const CrearOfertaP2P = () => {
     tipo: 'compra',
     criptomonedaId: '',
     monedaFiat: 'ARS',
-    tipoPrecio: 'fijo',
     precioUnitario: '',
     cantidadMin: '',
     cantidadMax: '',
@@ -27,8 +26,8 @@ const CrearOfertaP2P = () => {
   });
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [precioMercado, setPrecioMercado] = useState(null);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
   useEffect(() => {
     cargarDatosIniciales();
@@ -54,11 +53,13 @@ const CrearOfertaP2P = () => {
       }
     } catch (err) {
       console.error('Error cargando datos:', err);
+      setErrorMsg('Error al cargar los datos iniciales. Por favor, recarga la página.');
     }
   };
 
   const handleInputChange = (campo, valor) => {
     setFormData(prev => ({ ...prev, [campo]: valor }));
+    setErrorMsg(''); // Limpiar error al cambiar datos
   };
 
   const toggleMetodoPago = (metodoPagoId) => {
@@ -68,43 +69,45 @@ const CrearOfertaP2P = () => {
         : [...prev.metodosPagoIds, metodoPagoId];
       return { ...prev, metodosPagoIds: metodos };
     });
+    setErrorMsg('');
   };
 
   const validarPaso1 = () => {
-    if (!formData.criptomonedaId) return 'Selecciona una criptomoneda';
+    if (!formData.criptomonedaId) return 'Por favor, selecciona una criptomoneda';
     if (!formData.precioUnitario || parseFloat(formData.precioUnitario) <= 0) {
-      return 'Ingresa un precio válido';
+      return 'Por favor, ingresa un precio unitario válido';
     }
     return null;
   };
 
   const validarPaso2 = () => {
     if (!formData.cantidadMin || parseFloat(formData.cantidadMin) <= 0) {
-      return 'Ingresa una cantidad mínima válida';
+      return 'Por favor, ingresa una cantidad mínima válida';
     }
     if (!formData.cantidadMax || parseFloat(formData.cantidadMax) <= 0) {
-      return 'Ingresa una cantidad máxima válida';
+      return 'Por favor, ingresa una cantidad máxima válida';
     }
     if (parseFloat(formData.cantidadMin) >= parseFloat(formData.cantidadMax)) {
       return 'La cantidad mínima debe ser menor que la máxima';
     }
     if (formData.metodosPagoIds.length === 0) {
-      return 'Selecciona al menos un método de pago';
+      return 'Por favor, selecciona al menos un método de pago';
     }
     if (formData.tipo === 'venta' && !formData.direccionFiat) {
-      return 'La dirección de pago es obligatoria para ventas (CBU, CVU, Alias, etc.)';
+      return 'La dirección de pago es obligatoria para ofertas de venta (CBU, CVU, Alias, etc.)';
     }
     return null;
   };
 
   const siguientePaso = () => {
+    setErrorMsg('');
     let errorValidacion = null;
 
     if (pasoActual === 1) errorValidacion = validarPaso1();
     if (pasoActual === 2) errorValidacion = validarPaso2();
 
     if (errorValidacion) {
-      alert(errorValidacion);
+      setErrorMsg(errorValidacion);
       return;
     }
 
@@ -118,12 +121,14 @@ const CrearOfertaP2P = () => {
   const anteriorPaso = () => {
     if (pasoActual > 1) {
       setPasoActual(pasoActual - 1);
+      setErrorMsg('');
     }
   };
 
   const publicarOferta = async () => {
     setLoading(true);
-    setError(null);
+    setErrorMsg('');
+    setSuccessMsg('');
 
     try {
       const response = await fetch('http://localhost:3001/api/ofertaP2P', {
@@ -147,22 +152,18 @@ const CrearOfertaP2P = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Error al crear oferta');
+        throw new Error(errorData.error || 'Error al crear la oferta');
       }
 
-      alert('¡Oferta publicada exitosamente!');
-      navigate('/p2p');
+      setSuccessMsg('¡Oferta publicada exitosamente! Redirigiendo al marketplace...');
+      setTimeout(() => {
+        navigate('/p2p');
+      }, 2000);
     } catch (err) {
-      setError(err.message);
-      alert(`Error: ${err.message}`);
+      setErrorMsg(err.message);
     } finally {
       setLoading(false);
     }
-  };
-
-  const getCryptoIcon = (cryptoId) => {
-    const crypto = criptomonedas.find(c => c.id === cryptoId);
-    return crypto?.iconUrl || null;
   };
 
   const getCryptoSymbol = (cryptoId) => {
@@ -194,6 +195,21 @@ const CrearOfertaP2P = () => {
           <span className="paso-texto">Condiciones y confirmación</span>
         </div>
       </div>
+
+      {/* Mensajes de error/éxito */}
+      {errorMsg && (
+        <div className="mensaje-error">
+          <span className="icono-error">⚠</span>
+          <span>{errorMsg}</span>
+        </div>
+      )}
+
+      {successMsg && (
+        <div className="mensaje-exito">
+          <span className="icono-exito">✓</span>
+          <span>{successMsg}</span>
+        </div>
+      )}
 
       {/* Contenido del wizard */}
       <div className="wizard-content">
@@ -248,32 +264,9 @@ const CrearOfertaP2P = () => {
               </div>
             </div>
 
-            {/* Tipo de precio */}
-            <div className="form-group">
-              <label className="form-label">Tipo de precio</label>
-              <div className="radio-group">
-                <label className="radio-label">
-                  <input
-                    type="radio"
-                    checked={formData.tipoPrecio === 'fijo'}
-                    onChange={() => handleInputChange('tipoPrecio', 'fijo')}
-                  />
-                  <span>Fijo</span>
-                </label>
-                <label className="radio-label">
-                  <input
-                    type="radio"
-                    checked={formData.tipoPrecio === 'variable'}
-                    onChange={() => handleInputChange('tipoPrecio', 'variable')}
-                  />
-                  <span>Variable</span>
-                </label>
-              </div>
-            </div>
-
             {/* Precio */}
             <div className="form-group">
-              <label className="form-label">Precio fijo</label>
+              <label className="form-label">Precio unitario</label>
               <div className="precio-input-wrapper">
                 <input
                   type="number"
@@ -286,7 +279,7 @@ const CrearOfertaP2P = () => {
                 <span className="precio-moneda">{formData.monedaFiat}</span>
               </div>
               <p className="form-hint">
-                Tu precio: {formData.precioUnitario ? parseFloat(formData.precioUnitario).toLocaleString() : '0'} {formData.monedaFiat}
+                Precio: {formData.precioUnitario ? parseFloat(formData.precioUnitario).toLocaleString() : '0'} {formData.monedaFiat} por {getCryptoSymbol(formData.criptomonedaId)}
               </p>
             </div>
           </div>
@@ -295,20 +288,10 @@ const CrearOfertaP2P = () => {
         {/* Paso 2: Importe y método de pago */}
         {pasoActual === 2 && (
           <div className="wizard-paso">
-            {/* Cantidad total */}
-            <div className="form-group">
-              <label className="form-label">Cantidad total</label>
-              <div className="cantidad-display">
-                {formData.tipo === 'venta' ? (
-                  <>
-                    <span className="cantidad-label">Disponible:</span>
-                    <span className="cantidad-valor">0.00 {getCryptoSymbol(formData.criptomonedaId)}</span>
-                  </>
-                ) : (
-                  <span className="cantidad-hint">Especifica el rango que deseas {formData.tipo === 'compra' ? 'comprar' : 'vender'}</span>
-                )}
-              </div>
-            </div>
+            {/* Título */}
+            <h3 className="seccion-titulo">
+              Especifica el rango que deseas {formData.tipo === 'compra' ? 'comprar' : 'vender'}
+            </h3>
 
             {/* Límite de orden */}
             <div className="form-group">
@@ -339,15 +322,17 @@ const CrearOfertaP2P = () => {
                 </div>
               </div>
               <div className="limite-hints">
-                <span>≈ {formData.cantidadMin ? (parseFloat(formData.cantidadMin) / (parseFloat(formData.precioUnitario) || 1)).toFixed(4) : '0'} {getCryptoSymbol(formData.criptomonedaId)}</span>
-                <span>≈ {formData.cantidadMax ? (parseFloat(formData.cantidadMax) / (parseFloat(formData.precioUnitario) || 1)).toFixed(4) : '0'} {getCryptoSymbol(formData.criptomonedaId)}</span>
+                <span>≈ {formData.cantidadMin && formData.precioUnitario ? (parseFloat(formData.cantidadMin) / parseFloat(formData.precioUnitario)).toFixed(4) : '0'} {getCryptoSymbol(formData.criptomonedaId)}</span>
+                <span>≈ {formData.cantidadMax && formData.precioUnitario ? (parseFloat(formData.cantidadMax) / parseFloat(formData.precioUnitario)).toFixed(4) : '0'} {getCryptoSymbol(formData.criptomonedaId)}</span>
               </div>
             </div>
 
             {/* Dirección de pago (solo para ventas) */}
             {formData.tipo === 'venta' && (
               <div className="form-group">
-                <label className="form-label">Dirección de pago (CBU/CVU/Alias/PayPal) *</label>
+                <label className="form-label">
+                  Dirección de pago <span className="campo-requerido">*</span>
+                </label>
                 <input
                   type="text"
                   className="form-input"
@@ -355,7 +340,7 @@ const CrearOfertaP2P = () => {
                   value={formData.direccionFiat}
                   onChange={(e) => handleInputChange('direccionFiat', e.target.value)}
                 />
-                <p className="form-hint error">Obligatorio para ofertas de venta</p>
+                <p className="form-hint">Obligatorio para ofertas de venta. Ingresa tu CBU, CVU, Alias o email de PayPal.</p>
               </div>
             )}
 
@@ -407,6 +392,7 @@ const CrearOfertaP2P = () => {
                 onChange={(e) => handleInputChange('condicionesAdicionales', e.target.value)}
                 rows={5}
               />
+              <p className="form-hint">Agrega condiciones específicas para tu oferta</p>
             </div>
 
             {/* Resumen de la oferta */}
@@ -432,6 +418,12 @@ const CrearOfertaP2P = () => {
                 <span>Métodos de pago:</span>
                 <strong>{formData.metodosPagoIds.length} seleccionados</strong>
               </div>
+              {formData.tipo === 'venta' && formData.direccionFiat && (
+                <div className="resumen-item">
+                  <span>Dirección de pago:</span>
+                  <strong>{formData.direccionFiat}</strong>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -440,7 +432,7 @@ const CrearOfertaP2P = () => {
       {/* Botones de navegación */}
       <div className="wizard-actions">
         {pasoActual > 1 && (
-          <button className="btn-anterior" onClick={anteriorPaso}>
+          <button className="btn-anterior" onClick={anteriorPaso} disabled={loading}>
             Anterior
           </button>
         )}

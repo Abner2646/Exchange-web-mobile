@@ -21,7 +21,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: var(--spacing-xxl);
+  margin-bottom: var(--spacing-xl);
   padding: var(--spacing-lg);
   background: var(--bg-elevated);
   border-radius: var(--radius-lg);
@@ -68,6 +68,36 @@
   margin: 0 var(--spacing-sm);
 }
 
+/* Mensajes de error/éxito */
+.mensaje-error,
+.mensaje-exito {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-lg);
+  font-size: 0.875rem;
+}
+
+.mensaje-error {
+  background: var(--error-bg);
+  color: var(--error);
+  border: 1px solid var(--error);
+}
+
+.mensaje-exito {
+  background: var(--success-bg);
+  color: var(--success);
+  border: 1px solid var(--success);
+}
+
+.icono-error,
+.icono-exito {
+  font-weight: 700;
+  font-size: 1.125rem;
+}
+
 /* Contenido del wizard */
 .wizard-content {
   background: var(--bg-elevated);
@@ -81,6 +111,14 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
+}
+
+/* Título de sección */
+.seccion-titulo {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-md);
 }
 
 /* Tabs de tipo */
@@ -136,6 +174,10 @@
   color: var(--text-secondary);
 }
 
+.campo-requerido {
+  color: var(--error);
+}
+
 .form-select,
 .form-input,
 .form-textarea {
@@ -150,6 +192,11 @@
   transition: all 0.2s ease;
 }
 
+.form-textarea {
+  resize: none;
+  font-family: inherit;
+}
+
 .form-select:focus,
 .form-input:focus,
 .form-textarea:focus {
@@ -160,30 +207,6 @@
 .form-hint {
   font-size: 0.75rem;
   color: var(--text-tertiary);
-}
-
-.form-hint.error {
-  color: var(--error);
-}
-
-/* Radio group */
-.radio-group {
-  display: flex;
-  gap: var(--spacing-lg);
-}
-
-.radio-label {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  cursor: pointer;
-  color: var(--text-primary);
-}
-
-.radio-label input[type="radio"] {
-  width: 18px;
-  height: 18px;
-  cursor: pointer;
 }
 
 /* Precio input */
@@ -202,31 +225,6 @@
   transform: translateY(-50%);
   color: var(--text-secondary);
   font-weight: 600;
-}
-
-/* Cantidad display */
-.cantidad-display {
-  padding: var(--spacing-md);
-  background: var(--bg-secondary);
-  border-radius: var(--radius-md);
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-}
-
-.cantidad-label {
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-}
-
-.cantidad-valor {
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.cantidad-hint {
-  color: var(--text-tertiary);
-  font-size: 0.875rem;
 }
 
 /* Límite inputs */
@@ -365,7 +363,7 @@
   color: var(--text-primary);
 }
 
-.btn-anterior:hover {
+.btn-anterior:hover:not(:disabled) {
   background: var(--interactive-hover);
 }
 

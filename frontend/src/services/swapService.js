@@ -18,14 +18,15 @@ const getAuthHeaders = () => {
 
 // Manejar respuesta y errores
 const handleResponse = async (response) => {
-  const data = await response.json();
-  
-  // Si es 401, limpiar token y redirigir a login
+  // Si es 401, redirigir INMEDIATAMENTE sin esperar JSON
   if (response.status === 401) {
+    console.log('❌ 401 detectado, redirigiendo al login...');
     localStorage.removeItem('token');
     window.location.href = '/login';
     throw new Error('Sesión expirada');
   }
+  
+  const data = await response.json();
   
   // Si hay error en la respuesta
   if (!response.ok) {
