@@ -85,35 +85,51 @@ function createBalanceUserModel(sequelize) {
     }
   };
 
-BalanceUser.updateBalance = async (userId, criptomonedaId, amount, type = 'disponible', transaction = null) => {
-  try {
-    const [balance] = await BalanceUser.findOrCreate({
-      where: { userId, criptomonedaId },
-      defaults: {
-        userId,
-        criptomonedaId,
-        balanceDisponible: 0,
-        balanceBloqueado: 0
-      },
-      transaction // ← AGREGAR AQUÍ
-    });
+  BalanceUser.updateBalance = async (userId, criptomonedaId, amount, type = 'disponible', transaction = null) => {
+    try {
+      const [balance] = await BalanceUser.findOrCreate({
+        where: { userId, criptomonedaId },
+        defaults: {
+          userId,
+          criptomonedaId,
+          balanceDisponible: 0,
+          balanceBloqueado: 0
+        },
+        transaction
+      });
 
-    const field = type === 'disponible' ? 'balanceDisponible' : 'balanceBloqueado';
-    const currentBalance = parseFloat(balance[field]) || 0;
-    const newBalance = currentBalance + parseFloat(amount);
+      const field = type === 'disponible' ? 'balanceDisponible' : 'balanceBloqueado';
+      const currentBalance = parseFloat(balance[field]) || 0;
+      const newBalance = currentBalance + parseFloat(amount);
 
-    if (newBalance < 0) {
-      throw new Error('Balance insuficiente para esta operación');
+      if (newBalance < 0) {
+        throw new Error(
+          `Balance insuficiente. ${type === 'disponible' ? 'Disponible' : 'Bloqueado'}: ${currentBalance}, ` +
+          `Operación: ${amount}, Resultado: ${newBalance}`
+        );
+      }
+
+      balance[field] = newBalance;
+      await balance.save({ transaction });
+
+      return balance;
+    } catch (error) {
+      throw new Error(`Error al actualizar balance: ${error.message}`);
     }
+  };
 
-    balance[field] = newBalance;
-    await balance.save({ transaction }); // ← Y AQUÍ
-
-    return balance;
-  } catch (error) {
-    throw new Error(`Error al actualizar balance: ${error.message}`);
-  }
-};
+  // 🆕 MÉTODO PARA OBTENER BALANCE EN TRANSACCIÓN
+  BalanceUser.getByUserAndCrypto = async (userId, criptomonedaId, options = {}) => {
+    try {
+      const balance = await BalanceUser.findOne({
+        where: { userId, criptomonedaId },
+        ...options
+      });
+      return balance;
+    } catch (error) {
+      throw new Error(`Error al obtener balance: ${error.message}`);
+    }
+  };
 
   BalanceUser.blockBalance = async (userId, criptomonedaId, amount) => {
     try {

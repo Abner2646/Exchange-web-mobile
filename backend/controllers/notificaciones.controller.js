@@ -1,3 +1,4 @@
+// controllers/notificaciones.controller.js
 const { Notificaciones } = require('../models/index.js');
 
 // Listar notificaciones con filtros (admin)

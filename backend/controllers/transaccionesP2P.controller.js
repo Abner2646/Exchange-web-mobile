@@ -39,11 +39,10 @@ const createTransaccion = async (req, res) => {
     const { 
       ofertaId, 
       cantidad, 
-      metodoPagoId,
-      esComprador = true // Indica si el usuario actual es el comprador
+      metodoPagoId
     } = req.body;
 
-    // Obtener datos de la oferta para determinar roles
+    // Obtener datos de la oferta
     const { OfertaP2P } = require('../models/index.js');
     const oferta = await OfertaP2P.findByPk(ofertaId, {
       include: ['criptomoneda']
@@ -53,21 +52,21 @@ const createTransaccion = async (req, res) => {
       return res.status(404).json({ error: 'Oferta no encontrada' });
     }
 
-    // Determinar comprador y vendedor según el tipo de oferta
+    // 🆕 VALIDAR QUE NO SEA SU PROPIA OFERTA
+    if (oferta.usuarioId === usuarioId) {
+      return res.status(400).json({ 
+        error: 'No puedes aceptar tu propia oferta' 
+      });
+    }
+
+    // Determinar comprador y vendedor
     let compradorId, vendedorId;
     if (oferta.tipo === 'venta') {
-      // Oferta de venta: el creador vende, el que acepta compra
       vendedorId = oferta.usuarioId;
       compradorId = usuarioId;
     } else {
-      // Oferta de compra: el creador compra, el que acepta vende
       compradorId = oferta.usuarioId;
       vendedorId = usuarioId;
-    }
-
-    // Verificar que el usuario no esté aceptando su propia oferta
-    if (oferta.usuarioId === usuarioId) {
-      return res.status(400).json({ error: 'No puedes aceptar tu propia oferta' });
     }
 
     const transaccionData = {
@@ -81,8 +80,9 @@ const createTransaccion = async (req, res) => {
     };
 
     const nuevaTransaccion = await TransaccionP2P.createTransaction(transaccionData);
+    
     res.status(201).json({
-      message: 'Transacción iniciada exitosamente',
+      message: 'Transacción iniciada exitosamente. Los fondos han sido bloqueados.',
       data: nuevaTransaccion
     });
   } catch (error) {

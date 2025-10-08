@@ -92,7 +92,7 @@ class OfertaP2P extends Model {
 
   // Crear nueva oferta con métodos de pago
   static async createOffer(ofertaData) {
-    const { tipo, direccionFiat, metodosPagoIds, ...restData } = ofertaData;
+    const { tipo, direccionFiat, metodosPagoIds, usuarioId, criptomonedaId, cantidadMax, ...restData } = ofertaData;
 
     // Validar dirección fiat obligatoria para ventas
     if (tipo === 'venta' && !direccionFiat) {
@@ -121,9 +121,33 @@ class OfertaP2P extends Model {
       throw new Error('Uno o más métodos de pago no existen o están inactivos');
     }
 
+    // 🆕 VALIDAR FONDOS AL PUBLICAR OFERTA DE VENTA
+    if (tipo === 'venta') {
+      const { BalanceUsuario } = require('./index');
+      
+      // Verificar que el usuario tenga fondos suficientes para la cantidad máxima
+      const balance = await BalanceUsuario.getByUserAndCrypto(usuarioId, criptomonedaId);
+      
+      if (!balance) {
+        throw new Error('No tienes balance en esta criptomoneda');
+      }
+
+      const balanceDisponible = parseFloat(balance.balanceDisponible);
+      const cantidadMaxima = parseFloat(cantidadMax);
+
+      if (balanceDisponible < cantidadMaxima) {
+        throw new Error(
+          `Fondos insuficientes. Tienes ${balanceDisponible} disponible pero la oferta requiere ${cantidadMaxima}`
+        );
+      }
+    }
+
     // Crear la oferta
     const nuevaOferta = await this.create({
       ...restData,
+      usuarioId,
+      criptomonedaId,
+      cantidadMax,
       tipo,
       direccionFiat: tipo === 'venta' ? direccionFiat : null
     });

@@ -1,3 +1,4 @@
+// models/entities/notificaciones.entity.js
 const { DataTypes, Model } = require('sequelize');
 
 class Notificacion extends Model {}

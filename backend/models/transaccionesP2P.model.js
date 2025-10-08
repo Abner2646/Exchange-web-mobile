@@ -1,4 +1,5 @@
-// Importaciones
+// models/transaccionP2P.model.js
+
 const initTransaccionP2P = require('./entities/transaccionP2P.entity');
 const { Op } = require('sequelize');
 
@@ -7,8 +8,7 @@ function createTransaccionP2PModel(sequelize) {
 
   // Estados válidos para transiciones
   const ESTADOS_VALIDOS = {
-    'iniciada': ['cryptos_bloqueadas', 'cancelada'],
-    'cryptos_bloqueadas': ['pago_confirmado', 'cancelada'],
+    'iniciada': ['pago_confirmado', 'cancelada'],
     'pago_confirmado': ['completada', 'cancelada'],
     'completada': [],
     'cancelada': []
@@ -25,7 +25,6 @@ TransaccionP2P.createTransaction = async (data) => {
     metodoPagoId 
   } = data;
 
-  // Validación básica
   if (compradorId === vendedorId) {
     throw new Error('El comprador y vendedor no pueden ser el mismo usuario');
   }
@@ -33,34 +32,76 @@ TransaccionP2P.createTransaction = async (data) => {
   const transaction = await sequelize.transaction();
   
   try {
-    // Obtener oferta para validaciones
     const { OfertaP2P } = require('./index');
-    const oferta = await OfertaP2P.findByPk(ofertaId, { transaction });
+    const oferta = await OfertaP2P.findByPk(ofertaId, { 
+      include: ['criptomoneda'],
+      transaction 
+    });
     
     if (!oferta) {
       throw new Error('Oferta no encontrada');
     }
 
     if (!oferta.activa) {
-      throw new Error('La oferta no está activa');
+      throw new Error('La oferta no está activa. No se pueden realizar transacciones con ofertas desactivadas.');
     }
 
-    // Validar cantidad
-    if (parseFloat(cantidad) < parseFloat(oferta.cantidadMin) || 
-        parseFloat(cantidad) > parseFloat(oferta.cantidadMax)) {
-      throw new Error(`La cantidad debe estar entre ${oferta.cantidadMin} y ${oferta.cantidadMax}`);
+    const cantidadNum = parseFloat(cantidad);
+    const cantidadMin = parseFloat(oferta.cantidadMin);
+    const cantidadMax = parseFloat(oferta.cantidadMax);
+
+    if (cantidadNum < cantidadMin || cantidadNum > cantidadMax) {
+      throw new Error(
+        `La cantidad ${cantidadNum} está fuera del rango permitido. ` +
+        `Mínimo: ${cantidadMin}, Máximo: ${cantidadMax}`
+      );
     }
 
-    // Calcular monto fiat
-    const montoFiat = parseFloat(cantidad) * parseFloat(precioUnitario);
+    const { BalanceUsuario } = require('./index');
+    const balance = await BalanceUsuario.getByUserAndCrypto(vendedorId, criptomonedaId, { transaction });
+    
+    if (!balance) {
+      throw new Error(
+        `El vendedor no tiene balance en ${oferta.criptomoneda?.symbol || 'esta criptomoneda'}. ` +
+        `La transacción no puede continuar.`
+      );
+    }
 
-    // Crear la transacción
+    const balanceDisponible = parseFloat(balance.balanceDisponible);
+
+    if (balanceDisponible < cantidadNum) {
+      throw new Error(
+        `Fondos insuficientes del vendedor. ` +
+        `Disponible: ${balanceDisponible} ${oferta.criptomoneda?.symbol || ''}, ` +
+        `Requerido: ${cantidadNum} ${oferta.criptomoneda?.symbol || ''}`
+      );
+    }
+
+    // 🔒 BLOQUEAR FONDOS
+    await BalanceUsuario.updateBalance(
+      vendedorId, 
+      criptomonedaId, 
+      -cantidadNum, 
+      'disponible',
+      transaction
+    );
+    
+    await BalanceUsuario.updateBalance(
+      vendedorId, 
+      criptomonedaId, 
+      cantidadNum, 
+      'bloqueado',
+      transaction
+    );
+
+    const montoFiat = cantidadNum * parseFloat(precioUnitario);
+
     const nuevaTransaccion = await TransaccionP2P.create({
       ofertaId,
       compradorId,
       vendedorId,
       criptomonedaId,
-      cantidad,
+      cantidad: cantidadNum,
       precioUnitario,
       montoFiat,
       monedaFiat: oferta.monedaFiat,
@@ -68,14 +109,30 @@ TransaccionP2P.createTransaction = async (data) => {
       estado: 'iniciada'
     }, { transaction });
 
-    // ✅ COMMIT antes de consultar
+    // 📧 NOTIFICAR A AMBAS PARTES
+    const { Notificaciones } = require('./index');
+    
+    const transaccionConDatos = {
+      id: nuevaTransaccion.id,
+      cantidad: cantidadNum,
+      criptomoneda: oferta.criptomoneda,
+      montoFiat,
+      monedaFiat: oferta.monedaFiat
+    };
+
+    await Notificaciones.notifyBothParties(
+      compradorId,
+      vendedorId,
+      transaccionConDatos,
+      'iniciada',
+      { transaction }
+    );
+
     await transaction.commit();
     
-    // ✅ Consultar DESPUÉS del commit (fuera de la transacción)
     return await TransaccionP2P.getById(nuevaTransaccion.id);
     
   } catch (error) {
-    // ✅ Solo hacer rollback si la transacción NO fue commiteada
     if (!transaction.finished) {
       await transaction.rollback();
     }
@@ -83,7 +140,234 @@ TransaccionP2P.createTransaction = async (data) => {
   }
 };
 
-  // Métodos de consulta
+  // 🆕 COMPLETAR TRANSACCIÓN - TRANSFERIR FONDOS
+TransaccionP2P.completeTransaction = async (id, usuarioId) => {
+  const transaction = await sequelize.transaction();
+  
+  try {
+    const transaccion = await TransaccionP2P.findByPk(id, { 
+      include: ['criptomoneda'],
+      transaction 
+    });
+    
+    if (!transaccion) {
+      throw new Error('Transacción no encontrada');
+    }
+
+    if (usuarioId && transaccion.vendedorId !== usuarioId) {
+      throw new Error('Solo el vendedor puede completar y liberar las criptomonedas');
+    }
+
+    if (transaccion.estado !== 'pago_confirmado') {
+      throw new Error(
+        `No se puede completar la transacción desde el estado "${transaccion.estado}". ` +
+        `El comprador debe confirmar el pago primero (estado requerido: "pago_confirmado")`
+      );
+    }
+
+    const { BalanceUsuario } = require('./index');
+    const cantidad = parseFloat(transaccion.cantidad);
+
+    // 💸 TRANSFERIR FONDOS
+    await BalanceUsuario.updateBalance(
+      transaccion.vendedorId,
+      transaccion.criptomonedaId,
+      -cantidad,
+      'bloqueado',
+      transaction
+    );
+
+    await BalanceUsuario.updateBalance(
+      transaccion.compradorId,
+      transaccion.criptomonedaId,
+      cantidad,
+      'disponible',
+      transaction
+    );
+
+    await transaccion.update({
+      estado: 'completada',
+      fechaCompletada: new Date()
+    }, { transaction });
+
+    // 📧 NOTIFICAR A AMBAS PARTES
+    const { Notificaciones } = require('./index');
+    
+    const transaccionConDatos = {
+      id: transaccion.id,
+      cantidad,
+      criptomoneda: transaccion.criptomoneda,
+      montoFiat: parseFloat(transaccion.montoFiat),
+      monedaFiat: transaccion.monedaFiat
+    };
+
+    await Notificaciones.notifyBothParties(
+      transaccion.compradorId,
+      transaccion.vendedorId,
+      transaccionConDatos,
+      'completada',
+      { transaction }
+    );
+
+    await transaction.commit();
+    
+    return await TransaccionP2P.getById(id);
+    
+  } catch (error) {
+    if (!transaction.finished) {
+      await transaction.rollback();
+    }
+    throw error;
+  }
+};
+
+  // 🆕 CANCELAR TRANSACCIÓN - DESBLOQUEAR FONDOS
+TransaccionP2P.cancelTransaction = async (id, usuarioId) => {
+  const transaction = await sequelize.transaction();
+  
+  try {
+    const transaccion = await TransaccionP2P.findByPk(id, { 
+      include: ['criptomoneda'],
+      transaction 
+    });
+    
+    if (!transaccion) {
+      throw new Error('Transacción no encontrada');
+    }
+
+    if (usuarioId && 
+        transaccion.compradorId !== usuarioId && 
+        transaccion.vendedorId !== usuarioId) {
+      throw new Error('No tienes permiso para cancelar esta transacción. Solo el comprador o vendedor pueden cancelarla.');
+    }
+
+    if (transaccion.estado === 'completada') {
+      throw new Error('No se puede cancelar una transacción completada. Los fondos ya fueron transferidos.');
+    }
+
+    if (transaccion.estado === 'cancelada') {
+      throw new Error('La transacción ya está cancelada');
+    }
+
+    const { BalanceUsuario } = require('./index');
+    const cantidad = parseFloat(transaccion.cantidad);
+
+    // 🔓 DESBLOQUEAR FONDOS
+    if (transaccion.estado === 'iniciada' || transaccion.estado === 'pago_confirmado') {
+      await BalanceUsuario.updateBalance(
+        transaccion.vendedorId,
+        transaccion.criptomonedaId,
+        -cantidad,
+        'bloqueado',
+        transaction
+      );
+      
+      await BalanceUsuario.updateBalance(
+        transaccion.vendedorId,
+        transaccion.criptomonedaId,
+        cantidad,
+        'disponible',
+        transaction
+      );
+    }
+
+    await transaccion.update({
+      estado: 'cancelada'
+    }, { transaction });
+
+    // 📧 NOTIFICAR A AMBAS PARTES
+    const { Notificaciones } = require('./index');
+    
+    const transaccionConDatos = {
+      id: transaccion.id,
+      cantidad,
+      criptomoneda: transaccion.criptomoneda,
+      montoFiat: parseFloat(transaccion.montoFiat),
+      monedaFiat: transaccion.monedaFiat
+    };
+
+    await Notificaciones.notifyBothParties(
+      transaccion.compradorId,
+      transaccion.vendedorId,
+      transaccionConDatos,
+      'cancelada',
+      { transaction }
+    );
+
+    await transaction.commit();
+    
+    return await TransaccionP2P.getById(id);
+    
+  } catch (error) {
+    if (!transaction.finished) {
+      await transaction.rollback();
+    }
+    throw error;
+  }
+};
+
+  // CONFIRMAR PAGO (sin cambios en balance, solo cambio de estado)
+  TransaccionP2P.confirmPayment = async (id, usuarioId) => {
+    const transaction = await sequelize.transaction();
+    
+    try {
+      const transaccion = await TransaccionP2P.findByPk(id, { 
+        include: ['criptomoneda'],
+        transaction 
+      });
+      
+      if (!transaccion) {
+        throw new Error('Transacción no encontrada');
+      }
+
+      if (usuarioId && transaccion.compradorId !== usuarioId) {
+        throw new Error('Solo el comprador puede confirmar que realizó el pago');
+      }
+
+      if (transaccion.estado !== 'iniciada') {
+        throw new Error(
+          `No se puede confirmar pago desde el estado "${transaccion.estado}". ` +
+          `La transacción debe estar en estado "iniciada"`
+        );
+      }
+
+      await transaccion.update({
+        estado: 'pago_confirmado',
+        fechaPagoConfirmado: new Date()
+      }, { transaction });
+
+      // 📧 NOTIFICAR A AMBAS PARTES
+      const { Notificaciones } = require('./index');
+      
+      const transaccionConDatos = {
+        id: transaccion.id,
+        cantidad: parseFloat(transaccion.cantidad),
+        criptomoneda: transaccion.criptomoneda,
+        montoFiat: parseFloat(transaccion.montoFiat),
+        monedaFiat: transaccion.monedaFiat
+      };
+
+      await Notificaciones.notifyBothParties(
+        transaccion.compradorId,
+        transaccion.vendedorId,
+        transaccionConDatos,
+        'pago_confirmado',
+        { transaction }
+      );
+
+      await transaction.commit();
+      
+      return await TransaccionP2P.getById(id);
+      
+    } catch (error) {
+      if (!transaction.finished) {
+        await transaction.rollback();
+      }
+      throw error;
+    }
+  };
+
+  // Métodos de consulta (sin cambios)
   TransaccionP2P.getById = async (id) => {
     return await TransaccionP2P.findByPk(id, {
       include: [
@@ -93,11 +377,11 @@ TransaccionP2P.createTransaction = async (data) => {
         },
         {
           association: 'comprador',
-          attributes: ['id', 'username', 'email'/*, 'reputacion'*/]
+          attributes: ['id', 'username', 'email']
         },
         {
           association: 'vendedor',
-          attributes: ['id', 'username', 'email'/*, 'reputacion'*/]
+          attributes: ['id', 'username', 'email']
         },
         {
           association: 'criptomoneda',
@@ -105,16 +389,8 @@ TransaccionP2P.createTransaction = async (data) => {
         },
         {
           association: 'metodoPago',
-          attributes: ['id', 'nombre'/*, 'tipo', 'detalles'*/]
+          attributes: ['id', 'nombre']
         }
-        /*{
-          association: 'valoraciones',
-          attributes: ['id', 'puntuacion', 'comentario', 'usuarioEvaluadorId']
-        },
-        {
-          association: 'reclamos',
-          attributes: ['id', 'estado', 'descripcion', 'created_at']
-        }*/
       ]
     });
   };
@@ -139,21 +415,18 @@ TransaccionP2P.createTransaction = async (data) => {
     const where = {};
     const offset = (page - 1) * limit;
 
-    // Filtros básicos
     if (estado) where.estado = estado;
     if (compradorId) where.compradorId = compradorId;
     if (vendedorId) where.vendedorId = vendedorId;
     if (criptomonedaId) where.criptomonedaId = criptomonedaId;
     if (metodoPagoId) where.metodoPagoId = metodoPagoId;
 
-    // Filtros de fecha
     if (fechaDesde || fechaHasta) {
       where.created_at = {};
       if (fechaDesde) where.created_at[Op.gte] = new Date(fechaDesde);
       if (fechaHasta) where.created_at[Op.lte] = new Date(fechaHasta);
     }
 
-    // Filtros de monto
     if (montoMin || montoMax) {
       where.montoFiat = {};
       if (montoMin) where.montoFiat[Op.gte] = montoMin;
@@ -169,19 +442,19 @@ TransaccionP2P.createTransaction = async (data) => {
         },
         {
           association: 'comprador',
-          attributes: ['id', 'nombre']
+          attributes: ['id', 'username']
         },
         {
           association: 'vendedor',
-          attributes: ['id', 'nombre']
+          attributes: ['id', 'username']
         },
         {
           association: 'criptomoneda',
-          attributes: ['id', 'nombre', 'simbolo']
+          attributes: ['id', 'nombre', 'symbol']
         },
         {
           association: 'metodoPago',
-          attributes: ['id', 'nombre', 'tipo']
+          attributes: ['id', 'nombre']
         }
       ],
       order: [[orderBy, orderDirection]],
@@ -199,58 +472,6 @@ TransaccionP2P.createTransaction = async (data) => {
     };
   };
 
-  // Métodos de cambio de estado
-  TransaccionP2P.updateStatus = async (id, nuevoEstado, usuarioId = null) => {
-    const transaccion = await TransaccionP2P.findByPk(id);
-    if (!transaccion) {
-      throw new Error('Transacción no encontrada');
-    }
-
-    // Verificar que el usuario tenga permisos para cambiar el estado
-    if (usuarioId && 
-        transaccion.compradorId !== usuarioId && 
-        transaccion.vendedorId !== usuarioId) {
-      throw new Error('No tienes permiso para modificar esta transacción');
-    }
-
-    // Validar transición de estado
-    if (!ESTADOS_VALIDOS[transaccion.estado].includes(nuevoEstado)) {
-      throw new Error(`No se puede cambiar de estado "${transaccion.estado}" a "${nuevoEstado}"`);
-    }
-
-    const updateData = { estado: nuevoEstado };
-
-    // Agregar timestamps según el nuevo estado
-    switch (nuevoEstado) {
-      case 'pago_confirmado':
-        updateData.fechaPagoConfirmado = new Date();
-        break;
-      case 'completada':
-        updateData.fechaCompletada = new Date();
-        break;
-    }
-
-    await transaccion.update(updateData);
-    return await TransaccionP2P.getById(id);
-  };
-
-  TransaccionP2P.lockCryptos = async (id, usuarioId) => {
-    return await TransaccionP2P.updateStatus(id, 'cryptos_bloqueadas', usuarioId);
-  };
-
-  TransaccionP2P.confirmPayment = async (id, usuarioId) => {
-    return await TransaccionP2P.updateStatus(id, 'pago_confirmado', usuarioId);
-  };
-
-  TransaccionP2P.completeTransaction = async (id, usuarioId) => {
-    return await TransaccionP2P.updateStatus(id, 'completada', usuarioId);
-  };
-
-  TransaccionP2P.cancelTransaction = async (id, usuarioId) => {
-    return await TransaccionP2P.updateStatus(id, 'cancelada', usuarioId);
-  };
-
-  // Métodos de consulta específicos
   TransaccionP2P.getUserTransactions = async (usuarioId, filters = {}) => {
     const { page = 1, limit = 20 } = filters;
     const offset = (page - 1) * limit;
@@ -262,7 +483,6 @@ TransaccionP2P.createTransaction = async (data) => {
       ]
     };
 
-    // Aplicar otros filtros si existen
     if (filters.estado) where.estado = filters.estado;
     if (filters.fechaDesde) where.created_at = { [Op.gte]: new Date(filters.fechaDesde) };
 
@@ -275,15 +495,15 @@ TransaccionP2P.createTransaction = async (data) => {
         },
         {
           association: 'comprador',
-          attributes: ['id', 'nombre']
+          attributes: ['id', 'username']
         },
         {
           association: 'vendedor',
-          attributes: ['id', 'nombre']
+          attributes: ['id', 'username']
         },
         {
           association: 'criptomoneda',
-          attributes: ['id', 'nombre', 'simbolo']
+          attributes: ['id', 'nombre', 'symbol']
         }
       ],
       order: [['created_at', 'DESC']],
@@ -308,7 +528,7 @@ TransaccionP2P.createTransaction = async (data) => {
           { compradorId: usuarioId },
           { vendedorId: usuarioId }
         ],
-        estado: { [Op.in]: ['iniciada', 'cryptos_bloqueadas', 'pago_confirmado'] }
+        estado: { [Op.in]: ['iniciada', 'pago_confirmado'] }
       },
       include: [
         {
@@ -317,26 +537,24 @@ TransaccionP2P.createTransaction = async (data) => {
         },
         {
           association: 'comprador',
-          attributes: ['id', 'nombre']
+          attributes: ['id', 'username']
         },
         {
           association: 'vendedor',
-          attributes: ['id', 'nombre']
+          attributes: ['id', 'username']
         },
         {
           association: 'criptomoneda',
-          attributes: ['id', 'simbolo']
+          attributes: ['id', 'symbol']
         }
       ],
       order: [['created_at', 'DESC']]
     });
   };
 
-  // Métodos de estadísticas
   TransaccionP2P.getStats = async (filters = {}) => {
     const where = {};
     
-    // Aplicar filtros de fecha si existen
     if (filters.fechaDesde || filters.fechaHasta) {
       where.created_at = {};
       if (filters.fechaDesde) where.created_at[Op.gte] = new Date(filters.fechaDesde);
@@ -396,27 +614,27 @@ TransaccionP2P.createTransaction = async (data) => {
     return volume;
   };
 
-  // Método para verificar timeouts
   TransaccionP2P.checkTimeouts = async () => {
-    const timeoutHours = 24; // Configurable
+    const timeoutHours = 24;
     const timeoutDate = new Date();
     timeoutDate.setHours(timeoutDate.getHours() - timeoutHours);
 
     const timedOutTransactions = await TransaccionP2P.findAll({
       where: {
-        estado: { [Op.in]: ['iniciada', 'cryptos_bloqueadas'] },
+        estado: { [Op.in]: ['iniciada', 'pago_confirmado'] },
         created_at: { [Op.lt]: timeoutDate }
       }
     });
 
-    // Cancelar transacciones que han superado el timeout
     const cancelPromises = timedOutTransactions.map(tx => 
-      tx.update({ estado: 'cancelada' })
+      TransaccionP2P.cancelTransaction(tx.id, null)
     );
 
     await Promise.all(cancelPromises);
     return timedOutTransactions.length;
   };
+
+ 
 
   return TransaccionP2P;
 }

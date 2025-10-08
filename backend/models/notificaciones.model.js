@@ -1,4 +1,4 @@
-// Importaciones
+// models/notificaciones.model.js
 const initNotificacion = require('./entities/notificaciones.entity');
 const { Op } = require('sequelize');
 
@@ -21,24 +21,54 @@ function createNotificacionModel(sequelize) {
       importante: true
     },
     
-    // Transacciones P2P
-    'P2P_NUEVA_TRANSACCION': {
+    // 🆕 Transacciones P2P - CORREGIDO
+    'P2P_TRANSACCION_INICIADA': {
       tipo: 'p2p',
       titulo: 'Nueva transacción P2P iniciada',
-      mensaje: 'Se ha iniciado una nueva transacción P2P. Verifica los detalles y procede según corresponda.',
-      importante: false
-    },
-    'P2P_PAGO_CONFIRMADO': {
-      tipo: 'p2p',
-      titulo: 'Pago confirmado en transacción P2P',
-      mensaje: 'El comprador ha confirmado el pago. Verifica la recepción y libera las criptomonedas.',
+      mensaje: 'Se ha iniciado una transacción P2P por {cantidad} {simbolo}. Los fondos han sido bloqueados. ID: {transaccionId}',
       importante: true
     },
-    'P2P_TRANSACCION_COMPLETADA': {
+    'P2P_FONDOS_BLOQUEADOS_VENDEDOR': {
+      tipo: 'p2p',
+      titulo: 'Fondos bloqueados en transacción P2P',
+      mensaje: 'Se han bloqueado {cantidad} {simbolo} de tu balance para la transacción #{transaccionId}. El comprador debe realizar el pago.',
+      importante: true
+    },
+    'P2P_NUEVA_TRANSACCION_COMPRADOR': {
+      tipo: 'p2p',
+      titulo: 'Transacción P2P iniciada - Realiza el pago',
+      mensaje: 'Has iniciado la compra de {cantidad} {simbolo}. Realiza la transferencia de {montoFiat} {monedaFiat} y confirma el pago. ID: {transaccionId}',
+      importante: true
+    },
+    'P2P_PAGO_CONFIRMADO_VENDEDOR': {
+      tipo: 'p2p',
+      titulo: 'El comprador confirmó el pago',
+      mensaje: 'El comprador ha confirmado el pago de {montoFiat} {monedaFiat}. Verifica la recepción y libera las criptomonedas. ID: {transaccionId}',
+      importante: true
+    },
+    'P2P_PAGO_CONFIRMADO_COMPRADOR': {
+      tipo: 'p2p',
+      titulo: 'Pago confirmado - Esperando liberación',
+      mensaje: 'Has confirmado el pago. El vendedor verificará la recepción y liberará {cantidad} {simbolo}. ID: {transaccionId}',
+      importante: false
+    },
+    'P2P_TRANSACCION_COMPLETADA_VENDEDOR': {
       tipo: 'p2p',
       titulo: 'Transacción P2P completada',
-      mensaje: 'Tu transacción P2P ha sido completada exitosamente.',
+      mensaje: 'Has liberado {cantidad} {simbolo} al comprador. La transacción está completa. ID: {transaccionId}',
       importante: false
+    },
+    'P2P_TRANSACCION_COMPLETADA_COMPRADOR': {
+      tipo: 'p2p',
+      titulo: 'Criptomonedas recibidas',
+      mensaje: 'Has recibido {cantidad} {simbolo} en tu wallet. La transacción está completa. ID: {transaccionId}',
+      importante: false
+    },
+    'P2P_TRANSACCION_CANCELADA': {
+      tipo: 'p2p',
+      titulo: 'Transacción P2P cancelada',
+      mensaje: 'La transacción #{transaccionId} ha sido cancelada. Los fondos han sido desbloqueados.',
+      importante: true
     },
     
     // KYC
@@ -373,12 +403,15 @@ function createNotificacionModel(sequelize) {
     return stats;
   };
 
-  // Métodos para templates específicos
-  Notificacion.notifyTransactionUpdate = async (usuarioId, transaccionId, estado) => {
+  // 🆕 Método actualizado para notificar cambios de transacción
+  Notificacion.notifyTransactionUpdate = async (usuarioId, transaccionData, estado) => {
+    const { id: transaccionId, cantidad, criptomoneda, montoFiat, monedaFiat } = transaccionData;
+    
     const templates = {
-      'cryptos_bloqueadas': 'P2P_NUEVA_TRANSACCION',
-      'pago_confirmado': 'P2P_PAGO_CONFIRMADO',
-      'completada': 'P2P_TRANSACCION_COMPLETADA'
+      'iniciada': 'P2P_TRANSACCION_INICIADA',
+      'pago_confirmado': 'P2P_PAGO_CONFIRMADO_VENDEDOR',
+      'completada': 'P2P_TRANSACCION_COMPLETADA_VENDEDOR',
+      'cancelada': 'P2P_TRANSACCION_CANCELADA'
     };
 
     const template = templates[estado];
@@ -387,7 +420,13 @@ function createNotificacionModel(sequelize) {
     return await Notificacion.createNotification({
       usuarioId,
       template,
-      templateData: { transaccionId }
+      templateData: { 
+        transaccionId,
+        cantidad,
+        simbolo: criptomoneda?.symbol || 'crypto',
+        montoFiat,
+        monedaFiat
+      }
     });
   };
 
@@ -405,6 +444,57 @@ function createNotificacionModel(sequelize) {
       template,
       templateData: details
     });
+  };
+
+  // 🆕 Nuevo método para notificar a AMBAS partes de la transacción
+  Notificacion.notifyBothParties = async (compradorId, vendedorId, transaccionData, estado) => {
+    const { id: transaccionId, cantidad, criptomoneda, montoFiat, monedaFiat } = transaccionData;
+    
+    const templates = {
+      'iniciada': {
+        comprador: 'P2P_NUEVA_TRANSACCION_COMPRADOR',
+        vendedor: 'P2P_FONDOS_BLOQUEADOS_VENDEDOR'
+      },
+      'pago_confirmado': {
+        comprador: 'P2P_PAGO_CONFIRMADO_COMPRADOR',
+        vendedor: 'P2P_PAGO_CONFIRMADO_VENDEDOR'
+      },
+      'completada': {
+        comprador: 'P2P_TRANSACCION_COMPLETADA_COMPRADOR',
+        vendedor: 'P2P_TRANSACCION_COMPLETADA_VENDEDOR'
+      },
+      'cancelada': {
+        comprador: 'P2P_TRANSACCION_CANCELADA',
+        vendedor: 'P2P_TRANSACCION_CANCELADA'
+      }
+    };
+
+    const estadoTemplates = templates[estado];
+    if (!estadoTemplates) return null;
+
+    const templateData = { 
+      transaccionId,
+      cantidad,
+      simbolo: criptomoneda?.symbol || 'crypto',
+      montoFiat,
+      monedaFiat
+    };
+
+    // Notificar a ambos usuarios
+    const [notifComprador, notifVendedor] = await Promise.all([
+      Notificacion.createNotification({
+        usuarioId: compradorId,
+        template: estadoTemplates.comprador,
+        templateData
+      }),
+      Notificacion.createNotification({
+        usuarioId: vendedorId,
+        template: estadoTemplates.vendedor,
+        templateData
+      })
+    ]);
+
+    return { notifComprador, notifVendedor };
   };
 
   // Método para limpiar notificaciones antiguas (tarea programada)
@@ -440,7 +530,40 @@ function createNotificacionModel(sequelize) {
     };
   };
 
+  Notificacion.createNotification = async (data, options = {}) => {
+    const { 
+      usuarioId, 
+      tipo, 
+      titulo, 
+      mensaje, 
+      importante = false,
+      template = null,
+      templateData = {}
+    } = data;
+
+    let finalData = { usuarioId, tipo, titulo, mensaje, importante };
+
+    // Si se usa un template, aplicar los datos
+    if (template && NOTIFICATION_TEMPLATES[template]) {
+      const templateInfo = NOTIFICATION_TEMPLATES[template];
+      finalData = {
+        usuarioId,
+        tipo: templateInfo.tipo,
+        titulo: templateInfo.titulo,
+        mensaje: templateInfo.mensaje.replace(/\{(\w+)\}/g, (match, key) => templateData[key] || match),
+        importante: templateInfo.importante
+      };
+    }
+
+    finalData.fechaEnviada = new Date();
+
+    // 🆕 SOPORTAR TRANSACCIONES DE BD
+    return await Notificacion.create(finalData, options);
+  };
+
   return Notificacion;
 }
+
+
 
 module.exports = createNotificacionModel;
