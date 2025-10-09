@@ -442,6 +442,15 @@ const Navbar = () => {
                         <WalletIcon className="navbar-dropdown-icon" />
                         Activos
                       </Link>
+                      {/* Nuevo ítem agregado aquí */}
+                      <Link 
+                        to="/p2p/misOfertas" 
+                        className="navbar-dropdown-item"
+                        onClick={() => setIsUserDropdownOpen(false)}
+                      >
+                        <BanknotesIcon className="navbar-dropdown-icon" />
+                        Mis Ofertas
+                      </Link>
                       <Link 
                         to="/perfil" 
                         className="navbar-dropdown-item"

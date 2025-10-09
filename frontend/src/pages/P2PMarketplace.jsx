@@ -1,33 +1,25 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import '../styles/P2PMarketplace.css';
+import { useAuth } from '../context/AuthContext';
+import '../styles/p2p-listing-page.css';
 
-const P2PMarketplace = () => {
+const P2PListingPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const token = localStorage.getItem('token');
-  const userDataString = localStorage.getItem('user');
-  const userData = userDataString ? JSON.parse(userDataString) : null;
-  const currentUserId = userData?.id;
 
-  // Estados
   const [ofertas, setOfertas] = useState([]);
   const [criptomonedas, setCriptomonedas] = useState([]);
   const [metodosPago, setMetodosPago] = useState([]);
+  const [tipoOperacion, setTipoOperacion] = useState('compra');
+  const [criptoSeleccionada, setCriptoSeleccionada] = useState('');
+  const [busquedaCripto, setBusquedaCripto] = useState('');
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [ofertaExpandida, setOfertaExpandida] = useState(null);
   const [usuariosCache, setUsuariosCache] = useState({});
 
-  // Estados de filtros
-  const [tipoOperacion, setTipoOperacion] = useState('compra');
-  const [cryptoSeleccionada, setCryptoSeleccionada] = useState('');
-  const [monedaFiat, setMonedaFiat] = useState('ARS');
-  const [metodoPagoFiltro, setMetodoPagoFiltro] = useState('');
-  const [cantidadBuscar, setCantidadBuscar] = useState('');
-  const [ordenarPor, setOrdenarPor] = useState('precio');
+  const API_URL = 'http://localhost:3001/api';
 
   useEffect(() => {
-    // Verificar si el usuario está autenticado
     if (!token) {
       navigate('/login');
       return;
@@ -36,46 +28,36 @@ const P2PMarketplace = () => {
   }, []);
 
   useEffect(() => {
-    if (token && cryptoSeleccionada) {
+    if (token && criptoSeleccionada) {
       cargarOfertas();
     }
-  }, [tipoOperacion, cryptoSeleccionada, monedaFiat, metodoPagoFiltro, cantidadBuscar, ordenarPor]);
+  }, [tipoOperacion, criptoSeleccionada]);
 
   const cargarDatosIniciales = async () => {
     try {
-      const [resCryptos, resMetodos] = await Promise.all([
-        fetch('http://localhost:3001/api/criptomoneda', {
-          headers: { 'Authorization': token }
-        }),
-        fetch('http://localhost:3001/api/metodoPago/status/active')
-      ]);
-
-      // Verificar si las respuestas son exitosas
-      if (!resCryptos.ok) {
-        throw new Error('Error al cargar criptomonedas');
-      }
-      if (!resMetodos.ok) {
-        throw new Error('Error al cargar métodos de pago');
-      }
-
-      const cryptos = await resCryptos.json();
-      const metodos = await resMetodos.json();
-
-      // ✅ Validar que sean arrays antes de asignar
-      setCriptomonedas(Array.isArray(cryptos) ? cryptos : []);
-      setMetodosPago(Array.isArray(metodos) ? metodos : []);
+      // Cargar criptomonedas
+      const cryptoResponse = await fetch(`${API_URL}/criptomoneda`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const cryptoData = await cryptoResponse.json();
       
-      // ✅ Solo establecer crypto seleccionada si hay datos
-      if (Array.isArray(cryptos) && cryptos.length > 0) {
-        setCryptoSeleccionada(cryptos[0].id);
+      // Cargar métodos de pago activos
+      const metodosResponse = await fetch(`${API_URL}/metodoPago/status/active`);
+      const metodosData = await metodosResponse.json();
+
+      if (cryptoResponse.ok) {
+        setCriptomonedas(Array.isArray(cryptoData) ? cryptoData : []);
+        if (cryptoData.length > 0) {
+          setCriptoSeleccionada(cryptoData[0].id);
+        }
       }
-    } catch (err) {
-      console.error('Error cargando datos iniciales:', err);
-      setError(err.message);
-      // Si hay error de autenticación, redirigir al login
-      if (err.message.includes('autenticación') || err.message.includes('token')) {
-        navigate('/login');
+      if (metodosResponse.ok) {
+        setMetodosPago(Array.isArray(metodosData) ? metodosData : []);
       }
+    } catch (error) {
+      console.error('Error cargando datos iniciales:', error);
     }
   };
 
@@ -85,7 +67,11 @@ const P2PMarketplace = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:3001/api/usuario/public/${usuarioId}`);
+      const response = await fetch(`${API_URL}/usuario/public/${usuarioId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       
       if (!response.ok) {
         return null;
@@ -107,18 +93,18 @@ const P2PMarketplace = () => {
 
   const cargarOfertas = async () => {
     setLoading(true);
-    setError(null);
-
     try {
       const params = new URLSearchParams();
       params.append('activa', 'true');
-      params.append('tipo', tipoOperacion);
       
-      if (cryptoSeleccionada) params.append('criptomonedaId', cryptoSeleccionada);
-      if (monedaFiat) params.append('monedaFiat', monedaFiat);
+      // ✅ LÓGICA CORREGIDA
+      const tipoOferta = tipoOperacion === 'compra' ? 'venta' : 'compra';
+      params.append('tipo', tipoOferta);
+      
+      if (criptoSeleccionada) params.append('criptomonedaId', criptoSeleccionada);
 
-      const response = await fetch(`http://localhost:3001/api/ofertaP2P?${params}`, {
-        headers: { 'Authorization': token }
+      const response = await fetch(`${API_URL}/ofertaP2P?${params}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
       });
 
       if (!response.ok) throw new Error('Error al cargar ofertas');
@@ -126,36 +112,18 @@ const P2PMarketplace = () => {
       const data = await response.json();
       let ofertasFiltradas = data.data || data;
 
-      // ✅ Validar que sea un array
       if (!Array.isArray(ofertasFiltradas)) {
         ofertasFiltradas = [];
       }
 
-      // Filtrar por método de pago
-      if (metodoPagoFiltro) {
-        ofertasFiltradas = ofertasFiltradas.filter(oferta =>
-          oferta.metodosPago?.some(m => m.id === metodoPagoFiltro)
-        );
-      }
-
-      // Filtrar por cantidad
-      if (cantidadBuscar) {
-        const cant = parseFloat(cantidadBuscar);
-        ofertasFiltradas = ofertasFiltradas.filter(o => 
-          parseFloat(o.cantidadMin) <= cant && parseFloat(o.cantidadMax) >= cant
-        );
-      }
-
-      // Ordenar
+      // ✅ Ordenamiento corregido para la perspectiva del usuario
       ofertasFiltradas.sort((a, b) => {
-        if (ordenarPor === 'precio') {
-          return tipoOperacion === 'compra' 
-            ? parseFloat(a.precioUnitario) - parseFloat(b.precioUnitario)
-            : parseFloat(b.precioUnitario) - parseFloat(a.precioUnitario);
-        }
-        return 0;
+        return tipoOperacion === 'compra' 
+          ? parseFloat(a.precioUnitario) - parseFloat(b.precioUnitario) // Precios más bajos primero para comprar
+          : parseFloat(b.precioUnitario) - parseFloat(a.precioUnitario); // Precios más altos primero para vender
       });
 
+      // Cargar perfiles de usuarios
       const usuariosPromises = ofertasFiltradas.map(oferta => 
         cargarPerfilUsuario(oferta.usuarioId)
       );
@@ -164,44 +132,58 @@ const P2PMarketplace = () => {
 
       setOfertas(ofertasFiltradas);
     } catch (err) {
-      setError(err.message);
+      console.error('Error cargando ofertas:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const toggleExpansion = (ofertaId) => {
-    setOfertaExpandida(ofertaExpandida === ofertaId ? null : ofertaId);
+  // Componente para íconos de criptomonedas con fallback
+  const CryptoIcon = ({ cripto, size = 32 }) => {
+    const [imgError, setImgError] = useState(false);
+
+    if (imgError || !cripto.iconUrl) {
+      return (
+        <div className="crypto-icon-fallback" style={{ width: size, height: size }}>
+          {cripto.symbol.substring(0, 3)}
+        </div>
+      );
+    }
+
+    return (
+      <img 
+        src={cripto.iconUrl} 
+        alt={cripto.symbol}
+        className="crypto-icon"
+        style={{ width: size, height: size }}
+        onError={() => setImgError(true)}
+      />
+    );
   };
 
-  const irATransaccion = (ofertaId) => {
+  const iniciarTransaccion = (ofertaId) => {
+    // ✅ CORREGIDO: Usar navigate de React Router
     navigate(`/p2p/transaction/${ofertaId}`);
   };
 
-  const getCryptoIcon = (cryptoId) => {
-    const crypto = criptomonedas.find(c => c.id === cryptoId);
-    return crypto?.iconUrl || null;
-  };
-
-  const getCryptoSymbol = (cryptoId) => {
-    const crypto = criptomonedas.find(c => c.id === cryptoId);
-    return crypto?.symbol || 'N/A';
+  const crearOferta = () => {
+    navigate('/p2p/crearOferta');
   };
 
   const getUsuarioData = (usuarioId) => {
-    if (usuarioId === currentUserId) {
+    if (usuarioId === user?.id) {
       return {
-        username: userData?.username || 'Tú',
-        kycVerificado: userData?.kycVerificado || false,
-        reputacionPromedio: userData?.reputacionPromedio || 0,
-        totalValoraciones: userData?.totalValoraciones || 0,
+        username: user?.username || 'Tú',
+        kycVerificado: user?.kycVerificado || false,
+        reputacionPromedio: user?.reputacionPromedio || 0,
+        totalValoraciones: user?.totalValoraciones || 0,
         esPropio: true
       };
     }
 
     const usuario = usuariosCache[usuarioId];
     return {
-      username: usuario?.username || `Usuario-${usuarioId.slice(0, 6)}`,
+      username: usuario?.username || `Usuario-${usuarioId?.slice(0, 6) || 'anon'}`,
       kycVerificado: usuario?.kycVerificado || false,
       reputacionPromedio: usuario?.reputacionPromedio || 0,
       totalValoraciones: usuario?.totalValoraciones || 0,
@@ -209,134 +191,109 @@ const P2PMarketplace = () => {
     };
   };
 
-  // ✅ Si no hay token, no renderizar nada (el useEffect redirige)
+  // Filtrar criptomonedas por búsqueda
+  const criptosFiltradas = criptomonedas.filter(cripto =>
+    cripto.symbol.toLowerCase().includes(busquedaCripto.toLowerCase()) ||
+    cripto.nombre.toLowerCase().includes(busquedaCripto.toLowerCase())
+  );
+
+  const criptoActual = criptomonedas.find(c => c.id === criptoSeleccionada);
+
   if (!token) {
     return null;
   }
 
+  if (loading && ofertas.length === 0) {
+    return (
+      <div className="p2p-listing-container">
+        <div className="loading-spinner">Cargando ofertas...</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="p2p-marketplace-binance">
-      {/* Tabs Comprar/Vender */}
-      <div className="tabs-operacion">
+    <div className="p2p-listing-container">
+      {/* Header con tipo de operación */}
+      <div className="p2p-operacion-header">
+        <div className="operacion-tabs">
+          <button 
+            className={`operacion-tab ${tipoOperacion === 'compra' ? 'active' : ''}`}
+            onClick={() => setTipoOperacion('compra')}
+          >
+            Comprar
+          </button>
+          <button 
+            className={`operacion-tab ${tipoOperacion === 'venta' ? 'active' : ''}`}
+            onClick={() => setTipoOperacion('venta')}
+          >
+            Vender
+          </button>
+        </div>
         <button 
-          className={`tab ${tipoOperacion === 'compra' ? 'active' : ''}`}
-          onClick={() => setTipoOperacion('compra')}
-        >
-          Comprar
-        </button>
-        <button 
-          className={`tab ${tipoOperacion === 'venta' ? 'active' : ''}`}
-          onClick={() => setTipoOperacion('venta')}
-        >
-          Vender
-        </button>
-        <button 
-          className="tab"
-          onClick={() => navigate('/p2p/crearOferta')}
+          className="btn-crear-oferta"
+          onClick={crearOferta}
         >
           Crear Oferta
         </button>
       </div>
 
-      {/* Pills de criptomonedas con iconos */}
-      <div className="crypto-pills">
-        {criptomonedas.slice(0, 12).map(crypto => (
-          <button
-            key={crypto.id}
-            className={`crypto-pill ${cryptoSeleccionada === crypto.id ? 'active' : ''}`}
-            onClick={() => setCryptoSeleccionada(crypto.id)}
-          >
-            {crypto.iconUrl && (
-              <img 
-                src={crypto.iconUrl} 
-                alt={crypto.symbol}
-                className="crypto-pill-icon"
-                onError={(e) => e.target.style.display = 'none'}
-              />
-            )}
-            <span>{crypto.symbol}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Filtros horizontales */}
-      <div className="filtros-horizontal">
-        <div className="filtro-grupo">
+      {/* Barra horizontal de criptomonedas con buscador */}
+      <div className="cripto-bar">
+        <div className="cripto-search">
           <input
-            type="number"
-            className="filtro-importe"
-            placeholder="Importe de la transacción"
-            value={cantidadBuscar}
-            onChange={(e) => setCantidadBuscar(e.target.value)}
+            type="text"
+            placeholder="Buscar criptomoneda..."
+            value={busquedaCripto}
+            onChange={(e) => setBusquedaCripto(e.target.value)}
+            className="search-input"
           />
         </div>
-
-        <select 
-          className="filtro-moneda"
-          value={monedaFiat}
-          onChange={(e) => setMonedaFiat(e.target.value)}
-        >
-          <option value="ARS">ARS</option>
-          <option value="USD">USD</option>
-          <option value="EUR">EUR</option>
-        </select>
-
-        <select
-          className="filtro-metodo"
-          value={metodoPagoFiltro}
-          onChange={(e) => setMetodoPagoFiltro(e.target.value)}
-        >
-          <option value="">Todos los métodos de pago</option>
-          {metodosPago.map(metodo => (
-            <option key={metodo.id} value={metodo.id}>
-              {metodo.nombre}
-            </option>
+        <div className="cripto-list-horizontal">
+          {criptosFiltradas.slice(0, 12).map(cripto => (
+            <div
+              key={cripto.id}
+              className={`cripto-item-horizontal ${criptoSeleccionada === cripto.id ? 'active' : ''}`}
+              onClick={() => setCriptoSeleccionada(cripto.id)}
+            >
+              <CryptoIcon cripto={cripto} size={24} />
+              <span className="cripto-symbol">{cripto.symbol}</span>
+            </div>
           ))}
-        </select>
-
-        <div className="spacer"></div>
-
-        <div className="ordenar-grupo">
-          <span className="ordenar-label">Ordenar por:</span>
-          <select 
-            className="filtro-orden"
-            value={ordenarPor}
-            onChange={(e) => setOrdenarPor(e.target.value)}
-          >
-            <option value="precio">Precio</option>
-          </select>
         </div>
       </div>
 
-      {/* Tabla de ofertas */}
-      <div className="tabla-ofertas">
-        {/* Headers */}
-        <div className="tabla-header">
-          <div className="col-anunciante">Anunciantes</div>
-          <div className="col-precio">Precio</div>
-          <div className="col-disponible">Disponible/Límite de órdenes</div>
-          <div className="col-pago">Pago</div>
-          <div className="col-operacion">Operación</div>
+      {/* Lista de ofertas */}
+      <div className="ofertas-main">
+        <div className="ofertas-header">
+          <h2>
+            {tipoOperacion === 'compra' ? 'Comprar' : 'Vender'} {criptoActual?.symbol}
+          </h2>
+          <div className="ofertas-controls">
+            <span className="ofertas-count">
+              {ofertas.length} oferta(s)
+            </span>
+            <select className="ordenar-select">
+              <option>Precio</option>
+            </select>
+          </div>
         </div>
 
-        {/* Filas */}
-        {loading && (
-          <div className="tabla-loading">Cargando ofertas...</div>
-        )}
+        <div className="ofertas-list">
+          {/* Headers de la tabla */}
+          <div className="tabla-header">
+            <div className="col-anunciante">Anunciantes</div>
+            <div className="col-precio">Precio</div>
+            <div className="col-disponible">Disponible/Límite</div>
+            <div className="col-pago">Pago</div>
+            <div className="col-operacion">Operación</div>
+          </div>
 
-        {!loading && ofertas.length === 0 && (
-          <div className="tabla-empty">No hay ofertas disponibles</div>
-        )}
+          {ofertas.map(oferta => {
+            const usuarioData = getUsuarioData(oferta.usuarioId);
+            const cripto = criptomonedas.find(c => c.id === oferta.criptomonedaId);
 
-        {!loading && ofertas.map(oferta => {
-          const cryptoIcon = getCryptoIcon(oferta.criptomonedaId);
-          const cryptoSymbol = getCryptoSymbol(oferta.criptomonedaId);
-          const usuarioData = getUsuarioData(oferta.usuarioId);
-
-          return (
-            <div key={oferta.id} className="tabla-fila-wrapper">
-              <div className="tabla-fila">
-                {/* Anunciante */}
+            return (
+              <div key={oferta.id} className="oferta-item">
                 <div className="col-anunciante">
                   <div className="anunciante-info">
                     <div className="anunciante-avatar">
@@ -365,7 +322,6 @@ const P2PMarketplace = () => {
                   </div>
                 </div>
 
-                {/* Precio */}
                 <div className="col-precio">
                   <div className="precio-valor">
                     {parseFloat(oferta.precioUnitario).toLocaleString('es-AR', {
@@ -376,19 +332,11 @@ const P2PMarketplace = () => {
                   <div className="precio-moneda">{oferta.monedaFiat}</div>
                 </div>
 
-                {/* Disponible */}
                 <div className="col-disponible">
                   <div className="disponible-cripto">
-                    {cryptoIcon && (
-                      <img 
-                        src={cryptoIcon} 
-                        alt={cryptoSymbol}
-                        className="cripto-icon-small"
-                        onError={(e) => e.target.style.display = 'none'}
-                      />
-                    )}
+                    {cripto && <CryptoIcon cripto={cripto} size={16} />}
                     <span>
-                      {parseFloat(oferta.cantidadMax).toLocaleString()} {cryptoSymbol}
+                      {parseFloat(oferta.cantidadMax).toLocaleString()} {cripto?.symbol}
                     </span>
                   </div>
                   <div className="disponible-rango">
@@ -396,7 +344,6 @@ const P2PMarketplace = () => {
                   </div>
                 </div>
 
-                {/* Métodos de pago */}
                 <div className="col-pago">
                   {oferta.metodosPago?.slice(0, 3).map(metodo => (
                     <div key={metodo.id} className="pago-metodo">
@@ -410,51 +357,29 @@ const P2PMarketplace = () => {
                   )}
                 </div>
 
-                {/* Botón de acción */}
                 <div className="col-operacion">
-                  <button 
+                  <button
                     className={`btn-operacion ${tipoOperacion}`}
-                    onClick={() => irATransaccion(oferta.id)}
+                    onClick={() => iniciarTransaccion(oferta.id)}
                     disabled={usuarioData.esPropio}
                   >
-                    {tipoOperacion === 'compra' ? 'Comprar' : 'Vender'} {cryptoSymbol}
+                    {/* ✅ CORREGIDO: Texto del botón con nombre de criptomoneda */}
+                    {tipoOperacion === 'compra' ? 'Comprar' : 'Vender'} {cripto?.symbol}
                   </button>
-                  {oferta.condicionesAdicionales && (
-                    <button 
-                      className="btn-expandir"
-                      onClick={() => toggleExpansion(oferta.id)}
-                    >
-                      {ofertaExpandida === oferta.id ? 'Ocultar ▲' : 'Ver detalles ▼'}
-                    </button>
-                  )}
                 </div>
               </div>
+            );
+          })}
+        </div>
 
-              {/* Panel expandido */}
-              {ofertaExpandida === oferta.id && (
-                <div className="panel-expandido">
-                  <div className="panel-condiciones">
-                    <h4>Condiciones del anunciante</h4>
-                    <p>{oferta.condicionesAdicionales}</p>
-                  </div>
-                  <div className="panel-resumen">
-                    <div className="resumen-item">
-                      <span>Precio:</span>
-                      <strong>{parseFloat(oferta.precioUnitario).toFixed(2)} {oferta.monedaFiat}</strong>
-                    </div>
-                    <div className="resumen-metodos">
-                      <span>Métodos de pago disponibles:</span>
-                      {oferta.metodosPago?.map(m => m.nombre).join(', ')}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
+        {ofertas.length === 0 && !loading && (
+          <div className="sin-ofertas">
+            <p>No se encontraron ofertas para {tipoOperacion === 'compra' ? 'comprar' : 'vender'} {criptoActual?.symbol}</p>
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-export default P2PMarketplace;
+export default P2PListingPage;

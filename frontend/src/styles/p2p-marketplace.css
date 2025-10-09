@@ -1,0 +1,362 @@
+/* src/styles/p2p-marketplace.css */
+
+.p2p-marketplace-container {
+  padding: var(--spacing-xl);
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+/* Header */
+.p2p-marketplace-header {
+  margin-bottom: var(--spacing-xxl);
+  padding-bottom: var(--spacing-lg);
+  border-bottom: 1px solid var(--border-secondary);
+}
+
+.p2p-marketplace-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.p2p-marketplace-subtitle {
+  font-size: 1.125rem;
+  color: var(--text-secondary);
+}
+
+/* Tabs */
+.p2p-marketplace-tabs {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-xl);
+  border-bottom: 2px solid var(--border-primary);
+}
+
+.p2p-marketplace-tab {
+  padding: var(--spacing-md) var(--spacing-xl);
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.2s ease;
+}
+
+.p2p-marketplace-tab:hover {
+  color: var(--text-primary);
+  background: var(--interactive-hover);
+}
+
+.p2p-marketplace-tab.active {
+  color: var(--brand-primary);
+  border-bottom-color: var(--brand-primary);
+}
+
+/* Filtros */
+.p2p-marketplace-filters {
+  display: flex;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+  align-items: flex-end;
+  padding: var(--spacing-lg);
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--spacing-xl);
+}
+
+.p2p-marketplace-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  flex: 1;
+  min-width: 150px;
+}
+
+.p2p-marketplace-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.p2p-marketplace-select,
+.p2p-marketplace-input {
+  padding: var(--spacing-md);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 1rem;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.p2p-marketplace-select:focus,
+.p2p-marketplace-input:focus {
+  border-color: var(--border-focus);
+  background: var(--bg-primary);
+}
+
+.p2p-marketplace-clear-btn {
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.p2p-marketplace-clear-btn:hover {
+  background: var(--interactive-hover);
+  color: var(--text-primary);
+}
+
+/* Content states */
+.p2p-marketplace-content {
+  min-height: 400px;
+}
+
+.p2p-marketplace-loading,
+.p2p-marketplace-error,
+.p2p-marketplace-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xxl);
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.p2p-marketplace-error {
+  color: var(--error);
+  background: var(--error-bg);
+  border-radius: var(--radius-lg);
+}
+
+.p2p-marketplace-secondary-btn {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: var(--brand-primary);
+  color: var(--text-inverse);
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.p2p-marketplace-secondary-btn:hover {
+  background: var(--brand-secondary);
+  transform: translateY(-1px);
+}
+
+/* Offers */
+.p2p-marketplace-offers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.p2p-marketplace-offers-header {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1.5fr 1.5fr 1fr;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.p2p-marketplace-offer-card {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1.5fr 1.5fr 1fr;
+  gap: var(--spacing-md);
+  align-items: center;
+  padding: var(--spacing-lg);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  transition: all 0.2s ease;
+}
+
+.p2p-marketplace-offer-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-focus);
+}
+
+.p2p-marketplace-offer-conditions {
+  grid-column: 1 / -1;
+  padding-top: var(--spacing-md);
+  margin-top: var(--spacing-md);
+  border-top: 1px solid var(--border-secondary);
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+/* Offer user */
+.p2p-marketplace-offer-user {
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: center;
+}
+
+.p2p-marketplace-offer-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-full);
+  background: var(--brand-primary);
+  color: var(--text-inverse);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.p2p-marketplace-offer-username {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.p2p-marketplace-offer-stats {
+  font-size: 0.875rem;
+  color: var(--text-tertiary);
+}
+
+/* Offer price */
+.p2p-marketplace-offer-price {
+  text-align: center;
+}
+
+.p2p-marketplace-offer-amount {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.p2p-marketplace-offer-crypto {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+/* Offer limits */
+.p2p-marketplace-offer-limits {
+  text-align: center;
+}
+
+.p2p-marketplace-offer-available {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--success);
+  margin-bottom: 0.25rem;
+}
+
+.p2p-marketplace-offer-range {
+  font-size: 0.875rem;
+  color: var(--text-tertiary);
+}
+
+/* Payment methods */
+.p2p-marketplace-offer-methods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+}
+
+.p2p-marketplace-method-badge {
+  padding: 0.25rem 0.75rem;
+  background: var(--brand-tertiary);
+  color: var(--brand-primary);
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* Offer action */
+.p2p-marketplace-offer-action {
+  display: flex;
+  justify-content: center;
+}
+
+.p2p-marketplace-accept-btn {
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--brand-primary);
+  color: var(--text-inverse);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.p2p-marketplace-accept-btn:hover {
+  background: var(--brand-secondary);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .p2p-marketplace-offers-header,
+  .p2p-marketplace-offer-card {
+    grid-template-columns: 1fr;
+  }
+
+  .p2p-marketplace-offers-header {
+    display: none;
+  }
+
+  .p2p-marketplace-offer-card {
+    gap: var(--spacing-sm);
+  }
+
+  .p2p-marketplace-offer-user,
+  .p2p-marketplace-offer-price,
+  .p2p-marketplace-offer-limits,
+  .p2p-marketplace-offer-methods,
+  .p2p-marketplace-offer-action {
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  .p2p-marketplace-offer-action {
+    justify-content: stretch;
+  }
+
+  .p2p-marketplace-accept-btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .p2p-marketplace-container {
+    padding: var(--spacing-md);
+  }
+
+  .p2p-marketplace-filters {
+    flex-direction: column;
+  }
+
+  .p2p-marketplace-filter-group {
+    width: 100%;
+  }
+}

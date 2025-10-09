@@ -1,0 +1,294 @@
+/* src/styles/p2p-transaction.css */
+.p2p-transaction-container {
+  padding: var(--spacing-xl);
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.p2p-transaction-header {
+  text-align: center;
+  margin-bottom: var(--spacing-xxl);
+  padding-bottom: var(--spacing-lg);
+  border-bottom: 1px solid var(--border-secondary);
+}
+
+.p2p-transaction-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.p2p-transaction-subtitle {
+  font-size: 1.125rem;
+  color: var(--text-secondary);
+}
+
+.p2p-transaction-card {
+  background: var(--bg-elevated);
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-primary);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+.p2p-transaction-section {
+  margin-bottom: var(--spacing-xl);
+}
+
+.p2p-transaction-section-title {
+  font-size: 0.875rem;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--spacing-md);
+  font-weight: 600;
+}
+
+.p2p-transaction-amount {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.p2p-transaction-currency {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.p2p-transaction-range {
+  font-size: 0.875rem;
+  color: var(--text-tertiary);
+  margin-bottom: var(--spacing-md);
+}
+
+.p2p-transaction-balance {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.p2p-transaction-balance-label {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.p2p-transaction-balance-amount {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.p2p-transaction-add-btn {
+  background: var(--brand-primary);
+  color: var(--text-inverse);
+  border: none;
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.p2p-transaction-add-btn:hover {
+  background: var(--brand-secondary);
+  transform: translateY(-1px);
+}
+
+.p2p-transaction-divider {
+  height: 1px;
+  background: var(--border-secondary);
+  margin: var(--spacing-lg) 0;
+}
+
+.p2p-transaction-method {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.p2p-transaction-method:hover {
+  background: var(--interactive-hover);
+}
+
+.p2p-transaction-method-selected {
+  border: 1px solid var(--border-focus);
+  background: var(--bg-primary);
+}
+
+.p2p-transaction-method-info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.p2p-transaction-method-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.p2p-transaction-method-details {
+  font-size: 0.875rem;
+  color: var(--text-tertiary);
+}
+
+.p2p-transaction-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-xl);
+}
+
+.p2p-transaction-btn-primary {
+  background: var(--brand-primary);
+  color: var(--text-inverse);
+  border: none;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.p2p-transaction-btn-primary:hover:not(:disabled) {
+  background: var(--brand-secondary);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.p2p-transaction-btn-primary:disabled {
+  background: var(--interactive-disabled);
+  cursor: not-allowed;
+  transform: none;
+}
+
+.p2p-transaction-btn-secondary {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-primary);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.p2p-transaction-btn-secondary:hover {
+  background: var(--bg-secondary);
+  border-color: var(--border-focus);
+}
+
+.p2p-transaction-status {
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-lg);
+  text-align: center;
+  font-weight: 600;
+}
+
+.p2p-transaction-status-pending {
+  background: var(--warning-bg);
+  color: var(--warning);
+  border: 1px solid var(--warning);
+}
+
+.p2p-transaction-status-confirmed {
+  background: var(--success-bg);
+  color: var(--success);
+  border: 1px solid var(--success);
+}
+
+.p2p-transaction-status-completed {
+  background: var(--success-bg);
+  color: var(--success);
+  border: 1px solid var(--success);
+}
+
+.p2p-transaction-status-cancelled {
+  background: var(--error-bg);
+  color: var(--error);
+  border: 1px solid var(--error);
+}
+
+.p2p-transaction-role-badge {
+  display: inline-block;
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: var(--spacing-md);
+}
+
+.p2p-transaction-role-buyer {
+  background: var(--buy-bg);
+  color: var(--buy);
+}
+
+.p2p-transaction-role-seller {
+  background: var(--sell-bg);
+  color: var(--sell);
+}
+
+.p2p-transaction-input {
+  width: 100%;
+  padding: var(--spacing-md);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 1rem;
+  outline: none;
+  transition: all 0.2s ease;
+  margin-bottom: var(--spacing-md);
+}
+
+.p2p-transaction-input:focus {
+  border-color: var(--border-focus);
+  background: var(--bg-primary);
+}
+
+.p2p-transaction-input-error {
+  border-color: var(--error);
+}
+
+.p2p-transaction-error {
+  color: var(--error);
+  font-size: 0.875rem;
+  margin-top: var(--spacing-xs);
+}
+
+.p2p-transaction-loading {
+  text-align: center;
+  padding: var(--spacing-xxl);
+  color: var(--text-secondary);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .p2p-transaction-container {
+    padding: var(--spacing-md);
+  }
+  
+  .p2p-transaction-title {
+    font-size: 1.5rem;
+  }
+  
+  .p2p-transaction-amount {
+    font-size: 2rem;
+  }
+}

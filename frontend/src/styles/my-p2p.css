@@ -1,0 +1,274 @@
+/* src/styles/my-p2p.css */
+.my-p2p-container {
+  padding: var(--spacing-xl);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.my-p2p-header {
+  margin-bottom: var(--spacing-xxl);
+  padding-bottom: var(--spacing-lg);
+  border-bottom: 1px solid var(--border-secondary);
+}
+
+.my-p2p-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.my-p2p-subtitle {
+  font-size: 1.125rem;
+  color: var(--text-secondary);
+}
+
+.my-p2p-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-primary);
+  margin-bottom: var(--spacing-xl);
+  gap: var(--spacing-md);
+}
+
+.my-p2p-tab {
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 2px solid transparent;
+}
+
+.my-p2p-tab:hover {
+  color: var(--text-primary);
+}
+
+.my-p2p-tab-active {
+  color: var(--brand-primary);
+  border-bottom-color: var(--brand-primary);
+}
+
+.my-p2p-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.my-p2p-list-item {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+  transition: all 0.2s ease;
+}
+
+.my-p2p-list-item:hover {
+  border-color: var(--border-focus);
+  box-shadow: var(--shadow-sm);
+}
+
+.my-p2p-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-md);
+}
+
+.my-p2p-item-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.my-p2p-item-subtitle {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.my-p2p-item-badge {
+  display: inline-block;
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.my-p2p-badge-active {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.my-p2p-badge-inactive {
+  background: var(--error-bg);
+  color: var(--error);
+}
+
+.my-p2p-badge-buy {
+  background: var(--buy-bg);
+  color: var(--buy);
+}
+
+.my-p2p-badge-sell {
+  background: var(--sell-bg);
+  color: var(--sell);
+}
+
+.my-p2p-badge-pending {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.my-p2p-badge-completed {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.my-p2p-badge-cancelled {
+  background: var(--error-bg);
+  color: var(--error);
+}
+
+.my-p2p-item-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.my-p2p-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.my-p2p-detail-label {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.my-p2p-detail-value {
+  font-size: 1rem;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.my-p2p-item-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.my-p2p-btn {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.my-p2p-btn-primary {
+  background: var(--brand-primary);
+  color: var(--text-inverse);
+}
+
+.my-p2p-btn-primary:hover:not(:disabled) {
+  background: var(--brand-secondary);
+  transform: translateY(-1px);
+}
+
+.my-p2p-btn-secondary {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-primary);
+}
+
+.my-p2p-btn-secondary:hover {
+  background: var(--bg-secondary);
+  border-color: var(--border-focus);
+}
+
+.my-p2p-btn-success {
+  background: var(--success);
+  color: var(--text-inverse);
+}
+
+.my-p2p-btn-success:hover:not(:disabled) {
+  background: var(--success-bg);
+  transform: translateY(-1px);
+}
+
+.my-p2p-btn-warning {
+  background: var(--warning);
+  color: var(--text-inverse);
+}
+
+.my-p2p-btn-warning:hover:not(:disabled) {
+  background: var(--warning-bg);
+  transform: translateY(-1px);
+}
+
+.my-p2p-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.my-p2p-empty {
+  text-align: center;
+  padding: var(--spacing-xxl);
+  color: var(--text-secondary);
+}
+
+.my-p2p-loading {
+  text-align: center;
+  padding: var(--spacing-xxl);
+  color: var(--text-secondary);
+}
+
+.my-p2p-error {
+  background: var(--error-bg);
+  color: var(--error);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--error);
+  margin-bottom: var(--spacing-lg);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .my-p2p-container {
+    padding: var(--spacing-md);
+  }
+  
+  .my-p2p-title {
+    font-size: 2rem;
+  }
+  
+  .my-p2p-tabs {
+    flex-direction: column;
+    gap: var(--spacing-xs);
+  }
+  
+  .my-p2p-item-details {
+    grid-template-columns: 1fr;
+  }
+  
+  .my-p2p-item-actions {
+    flex-direction: column;
+  }
+  
+  .my-p2p-btn {
+    width: 100%;
+    text-align: center;
+  }
+}
