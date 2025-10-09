@@ -2,16 +2,17 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useAuth } from "../context/AuthContext"
+import jsPDF from "jspdf"
 import {
   MagnifyingGlassIcon,
   PaperAirplaneIcon,
   XMarkIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
-  ClockIcon,
   ArrowPathIcon,
   BoltIcon,
   BanknotesIcon,
+  ArrowDownTrayIcon, // Added for download receipt
 } from "@heroicons/react/24/outline"
 import "../styles/Transferencia.css"
 
@@ -34,6 +35,7 @@ export default function Transferencia() {
   const [showCryptoDropdown, setShowCryptoDropdown] = useState(false)
 
   const [cantidad, setCantidad] = useState("")
+  const [nota, setNota] = useState("")
   const [balances, setBalances] = useState([])
   const [balanceInsuficiente, setBalanceInsuficiente] = useState(false)
 
@@ -49,6 +51,9 @@ export default function Transferencia() {
   // Estado del historial
   const [historial, setHistorial] = useState([])
   const [loadingHistorial, setLoadingHistorial] = useState(false)
+  const [searchHistorial, setSearchHistorial] = useState("")
+  const [filterCrypto, setFilterCrypto] = useState("all")
+  const [filterDate, setFilterDate] = useState("all")
 
   const [toast, setToast] = useState(null)
 
@@ -277,6 +282,7 @@ export default function Transferencia() {
           criptomonedaId: criptoSeleccionada.id,
           cantidad: Number.parseFloat(cantidad),
           concepto: `Transferencia a ${destinatario.username}`,
+          nota: nota || undefined,
         }),
       })
 
@@ -336,12 +342,20 @@ export default function Transferencia() {
           setDestinatario(null)
           setCriptoSeleccionada(null)
           setCantidad("")
+          setNota("")
           setTransferId(null)
 
           cargarBalances()
           cargarHistorial()
 
           showToast("¡Transferencia completada exitosamente!", "success")
+
+          setTimeout(() => {
+            document.querySelector(".historial-section")?.scrollIntoView({
+              behavior: "smooth",
+              block: "start",
+            })
+          }, 500)
         }, 2000)
       } else {
         setError(data.error || "Código incorrecto")
@@ -412,11 +426,168 @@ export default function Transferencia() {
     return balance ? Number.parseFloat(balance.balanceDisponible) : 0
   }
 
+  const setPercentageAmount = (percentage) => {
+    const balance = getBalanceDisponible()
+    const amount = ((balance * percentage) / 100).toFixed(8)
+    setCantidad(amount)
+  }
+
+  const getRecentRecipients = () => {
+    const uniqueRecipients = []
+    const seenIds = new Set()
+
+    for (const transfer of historial) {
+      if (transfer.destinatario && !seenIds.has(transfer.destinatario.id)) {
+        uniqueRecipients.push(transfer.destinatario)
+        seenIds.add(transfer.destinatario.id)
+        if (uniqueRecipients.length >= 12) break
+      }
+    }
+
+    return uniqueRecipients
+  }
+
+  const selectRecentRecipient = (recipient) => {
+    setEmail(recipient.email || "")
+    setDestinatario(recipient)
+    setUserNotFound(false)
+  }
+
+  const getFilteredHistory = () => {
+    let filtered = [...historial]
+
+    // Search filter
+    if (searchHistorial) {
+      filtered = filtered.filter(
+        (transfer) =>
+          transfer.destinatario?.username?.toLowerCase().includes(searchHistorial.toLowerCase()) ||
+          transfer.criptomonedaTransferencia?.symbol?.toLowerCase().includes(searchHistorial.toLowerCase()),
+      )
+    }
+
+    // Crypto filter
+    if (filterCrypto !== "all") {
+      filtered = filtered.filter((transfer) => transfer.criptomonedaTransferencia?.symbol === filterCrypto)
+    }
+
+    // Date filter
+    if (filterDate !== "all") {
+      const now = new Date()
+      const filterDate_ms = {
+        week: 7 * 24 * 60 * 60 * 1000,
+        month: 30 * 24 * 60 * 60 * 1000,
+      }[filterDate]
+
+      if (filterDate_ms) {
+        filtered = filtered.filter((transfer) => {
+          const transferDate = new Date(transfer.created_at)
+          return now - transferDate <= filterDate_ms
+        })
+      }
+    }
+
+    return filtered
+  }
+
+  const downloadReceipt = (transfer) => {
+    const doc = new jsPDF()
+
+    // Header
+    doc.setFontSize(20)
+    doc.setFont(undefined, "bold")
+    doc.text("Comprobante de Transferencia", 105, 20, { align: "center" })
+
+    // Line separator
+    doc.setLineWidth(0.5)
+    doc.line(20, 25, 190, 25)
+
+    // Transfer ID and Date
+    doc.setFontSize(10)
+    doc.setFont(undefined, "normal")
+    doc.text(`ID: ${transfer.id}`, 105, 32, { align: "center" })
+    doc.text(`Fecha: ${new Date(transfer.created_at).toLocaleString("es-AR")}`, 105, 38, { align: "center" })
+
+    // Details section
+    doc.setFontSize(14)
+    doc.setFont(undefined, "bold")
+    doc.text("Detalles de la Transferencia", 20, 55)
+
+    doc.setFontSize(11)
+    doc.setFont(undefined, "normal")
+
+    let yPos = 65
+
+    // Destinatario
+    doc.setFont(undefined, "bold")
+    doc.text("Destinatario:", 20, yPos)
+    doc.setFont(undefined, "normal")
+    doc.text(transfer.destinatario?.username || "N/A", 70, yPos)
+    yPos += 10
+
+    // Criptomoneda
+    doc.setFont(undefined, "bold")
+    doc.text("Criptomoneda:", 20, yPos)
+    doc.setFont(undefined, "normal")
+    doc.text(`${transfer.criptomonedaTransferencia?.symbol} - ${transfer.criptomonedaTransferencia?.nombre}`, 70, yPos)
+    yPos += 10
+
+    // Cantidad
+    doc.setFont(undefined, "bold")
+    doc.text("Cantidad:", 20, yPos)
+    doc.setFont(undefined, "normal")
+    doc.text(Number.parseFloat(transfer.cantidad).toFixed(8), 70, yPos)
+    yPos += 10
+
+    // Nota (if exists)
+    if (transfer.nota) {
+      doc.setFont(undefined, "bold")
+      doc.text("Nota:", 20, yPos)
+      doc.setFont(undefined, "normal")
+
+      // Split long notes into multiple lines
+      const notaLines = doc.splitTextToSize(transfer.nota, 120)
+      doc.text(notaLines, 70, yPos)
+      yPos += notaLines.length * 7 + 3
+    }
+
+    // Estado
+    doc.setFont(undefined, "bold")
+    doc.text("Estado:", 20, yPos)
+    doc.setFont(undefined, "normal")
+    doc.text(transfer.estado.toUpperCase(), 70, yPos)
+    yPos += 15
+
+    // Features section
+    doc.setFontSize(12)
+    doc.setFont(undefined, "bold")
+    doc.text("Características", 20, yPos)
+    yPos += 8
+
+    doc.setFontSize(10)
+    doc.setFont(undefined, "normal")
+    doc.text("✓ Sin comisión", 25, yPos)
+    yPos += 6
+    doc.text("✓ Transferencia instantánea", 25, yPos)
+
+    // Footer
+    doc.setFontSize(9)
+    doc.setTextColor(128, 128, 128)
+    doc.text("Este es un comprobante digital de tu transferencia", 105, 270, { align: "center" })
+    doc.text(`Generado el ${new Date().toLocaleString("es-AR")}`, 105, 276, { align: "center" })
+
+    // Save PDF
+    doc.save(`comprobante-${transfer.id}.pdf`)
+
+    showToast("Comprobante PDF descargado", "success")
+  }
+
   const criptosFiltradas = criptomonedas.filter(
     (crypto) =>
       crypto.nombre.toLowerCase().includes(searchCrypto.toLowerCase()) ||
       crypto.symbol.toLowerCase().includes(searchCrypto.toLowerCase()),
   )
+
+  const uniqueCryptos = [...new Set(historial.map((t) => t.criptomonedaTransferencia?.symbol).filter(Boolean))]
 
   const puedeEnviar =
     destinatario &&
@@ -425,6 +596,9 @@ export default function Transferencia() {
     Number.parseFloat(cantidad) > 0 &&
     !balanceInsuficiente &&
     !loading
+
+  const recentRecipients = getRecentRecipients()
+  const filteredHistory = getFilteredHistory()
 
   if (!isAuthenticated) {
     return null
@@ -471,6 +645,25 @@ export default function Transferencia() {
                   </div>
                 )}
               </div>
+
+              {recentRecipients.length > 0 && !destinatario && (
+                <div className="recent-recipients">
+                  <label className="form-label">Destinatarios recientes</label>
+                  <div className="recipients-list">
+                    {recentRecipients.map((recipient) => (
+                      <button
+                        key={recipient.id}
+                        type="button"
+                        className="recipient-item"
+                        onClick={() => selectRecentRecipient(recipient)}
+                      >
+                        <div className="recipient-avatar">{recipient.username?.charAt(0).toUpperCase()}</div>
+                        <span className="recipient-name">{recipient.username}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Selector de criptomoneda */}
               <div className="form-group">
@@ -581,12 +774,43 @@ export default function Transferencia() {
                     </button>
                   )}
                 </div>
+
+                {criptoSeleccionada && (
+                  <div className="percentage-buttons">
+                    <button type="button" onClick={() => setPercentageAmount(25)} className="percentage-btn">
+                      25%
+                    </button>
+                    <button type="button" onClick={() => setPercentageAmount(50)} className="percentage-btn">
+                      50%
+                    </button>
+                    <button type="button" onClick={() => setPercentageAmount(75)} className="percentage-btn">
+                      75%
+                    </button>
+                    <button type="button" onClick={() => setPercentageAmount(100)} className="percentage-btn">
+                      100%
+                    </button>
+                  </div>
+                )}
+
                 {balanceInsuficiente && (
                   <div className="input-feedback error">
                     <ExclamationTriangleIcon className="feedback-icon" />
                     Balance insuficiente
                   </div>
                 )}
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Nota (opcional)</label>
+                <textarea
+                  className="form-textarea"
+                  placeholder="Agrega una nota a tu transferencia..."
+                  value={nota}
+                  onChange={(e) => setNota(e.target.value)}
+                  rows="3"
+                  maxLength="200"
+                />
+                <span className="char-count">{nota.length}/200</span>
               </div>
 
               <div className="transfer-info">
@@ -674,17 +898,78 @@ export default function Transferencia() {
         </div>
 
         <div className="historial-section">
-          <h2 className="historial-title">Transferencias Enviadas</h2>
+          <div className="historial-header">
+            <h2 className="historial-title">Transferencias Enviadas</h2>
+
+            {historial.length > 0 && (
+              <div className="historial-filters">
+                <div className="search-box">
+                  <MagnifyingGlassIcon className="search-icon-small" />
+                  <input
+                    type="text"
+                    placeholder="Buscar por destinatario o crypto..."
+                    value={searchHistorial}
+                    onChange={(e) => setSearchHistorial(e.target.value)}
+                    className="search-input"
+                  />
+                </div>
+
+                <select
+                  className="filter-select"
+                  value={filterCrypto}
+                  onChange={(e) => setFilterCrypto(e.target.value)}
+                >
+                  <option value="all">Todas las cryptos</option>
+                  {uniqueCryptos.map((symbol) => (
+                    <option key={symbol} value={symbol}>
+                      {symbol}
+                    </option>
+                  ))}
+                </select>
+
+                <select className="filter-select" value={filterDate} onChange={(e) => setFilterDate(e.target.value)}>
+                  <option value="all">Todo el tiempo</option>
+                  <option value="week">Última semana</option>
+                  <option value="month">Último mes</option>
+                </select>
+              </div>
+            )}
+          </div>
 
           {loadingHistorial ? (
             <div className="loading-historial">
               <ArrowPathIcon className="loading-icon spinning" />
               Cargando historial...
             </div>
-          ) : historial.length === 0 ? (
+          ) : filteredHistory.length === 0 ? (
             <div className="empty-historial">
-              <ClockIcon className="empty-icon" />
-              <p>No hay transferencias enviadas</p>
+              <svg className="empty-illustration" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="100" cy="100" r="80" stroke="currentColor" strokeWidth="2" opacity="0.2" />
+                <path
+                  d="M70 100L90 120L130 80"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  opacity="0.3"
+                />
+                <circle cx="100" cy="60" r="15" stroke="currentColor" strokeWidth="2" opacity="0.3" />
+                <path
+                  d="M100 75V100M100 100L85 115M100 100L115 115"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  opacity="0.3"
+                />
+              </svg>
+              <h3 className="empty-title">
+                {historial.length === 0 ? "No hay transferencias enviadas" : "No se encontraron resultados"}
+              </h3>
+              <p className="empty-description">
+                {historial.length === 0
+                  ? "Cuando realices tu primera transferencia, aparecerá aquí"
+                  : "Intenta ajustar los filtros de búsqueda"}
+              </p>
             </div>
           ) : (
             <div className="historial-table-wrapper">
@@ -696,10 +981,11 @@ export default function Transferencia() {
                     <th>Criptomoneda</th>
                     <th>Cantidad</th>
                     <th>Estado</th>
+                    <th>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {historial.map((transfer) => {
+                  {filteredHistory.map((transfer) => {
                     const cryptoIconUrl = transfer.criptomonedaTransferencia?.symbol
                       ? `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/svg/color/${transfer.criptomonedaTransferencia.symbol.toLowerCase()}.svg`
                       : "/placeholder.svg"
@@ -732,6 +1018,15 @@ export default function Transferencia() {
                             {transfer.estado === "pendiente" && "Pendiente"}
                             {transfer.estado === "cancelada" && "Cancelada"}
                           </span>
+                        </td>
+                        <td>
+                          <button
+                            className="action-button"
+                            onClick={() => downloadReceipt(transfer)}
+                            title="Descargar comprobante"
+                          >
+                            <ArrowDownTrayIcon className="action-icon" />
+                          </button>
                         </td>
                       </tr>
                     )

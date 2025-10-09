@@ -13,6 +13,7 @@
     "classnames": "^2.3.2",
     "date-fns": "^2.30.0",
     "firebase": "^12.3.0",
+    "jspdf": "^3.0.3",
     "jwt-decode": "^4.0.0",
     "lodash": "^4.17.21",
     "lucide-react": "^0.263.1",
