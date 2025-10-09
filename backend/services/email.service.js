@@ -195,6 +195,89 @@ class EmailService {
       return null;
     }
   }
+
+  // Enviar código de verificación para transferencia
+  async enviarCodigoTransferencia(email, codigo, username, cantidad, simbolo, destinatario) {
+    const mailOptions = {
+      from: `"${process.env.APP_NAME || 'Crypto Exchange'}" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: `Código de verificación para transferencia de ${cantidad} ${simbolo}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333;">Verificación de Transferencia</h2>
+          <p>Hola <strong>${username}</strong>,</p>
+          <p>Estás intentando transferir <strong>${cantidad} ${simbolo}</strong> a <strong>${destinatario}</strong>.</p>
+          <p>Tu código de verificación es:</p>
+          
+          <div style="background: #f5f5f5; padding: 20px; text-align: center; margin: 20px 0;">
+            <h1 style="color: #007bff; letter-spacing: 5px; margin: 0;">${codigo}</h1>
+          </div>
+          
+          <p><strong>Este código expira en 10 minutos.</strong></p>
+          
+          <p>Si no realizaste esta transferencia, por favor contacta a soporte inmediatamente.</p>
+          
+          <hr style="margin: 30px 0;">
+          <p style="color: #666; font-size: 12px;">
+            ${process.env.APP_NAME || 'Crypto Exchange'} - No responder a este email
+          </p>
+        </div>
+      `
+    };
+
+    try {
+      const result = await this.transporter.sendMail(mailOptions);
+      console.log(`Código de verificación de transferencia enviado a ${email}`);
+      return result;
+    } catch (error) {
+      console.error('Error enviando código de verificación de transferencia:', error);
+      throw new Error('Error al enviar email de verificación de transferencia');
+    }
+  }
+
+  // Notificar transferencia completada
+  async notificarTransferenciaCompletada(email, username, cantidad, simbolo, otroUsuario, tipo) {
+    const subject = tipo === 'enviada' 
+      ? `Transferencia de ${cantidad} ${simbolo} completada`
+      : `Has recibido ${cantidad} ${simbolo}`;
+
+    const message = tipo === 'enviada'
+      ? `Has transferido exitosamente <strong>${cantidad} ${simbolo}</strong> a <strong>${otroUsuario}</strong>.`
+      : `Has recibido <strong>${cantidad} ${simbolo}</strong> de <strong>${otroUsuario}</strong>.`;
+
+    const mailOptions = {
+      from: `"${process.env.APP_NAME || 'Crypto Exchange'}" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: subject,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: ${tipo === 'enviada' ? '#333' : '#28a745'};">${tipo === 'enviada' ? 'Transferencia Completada' : 'Fondos Recibidos'}</h2>
+          <p>Hola <strong>${username}</strong>,</p>
+          <p>${message}</p>
+          <p>La transacción ha sido procesada exitosamente y los fondos han sido transferidos.</p>
+          
+          <div style="background: #d4edda; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0;">
+            <strong>✅ Transacción exitosa</strong><br>
+            Fecha: ${new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}
+          </div>
+          
+          <hr style="margin: 30px 0;">
+          <p style="color: #666; font-size: 12px;">
+            ${process.env.APP_NAME || 'Crypto Exchange'} - No responder a este email
+          </p>
+        </div>
+      `
+    };
+
+    try {
+      const result = await this.transporter.sendMail(mailOptions);
+      console.log(`Notificación de transferencia ${tipo} enviada a ${email}`);
+      return result;
+    } catch (error) {
+      console.error(`Error enviando notificación de transferencia ${tipo}:`, error);
+      throw new Error(`Error al enviar notificación de transferencia ${tipo}`);
+    }
+  }
 }
 
 // Singleton instance

@@ -1,16 +1,18 @@
 // src/components/ThemeSwitcher.jsx
 import { useTheme } from '../hooks/useTheme';
+import { SunIcon, MoonIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline';
 
 const ThemeSwitcher = () => {
   const { themeMode, setThemeMode } = useTheme();
 
   const themes = [
-    { mode: 'light', icon: '☀️', label: 'Claro' },
-    { mode: 'dark', icon: '🌙', label: 'Oscuro' },
-    { mode: 'crypto', icon: '₿', label: 'Crypto' },
+    { mode: 'light', icon: SunIcon, label: 'Claro' },
+    { mode: 'dark', icon: MoonIcon, label: 'Oscuro' },
+    { mode: 'crypto', icon: CurrencyDollarIcon, label: 'Crypto' },
   ];
 
   const currentTheme = themes.find(theme => theme.mode === themeMode);
+  const CurrentIcon = currentTheme?.icon || SunIcon;
 
   return (
     <div style={{
@@ -50,7 +52,7 @@ const ThemeSwitcher = () => {
         }}
         title={`Tema actual: ${currentTheme?.label || 'Claro'}`}
       >
-        {currentTheme?.icon || '☀️'}
+        <CurrentIcon style={{ width: '1.2em', height: '1.2em' }} />
       </button>
     </div>
   );

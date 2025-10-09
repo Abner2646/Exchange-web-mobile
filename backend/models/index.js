@@ -23,6 +23,7 @@ const parExchangeModel = require('./parExchange.model');
 //const reclamoModel = require('./reclamo.model');
 const transaccionBlockchainModel = require('./transaccionBlockchain.model');
 const transaccionP2PModel = require('./transaccionesP2P.model');
+const transferenciaModel = require('./transferencia.model.js')
 const usuarioModel = require('./usuario.model');
 const valoracionModel = require('./valoracion.model');
 const walletMaestraModel = require('./walletMaestra.model');
@@ -63,6 +64,7 @@ const ParExchange = parExchangeModel(sequelize);
 //const Reclamo = reclamoModel(sequelize);
 const TransaccionBlockchain = transaccionBlockchainModel(sequelize);
 const TransaccionP2P = transaccionP2PModel(sequelize);
+const Transferencia = transferenciaModel(sequelize);
 const Usuario = usuarioModel(sequelize);
 const Valoracion = valoracionModel(sequelize);
 const WalletMaestra = walletMaestraModel(sequelize);
@@ -244,6 +246,24 @@ MensajeReclamo.belongsTo(Reclamo, { foreignKey: 'reclamoId', as: 'reclamo' });
 */
 
 
+// ================================
+// RELACIONES DE TRANSFERENCIAS
+// ================================
+
+// Usuario puede ser remitente en muchas transferencias
+Usuario.hasMany(Transferencia, { foreignKey: 'usuarioRemitenteId', as: 'transferenciasEnviadas' });
+Transferencia.belongsTo(Usuario, { foreignKey: 'usuarioRemitenteId', as: 'remitente' });
+
+// Usuario puede ser destinatario en muchas transferencias
+Usuario.hasMany(Transferencia, { foreignKey: 'usuarioDestinatarioId', as: 'transferenciasRecibidas' });
+Transferencia.belongsTo(Usuario, { foreignKey: 'usuarioDestinatarioId', as: 'destinatario' });
+
+// Transferencia pertenece a una criptomoneda
+Criptomoneda.hasMany(Transferencia, { foreignKey: 'criptomonedaId', as: 'transferencias' });
+Transferencia.belongsTo(Criptomoneda, { foreignKey: 'criptomonedaId', as: 'criptomonedaTransferencia' }); // Alias único
+
+
+
 module.exports = {
   sequelize,
   Sequelize,
@@ -264,6 +284,7 @@ module.exports = {
   //Reclamo,
   TransaccionBlockchain,
   TransaccionP2P,
+  Transferencia,
   Usuario,
   //Valoracion,
   WalletMaestra

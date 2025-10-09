@@ -105,7 +105,7 @@ router.get('/me/daily-volume', authenticateToken, usuarioController.getDailyVolu
 // --------------------- RUTAS DE CONSULTA PÚBLICA --------------------- //
 
 // Buscar usuarios públicamente
-//router.get('/search', authenticateToken, usuarioController.searchUsuarios);
+router.get('/search', authenticateToken, usuarioController.searchUsuarios);
 
 // Obtener top traders
 //router.get('/top-traders', authenticateToken, usuarioController.getTopTraders);

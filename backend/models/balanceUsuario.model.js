@@ -117,6 +117,48 @@ function createBalanceUserModel(sequelize) {
       throw new Error(`Error al actualizar balance: ${error.message}`);
     }
   };
+/*
+//ESTE MÉTODO NO SE USA
+  BalanceUser.updateBalance = async (userId, criptomonedaId, amount, type = 'disponible', options = {}) => {
+    const transaction = options.transaction || null;
+    
+    try {
+      const [balance, created] = await BalanceUsuario.findOrCreate({
+        where: { 
+          userId: userId,
+          criptomonedaId: criptomonedaId
+        },
+        defaults: {
+          userId: userId,
+          criptomonedaId: criptomonedaId,
+          balanceDisponible: 0,
+          balanceBloqueado: 0
+        },
+        transaction: transaction
+      });
+
+      const field = type === 'disponible' ? 'balanceDisponible' : 'balanceBloqueado';
+      const currentBalance = parseFloat(balance[field]) || 0;
+      const newBalance = currentBalance + parseFloat(amount);
+
+      // Validar que no quede negativo
+      if (newBalance < 0) {
+        throw new Error(
+          `Balance insuficiente. ${type === 'disponible' ? 'Disponible' : 'Bloqueado'}: ${currentBalance}, ` +
+          `Operación: ${amount}, Resultado: ${newBalance}`
+        );
+      }
+
+      // Actualizar el balance
+      balance[field] = newBalance;
+      await balance.save({ transaction: transaction });
+
+      return balance;
+    } catch (error) {
+      console.error('Error en updateBalance:', error);
+      throw new Error(`Error al actualizar balance: ${error.message}`);
+    }
+  };*/
 
   // 🆕 MÉTODO PARA OBTENER BALANCE EN TRANSACCIÓN
   BalanceUser.getByUserAndCrypto = async (userId, criptomonedaId, options = {}) => {

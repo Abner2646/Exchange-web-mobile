@@ -91,6 +91,32 @@ function createNotificacionModel(sequelize) {
       titulo: 'Mantenimiento programado',
       mensaje: 'El sistema estará en mantenimiento. Durante este tiempo no podrás realizar transacciones.',
       importante: true
+    },
+
+    // TRANSFERENCIAS
+    'TRANSFERENCIA_CREADA': {
+      tipo: 'transaccion',
+      titulo: 'Transferencia creada - Verifica con código',
+      mensaje: 'Has creado una transferencia de {cantidad} {simbolo} a {destinatario}. Usa el código {codigo} para verificarla.',
+      importante: true
+    },
+    'TRANSFERENCIA_COMPLETADA_REMITENTE': {
+      tipo: 'transaccion', 
+      titulo: 'Transferencia completada',
+      mensaje: 'Has transferido {cantidad} {simbolo} a {destinatario} exitosamente.',
+      importante: false
+    },
+    'TRANSFERENCIA_RECIBIDA': {
+      tipo: 'transaccion',
+      titulo: 'Fondos recibidos', 
+      mensaje: 'Has recibido {cantidad} {simbolo} de {remitente}.',
+      importante: false
+    },
+    'TRANSFERENCIA_CANCELADA': {
+      tipo: 'transaccion',
+      titulo: 'Transferencia cancelada',
+      mensaje: 'Has cancelado la transferencia de {cantidad} {simbolo} a {destinatario}.',
+      importante: false
     }
   };
 
