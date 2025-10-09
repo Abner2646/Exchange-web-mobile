@@ -39,11 +39,14 @@ const CrearOfertaP2P = () => {
         fetch('http://localhost:3001/api/criptomoneda', {
           headers: { 'Authorization': token }
         }),
-        fetch('http://localhost:3001/api/metodoPago/status/active')
+        fetch('http://localhost:3001/api/metodoPago/status/active', {
+          headers: { 'Authorization': token }  // ← Agregar esto
+        })
       ]);
 
       const cryptos = await resCryptos.json();
       const metodos = await resMetodos.json();
+      console.log('Métodos de pago recibidos:', metodos);
 
       setCriptomonedas(cryptos);
       setMetodosPago(metodos);
