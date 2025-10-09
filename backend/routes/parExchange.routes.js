@@ -6,15 +6,13 @@ const router = Router();
 
 // Importa el controlador de pares de exchange
 const parExchangeController = require('../controllers/parExchange.controller.js');
-
-console.log('=== DEBUG RUTAS ===');
-console.log('Controlador importado:', typeof parExchangeController);
-console.log('Funciones disponibles:', Object.keys(parExchangeController || {}));
+const { authenticateToken } = require('../middleware/authMiddleware.js');
+const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
 
 // --------------------- RUTAS BÁSICAS SIN MIDDLEWARE --------------------- //
 
 // ✨ NUEVA RUTA: Generar todos los pares automáticamente
-router.post('/generate-all', /*authenticateToken, isAdmin,*/ parExchangeController.generateAllPairs);
+router.post('/generate-all', authenticateToken, isSuperAdmin, parExchangeController.generateAllPairs); // Bien ¡EXECUTAR UNA SOLA VEZ!
 
 // Obtener todos los pares de exchange
 router.get('/', parExchangeController.getParesExchange); // Bien
@@ -22,8 +20,8 @@ router.get('/', parExchangeController.getParesExchange); // Bien
 // Obtener par específico por ID
 router.get('/:id', parExchangeController.getParExchangeById); // Bien
 
-// Crear nuevo par de exchange - SIN MIDDLEWARE
-router.post('/', parExchangeController.createParExchange); // Bien
+// Crear nuevo par de exchange
+router.post('/', isSuperAdmin, parExchangeController.createParExchange); // Bien
 /*
 {
 "criptoBaseId":""
@@ -35,10 +33,10 @@ router.post('/', parExchangeController.createParExchange); // Bien
 
 
 // Actualizar par por ID - SIN MIDDLEWARE
-router.put('/:id', parExchangeController.updateParExchange);
+//router.put('/:id', parExchangeController.updateParExchange);
 
 // Eliminar par por ID - SIN MIDDLEWARE
-router.delete('/:id', parExchangeController.deleteParExchange); // Bien
+//router.delete('/:id', parExchangeController.deleteParExchange); // Bien
 
 // Buscar pares por término
 router.get('/search/query', parExchangeController.searchParesExchange);
@@ -65,8 +63,8 @@ router.get('/ranking/volume', parExchangeController.getTopPairsByVolume);
 router.get('/monitoring/high-commission', parExchangeController.getHighCommissionPairs);
 
 // Obtener pares con precios desactualizados - SIN MIDDLEWARE
-router.get('/monitoring/outdated-prices', parExchangeController.getOutdatedPricePairs);
-
+router.get('/monitoring/outdated-prices', isSuperAdmin, parExchangeController.getOutdatedPricePairs);
+/*
 // Actualizar estado del par - SIN MIDDLEWARE
 router.patch('/:id/status', parExchangeController.updateParStatus);
 
@@ -99,7 +97,6 @@ router.get('/admin/stats', parExchangeController.getParExchangeStats);
 
 // Exportar pares a CSV - SIN MIDDLEWARE
 router.get('/admin/export', parExchangeController.exportPares);
-
-console.log('=== RUTAS CONFIGURADAS ===');
+*/
 
 module.exports = router;

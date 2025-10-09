@@ -1,4 +1,13 @@
+// /middleware/adminMiddleware.js
 // Middleware robusto para verificar roles y permisos
+
+// Verifica que el usuario tenga rol de admin o super_admin
+// Jerarquía: normal(1) < admin(2) < super_admin(3)
+
+// Requiere que authenticateToken se ejecute primero
+
+//router.get('/', authenticateToken, isAdmin, usuarioController.getUsuarios);
+// ↑ Solo admin y super_admin pueden ver todos los usuarios
 
 // Configuración de roles y jerarquías
 const ROLES = {
@@ -103,6 +112,8 @@ const isAdmin = (req, res, next) => {
 };
 
 // Middleware para verificar que el usuario es super_admin
+// Solo permite acceso a usuarios con rol 'super_admin'
+// Es más restrictivo que isAdmin
 const isSuperAdmin = (req, res, next) => {
   if (!validateAuth(req, res)) return;
 

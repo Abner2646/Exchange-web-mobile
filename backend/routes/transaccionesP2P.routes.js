@@ -14,6 +14,8 @@ const router = Router();
 const { authenticateToken } = require('../middleware/authMiddleware.js');
 const { isAdmin } = require('../middleware/adminMiddleware.js');
 
+// <--------- Este símbolo son las rutas que nos sirven posta
+
 // Importa el controlador
 const transaccionP2PController = require('../controllers/transaccionesP2P.controller.js');
 
@@ -54,7 +56,7 @@ router.get('/', authenticateToken, transaccionP2PController.getTransacciones);
 router.get('/:id', authenticateToken, transaccionP2PController.getTransaccionById);
 
 // Crear nueva transacción (aceptar oferta)
-router.post('/', authenticateToken, transaccionP2PController.createTransaccion); // <---------
+router.post('/', authenticateToken, transaccionP2PController.createTransaccion); // <-----
 
 // Actualizar estado de transacción (genérico)
 router.patch('/:id/status', authenticateToken, transaccionP2PController.updateTransaccionStatus);

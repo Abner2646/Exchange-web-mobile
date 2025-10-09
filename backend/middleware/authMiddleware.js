@@ -1,6 +1,17 @@
 
-//ACTUALIZACIÓN INCLUIDA EN LOS CAMBIOS DEL TRANSACCIONES BLOCKCHAIN
-// middlewares/auth.middleware.js
+// middleware/authAiddleware.js
+
+// Extrae y verifica el token JWT del header Authorization
+
+// Formato esperado: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." o "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...", es flexble.
+
+// Verifica:
+// 1. ✅ Que el token existe
+// 2. ✅ Que sea válido (firma JWT)
+// 3. ✅ Que el usuario exista en la BD
+// 4. ✅ Que el usuario esté activo
+// 5. ✅ Que no haya hecho logout con este token
+
 const jwt = require('jsonwebtoken');
 const { Usuario } = require('../models');
 
@@ -26,7 +37,8 @@ const authenticateToken = async (req, res, next) => {
     }
 
     // Verificar que no haya hecho un logout con este token
-    if (user.lastLogoutAt && decoded.iat * 1000 < user.lastLogoutAt.getTime()) {
+    //t * 1000 < user.lastLogoutAt.getTime()) {
+    if (user.ultimoLogout && decoded.iat * 1000 < user.ultimoLogout.getTime()) {
       return res.status(401).json({ error: 'Token invalidado por logout' });
     }
 

@@ -12,13 +12,13 @@ const walletMaestraController = require('../controllers/walletMaestra.controller
 // =================== RUTAS CRUD BÁSICAS ===================
 
 // Obtener todas las wallets maestras (solo admin)
-router.get('/', authenticateToken, /*isSuperAdmin,*/ walletMaestraController.getWalletsMaestras); //Bien
+router.get('/', authenticateToken, isSuperAdmin, walletMaestraController.getWalletsMaestras); //Bien
 
 // Obtener wallet maestra por ID (solo admin)
-router.get('/:id', authenticateToken, /*isSuperAdmin,*/ walletMaestraController.getWalletMaestraById); //Bien
+router.get('/:id', authenticateToken, isSuperAdmin, walletMaestraController.getWalletMaestraById); //Bien
 
 // Crear nueva wallet maestra HD (solo super admin)
-router.post('/', authenticateToken, /*isSuperAdmin,*/ walletMaestraController.createWalletMaestra);
+router.post('/', authenticateToken, isSuperAdmin, walletMaestraController.createWalletMaestra);
 
 // Crear múltiples wallets maestras (bulk creation) (solo super admin)
 //router.post('/bulk', authenticateToken, isSuperAdmin, walletMaestraController.createBulkWallets);
@@ -44,7 +44,7 @@ router.post('/', authenticateToken, /*isSuperAdmin,*/ walletMaestraController.cr
 //router.get('/xpub/:xpub', authenticateToken, isSuperAdmin, walletMaestraController.getWalletByXpub);
 
 // Obtener solo wallets activas con filtros
-router.get('/status/active', authenticateToken, /*isSuperAdmin,*/ walletMaestraController.getActiveWallets); //Bien
+router.get('/status/active', authenticateToken, isSuperAdmin, walletMaestraController.getActiveWallets); //Bien
 
 // =================== RUTAS DE BALANCE Y MONITOREO ===================
 
@@ -58,7 +58,7 @@ router.get('/status/active', authenticateToken, /*isSuperAdmin,*/ walletMaestraC
 //router.get('/balances/summary', authenticateToken, /*isSuperAdmin,*/ walletMaestraController.getBalanceSummary);
 
 // Obtener distribución detallada de fondos (Super Admin)
-router.get('/balances/distribution', authenticateToken, /*isSuperAdmin,*/ walletMaestraController.getFundsDistribution); //Bien
+router.get('/balances/distribution', authenticateToken, isSuperAdmin, walletMaestraController.getFundsDistribution); //Bien
 
 // =================== RUTAS DE GESTIÓN DE ESTADO ===================
 
@@ -93,28 +93,28 @@ router.get('/balances/distribution', authenticateToken, /*isSuperAdmin,*/ wallet
 //router.post('/operations/consolidate', authenticateToken, isSuperAdmin, walletMaestraController.consolidateFunds);
 
 // Métricas completas de tesorería
-router.get('/treasury/metrics', authenticateToken, /*isSuperAdmin,*/ walletMaestraController.getTreasuryMetrics); // Bien
+router.get('/treasury/metrics', authenticateToken, isSuperAdmin, walletMaestraController.getTreasuryMetrics); // Bien
 
 // =================== RUTAS DE DASHBOARD Y ANÁLISIS ===================
 
 // Dashboard completo de wallets maestras
-router.get('/dashboard/overview', authenticateToken, /*isSuperAdmin,*/ walletMaestraController.getWalletsDashboard); //Bien
+router.get('/dashboard/overview', authenticateToken, isSuperAdmin, walletMaestraController.getWalletsDashboard); //Bien
 
 // =================== RUTAS ADMINISTRATIVAS ===================
 
 // Obtener estadísticas detalladas de wallets maestras
-router.get('/admin/stats', authenticateToken, /*isSuperAdmin,*/ walletMaestraController.getWalletMaestraStats); // Bien
+router.get('/admin/stats', authenticateToken, isSuperAdmin, walletMaestraController.getWalletMaestraStats); // Bien
 
 // Exportar wallets a CSV con metadatos
-router.get('/admin/export', authenticateToken, /*isSuperAdmin,*/ walletMaestraController.exportWallets); // Bien
+router.get('/admin/export', authenticateToken, isSuperAdmin, walletMaestraController.exportWallets); // Bien
 
 // Health check del sistema de wallets maestras
-router.get('/admin/health', authenticateToken, /*isSuperAdmin,*/ walletMaestraController.healthCheck); // Bien
+router.get('/admin/health', authenticateToken, isSuperAdmin, walletMaestraController.healthCheck); // Bien
 
 // =================== RUTAS ESPECÍFICAS PARA HD WALLETS ===================
 
 // Validar XPUB para una red específica
-//router.post('/validation/xpub', authenticateToken, /*isSuperAdmin,*/ walletMaestraController.validateXpub);
+//router.post('/validation/xpub', authenticateToken, isSuperAdmin, walletMaestraController.validateXpub);
 
 // Obtener siguiente índice de derivación disponible
 //router.get('/:id/derivation/next-index', authenticateToken, isSuperAdmin, walletMaestraController.getNextDerivationIndex);
@@ -125,10 +125,7 @@ router.get('/admin/health', authenticateToken, /*isSuperAdmin,*/ walletMaestraCo
 //router.post('/webhooks/balance-update', apiKeyAuth, walletMaestraController.syncAllBalances);
 
 // API para servicios internos (menor autenticación)
-router.get('/internal/active-by-crypto/:criptomonedaId', 
-  authenticateToken, // Solo token, no requiere admin
-  walletMaestraController.getWalletByCriptomoneda
-);
+router.get('/internal/active-by-crypto/:criptomonedaId', authenticateToken, isSuperAdmin, walletMaestraController.getWalletByCriptomoneda);
 
 // =================== MIDDLEWARE DE VALIDACIÓN DE RUTAS ===================
 

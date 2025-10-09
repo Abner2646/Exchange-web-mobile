@@ -4,7 +4,7 @@ const router = Router();
 
 // Middleware
 const { authenticateToken } = require('../middleware/authMiddleware.js');
-const { isAdmin } = require('../middleware/adminMiddleware.js');
+const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
 
 // Importa el controlador
 const ofertaP2PController = require('../controllers/ofertaP2P.controller.js');

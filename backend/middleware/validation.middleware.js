@@ -1,4 +1,5 @@
-// middlewares/validation.middleware.js
+// middleware/validation.middleware.js
+
 const { body, param, query, validationResult } = require('express-validator');
 const { Criptomoneda } = require('../models');
 

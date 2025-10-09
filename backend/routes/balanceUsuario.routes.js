@@ -11,17 +11,17 @@ const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
 
 // =============== ÚTILES POR AHORA ===============
 // GET /api/balances/my/balances - Obtener mis balances
-router.get('/my/balances', authenticateToken, balanceUserController.getMyBalances); //Bien
+router.get('/my/balances', authenticateToken, balanceUserController.getMyBalances); // Bien
 
 // PUT /api/balances/user/:userId/crypto/:criptomonedaId - Actualizar balance (en realidad añadir, suma)
-router.put('/user/:userId/crypto/:criptomonedaId', authenticateToken, balanceUserController.updateBalance);
-// {"amount": 5}
+router.put('/user/:userId/crypto/:criptomonedaId', authenticateToken, isSuperAdmin, balanceUserController.updateBalance); // Bien
+// {"amount": 100}
 
 // =============== NO TESTEADO ===============
 
 // RUTAS PÚBLICAS/ADMIN
 // GET /api/balances - Listar todos los balances (admin)
-router.get('/', /*isAdmin,*/ balanceUserController.getBalances); // Bien
+router.get('/', isAdmin, balanceUserController.getBalances); // Bien
 
 // GET /api/balances/stats - Estadísticas de balances (admin)
 router.get('/stats', isAdmin, balanceUserController.getBalanceStats);
@@ -33,27 +33,27 @@ router.get('/:id', isAdmin, balanceUserController.getBalanceById);
 
 // RUTAS POR USUARIO
 // GET /api/balances/user/:userId - Obtener balances de un usuario específico
-router.get('/user/:userId', authenticateToken, balanceUserController.getBalancesByUser);
+router.get('/user/:userId', authenticateToken, isAdmin, balanceUserController.getBalancesByUser);
 
 // GET /api/balances/user/:userId/crypto/:criptomonedaId - Balance específico usuario+crypto
-router.get('/user/:userId/crypto/:criptomonedaId', authenticateToken, balanceUserController.getBalanceByUserAndCrypto);
+router.get('/user/:userId/crypto/:criptomonedaId', authenticateToken, isAdmin, balanceUserController.getBalanceByUserAndCrypto);
 
 // GET /api/balances/user/:userId/crypto/:criptomonedaId/total - Balance total (disponible + bloqueado)
-router.get('/user/:userId/crypto/:criptomonedaId/total', authenticateToken, balanceUserController.getTotalBalance);
+router.get('/user/:userId/crypto/:criptomonedaId/total', authenticateToken, isAdmin, balanceUserController.getTotalBalance);
 
 // GET /api/balances/user/:userId/crypto/:criptomonedaId/check - Verificar balance disponible
-router.get('/user/:userId/crypto/:criptomonedaId/check', authenticateToken, balanceUserController.checkAvailableBalance);
+router.get('/user/:userId/crypto/:criptomonedaId/check', authenticateToken, isAdmin, balanceUserController.checkAvailableBalance);
 
 // =============== RUTAS DE MODIFICACIÓN (admin) ===============
 
 // POST /api/balances/user/:userId/crypto/:criptomonedaId/block - Bloquear balance
-router.post('/user/:userId/crypto/:criptomonedaId/block', authenticateToken, balanceUserController.blockBalance);
+router.post('/user/:userId/crypto/:criptomonedaId/block', authenticateToken, isAdmin, balanceUserController.blockBalance);
 
 // POST /api/balances/user/:userId/crypto/:criptomonedaId/unblock - Desbloquear balance
-router.post('/user/:userId/crypto/:criptomonedaId/unblock', authenticateToken, balanceUserController.unblockBalance);
+router.post('/user/:userId/crypto/:criptomonedaId/unblock', authenticateToken, isAdmin, balanceUserController.unblockBalance);
 
 // POST /api/balances/transfer - Transferir balance entre usuarios
-router.post('/transfer', authenticateToken, balanceUserController.transferBalance);
+router.post('/transfer', authenticateToken, isAdmin, balanceUserController.transferBalance);
 
 // RUTAS POR CRIPTOMONEDA
 // GET /api/balances/crypto/:criptomonedaId/users - Usuarios con balance en una crypto

@@ -4,7 +4,7 @@ const router = Router();
 
 // Middleware
 const { authenticateToken } = require('../middleware/authMiddleware.js');
-const { isAdmin } = require('../middleware/adminMiddleware.js');
+const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
 
 // Importa el controlador
 const notificacionController = require('../controllers/notificaciones.controller.js');
@@ -35,7 +35,7 @@ router.patch('/:id/read', authenticateToken, notificacionController.markAsRead);
 router.patch('/:id/unread', authenticateToken, notificacionController.markAsUnread);
 
 // --------------------- RUTAS CRUD BÁSICAS --------------------- //
-
+/*
 // Obtener todas las notificaciones (admin)
 router.get('/', authenticateToken, isAdmin, notificacionController.getNotificaciones);
 
@@ -83,5 +83,5 @@ router.post('/admin/cleanup', authenticateToken, isAdmin, notificacionController
 
 // Eliminar notificaciones antiguas con parámetros
 router.delete('/admin/old', authenticateToken, isAdmin, notificacionController.deleteOldNotifications);
-
+*/
 module.exports = router;

@@ -2,11 +2,12 @@
 const { Router } = require('express');
 const router = Router();
 
-// Middleware de autenticación
-const { authenticateToken } = require('../middleware/authMiddleware.js');
-
 // Importa el controlador de direcciones de depósito
 const direccionDepositoController = require('../controllers/direccionDeposito.controller.js');
+
+// Middleware de autenticación
+const { authenticateToken } = require('../middleware/authMiddleware.js');
+const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
 
 // --------------------- RUTAS CRUD BÁSICAS --------------------- //
 
@@ -45,13 +46,13 @@ router.get('/user/me', authenticateToken, direccionDepositoController.getMyDirec
 router.get('/user/me/crypto/:criptomonedaId', authenticateToken, direccionDepositoController.getMyDireccionForCrypto);
 
 // Obtener direcciones de depósito por usuario específico (admin)
-router.get('/user/:userId', authenticateToken, direccionDepositoController.getDireccionesByUser);
+router.get('/user/:userId', authenticateToken, isAdmin, direccionDepositoController.getDireccionesByUser);
 
 // Obtener dirección específica por usuario y criptomoneda (admin)
-router.get('/user/:userId/crypto/:criptomonedaId', authenticateToken, direccionDepositoController.getDireccionByUserAndCrypto);
+router.get('/user/:userId/crypto/:criptomonedaId', authenticateToken, isAdmin, direccionDepositoController.getDireccionByUserAndCrypto);
 
 // --------------------- RUTAS POR WALLET --------------------- //
-
+/*
 // Obtener direcciones por wallet maestra
 router.get('/wallet/:walletId', authenticateToken, direccionDepositoController.getDireccionesByWallet);
 
@@ -73,5 +74,5 @@ router.patch('/:id/toggle', authenticateToken, direccionDepositoController.toggl
 
 // Validar dirección para depósito
 router.post('/validate/deposit', authenticateToken, direccionDepositoController.validateForDeposit);
-
+*/
 module.exports = router;

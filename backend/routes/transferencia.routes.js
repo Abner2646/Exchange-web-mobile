@@ -4,7 +4,7 @@ const transferenciaController = require('../controllers/transferencia.controller
 
 // Middleware
 const { authenticateToken } = require('../middleware/authMiddleware.js');
-//const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
+const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
 
 // =============== RUTAS DE USUARIO AUTENTICADO ===============
 
@@ -51,9 +51,9 @@ router.post('/verify-funds', authenticateToken, transferenciaController.verifica
 // =============== RUTAS ADMINISTRATIVAS ===============
 
 // GET /api/transfers - Obtener todas las transferencias (admin)
-router.get('/', authenticateToken,/* isAdmin,*/ transferenciaController.getAllTransferencias);
+router.get('/', authenticateToken, isAdmin, transferenciaController.getAllTransferencias);
 
 // GET /api/transfers/stats - Estadísticas de transferencias (admin)
-router.get('/stats', authenticateToken, /*isAdmin,*/ transferenciaController.getTransferenciaStats);
+router.get('/stats', authenticateToken, isAdmin, transferenciaController.getTransferenciaStats);
 
 module.exports = router;

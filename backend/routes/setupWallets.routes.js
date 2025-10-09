@@ -5,11 +5,11 @@ const { authenticateToken } = require('../middleware/authMiddleware');
 const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware');
 
 // 1. VERIFICAR ESTADO DEL SETUP
-router.get('/status', /*process.env.NODE_ENV === 'development' ? [] : [authenticateToken, isAdmin],*/ setupController.checkSetupStatus);
+router.get('/status', isSuperAdmin, /*process.env.NODE_ENV === 'development' ? [] : [authenticateToken, isAdmin],*/ setupController.checkSetupStatus);
 
 // 2. EJECUTAR SETUP INICIAL (BTC generada, ETH desde .env, BNB generada)
-router.post('/initialize', authenticateToken, /*isSuperAdmin,*/ setupController.executeCompleteSetup);
-// JSON opcionales: Para forzar recreación: {"force": true}
+router.post('/initialize', authenticateToken, isSuperAdmin, setupController.executeCompleteSetup);
+// JSON opcionales: Para forzar recreación: {"force": true} //PELIGROSO! Podría romper los ids de criptomonedas y wallets preexistentes.
 
 // 3. CREAR WALLET INDIVIDUAL (busca criptomoneda existente por symbol)
 //router.post('/create-wallet', authenticateToken, /*isSuperAdmin,*/ setupController.createSingleWallet);

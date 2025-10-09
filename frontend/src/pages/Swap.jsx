@@ -131,8 +131,8 @@ const Swap = () => {
       </header>
 
       {/* Tipo de orden */}
-      <div className="swap-page-order-types">
-        {['Instantáneo', 'Recurrente', 'Límite'].map((type, index) => (
+      {/*<div className="swap-page-order-types">
+        {/*['Instantáneo', 'Recurrente', 'Límite'].map((type, index) => (
           <button
             key={type}
             className={`swap-page-order-type-btn ${index === 0 ? 'active' : ''}`}
@@ -141,6 +141,7 @@ const Swap = () => {
           </button>
         ))}
       </div>
+      */}
 
       {/* Contenedor principal del swap */}
       <div className="swap-page-main-container">

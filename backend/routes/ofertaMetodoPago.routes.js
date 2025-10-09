@@ -7,7 +7,8 @@ const { Router } = require('express');
 const router = Router();
 
 // Middleware de autenticación y autorización
-const { authenticateToken, requireAdmin } = require('../middleware/authMiddleware.js');
+const { authenticateToken} = require('../middleware/authMiddleware.js');
+const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
 
 // Importa el controlador de relaciones oferta-método de pago
 const ofertaMetodoPagoController = require('../controllers/ofertaMetodoPago.controller.js');
@@ -15,10 +16,10 @@ const ofertaMetodoPagoController = require('../controllers/ofertaMetodoPago.cont
 // --------------------- RUTAS CRUD BÁSICAS --------------------- //
 
 // Obtener todas las relaciones oferta-método de pago
-router.get('/', ofertaMetodoPagoController.getOfertaMetodosPago);
+router.get('/', authenticateToken, ofertaMetodoPagoController.getOfertaMetodosPago);
 
 // Obtener relación específica por ID
-router.get('/:id', ofertaMetodoPagoController.getOfertaMetodoPagoById);
+router.get('/:id', authenticateToken, ofertaMetodoPagoController.getOfertaMetodoPagoById);
 
 // Crear nueva relación oferta-método de pago
 router.post('/', authenticateToken, ofertaMetodoPagoController.createOfertaMetodoPago);
@@ -28,7 +29,7 @@ router.delete('/:id', authenticateToken, ofertaMetodoPagoController.deleteOferta
 
 // Eliminar relación específica por oferta y método
 router.delete('/oferta/:ofertaId/metodo/:metodoPagoId', authenticateToken, ofertaMetodoPagoController.deleteOfertaMetodoEspecifico);
-
+/*
 // --------------------- RUTAS POR OFERTA --------------------- //
 
 // Obtener métodos de pago de una oferta específica
@@ -74,19 +75,19 @@ router.get('/check/:ofertaId/:metodoPagoId', ofertaMetodoPagoController.checkRel
 router.get('/validate/:ofertaId/:metodoPagoId', ofertaMetodoPagoController.validateCompatibility);
 
 // --------------------- RUTAS DE DASHBOARD Y ANÁLISIS --------------------- //
-
+*/
 // Dashboard de relaciones oferta-método de pago (solo admin)
-router.get('/dashboard/overview', authenticateToken, /*requireAdmin,*/ ofertaMetodoPagoController.getOfertaMetodosDashboard);
+//router.get('/dashboard/overview', authenticateToken, /*requireAdmin,*/ ofertaMetodoPagoController.getOfertaMetodosDashboard);
 
 // Métricas de uso de métodos de pago
-router.get('/dashboard/usage-metrics', authenticateToken, /*requireAdmin,*/ ofertaMetodoPagoController.getMetodosUsageMetrics);
+//router.get('/dashboard/usage-metrics', authenticateToken, /*requireAdmin,*/ ofertaMetodoPagoController.getMetodosUsageMetrics);
 
 // --------------------- RUTAS ADMINISTRATIVAS --------------------- //
 
 // Obtener estadísticas de relaciones (solo admin)
-router.get('/admin/stats', authenticateToken, /*requireAdmin,*/ ofertaMetodoPagoController.getOfertaMetodoPagoStats);
+//router.get('/admin/stats', authenticateToken, /*requireAdmin,*/ ofertaMetodoPagoController.getOfertaMetodoPagoStats);
 
 // Exportar relaciones a CSV (solo admin)
-router.get('/admin/export', authenticateToken, /*requireAdmin,*/ ofertaMetodoPagoController.exportOfertaMetodosPago);
+//router.get('/admin/export', authenticateToken, /*requireAdmin,*/ ofertaMetodoPagoController.exportOfertaMetodosPago);
 
 module.exports = router;

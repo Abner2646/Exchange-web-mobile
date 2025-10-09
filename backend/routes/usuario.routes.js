@@ -73,12 +73,10 @@ router.post('/login', usuarioController.loginStep1); // Bien
 router.post('/verify-2fa', usuarioController.verify2FA); // Bien (verifica el JWT temporal en el controller, no middleware)
 
 // Reenviar código 2FA
-router.post('', usuarioController.resend2FACode);
+router.post('', usuarioController.resend2FACode); // Bien (verifica el JWT temporal en el controller, no middleware)
 
 // Activar/desactivar 2FA
 router.patch('/me/2fa-toggle', authenticateToken, usuarioController.toggle2FA); // Bien
-
-// Volver a mandar un código (sin hacer login de nuevo)
 
 // --------------------- RUTAS DE PERFIL PERSONAL --------------------- //
 

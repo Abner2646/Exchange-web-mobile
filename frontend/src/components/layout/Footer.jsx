@@ -16,8 +16,7 @@ const Footer = () => {
             <h4 className="footer-section-title">Enlaces</h4>
             <ul className="footer-links">
               <li><a href="#">Sobre Nosotros</a></li>
-              <li><a href="#">Servicios</a></li>
-              <li><a href="#">Contacto</a></li>
+              <li><a href="/super_admin">Soy administrador del sistema</a></li>
               <li><a href="#">Términos y condiciones del servicio</a></li>
             </ul>
           </div>

@@ -5,7 +5,7 @@ const express = require('express');
 const router = express.Router();
 const intercambioController = require('../controllers/intercambioExchange.controller');
 const { authenticateToken } = require('../middleware/authMiddleware');
-//const { isAdmin } = require('../middlewares/admin.middleware');
+const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware');
 
 // ================================
 // RUTAS PÚBLICAS

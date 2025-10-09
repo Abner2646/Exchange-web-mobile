@@ -87,7 +87,7 @@ function createUsuarioModel(sequelize) {
       where: { googleId, activo: true }
     });
   };
-
+/*// Méodo viejo, no hace super_admin al primer usuario.
   Usuario.createWithPassword = async (data) => {
     const { email, username, password, pais, ...otherData } = data;
 
@@ -116,6 +116,48 @@ function createUsuarioModel(sequelize) {
       username: username.toLowerCase(),
       passwordHash,
       pais,
+      ...otherData
+    };
+
+    const newUser = await Usuario.create(userData);
+    const token = newUser.generateUpdatedJWT();
+
+    return { user: newUser, token };
+  };*/
+
+  Usuario.createWithPassword = async (data) => {
+    const { email, username, password, pais, ...otherData } = data;
+
+    const existingUser = await Usuario.findOne({
+      where: {
+        [Op.or]: [
+          { email: email.toLowerCase() },
+          { username: username.toLowerCase() }
+        ]
+      }
+    });
+
+    if (existingUser) {
+      throw new Error('Email o username ya están en uso');
+    }
+
+    if (!password || password.length < 8) {
+      throw new Error('La contraseña debe tener al menos 8 caracteres');
+    }
+
+    // VERIFICAR SI ES EL PRIMER USUARIO
+    const userCount = await Usuario.count();
+    const rol = userCount === 0 ? 'super_admin' : 'normal';
+
+    const saltRounds = 12;
+    const passwordHash = await bcrypt.hash(password, saltRounds);
+
+    const userData = {
+      email: email.toLowerCase(),
+      username: username.toLowerCase(),
+      passwordHash,
+      pais,
+      rol, // Asignar rol según si es el primer usuario o no
       ...otherData
     };
 

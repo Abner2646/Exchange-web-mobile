@@ -6,7 +6,7 @@ const router = Router();
 
 // Middleware de autenticación
 const { authenticateToken } = require('../middleware/authMiddleware.js');
-const { isAdmin } = require('../middleware/adminMiddleware.js');
+const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
 
 // Importa el controlador de criptomonedas
 const criptomonedaController = require('../controllers/criptomoneda.controller.js');
@@ -20,7 +20,7 @@ router.get('/', authenticateToken, criptomonedaController.getCriptomonedas); // 
 router.get('/:id', authenticateToken, criptomonedaController.getCriptomonedaById);
 
 // Crear nueva criptomoneda
-router.post('/', authenticateToken, criptomonedaController.createCriptomoneda); //Bien
+router.post('/', authenticateToken, isSuperAdmin, criptomonedaController.createCriptomoneda); //Bien
 /*
 //USDT
 {
@@ -35,17 +35,17 @@ router.post('/', authenticateToken, criptomonedaController.createCriptomoneda); 
 */
 
 // Actualizar criptomoneda por ID
-router.put('/:id', authenticateToken, criptomonedaController.updateCriptomoneda);
+router.put('/:id', authenticateToken, isSuperAdmin, criptomonedaController.updateCriptomoneda);
 
 // Eliminar criptomoneda por ID
-router.delete('/:id', authenticateToken, criptomonedaController.deleteCriptomoneda);
+router.delete('/:id', authenticateToken, isSuperAdmin, criptomonedaController.deleteCriptomoneda);
 
 // ----------------------- DE LOS ICONOS -------------------------
 // Generar icono para una cripto específica
-router.post('/:id/generate-icon', criptomonedaController.generateIconUrl);
+router.post('/:id/generate-icon', isSuperAdmin, criptomonedaController.generateIconUrl);
 
 // Generar iconos para todas las criptos sin icono
-router.post('/generate-all-icons', criptomonedaController.generateAllIconUrls);
+router.post('/generate-all-icons', isSuperAdmin, criptomonedaController.generateAllIconUrls);
 
 /*Lista de simbolos de Cyptolcons.org soporta (más comunes):
 BTC, ETH, USDT, BNB, USDC, XRP, ADA, DOGE, SOL, DOT, MATIC, 
@@ -79,14 +79,14 @@ router.get('/public/active', criptomonedaController.getCriptomonedasActivas);
 router.get('/admin/stats', authenticateToken, criptomonedaController.getCriptomonedaStats);
 
 // Actualizar estado específico de criptomoneda
-router.patch('/:id/status', authenticateToken, criptomonedaController.updateCriptomonedaStatus);
+router.patch('/:id/status', authenticateToken, isSuperAdmin, criptomonedaController.updateCriptomonedaStatus);
 
 // Alternar estado de criptomoneda (activar/desactivar)
-router.patch('/:id/toggle', authenticateToken, criptomonedaController.toggleCriptomonedaStatus);
+router.patch('/:id/toggle', authenticateToken, isSuperAdmin, criptomonedaController.toggleCriptomonedaStatus);
 
 // --------------------- RUTAS DE TRANSACCIONES --------------------- //
 
 // Validar criptomoneda para transacción
-router.post('/validate/transaction', authenticateToken, criptomonedaController.validateForTransaction);
+router.post('/validate/transaction', authenticateToken, isSuperAdmin, criptomonedaController.validateForTransaction);
 
 module.exports = router;
