@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useAuth } from "../context/AuthContext"
 import {
   MagnifyingGlassIcon,
@@ -10,10 +10,14 @@ import {
   ExclamationTriangleIcon,
   ClockIcon,
   ArrowPathIcon,
+  BoltIcon,
+  BanknotesIcon,
 } from "@heroicons/react/24/outline"
 import "../styles/Transferencia.css"
 
 const API_URL = "http://localhost:3001/api"
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export default function Transferencia() {
   const { user, isAuthenticated } = useAuth()
@@ -46,6 +50,13 @@ export default function Transferencia() {
   const [historial, setHistorial] = useState([])
   const [loadingHistorial, setLoadingHistorial] = useState(false)
 
+  const [toast, setToast] = useState(null)
+
+  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false)
+
+  const dropdownRef = useRef(null)
+  const cryptoSearchRef = useRef(null)
+
   // Redirigir si no está autenticado
   useEffect(() => {
     if (!isAuthenticated) {
@@ -62,14 +73,14 @@ export default function Transferencia() {
     }
   }, [isAuthenticated])
 
-  // Buscar usuario por email
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (email && email.includes("@")) {
+      if (email && EMAIL_REGEX.test(email)) {
         buscarUsuario(email)
       } else {
         setDestinatario(null)
         setUserNotFound(false)
+        setSearchingUser(false)
       }
     }, 500)
 
@@ -85,31 +96,52 @@ export default function Transferencia() {
     }
   }, [cantidad, criptoSeleccionada])
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowCryptoDropdown(false)
+      }
+    }
+
+    if (showCryptoDropdown) {
+      document.addEventListener("mousedown", handleClickOutside)
+      cryptoSearchRef.current?.focus()
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [showCryptoDropdown])
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => {
+        setToast(null)
+      }, 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [toast])
+
   const cargarCriptomonedas = async () => {
     try {
       const token = localStorage.getItem("token")
-      console.log("[v0] Cargando criptomonedas desde:", `${API_URL}/criptomoneda/public/active`)
       const response = await fetch(`${API_URL}/criptomoneda/public/active`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       const data = await response.json()
-      console.log("[v0] Respuesta de criptomonedas:", data)
       if (Array.isArray(data)) {
-        console.log("[v0] Primera criptomoneda iconUrl:", data[0]?.iconUrl)
         setCriptomonedas(data)
       } else if (data && Array.isArray(data.data)) {
-        console.log("[v0] Primera criptomoneda iconUrl:", data.data[0]?.iconUrl)
         setCriptomonedas(data.data)
       } else if (data && Array.isArray(data.criptomonedas)) {
-        console.log("[v0] Primera criptomoneda iconUrl:", data.criptomonedas[0]?.iconUrl)
         setCriptomonedas(data.criptomonedas)
       } else {
-        console.error("Formato de respuesta inesperado:", data)
         setCriptomonedas([])
       }
     } catch (err) {
       console.error("Error cargando criptomonedas:", err)
       setCriptomonedas([])
+      showToast("Error al cargar criptomonedas", "error")
     }
   }
 
@@ -120,7 +152,6 @@ export default function Transferencia() {
         headers: { Authorization: `Bearer ${token}` },
       })
       const data = await response.json()
-      console.log("[v0] Balances recibidos:", data)
 
       if (Array.isArray(data)) {
         setBalances(data)
@@ -129,7 +160,6 @@ export default function Transferencia() {
       } else if (data && Array.isArray(data.balances)) {
         setBalances(data.balances)
       } else {
-        console.error("Formato de respuesta inesperado:", data)
         setBalances([])
       }
     } catch (err) {
@@ -142,12 +172,10 @@ export default function Transferencia() {
     setLoadingHistorial(true)
     try {
       const token = localStorage.getItem("token")
-      console.log("[v0] Cargando historial desde:", `${API_URL}/transferencia/my`)
       const response = await fetch(`${API_URL}/transferencia/my`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       const data = await response.json()
-      console.log("[v0] Respuesta de historial:", data)
 
       if (Array.isArray(data)) {
         setHistorial(data)
@@ -156,7 +184,6 @@ export default function Transferencia() {
       } else if (data && Array.isArray(data.data)) {
         setHistorial(data.data)
       } else {
-        console.error("Formato de respuesta inesperado:", data)
         setHistorial([])
       }
     } catch (err) {
@@ -172,17 +199,13 @@ export default function Transferencia() {
     setUserNotFound(false)
     try {
       const token = localStorage.getItem("token")
-      console.log("[v0] Buscando usuario:", `${API_URL}/usuario/search?q=${emailBusqueda}`)
-      console.log("[v0] IMPORTANTE: Verifica que la ruta /api/usuario/search esté descomentada en el backend")
       const response = await fetch(`${API_URL}/usuario/search?q=${emailBusqueda}&limit=1`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       const data = await response.json()
-      console.log("[v0] Respuesta de búsqueda de usuario:", data)
 
       if (data && data.length > 0) {
         const usuario = data[0]
-        // No permitir transferir a uno mismo
         if (usuario.id === user.id) {
           setError("No puedes transferir a tu propia cuenta")
           setDestinatario(null)
@@ -207,10 +230,6 @@ export default function Transferencia() {
   const verificarBalance = async () => {
     try {
       const token = localStorage.getItem("token")
-      console.log("[v0] Verificando balance para:", {
-        criptomonedaId: criptoSeleccionada.id,
-        cantidad: Number.parseFloat(cantidad),
-      })
       const response = await fetch(`${API_URL}/transferencia/verify-funds`, {
         method: "POST",
         headers: {
@@ -223,7 +242,6 @@ export default function Transferencia() {
         }),
       })
       const data = await response.json()
-      console.log("[v0] Respuesta de verificación de fondos:", data)
       setBalanceInsuficiente(!data.tieneFondos)
     } catch (err) {
       console.error("Error verificando fondos:", err)
@@ -233,11 +251,13 @@ export default function Transferencia() {
   const handleEnviarTransferencia = async () => {
     if (!destinatario || !criptoSeleccionada || !cantidad || Number.parseFloat(cantidad) <= 0) {
       setError("Por favor completa todos los campos correctamente")
+      showToast("Por favor completa todos los campos", "error")
       return
     }
 
     if (balanceInsuficiente) {
       setError("Balance insuficiente para realizar la transferencia")
+      showToast("Balance insuficiente", "error")
       return
     }
 
@@ -265,12 +285,15 @@ export default function Transferencia() {
       if (response.ok) {
         setTransferId(data.data.id)
         setShowVerificationModal(true)
+        showToast("Código de verificación enviado a tu email", "success")
       } else {
         setError(data.error || "Error al crear la transferencia")
+        showToast(data.error || "Error al crear la transferencia", "error")
       }
     } catch (err) {
       console.error("Error enviando transferencia:", err)
       setError("Error de conexión. Intenta nuevamente.")
+      showToast("Error de conexión", "error")
     } finally {
       setLoading(false)
     }
@@ -303,26 +326,31 @@ export default function Transferencia() {
       const data = await response.json()
 
       if (response.ok) {
-        // Transferencia exitosa
         setShowVerificationModal(false)
-        setVerificationCode(["", "", "", "", "", ""])
-        setEmail("")
-        setDestinatario(null)
-        setCriptoSeleccionada(null)
-        setCantidad("")
-        setTransferId(null)
+        setShowSuccessAnimation(true)
 
-        // Recargar balances e historial
-        cargarBalances()
-        cargarHistorial()
+        setTimeout(() => {
+          setShowSuccessAnimation(false)
+          setVerificationCode(["", "", "", "", "", ""])
+          setEmail("")
+          setDestinatario(null)
+          setCriptoSeleccionada(null)
+          setCantidad("")
+          setTransferId(null)
 
-        alert("¡Transferencia completada exitosamente!")
+          cargarBalances()
+          cargarHistorial()
+
+          showToast("¡Transferencia completada exitosamente!", "success")
+        }, 2000)
       } else {
         setError(data.error || "Código incorrecto")
+        showToast(data.error || "Código incorrecto", "error")
       }
     } catch (err) {
       console.error("Error verificando código:", err)
       setError("Error de conexión. Intenta nuevamente.")
+      showToast("Error de conexión", "error")
     } finally {
       setVerifying(false)
     }
@@ -337,10 +365,11 @@ export default function Transferencia() {
       })
 
       if (response.ok) {
-        alert("Código reenviado a tu email")
+        showToast("Código reenviado a tu email", "success")
       }
     } catch (err) {
       console.error("Error reenviando código:", err)
+      showToast("Error al reenviar código", "error")
     }
   }
 
@@ -351,10 +380,20 @@ export default function Transferencia() {
     newCode[index] = value
     setVerificationCode(newCode)
 
-    // Auto-focus siguiente input
     if (value && index < 5) {
       document.getElementById(`code-${index + 1}`)?.focus()
     }
+  }
+
+  const handleCodePaste = (e) => {
+    e.preventDefault()
+    const pastedData = e.clipboardData.getData("text").slice(0, 6)
+    const newCode = pastedData.split("").concat(Array(6).fill("")).slice(0, 6)
+    setVerificationCode(newCode)
+
+    // Focus last filled input or first empty
+    const lastIndex = Math.min(pastedData.length, 5)
+    document.getElementById(`code-${lastIndex}`)?.focus()
   }
 
   const handleCodeKeyDown = (index, e) => {
@@ -363,10 +402,13 @@ export default function Transferencia() {
     }
   }
 
+  const showToast = (message, type = "info") => {
+    setToast({ message, type })
+  }
+
   const getBalanceDisponible = () => {
     if (!criptoSeleccionada) return 0
     const balance = balances.find((b) => b.criptomonedaId === criptoSeleccionada.id)
-    console.log("[v0] Balance encontrado para", criptoSeleccionada.symbol, ":", balance)
     return balance ? Number.parseFloat(balance.balanceDisponible) : 0
   }
 
@@ -393,101 +435,57 @@ export default function Transferencia() {
       <div className="transferencia-content">
         <h1 className="transferencia-title">Transferir Criptomonedas</h1>
 
-        {/* Formulario de transferencia */}
-        <div className="transferencia-card">
-          {/* Campo de email destinatario */}
-          <div className="form-group">
-            <label className="form-label">
-              <MagnifyingGlassIcon className="label-icon" />
-              Email del destinatario
-            </label>
-            <input
-              type="email"
-              className="form-input"
-              placeholder="ejemplo@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            {searchingUser && (
-              <div className="input-feedback info">
-                <ArrowPathIcon className="feedback-icon spinning" />
-                Buscando usuario...
-              </div>
-            )}
-            {destinatario && (
-              <div className="input-feedback success">
-                <CheckCircleIcon className="feedback-icon" />
-                Usuario encontrado: <strong>{destinatario.username}</strong>
-              </div>
-            )}
-            {userNotFound && email.includes("@") && (
-              <div className="input-feedback error">
-                <ExclamationTriangleIcon className="feedback-icon" />
-                Usuario no encontrado
-              </div>
-            )}
-          </div>
-
-          {/* Selector de criptomoneda */}
-          <div className="form-group">
-            <label className="form-label">Criptomoneda</label>
-            <div className="crypto-selector">
-              <button
-                type="button"
-                className="crypto-selector-button"
-                onClick={() => setShowCryptoDropdown(!showCryptoDropdown)}
-              >
-                {criptoSeleccionada ? (
-                  <div className="crypto-selected">
-                    <img
-                      src={criptoSeleccionada.iconUrl || "/placeholder.svg"}
-                      alt={criptoSeleccionada.symbol}
-                      className="crypto-icon"
-                      onError={(e) => {
-                        e.target.style.display = "none"
-                        e.target.nextSibling.style.display = "flex"
-                      }}
-                    />
-                    <div className="crypto-icon-fallback" style={{ display: "none" }}>
-                      {criptoSeleccionada.symbol}
-                    </div>
-                    <div className="crypto-info">
-                      <span className="crypto-symbol">{criptoSeleccionada.symbol}</span>
-                      <span className="crypto-name">{criptoSeleccionada.nombre}</span>
-                    </div>
+        <div className="transferencia-layout">
+          {/* Left column - Form */}
+          <div className="transferencia-form-column">
+            <div className="transferencia-card">
+              {/* Campo de email destinatario */}
+              <div className="form-group">
+                <label className="form-label">
+                  <MagnifyingGlassIcon className="label-icon" />
+                  Email del destinatario
+                </label>
+                <input
+                  type="email"
+                  className="form-input"
+                  placeholder="ejemplo@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+                {searchingUser && (
+                  <div className="input-feedback info">
+                    <div className="skeleton-loader"></div>
+                    <span>Verificando usuario...</span>
                   </div>
-                ) : (
-                  <span className="crypto-placeholder">Seleccionar criptomoneda</span>
                 )}
-              </button>
-
-              {showCryptoDropdown && (
-                <div className="crypto-dropdown">
-                  <div className="crypto-search">
-                    <MagnifyingGlassIcon className="search-icon" />
-                    <input
-                      type="text"
-                      placeholder="Buscar..."
-                      value={searchCrypto}
-                      onChange={(e) => setSearchCrypto(e.target.value)}
-                      className="crypto-search-input"
-                    />
+                {destinatario && (
+                  <div className="input-feedback success">
+                    <CheckCircleIcon className="feedback-icon" />
+                    Usuario encontrado: <strong>{destinatario.username}</strong>
                   </div>
-                  <div className="crypto-list">
-                    {criptosFiltradas.map((crypto) => (
-                      <button
-                        key={crypto.id}
-                        type="button"
-                        className="crypto-item"
-                        onClick={() => {
-                          setCriptoSeleccionada(crypto)
-                          setShowCryptoDropdown(false)
-                          setSearchCrypto("")
-                        }}
-                      >
+                )}
+                {userNotFound && EMAIL_REGEX.test(email) && (
+                  <div className="input-feedback error">
+                    <ExclamationTriangleIcon className="feedback-icon" />
+                    Usuario no encontrado
+                  </div>
+                )}
+              </div>
+
+              {/* Selector de criptomoneda */}
+              <div className="form-group">
+                <label className="form-label">Criptomoneda</label>
+                <div className="crypto-selector" ref={dropdownRef}>
+                  <button
+                    type="button"
+                    className="crypto-selector-button"
+                    onClick={() => setShowCryptoDropdown(!showCryptoDropdown)}
+                  >
+                    {criptoSeleccionada ? (
+                      <div className="crypto-selected">
                         <img
-                          src={crypto.iconUrl || "/placeholder.svg"}
-                          alt={crypto.symbol}
+                          src={criptoSeleccionada.iconUrl || "/placeholder.svg"}
+                          alt={criptoSeleccionada.symbol}
                           className="crypto-icon"
                           onError={(e) => {
                             e.target.style.display = "none"
@@ -495,74 +493,186 @@ export default function Transferencia() {
                           }}
                         />
                         <div className="crypto-icon-fallback" style={{ display: "none" }}>
-                          {crypto.symbol}
+                          {criptoSeleccionada.symbol.slice(0, 3)}
                         </div>
                         <div className="crypto-info">
-                          <span className="crypto-symbol">{crypto.symbol}</span>
-                          <span className="crypto-name">{crypto.nombre}</span>
+                          <span className="crypto-symbol">{criptoSeleccionada.symbol}</span>
+                          <span className="crypto-name">{criptoSeleccionada.nombre}</span>
                         </div>
-                      </button>
-                    ))}
+                      </div>
+                    ) : (
+                      <span className="crypto-placeholder">Seleccionar criptomoneda</span>
+                    )}
+                  </button>
+
+                  {showCryptoDropdown && (
+                    <div className="crypto-dropdown">
+                      <div className="crypto-search">
+                        <MagnifyingGlassIcon className="search-icon" />
+                        <input
+                          ref={cryptoSearchRef}
+                          type="text"
+                          placeholder="Buscar..."
+                          value={searchCrypto}
+                          onChange={(e) => setSearchCrypto(e.target.value)}
+                          className="crypto-search-input"
+                        />
+                      </div>
+                      <div className="crypto-list">
+                        {criptosFiltradas.map((crypto) => (
+                          <button
+                            key={crypto.id}
+                            type="button"
+                            className="crypto-item"
+                            onClick={() => {
+                              setCriptoSeleccionada(crypto)
+                              setShowCryptoDropdown(false)
+                              setSearchCrypto("")
+                            }}
+                          >
+                            <img
+                              src={crypto.iconUrl || "/placeholder.svg"}
+                              alt={crypto.symbol}
+                              className="crypto-icon-small"
+                              onError={(e) => {
+                                e.target.style.display = "none"
+                                e.target.nextSibling.style.display = "flex"
+                              }}
+                            />
+                            <div className="crypto-icon-fallback-small" style={{ display: "none" }}>
+                              {crypto.symbol.slice(0, 3)}
+                            </div>
+                            <span className="crypto-item-symbol">{crypto.symbol}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Campo de cantidad */}
+              <div className="form-group">
+                <label className="form-label">
+                  Cantidad
+                  {criptoSeleccionada && (
+                    <span className="balance-info">
+                      Disponible: {getBalanceDisponible()} {criptoSeleccionada.symbol}
+                    </span>
+                  )}
+                </label>
+                <div className="amount-input-wrapper">
+                  <input
+                    type="number"
+                    className="form-input"
+                    placeholder="0.00"
+                    value={cantidad}
+                    onChange={(e) => setCantidad(e.target.value)}
+                    step="0.00000001"
+                    min="0"
+                  />
+                  {criptoSeleccionada && (
+                    <button
+                      type="button"
+                      className="max-button"
+                      onClick={() => setCantidad(getBalanceDisponible().toString())}
+                    >
+                      MÁX
+                    </button>
+                  )}
+                </div>
+                {balanceInsuficiente && (
+                  <div className="input-feedback error">
+                    <ExclamationTriangleIcon className="feedback-icon" />
+                    Balance insuficiente
                   </div>
+                )}
+              </div>
+
+              <div className="transfer-info">
+                <div className="transfer-info-item">
+                  <BanknotesIcon className="info-icon" />
+                  <span>Sin comisión</span>
+                </div>
+                <div className="transfer-info-item">
+                  <BoltIcon className="info-icon" />
+                  <span>Instantáneo</span>
+                </div>
+              </div>
+
+              {/* Mensaje de error general */}
+              {error && (
+                <div className="error-message">
+                  <ExclamationTriangleIcon className="error-icon" />
+                  {error}
                 </div>
               )}
             </div>
           </div>
 
-          {/* Campo de cantidad */}
-          <div className="form-group">
-            <label className="form-label">
-              Cantidad
-              {criptoSeleccionada && (
-                <span className="balance-info">
-                  Disponible: {getBalanceDisponible()} {criptoSeleccionada.symbol}
-                </span>
+          {/* Right column - Summary */}
+          <div className="transferencia-summary-column">
+            <div className="summary-card">
+              <h3 className="summary-title">Resumen</h3>
+
+              {criptoSeleccionada ? (
+                <div className="summary-content">
+                  <div className="summary-item">
+                    <span className="summary-label">Criptomoneda</span>
+                    <div className="summary-crypto">
+                      <img
+                        src={criptoSeleccionada.iconUrl || "/placeholder.svg"}
+                        alt={criptoSeleccionada.symbol}
+                        className="summary-crypto-icon"
+                        onError={(e) => {
+                          e.target.style.display = "none"
+                          e.target.nextSibling.style.display = "flex"
+                        }}
+                      />
+                      <div className="crypto-icon-fallback-summary" style={{ display: "none" }}>
+                        {criptoSeleccionada.symbol.slice(0, 3)}
+                      </div>
+                      <span className="summary-value">{criptoSeleccionada.symbol}</span>
+                    </div>
+                  </div>
+
+                  <div className="summary-item">
+                    <span className="summary-label">Balance disponible</span>
+                    <span className="summary-value">
+                      {getBalanceDisponible()} {criptoSeleccionada.symbol}
+                    </span>
+                  </div>
+
+                  {destinatario && (
+                    <div className="summary-item">
+                      <span className="summary-label">Enviar a</span>
+                      <span className="summary-value">{destinatario.username}</span>
+                    </div>
+                  )}
+
+                  {cantidad && Number.parseFloat(cantidad) > 0 && (
+                    <div className="summary-item highlight">
+                      <span className="summary-label">Monto a enviar</span>
+                      <span className="summary-value-large">
+                        {cantidad} {criptoSeleccionada.symbol}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="summary-empty">
+                  <p>Selecciona una criptomoneda para ver el resumen</p>
+                </div>
               )}
-            </label>
-            <div className="amount-input-wrapper">
-              <input
-                type="number"
-                className="form-input"
-                placeholder="0.00"
-                value={cantidad}
-                onChange={(e) => setCantidad(e.target.value)}
-                step="0.00000001"
-                min="0"
-              />
-              {criptoSeleccionada && (
-                <button
-                  type="button"
-                  className="max-button"
-                  onClick={() => setCantidad(getBalanceDisponible().toString())}
-                >
-                  MÁX
-                </button>
-              )}
+
+              <button className="submit-button" onClick={handleEnviarTransferencia} disabled={!puedeEnviar}>
+                <PaperAirplaneIcon className="button-icon" />
+                {loading ? "Enviando..." : "Enviar Transferencia"}
+              </button>
             </div>
-            {balanceInsuficiente && (
-              <div className="input-feedback error">
-                <ExclamationTriangleIcon className="feedback-icon" />
-                Balance insuficiente
-              </div>
-            )}
           </div>
-
-          {/* Mensaje de error general */}
-          {error && (
-            <div className="error-message">
-              <ExclamationTriangleIcon className="error-icon" />
-              {error}
-            </div>
-          )}
-
-          {/* Botón de enviar */}
-          <button className="submit-button" onClick={handleEnviarTransferencia} disabled={!puedeEnviar}>
-            <PaperAirplaneIcon className="button-icon" />
-            {loading ? "Enviando..." : "Enviar Transferencia"}
-          </button>
         </div>
 
-        {/* Historial de transferencias */}
         <div className="historial-section">
           <h2 className="historial-title">Transferencias Enviadas</h2>
 
@@ -589,37 +699,43 @@ export default function Transferencia() {
                   </tr>
                 </thead>
                 <tbody>
-                  {historial.map((transfer) => (
-                    <tr key={transfer.id}>
-                      <td>{new Date(transfer.createdAt).toLocaleString("es-AR")}</td>
-                      <td>{transfer.destinatario?.username || "N/A"}</td>
-                      <td>
-                        <div className="crypto-cell">
-                          <img
-                            src={transfer.criptomonedaTransferencia?.iconUrl || "/placeholder.svg"}
-                            alt={transfer.criptomonedaTransferencia?.symbol}
-                            className="crypto-icon-small"
-                            onError={(e) => {
-                              e.target.style.display = "none"
-                              e.target.nextSibling.style.display = "flex"
-                            }}
-                          />
-                          <div className="crypto-icon-fallback-small" style={{ display: "none" }}>
+                  {historial.map((transfer) => {
+                    const cryptoIconUrl = transfer.criptomonedaTransferencia?.symbol
+                      ? `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/svg/color/${transfer.criptomonedaTransferencia.symbol.toLowerCase()}.svg`
+                      : "/placeholder.svg"
+
+                    return (
+                      <tr key={transfer.id}>
+                        <td>{new Date(transfer.created_at).toLocaleString("es-AR")}</td>
+                        <td>{transfer.destinatario?.username || "N/A"}</td>
+                        <td>
+                          <div className="crypto-cell">
+                            <img
+                              src={cryptoIconUrl || "/placeholder.svg"}
+                              alt={transfer.criptomonedaTransferencia?.symbol}
+                              className="crypto-icon-small"
+                              onError={(e) => {
+                                e.target.style.display = "none"
+                                e.target.nextSibling.style.display = "flex"
+                              }}
+                            />
+                            <div className="crypto-icon-fallback-small" style={{ display: "none" }}>
+                              {transfer.criptomonedaTransferencia?.symbol?.slice(0, 3)}
+                            </div>
                             {transfer.criptomonedaTransferencia?.symbol}
                           </div>
-                          {transfer.criptomonedaTransferencia?.symbol}
-                        </div>
-                      </td>
-                      <td>{Number.parseFloat(transfer.cantidad).toFixed(8)}</td>
-                      <td>
-                        <span className={`status-badge status-${transfer.estado}`}>
-                          {transfer.estado === "completada" && "Completada"}
-                          {transfer.estado === "pendiente" && "Pendiente"}
-                          {transfer.estado === "cancelada" && "Cancelada"}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td>{Number.parseFloat(transfer.cantidad).toFixed(8)}</td>
+                        <td>
+                          <span className={`status-badge status-${transfer.estado}`}>
+                            {transfer.estado === "completada" && "Completada"}
+                            {transfer.estado === "pendiente" && "Pendiente"}
+                            {transfer.estado === "cancelada" && "Cancelada"}
+                          </span>
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
@@ -658,6 +774,7 @@ export default function Transferencia() {
                   value={digit}
                   onChange={(e) => handleCodeInput(index, e.target.value)}
                   onKeyDown={(e) => handleCodeKeyDown(index, e)}
+                  onPaste={handleCodePaste}
                 />
               ))}
             </div>
@@ -681,6 +798,29 @@ export default function Transferencia() {
               Reenviar código
             </button>
           </div>
+        </div>
+      )}
+
+      {showSuccessAnimation && (
+        <div className="success-overlay">
+          <div className="success-animation">
+            <div className="success-checkmark">
+              <CheckCircleIcon className="success-icon" />
+            </div>
+            <h2 className="success-title">¡Transferencia Exitosa!</h2>
+            <p className="success-message">Tu transferencia se ha completado correctamente</p>
+          </div>
+        </div>
+      )}
+
+      {toast && (
+        <div className={`toast toast-${toast.type}`}>
+          {toast.type === "success" && <CheckCircleIcon className="toast-icon" />}
+          {toast.type === "error" && <ExclamationTriangleIcon className="toast-icon" />}
+          <span>{toast.message}</span>
+          <button className="toast-close" onClick={() => setToast(null)}>
+            <XMarkIcon className="toast-close-icon" />
+          </button>
         </div>
       )}
     </div>
