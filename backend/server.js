@@ -113,3 +113,48 @@ process.on('SIGINT', async () => {
   await sequelize.close();
   process.exit(0);
 });
+
+/* ========== PARA EL CERTIFICADO SSL ========= */
+const fs = require('fs');
+const http = require('http');
+const https = require('https');
+const path = require('path');
+
+async function startServer() {
+  try {
+    await sequelize.authenticate();
+    console.log('✅ Database connected');
+
+    if (process.env.NODE_ENV === 'development') {
+      await sequelize.sync({ alter: false });
+      console.log('✅ Database synchronized');
+    }
+
+    // 🔐 Configuración HTTPS local
+    const sslPath = path.join(__dirname, 'ssl');
+    const sslOptions = {
+      key: fs.readFileSync(path.join(sslPath, 'key.pem')),
+      cert: fs.readFileSync(path.join(sslPath, 'cert.pem')),
+    };
+
+    // 🚀 Servidor HTTPS
+    const httpsServer = https.createServer(sslOptions, app);
+    httpsServer.listen(PORT, () => {
+      console.log(`🚀 HTTPS Server running on https://localhost:${PORT}`);
+    });
+
+    // 🌍 Servidor HTTP → redirige a HTTPS
+    const httpServer = http.createServer((req, res) => {
+      const host = req.headers.host ? req.headers.host.split(':')[0] : 'localhost';
+      res.writeHead(301, { "Location": `https://${host}:${PORT}${req.url}` });
+      res.end();
+    });
+    httpServer.listen(3000, () => console.log('🌍 HTTP server redirecting to HTTPS'));
+
+    const JobManager = require('./jobs');
+    await JobManager.startAll();
+  } catch (error) {
+    console.error('❌ Server error:', error);
+    process.exit(1);
+  }
+}

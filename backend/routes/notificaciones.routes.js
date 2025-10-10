@@ -23,6 +23,12 @@ router.get('/me/unread-count/by-type', authenticateToken, notificacionController
 // Marcar todas mis notificaciones como leídas
 router.patch('/me/mark-all-read', authenticateToken, notificacionController.markAllAsRead); // Bien
 
+// Marcar una notificación específica como leída
+router.patch('/me/:id/mark-read', authenticateToken, notificacionController.markAsRead);
+
+// Marcar una notificación específica como no leída (opcional)
+router.patch('/me/:id/mark-unread', authenticateToken, notificacionController.markAsUnread);
+
 // Eliminar todas mis notificaciones leídas
 router.delete('/me/read', authenticateToken, notificacionController.deleteAllRead); //
 
