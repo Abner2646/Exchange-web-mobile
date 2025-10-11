@@ -115,6 +115,7 @@ process.on('SIGINT', async () => {
 });
 
 /* ========== PARA EL CERTIFICADO SSL ========= */
+/*
 const fs = require('fs');
 const http = require('http');
 const https = require('https');
@@ -158,3 +159,5 @@ async function startServer() {
     process.exit(1);
   }
 }
+
+*/
