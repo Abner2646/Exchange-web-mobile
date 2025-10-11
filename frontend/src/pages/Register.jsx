@@ -91,7 +91,7 @@ const Register = () => {
         try {
             const { confirmPassword, ...registerData } = formData;
             
-            const res = await fetch('http://localhost:3001/api/usuario/register', {
+            const res = await fetch('https://localhost:3001/api/usuario/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(registerData),
@@ -112,7 +112,7 @@ const Register = () => {
                 navigate('/');
             } else {
                 // Si no hay token, hacer login con las credenciales usando el endpoint correcto
-                const loginRes = await fetch('http://localhost:3001/api/usuario/login', {
+                const loginRes = await fetch('https://localhost:3001/api/usuario/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 

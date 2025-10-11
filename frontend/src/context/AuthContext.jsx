@@ -13,7 +13,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   
-  const API_URL = 'http://localhost:3001'; // Cambia al puerto de tu backend
+  const API_URL = 'https://localhost:3001'; // Cambia al puerto de tu backend
 
   useEffect(() => {
     const token = localStorage.getItem('token');

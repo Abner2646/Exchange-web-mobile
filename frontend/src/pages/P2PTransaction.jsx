@@ -15,7 +15,7 @@ const MyP2P = () => {
   const [error, setError] = useState('');
   const [initialLoad, setInitialLoad] = useState(true);
 
-  const API_URL = 'http://localhost:3001/api';
+  const API_URL = 'https://localhost:3001/api';
 
   // Cargar ofertas del usuario
   const loadOfertas = async () => {

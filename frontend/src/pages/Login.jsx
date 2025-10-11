@@ -35,7 +35,7 @@ const Login = () => {
         try {
             if (!requires2FA) {
                 // Primer paso: verificar credenciales
-                const res = await fetch('http://localhost:3001/api/usuario/login', {
+                const res = await fetch('https://localhost:3001/api/usuario/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ emailOrUsername, password }),
@@ -61,7 +61,7 @@ const Login = () => {
                 }
             } else {
                 // Segundo paso: verificar código 2FA
-                const res = await fetch('http://localhost:3001/api/usuario/verify-2fa', {
+                const res = await fetch('https://localhost:3001/api/usuario/verify-2fa', {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
@@ -98,7 +98,7 @@ const Login = () => {
             setLoading(true);
             setError('');
             
-            const res = await fetch('http://localhost:3001/api/usuario/resend-2fa', {
+            const res = await fetch('https://localhost:3001/api/usuario/resend-2fa', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ preAuthToken }),

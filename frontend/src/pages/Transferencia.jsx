@@ -16,7 +16,7 @@ import {
 } from "@heroicons/react/24/outline"
 import "../styles/Transferencia.css"
 
-const API_URL = "http://localhost:3001/api"
+const API_URL = "https://localhost:3001/api"
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -943,7 +943,7 @@ export default function Transferencia() {
             </div>
           ) : filteredHistory.length === 0 ? (
             <div className="empty-historial">
-              <svg className="empty-illustration" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <svg className="empty-illustration" viewBox="0 0 200 200" fill="none" xmlns="https://www.w3.org/2000/svg">
                 <circle cx="100" cy="100" r="80" stroke="currentColor" strokeWidth="2" opacity="0.2" />
                 <path
                   d="M70 100L90 120L130 80"

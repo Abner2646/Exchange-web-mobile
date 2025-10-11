@@ -17,7 +17,7 @@ const P2PListingPage = () => {
   const [loading, setLoading] = useState(true);
   const [usuariosCache, setUsuariosCache] = useState({});
 
-  const API_URL = 'http://localhost:3001/api';
+  const API_URL = 'https://localhost:3001/api';
 
   useEffect(() => {
     if (!token) {

@@ -36,10 +36,10 @@ const CrearOfertaP2P = () => {
   const cargarDatosIniciales = async () => {
     try {
       const [resCryptos, resMetodos] = await Promise.all([
-        fetch('http://localhost:3001/api/criptomoneda', {
+        fetch('https://localhost:3001/api/criptomoneda', {
           headers: { 'Authorization': token }
         }),
-        fetch('http://localhost:3001/api/metodoPago/status/active', {
+        fetch('https://localhost:3001/api/metodoPago/status/active', {
           headers: { 'Authorization': token }  // ← Agregar esto
         })
       ]);
@@ -134,7 +134,7 @@ const CrearOfertaP2P = () => {
     setSuccessMsg('');
 
     try {
-      const response = await fetch('http://localhost:3001/api/ofertaP2P', {
+      const response = await fetch('https://localhost:3001/api/ofertaP2P', {
         method: 'POST',
         headers: {
           'Authorization': token,

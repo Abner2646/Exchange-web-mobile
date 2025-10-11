@@ -25,7 +25,7 @@ const BalancePage = () => {
         setLoading(true);
         
         // 1. Obtener balances del usuario
-        const balancesResponse = await fetch('http://localhost:3001/api/balances/my/balances', {
+        const balancesResponse = await fetch('https://localhost:3001/api/balances/my/balances', {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -55,7 +55,7 @@ const BalancePage = () => {
 
         // 3. Obtener SOLO las criptomonedas que tiene el usuario (en paralelo)
         const cryptoPromises = cryptoIds.map(id =>
-          fetch(`http://localhost:3001/api/criptomoneda/${id}`, {
+          fetch(`https://localhost:3001/api/criptomoneda/${id}`, {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
@@ -78,7 +78,7 @@ const BalancePage = () => {
         // Si no tiene BTC, agregarlo para obtener su precio
         if (!hasBTC) {
           try {
-            const btcResponse = await fetch('http://localhost:3001/api/criptomoneda/symbol/BTC', {
+            const btcResponse = await fetch('https://localhost:3001/api/criptomoneda/symbol/BTC', {
               headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
@@ -101,7 +101,7 @@ const BalancePage = () => {
 
           try {
             const priceResponse = await fetch(
-              `http://localhost:3001/api/parExchange/price/${crypto.symbol}/USDT`,
+              `https://localhost:3001/api/parExchange/price/${crypto.symbol}/USDT`,
               {
                 headers: {
                   'Authorization': `Bearer ${token}`,

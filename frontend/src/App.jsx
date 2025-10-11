@@ -14,6 +14,7 @@ import CrearOfertaP2P from './pages/CrearOfertaP2P.jsx'
 import MisOfertas from './pages/P2PMisOfertas.jsx'
 import Transferencia from './pages/Transferencia.jsx';
 import SuperAdmin from './pages/SuperAdmin.jsx'
+import Notificaciones from './pages/Notificaciones.jsx'
 import AuthSuccess from './pages/AuthSuccess';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { ThemeProvider } from './context/ThemeContext';
@@ -40,6 +41,7 @@ function App() {
                     <Route path="p2p/misOfertas" element={<MisOfertas />} />
                     <Route path="transferir" element={<Transferencia />} />
                     <Route path="super_admin" element={<SuperAdmin />} />
+                    <Route path="notificaciones" element={<Notificaciones />} />
                     <Route path="auth-success" element={<AuthSuccess />} />
                 </Route>
             </Routes>

@@ -27,7 +27,7 @@ const Deposits = () => {
   const loadCriptomonedas = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:3001/api/criptomoneda/public/active');
+      const response = await fetch('https://localhost:3001/api/criptomoneda/public/active');
       
       if (!response.ok) {
         throw new Error(`Error ${response.status}: ${response.statusText}`);
@@ -82,7 +82,7 @@ const Deposits = () => {
         return;
       }
       
-      const url = `http://localhost:3001/api/direccionDeposito/user/me/crypto/${criptomonedaId}`;
+      const url = `https://localhost:3001/api/direccionDeposito/user/me/crypto/${criptomonedaId}`;
       console.log('URL completa:', url);
       
       const response = await fetch(url, {
