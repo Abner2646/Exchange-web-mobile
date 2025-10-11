@@ -21,9 +21,30 @@ const PORT = process.env.PORT || 3001;
 // Middleware básico
 app.use(helmet());
 
-// 👇 AGREGAR CONFIGURACIÓN CORS
+// 👇 CONFIGURACIÓN CORS: whitelist configurable por ALLOWED_ORIGINS
+// - ALLOWED_ORIGINS: coma-separada, p. ej. "http://localhost:3000,https://mi-front.com"
+// - Si no está definida, se intentará usar FRONTEND_URL como único origen.
+const rawAllowed = process.env.ALLOWED_ORIGINS || process.env.FRONTEND_URL || '';
+const allowedOrigins = rawAllowed
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+
+// En entorno de desarrollo, permitir localhost:3000 por conveniencia
+if (process.env.NODE_ENV === 'development') {
+  if (!allowedOrigins.includes('http://localhost:3000')) allowedOrigins.push('http://localhost:3000');
+}
+
+console.log('CORS allowed origins:', allowedOrigins.length ? allowedOrigins.join(',') : '[none]');
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'https://exchange-backend-3.onrender.com',
+  origin: (origin, callback) => {
+    // permitir solicitudes sin origin (p. ej. curl, server2server)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes('*')) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1) return callback(null, true);
+    return callback(new Error('CORS origin denied'), false);
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
