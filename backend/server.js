@@ -50,6 +50,37 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
+// Global middleware to ensure preflight responses always include correct headers
+app.options('*', (req, res) => {
+  const origin = req.headers.origin;
+  if (!origin) {
+    // no origin (curl/server), just respond OK
+    return res.sendStatus(200);
+  }
+  // If origin is allowed, set the standard CORS headers explicitly
+  if (allowedOrigins.includes('*') || allowedOrigins.indexOf(origin) !== -1) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+    return res.sendStatus(204);
+  }
+
+  // Not allowed
+  console.warn(`CORS preflight denied for origin: ${origin}`);
+  return res.status(403).send('CORS origin denied');
+});
+
+// Also ensure responses include Access-Control-Allow-Origin when allowed
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && (allowedOrigins.includes('*') || allowedOrigins.indexOf(origin) !== -1)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+  next();
+});
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 // Session para Passport
