@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { API_URL } from '../config';
 import '../styles/CrearOfertaP2P.css';
 
 const CrearOfertaP2P = () => {
@@ -36,10 +37,10 @@ const CrearOfertaP2P = () => {
   const cargarDatosIniciales = async () => {
     try {
       const [resCryptos, resMetodos] = await Promise.all([
-        fetch('https://localhost:3001/api/criptomoneda', {
+  fetch(`${API_URL}/criptomoneda`, {
           headers: { 'Authorization': token }
         }),
-        fetch('https://localhost:3001/api/metodoPago/status/active', {
+  fetch(`${API_URL}/metodoPago/status/active`, {
           headers: { 'Authorization': token }  // ← Agregar esto
         })
       ]);
@@ -134,7 +135,7 @@ const CrearOfertaP2P = () => {
     setSuccessMsg('');
 
     try {
-      const response = await fetch('https://localhost:3001/api/ofertaP2P', {
+  const response = await fetch(`${API_URL}/ofertaP2P`, {
         method: 'POST',
         headers: {
           'Authorization': token,

@@ -113,7 +113,7 @@ const Navbar = () => {
         return
       }
 
-      const response = await fetch("https://localhost:3001/api/notificaciones/me/unread-count", {
+  const response = await fetch(`${API_URL}/notificaciones/me/unread-count`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -143,7 +143,7 @@ const Navbar = () => {
       const token = getToken()
       if (!token) return
 
-      const response = await fetch("https://localhost:3001/api/notificaciones/me/mark-all-read", {
+  const response = await fetch(`${API_URL}/notificaciones/me/mark-all-read`, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,

@@ -12,6 +12,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
 } from "@heroicons/react/24/outline"
+import { API_URL } from '../config'
 import "../styles/HomePage.css"
 
 const HomePage = () => {
@@ -85,7 +86,7 @@ const HomePage = () => {
       setLoadingAuth(true)
 
       // 1. Balances
-      const balancesRes = await fetch("https://localhost:3001/api/balances/my/balances", {
+  const balancesRes = await fetch(`${API_URL}/balances/my/balances`, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -106,7 +107,7 @@ const HomePage = () => {
       }
 
       const cryptoPromises = cryptoIds.map((id) =>
-        fetch(`https://localhost:3001/api/criptomoneda/${id}`, {
+  fetch(`${API_URL}/criptomoneda/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
         }).then((res) => (res.ok ? res.json() : null)),
       )
@@ -121,7 +122,7 @@ const HomePage = () => {
       const hasBTC = cryptoData.some((c) => c.symbol === "BTC")
 
       if (!hasBTC) {
-        const btcRes = await fetch("https://localhost:3001/api/criptomoneda/symbol/BTC", {
+  const btcRes = await fetch(`${API_URL}/criptomoneda/symbol/BTC`, {
           headers: { Authorization: `Bearer ${token}` },
         })
         if (btcRes.ok) {
@@ -137,7 +138,7 @@ const HomePage = () => {
           }
 
           try {
-            const priceRes = await fetch(`https://localhost:3001/api/parExchange/price/${crypto.symbol}/USDT`, {
+            const priceRes = await fetch(`${API_URL}/parExchange/price/${crypto.symbol}/USDT`, {
               headers: { Authorization: `Bearer ${token}` },
             })
             if (priceRes.ok) {
@@ -165,7 +166,7 @@ const HomePage = () => {
       const hasBTC = criptomonedas.some((c) => c.symbol === "BTC")
 
       if (!hasBTC) {
-        const btcRes = await fetch("https://localhost:3001/api/criptomoneda/symbol/BTC", {
+  const btcRes = await fetch(`${API_URL}/criptomoneda/symbol/BTC`, {
           headers: { Authorization: `Bearer ${token}` },
         })
         if (btcRes.ok) {
@@ -181,7 +182,7 @@ const HomePage = () => {
           }
 
           try {
-            const priceRes = await fetch(`https://localhost:3001/api/parExchange/price/${crypto.symbol}/USDT`, {
+            const priceRes = await fetch(`${API_URL}/parExchange/price/${crypto.symbol}/USDT`, {
               headers: { Authorization: `Bearer ${token}` },
             })
             if (priceRes.ok) {

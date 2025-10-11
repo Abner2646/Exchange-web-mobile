@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../config';
 import '../styles/withdrawal.css';
 
 const Retiros = () => {
@@ -34,7 +35,7 @@ const Retiros = () => {
         return;
       }
 
-      const cryptoRes = await fetch('https://localhost:3001/api/criptomoneda/public/active');
+  const cryptoRes = await fetch(`${API_URL}/criptomoneda/public/active`);
       
       if (!cryptoRes.ok) {
         throw new Error('Error cargando criptomonedas');
@@ -57,7 +58,7 @@ const Retiros = () => {
       
       setCriptomonedas(cryptoArray);
 
-      const balanceRes = await fetch('https://localhost:3001/api/balances/my/balances', {
+  const balanceRes = await fetch(`${API_URL}/balances/my/balances`, {
         headers: { 'Authorization': 'Bearer ' + token }
       });
 
@@ -197,7 +198,7 @@ const Retiros = () => {
       setLoading(true);
       const token = getToken();
 
-      const response = await fetch('https://localhost:3001/api/transactions/withdraw', {
+  const response = await fetch(`${API_URL}/transactions/withdraw`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

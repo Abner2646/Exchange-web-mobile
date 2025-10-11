@@ -11,6 +11,7 @@ import {
   UsersIcon,
   ArrowPathIcon,
 } from "@heroicons/react/24/outline"
+import { API_URL } from '../config'
 import "../styles/Notificaciones.css"
 
 const Notificaciones = () => {
@@ -22,10 +23,7 @@ const Notificaciones = () => {
   const [showFilters, setShowFilters] = useState(false)
   const itemsPerPage = 10
 
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://localhost:3001"
-
-  console.log("[v0] API_BASE_URL:", API_BASE_URL)
-  console.log("[v0] NEXT_PUBLIC_API_URL env var:", process.env.NEXT_PUBLIC_API_URL)
+  // use API_URL from config
 
   const getToken = () => {
     const token = localStorage.getItem("token") || sessionStorage.getItem("token")
