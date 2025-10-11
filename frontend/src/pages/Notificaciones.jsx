@@ -66,7 +66,7 @@ const Notificaciones = () => {
     setLoading(true)
     try {
       const token = getToken()
-      const url = `${API_BASE_URL}/api/notificaciones/me`
+  const url = `${API_URL}/notificaciones/me`
       console.log("[v0] Fetching notifications from:", url)
       console.log("[v0] Using token:", token ? "YES" : "NO")
 
@@ -116,7 +116,7 @@ const Notificaciones = () => {
     console.log("[v0] fetchUnreadCount called")
     try {
       const token = getToken()
-      const url = `${API_BASE_URL}/api/notificaciones/me/unread-count`
+  const url = `${API_URL}/notificaciones/me/unread-count`
       console.log("[v0] Fetching unread count from:", url)
 
       const response = await fetch(url, {
@@ -141,7 +141,7 @@ const Notificaciones = () => {
     console.log("[v0] markAllAsRead called")
     try {
       const token = getToken()
-      const url = `${API_BASE_URL}/api/notificaciones/me/mark-all-read`
+  const url = `${API_URL}/notificaciones/me/mark-all-read`
       console.log("[v0] Marking all as read:", url)
 
       const response = await fetch(url, {
@@ -167,7 +167,7 @@ const Notificaciones = () => {
     try {
       const token = getToken()
       const endpoint = notification.leida ? "mark-unread" : "mark-read"
-      const url = `${API_BASE_URL}/api/notificaciones/me/${notification.id}/${endpoint}`
+  const url = `${API_URL}/notificaciones/me/${notification.id}/${endpoint}`
       console.log("[v0] Toggle read status URL:", url)
 
       const response = await fetch(url, {
