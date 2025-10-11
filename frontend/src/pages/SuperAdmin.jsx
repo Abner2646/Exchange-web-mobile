@@ -38,7 +38,7 @@ const SuperAdmin = () => {
   const dropdownRef = useRef(null)
   const cryptoSearchRef = useRef(null)
 
-  const API_URL = "https://localhost:3001/api"
+  const API_URL = REACT_APP_API_URL
 
   const isValidEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/

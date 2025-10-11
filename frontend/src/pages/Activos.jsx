@@ -78,7 +78,7 @@ const BalancePage = () => {
         // Si no tiene BTC, agregarlo para obtener su precio
         if (!hasBTC) {
           try {
-            const btcResponse = await fetch('https://localhost:3001/api/criptomoneda/symbol/BTC', {
+            const btcResponse = await fetch(`${API_URL}criptomoneda/symbol/BTC`, {
               headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
@@ -101,7 +101,7 @@ const BalancePage = () => {
 
           try {
             const priceResponse = await fetch(
-              `https://localhost:3001/api/parExchange/price/${crypto.symbol}/USDT`,
+              `${API_URL}parExchange/price/${crypto.symbol}/USDT`,
               {
                 headers: {
                   'Authorization': `Bearer ${token}`,

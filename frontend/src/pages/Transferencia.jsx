@@ -16,7 +16,7 @@ import {
 } from "@heroicons/react/24/outline"
 import "../styles/Transferencia.css"
 
-const API_URL = "https://localhost:3001/api"
+const API_URL = REACT_APP_API_URL
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 

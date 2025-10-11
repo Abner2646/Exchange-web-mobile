@@ -24,6 +24,8 @@ import {
 } from "@heroicons/react/24/outline"
 import "../../styles/Navbar.css"
 
+const API_URL = REACT_APP_API_URL
+
 const Navbar = () => {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
@@ -73,7 +75,7 @@ const Navbar = () => {
         return
       }
 
-      const response = await fetch("https://localhost:3001/api/notificaciones/me", {
+      const response = await fetch(`${API_URL}notificaciones/me`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,

@@ -3,6 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import '../styles/Register.css';
 
+const API_URL = REACT_APP_API_URL
+
 const Register = () => {
     const [formData, setFormData] = useState({
         email: '',
@@ -91,7 +93,7 @@ const Register = () => {
         try {
             const { confirmPassword, ...registerData } = formData;
             
-            const res = await fetch('https://localhost:3001/api/usuario/register', {
+            const res = await fetch(`${API_URL}usuario/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(registerData),
@@ -112,7 +114,7 @@ const Register = () => {
                 navigate('/');
             } else {
                 // Si no hay token, hacer login con las credenciales usando el endpoint correcto
-                const loginRes = await fetch('https://localhost:3001/api/usuario/login', {
+                const loginRes = await fetch(`${API_URL}usuario/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
