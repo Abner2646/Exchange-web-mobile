@@ -1,5 +1,5 @@
 const express = require('express');
-//const cors = require('cors');
+const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const session = require('express-session');
@@ -20,14 +20,16 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware básico
 app.use(helmet());
-/*
+
+// Habilitar CORS configurable
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-  credentials: true
+  origin: process.env.CORS_ORIGIN || '*',
+  credentials: true,
+  methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS']
 }));
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
-*/
 // Session para Passport
 app.use(session({
   secret: process.env.SESSION_SECRET,
@@ -43,6 +45,19 @@ configurePassport();
 
 // AHORA importar rutas de auth (después de configurar passport)
 const authRoutes = require('./routes/auth.routes');
+
+// Logging middleware para depuración de CORS / endpoints problemáticos
+app.use((req, res, next) => {
+  // Log basic request info for debugging
+  if (req.path && (req.path.includes('/usuario/register') || req.path.includes('/usuario/login'))) {
+    console.log('--- Incoming auth request ---');
+    console.log('Method:', req.method);
+    console.log('Path:', req.path);
+    console.log('Origin header:', req.headers.origin || 'none');
+    console.log('Content-Type:', req.headers['content-type']);
+  }
+  next();
+});
 
 // Logging
 if (process.env.NODE_ENV !== 'test') {
