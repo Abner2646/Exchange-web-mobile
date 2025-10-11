@@ -133,6 +133,7 @@ export default function Transferencia() {
       const token = localStorage.getItem("token")
       const response = await fetch(`${API_URL}/criptomoneda/public/active`, {
         headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include'
       })
       const data = await response.json()
       if (Array.isArray(data)) {
@@ -156,6 +157,7 @@ export default function Transferencia() {
       const token = localStorage.getItem("token")
       const response = await fetch(`${API_URL}/balances/my/balances`, {
         headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include'
       })
       const data = await response.json()
 
@@ -180,6 +182,7 @@ export default function Transferencia() {
       const token = localStorage.getItem("token")
       const response = await fetch(`${API_URL}/transferencia/my`, {
         headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include'
       })
       const data = await response.json()
 
@@ -207,6 +210,7 @@ export default function Transferencia() {
       const token = localStorage.getItem("token")
       const response = await fetch(`${API_URL}/usuario/search?q=${emailBusqueda}&limit=1`, {
         headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include'
       })
       const data = await response.json()
 
@@ -242,6 +246,7 @@ export default function Transferencia() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
+        credentials: 'include',
         body: JSON.stringify({
           criptomonedaId: criptoSeleccionada.id,
           cantidad: Number.parseFloat(cantidad),
@@ -278,6 +283,7 @@ export default function Transferencia() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
+        credentials: 'include',
         body: JSON.stringify({
           usuarioDestinatarioId: destinatario.id,
           criptomonedaId: criptoSeleccionada.id,
@@ -325,6 +331,7 @@ export default function Transferencia() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
+        credentials: 'include',
         body: JSON.stringify({
           codigoVerificacion: codigo,
         }),
@@ -377,6 +384,7 @@ export default function Transferencia() {
       const response = await fetch(`${API_URL}/transferencia/${transferId}/resend-code`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include'
       })
 
       if (response.ok) {

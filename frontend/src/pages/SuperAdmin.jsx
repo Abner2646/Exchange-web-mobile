@@ -199,28 +199,30 @@ const SuperAdmin = () => {
     setSuccessMessage(null)
 
     try {
-      const token = localStorage.getItem("token")
+      const token = localStorage.getItem('token')
+
+      const headers = {
+        'Content-Type': 'application/json'
+      }
+      if (token) headers.Authorization = `Bearer ${token}`
+
       const options = {
         method,
-        headers: {
-          Authorization: token,
-          "Content-Type": "application/json",
-        },
+        headers,
+        credentials: 'include' //
       }
 
-      if (body) {
-        options.body = JSON.stringify(body)
-      }
+      if (body) options.body = JSON.stringify(body)
 
       const response = await fetch(`${API_URL}${endpoint}`, options)
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || "Error en la solicitud")
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || 'Error en la solicitud')
       }
 
-      const data = await response.json()
-      setSuccessMessage("Operación completada exitosamente")
+      const data = await response.json().catch(() => ({}))
+      setSuccessMessage('Operación completada exitosamente')
 
       if (clearFormCallback) {
         clearFormCallback()

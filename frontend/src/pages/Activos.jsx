@@ -28,6 +28,7 @@ const BalancePage = () => {
         // 1. Obtener balances del usuario
   const balancesResponse = await fetch(`${API_URL}/balances/my/balances`, {
           method: 'GET',
+          credentials: 'include',
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -57,6 +58,7 @@ const BalancePage = () => {
         // 3. Obtener SOLO las criptomonedas que tiene el usuario (en paralelo)
         const cryptoPromises = cryptoIds.map(id =>
           fetch(`${API_URL}/criptomoneda/${id}`, {
+            credentials: 'include',
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
@@ -80,6 +82,7 @@ const BalancePage = () => {
         if (!hasBTC) {
           try {
             const btcResponse = await fetch(`${API_URL}/criptomoneda/symbol/BTC`, {
+              credentials: 'include',
               headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
@@ -104,6 +107,7 @@ const BalancePage = () => {
             const priceResponse = await fetch(
               `${API_URL}/parExchange/price/${crypto.symbol}/USDT`,
               {
+                credentials: 'include',
                 headers: {
                   'Authorization': `Bearer ${token}`,
                   'Content-Type': 'application/json'

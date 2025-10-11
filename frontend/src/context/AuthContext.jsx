@@ -61,7 +61,8 @@ export const AuthProvider = ({ children }) => {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
-        }
+        },
+        credentials: 'include'
       });
     } catch (error) {
       console.error('Error al cerrar sesión:', error);

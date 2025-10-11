@@ -42,7 +42,9 @@ services:
       JWT_SECRET: palabra #${JWT_SECRET}
       secretOrPrivateKey: palabra #
       JWT_EXPIRES_IN: 1h
-  # CORS_ORIGIN removed: handle CORS at proxy or hosting level if needed
+    # Example for allowing multiple origins in development via ALLOWED_ORIGINS
+    # ALLOWED_ORIGINS: "http://localhost:3000,https://exchange-backend-3.onrender.com"
+    # CORS_ORIGIN removed: handle CORS at proxy or hosting level if needed
     ports:
       - "3001:3001"
       - "9229:9229"  # Puerto para debugging
