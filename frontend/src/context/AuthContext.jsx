@@ -1,5 +1,6 @@
 // /src/context/AuthContext.jsx
 import { createContext, useContext, useState, useEffect } from 'react';
+import { API_URL } from '../config';
 
 const AuthContext = createContext();
 
@@ -13,7 +14,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   
-  const API_URL = 'https://localhost:3001'; // Cambia al puerto de tu backend
+  // use API_URL from config
 
   useEffect(() => {
     const token = localStorage.getItem('token');

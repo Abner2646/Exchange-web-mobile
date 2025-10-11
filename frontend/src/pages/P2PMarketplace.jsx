@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { API_URL } from '../config';
 import '../styles/p2p-listing-page.css';
 
 const P2PListingPage = () => {
@@ -17,7 +18,6 @@ const P2PListingPage = () => {
   const [loading, setLoading] = useState(true);
   const [usuariosCache, setUsuariosCache] = useState({});
 
-  const API_URL = 'https://localhost:3001/api';
 
   useEffect(() => {
     if (!token) {

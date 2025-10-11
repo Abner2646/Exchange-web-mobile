@@ -24,7 +24,7 @@ import {
 } from "@heroicons/react/24/outline"
 import "../../styles/Navbar.css"
 
-const API_URL = REACT_APP_API_URL
+import { API_URL } from '../../config';
 
 const Navbar = () => {
   const { user, logout } = useAuth()

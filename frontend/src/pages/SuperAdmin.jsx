@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useAuth } from "../context/AuthContext"
+import { API_URL } from '../config'
 import "../styles/SuperAdmin.css"
 
 const SuperAdmin = () => {
@@ -38,7 +39,7 @@ const SuperAdmin = () => {
   const dropdownRef = useRef(null)
   const cryptoSearchRef = useRef(null)
 
-  const API_URL = REACT_APP_API_URL
+  // use API_URL from config
 
   const isValidEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/

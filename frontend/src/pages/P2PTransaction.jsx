@@ -1,5 +1,6 @@
 // src/pages/MyP2P.jsx
 import { useState, useEffect } from 'react';
+import { API_URL } from '../config';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import '../styles/my-p2p.css';
@@ -15,7 +16,6 @@ const MyP2P = () => {
   const [error, setError] = useState('');
   const [initialLoad, setInitialLoad] = useState(true);
 
-  const API_URL = 'https://localhost:3001/api';
 
   // Cargar ofertas del usuario
   const loadOfertas = async () => {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { useAuth } from "../context/AuthContext"
+import { API_URL } from '../config'
 import jsPDF from "jspdf"
 import {
   MagnifyingGlassIcon,
@@ -16,7 +17,7 @@ import {
 } from "@heroicons/react/24/outline"
 import "../styles/Transferencia.css"
 
-const API_URL = REACT_APP_API_URL
+// use API_URL from config
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
