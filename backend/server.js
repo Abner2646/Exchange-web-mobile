@@ -1,5 +1,4 @@
 const express = require('express');
-const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const session = require('express-session');
@@ -21,12 +20,9 @@ const PORT = process.env.PORT || 3001;
 // Middleware básico
 app.use(helmet());
 
-// Habilitar CORS configurable
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
-  credentials: true,
-  methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS']
-}));
+// NOTE: CORS handling removed as requested. If you serve frontend and backend
+// from different origins, a reverse-proxy or the deployment platform must
+// handle CORS or re-enable this middleware with the correct origin.
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
