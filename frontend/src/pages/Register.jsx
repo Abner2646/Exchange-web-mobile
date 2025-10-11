@@ -95,7 +95,7 @@ const Register = () => {
             const res = await fetch(`${API_URL}/usuario/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
+                credentials: 'include', // 🔧 FIX: Agregar esta línea
                 body: JSON.stringify(registerData),
             });
             
@@ -117,7 +117,7 @@ const Register = () => {
                 const loginRes = await fetch(`${API_URL}/usuario/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
+                    credentials: 'include', // 🔧 FIX: Agregar esta línea
                     body: JSON.stringify({ 
                         emailOrUsername: registerData.username, 
                         password: registerData.password 

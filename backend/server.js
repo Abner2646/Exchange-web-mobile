@@ -18,12 +18,7 @@ const apiRoutes = require('./routes');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middleware básico
-app.use(helmet());
-
-// 👇 CONFIGURACIÓN CORS: whitelist configurable por ALLOWED_ORIGINS
-// - ALLOWED_ORIGINS: coma-separada, p. ej. "http://localhost:3000,https://mi-front.com"
-// - Si no está definida, se intentará usar FRONTEND_URL como único origen.
+// 🔧 FIX: CORS PRIMERO, ANTES DE HELMET
 const rawAllowed = process.env.ALLOWED_ORIGINS || process.env.FRONTEND_URL || '';
 const allowedOrigins = rawAllowed
   .split(',')
@@ -37,27 +32,34 @@ if (process.env.NODE_ENV === 'development') {
 
 console.log('CORS allowed origins:', allowedOrigins.length ? allowedOrigins.join(',') : '[none]');
 
+// 🔧 FIX: CORS configuration BEFORE helmet
 app.use(cors({
-  origin: (origin, callback) => {
+  origin: function(origin, callback) {
     // permitir solicitudes sin origin (p. ej. curl, server2server)
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes('*')) return callback(null, true);
     if (allowedOrigins.indexOf(origin) !== -1) return callback(null, true);
-    return callback(new Error('CORS origin denied'), false);
+    
+    console.warn(`❌ CORS blocked origin: ${origin}`);
+    return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 204
+}));
+
+// 🔧 FIX: helmet DESPUÉS de CORS, con configuración que no interfiera
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
 // Global middleware to ensure preflight responses always include correct headers
 app.options('*', (req, res) => {
   const origin = req.headers.origin;
   if (!origin) {
-    // no origin (curl/server), just respond OK
-    return res.sendStatus(200);
+    return res.sendStatus(204);
   }
-  // If origin is allowed, set the standard CORS headers explicitly
   if (allowedOrigins.includes('*') || allowedOrigins.indexOf(origin) !== -1) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -66,7 +68,6 @@ app.options('*', (req, res) => {
     return res.sendStatus(204);
   }
 
-  // Not allowed
   console.warn(`CORS preflight denied for origin: ${origin}`);
   return res.status(403).send('CORS origin denied');
 });
@@ -83,6 +84,7 @@ app.use((req, res, next) => {
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+
 // Session para Passport
 app.use(session({
   secret: process.env.SESSION_SECRET,
@@ -101,7 +103,6 @@ const authRoutes = require('./routes/auth.routes');
 
 // Logging middleware para depuración de CORS / endpoints problemáticos
 app.use((req, res, next) => {
-  // Log basic request info for debugging
   if (req.path && (req.path.includes('/usuario/register') || req.path.includes('/usuario/login'))) {
     console.log('--- Incoming auth request ---');
     console.log('Method:', req.method);

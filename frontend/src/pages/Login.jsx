@@ -39,6 +39,7 @@ const Login = () => {
                 const res = await fetch(`${API_URL}/usuario/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include', // 🔧 FIX: Agregado
                     body: JSON.stringify({ emailOrUsername, password }),
                 });
                 
@@ -68,6 +69,7 @@ const Login = () => {
                         'Content-Type': 'application/json',
                         'Authorization': preAuthToken
                     },
+                    credentials: 'include', // 🔧 FIX: Agregado
                     body: JSON.stringify({ codigo: codigo2FA }),
                 });
                 
@@ -99,9 +101,10 @@ const Login = () => {
             setLoading(true);
             setError('');
             
-                const res = await fetch(`${API_URL}/usuario/resend-2fa`, {
+            const res = await fetch(`${API_URL}/usuario/resend-2fa`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include', // 🔧 FIX: Agregado
                 body: JSON.stringify({ preAuthToken }),
             });
             
