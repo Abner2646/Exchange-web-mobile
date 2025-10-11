@@ -1,4 +1,5 @@
 const express = require('express');
+const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const session = require('express-session');
@@ -20,9 +21,13 @@ const PORT = process.env.PORT || 3001;
 // Middleware básico
 app.use(helmet());
 
-// NOTE: CORS handling removed as requested. If you serve frontend and backend
-// from different origins, a reverse-proxy or the deployment platform must
-// handle CORS or re-enable this middleware with the correct origin.
+// 👇 AGREGAR CONFIGURACIÓN CORS
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'https://exchange-backend-3.onrender.com',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
