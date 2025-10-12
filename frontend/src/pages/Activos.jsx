@@ -248,10 +248,7 @@ const BalancePage = () => {
               Retirar
             </button>
             <button className="bp-action-btn" onClick={() => handleNavigation('/transferir')}>
-              Transferir*
-            </button>
-            <button className="bp-action-btn" onClick={() => handleNavigation('/historial')}>
-              Historial*
+              Transferir
             </button>
           </div>
         </div>

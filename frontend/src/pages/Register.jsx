@@ -95,7 +95,7 @@ const Register = () => {
             const res = await fetch(`${API_URL}/usuario/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'include', // 🔧 FIX: Agregar esta línea
+                credentials: 'include',
                 body: JSON.stringify(registerData),
             });
             

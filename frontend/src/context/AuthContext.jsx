@@ -51,7 +51,7 @@ export const AuthProvider = ({ children }) => {
 
   const loginWithGoogle = () => {
     // Redirige a tu backend para iniciar el flujo OAuth
-    window.location.href = `${API_URL}/auth/google`;
+    window.location.href = `https://exchange-backend-1qlz.onrender.com/auth/google`; // API_URL hardcodeada para sacarle el "/api"
   };
 
   const logout = async () => {
