@@ -1,5 +1,6 @@
-const jwt = require('jsonwebtoken');
 /*
+const jwt = require('jsonwebtoken');
+
 class AuthController {
   googleCallback(req, res) {
     const token = jwt.sign(
