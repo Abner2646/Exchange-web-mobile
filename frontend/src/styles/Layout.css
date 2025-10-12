@@ -14,12 +14,19 @@
   width: 100%;
   max-width: 1440px;
   margin: 0 auto;
+  
+  /* ⬇️ AGREGÁ ESTO - Compensa la altura de navbar (64px) + espaciado */
+  margin-top: 64px; /* Altura exacta de navbar */
   padding: var(--spacing-xl);
+  
+  /* O si preferís más espacio visual: */
+  /* margin-top: calc(64px + var(--spacing-lg)); */
 }
 
 /* Responsive */
 @media (max-width: 768px) {
   .layout-main {
     padding: var(--spacing-md);
+    /* El margin-top se mantiene igual porque navbar siempre mide 64px */
   }
 }
