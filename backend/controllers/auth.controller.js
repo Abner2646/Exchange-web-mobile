@@ -1,4 +1,4 @@
-/*
+
 const jwt = require('jsonwebtoken');
 
 class AuthController {
@@ -31,11 +31,11 @@ class AuthController {
   }
 }
 
-module.exports = new AuthController();*/
+module.exports = new AuthController();
 
 // Sugerencia de cambio más robusta (no implementada todavía porque podría romper rutas pero hay que hacerlo por seguridad)
 // El código anteior pasa tokens en la ruta!!
-
+/*
 const jwt = require('jsonwebtoken');
 
 class AuthController {
@@ -93,3 +93,4 @@ class AuthController {
 }
 
 module.exports = new AuthController();
+*/
