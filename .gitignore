@@ -19,7 +19,14 @@ lerna-debug.log*
 /backend/dist
 
 # Environment variables
+# Backend
 .env
+.env.prod
+
+# Frontend
+.env.dev
+.env.prod
+
 .env.local
 .env.development.local
 .env.test.local

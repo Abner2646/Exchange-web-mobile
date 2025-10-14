@@ -1,3 +1,5 @@
+// controllers/auth.controller.js
+// Solo la lógica de autenticación de google, la normal está en controllers/usuario.controller.js
 
 const jwt = require('jsonwebtoken');
 
@@ -35,6 +37,8 @@ module.exports = new AuthController();
 
 // Sugerencia de cambio más robusta (no implementada todavía porque podría romper rutas pero hay que hacerlo por seguridad)
 // El código anteior pasa tokens en la ruta!!
+// -Testear este nuevo en desarrollo primero
+
 /*
 const jwt = require('jsonwebtoken');
 

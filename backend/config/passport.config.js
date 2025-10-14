@@ -5,7 +5,7 @@ const userService = require('../services/user.service');
 const configurePassport = () => {
   // 🔧 Construir la URL completa del callback
   const callbackURL = process.env.GOOGLE_CALLBACK_URL || 
-    `${process.env.BACKEND_URL || 'http://localhost:3001'}/auth/google/callback`;
+    `${process.env.BACKEND_URL}/auth/google/callback`;
 
   console.log('🔐 Google OAuth callbackURL:', callbackURL); // Para debugging
 
