@@ -1,201 +1,34 @@
-import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { API_URL } from '../config';
+import { useAuth } from '../context/AuthContext';
+import { useBalances } from '../hooks/useBalances';
 import '../styles/BalancePage.css';
 
 const BalancePage = () => {
-  const token = localStorage.getItem('token');
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  const [balances, setBalances] = useState([]);
-  const [criptomonedas, setCriptomonedas] = useState([]);
-  const [prices, setPrices] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('moneda');
-  const [hideSmallBalances, setHideSmallBalances] = useState(false);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!token) {
-        setError('No hay token de autenticación');
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        
-        // 1. Obtener balances del usuario
-  const balancesResponse = await fetch(`${API_URL}/balances/my/balances`, {
-          method: 'GET',
-          credentials: 'include',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (!balancesResponse.ok) {
-          throw new Error(`Error ${balancesResponse.status}: ${await balancesResponse.text()}`);
-        }
-        
-        const balancesData = await balancesResponse.json();
-        console.log('Balances recibidos:', balancesData);
-        const validBalances = Array.isArray(balancesData) ? balancesData : [];
-        setBalances(validBalances);
-
-        // 2. Extraer IDs únicos de criptomonedas que el usuario TIENE
-        const cryptoIds = [...new Set(validBalances.map(b => b.criptomonedaId))];
-        console.log('IDs de criptos con balance:', cryptoIds);
-
-        if (cryptoIds.length === 0) {
-          setCriptomonedas([]);
-          setPrices({});
-          setLoading(false);
-          return;
-        }
-
-        // 3. Obtener SOLO las criptomonedas que tiene el usuario (en paralelo)
-        const cryptoPromises = cryptoIds.map(id =>
-          fetch(`${API_URL}/criptomoneda/${id}`, {
-            credentials: 'include',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          }).then(res => res.ok ? res.json() : null)
-        );
-
-        const cryptoResults = await Promise.all(cryptoPromises);
-        const cryptoData = cryptoResults.filter(c => c !== null);
-        console.log('Criptomonedas obtenidas:', cryptoData);
-        setCriptomonedas(cryptoData);
-
-        // 4. Obtener precios de las criptos que tiene + BTC (para conversión)
-        const pricesMap = {};
-        
-        // SIEMPRE obtener precio de BTC para el cálculo del balance total
-        const cryptosToFetch = [...cryptoData];
-        const hasBTC = cryptoData.some(c => c.symbol === 'BTC');
-        
-        // Si no tiene BTC, agregarlo para obtener su precio
-        if (!hasBTC) {
-          try {
-            const btcResponse = await fetch(`${API_URL}/criptomoneda/symbol/BTC`, {
-              credentials: 'include',
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-              }
-            });
-            if (btcResponse.ok) {
-              const btcData = await btcResponse.json();
-              cryptosToFetch.push(btcData);
-            }
-          } catch (error) {
-            console.warn('No se pudo obtener info de BTC');
-          }
-        }
-
-        const pricePromises = cryptosToFetch.map(async (crypto) => {
-          if (crypto.symbol === 'USDT') {
-            pricesMap['USDT'] = 1;
-            return;
-          }
-
-          try {
-            const priceResponse = await fetch(
-              `${API_URL}/parExchange/price/${crypto.symbol}/USDT`,
-              {
-                credentials: 'include',
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json'
-                }
-              }
-            );
-            
-            if (priceResponse.ok) {
-              const priceData = await priceResponse.json();
-              pricesMap[crypto.symbol] = priceData.price;
-              console.log(`Precio ${crypto.symbol}/USDT:`, priceData.price);
-            }
-          } catch (error) {
-            console.warn(`No se pudo obtener precio para ${crypto.symbol}/USDT`);
-          }
-        });
-
-        await Promise.all(pricePromises);
-        setPrices(pricesMap);
-        
-      } catch (error) {
-        console.error('Error al cargar datos:', error);
-        setError(error.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [token]);
-
-  const calcularTotales = () => {
-    if (balances.length === 0) return { totalUSDT: 0, totalBTC: 0 };
-
-    const totalUSDT = balances.reduce((acc, balance) => {
-      const crypto = criptomonedas.find(c => c.id === balance.criptomonedaId);
-      const price = prices[crypto?.symbol] || 0;
-      return acc + (parseFloat(balance.balanceDisponible) * price);
-    }, 0);
-
-    const btcPrice = prices['BTC'];
-    
-    // Si no hay precio de BTC, no podemos calcular
-    if (!btcPrice || btcPrice === 0) {
-      return { totalUSDT, totalBTC: 0, btcPriceError: true };
-    }
-    
-    const totalBTC = totalUSDT / btcPrice;
-
-    return { totalUSDT, totalBTC, btcPriceError: false };
-  };
-
-  const { totalUSDT, totalBTC, btcPriceError } = calcularTotales();
+  
+  const {
+    enrichedBalances,
+    totalUSDT,
+    totalBTC,
+    btcPriceError,
+    isLoading,
+    error,
+    activeTab,
+    setActiveTab,
+    hideSmallBalances,
+    setHideSmallBalances,
+  } = useBalances();
 
   const handleNavigation = (path) => {
-    if (token) {
+    if (isAuthenticated) {
       navigate(path);
     } else {
       navigate('/login');
     }
   };
 
-  const enrichedBalances = balances
-    .map(balance => {
-      const crypto = criptomonedas.find(c => c.id === balance.criptomonedaId);
-      if (!crypto) return null;
-
-      const price = prices[crypto.symbol] || 0;
-      const balanceAmount = parseFloat(balance.balanceDisponible);
-      const valueInUSDT = balanceAmount * price;
-
-      return {
-        ...balance,
-        crypto,
-        price,
-        valueInUSDT,
-        balanceAmount
-      };
-    })
-    .filter(b => b !== null)
-    .filter(b => {
-      if (hideSmallBalances) {
-        return b.valueInUSDT >= 1;
-      }
-      return true;
-    });
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="bp-page">
         <div className="bp-loading-state">
@@ -210,7 +43,7 @@ const BalancePage = () => {
       <div className="bp-page">
         <div className="bp-error-state">
           <h3>Error al cargar datos</h3>
-          <p>{error}</p>
+          <p>{error.message || 'Error desconocido'}</p>
           <button className="bp-btn-primary" onClick={() => window.location.reload()}>
             Reintentar
           </button>

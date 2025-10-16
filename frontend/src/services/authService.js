@@ -1,0 +1,168 @@
+// src/services/authService.js
+import apiClient from '../api/client';
+import { ENDPOINTS } from '../api/endpoints';
+import { API_URL } from '../config';
+
+class AuthService {
+  // Decodificar JWT sin librerías externas
+  decodeToken(token) {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload;
+    } catch (error) {
+      console.error('Error decoding token:', error);
+      return null;
+    }
+  }
+
+  // Verificar si el token está expirado
+  isTokenExpired(token) {
+    const payload = this.decodeToken(token);
+    if (!payload || !payload.exp) return true;
+    
+    const now = Date.now() / 1000;
+    return payload.exp < now;
+  }
+
+  // Obtener usuario actual (SINCRÓNICO)
+  getCurrentUser() {
+    const token = this.getAuthToken();
+    if (!token || this.isTokenExpired(token)) {
+      throw new Error('Token inválido o expirado');
+    }
+
+    const payload = this.decodeToken(token);
+    
+    return {
+      id: payload.userId || payload.id || payload.sub,
+      email: payload.email,
+      username: payload.username || payload.user || payload.name || 'Usuario',
+      role: payload.rol || payload.role || 'user',
+    };
+  }
+
+  // Validar token con el backend
+  async validateToken() {
+    try {
+      const response = await apiClient.get(ENDPOINTS.USER_PROFILE);
+      return response.data;
+    } catch (error) {
+      this.removeAuthToken();
+      throw error;
+    }
+  }
+
+  // ========== AUTENTICACIÓN ==========
+
+  // Login con Google
+  loginWithGoogle() {
+    window.location.href = `${API_URL}${ENDPOINTS.AUTH_GOOGLE}`;
+  }
+
+  // Login con credenciales (email/username y password)
+  async loginWithCredentials(emailOrUsername, password) {
+    console.log('🔐 AuthService: Intentando login con credenciales');
+    
+    const response = await apiClient.post(
+      ENDPOINTS.USER_LOGIN,
+      { emailOrUsername, password },
+      { withCredentials: true }
+    );
+
+    console.log('✅ AuthService: Login exitoso');
+    return response.data; // { requires2FA?, preAuthToken?, token?, user? }
+  }
+
+  // Registro de usuario
+  async register(userData) {
+    console.log('📝 AuthService: Registrando usuario');
+    const response = await apiClient.post(ENDPOINTS.USER_REGISTER, userData);
+    console.log('✅ AuthService: Registro exitoso');
+    return response.data;
+  }
+
+  // Logout
+  async logout() {
+    try {
+      await apiClient.post(ENDPOINTS.AUTH_LOGOUT);
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+    } finally {
+      this.removeAuthToken();
+    }
+  }
+
+  // ========== 2FA ==========
+
+  // Verificar código 2FA
+  async verify2FA(codigo, preAuthToken) {
+    console.log('🔐 AuthService: Verificando código 2FA');
+    
+    const response = await apiClient.post(
+      ENDPOINTS.USER_VERIFY_2FA,
+      { codigo },
+      {
+        headers: { Authorization: preAuthToken },
+        withCredentials: true,
+      }
+    );
+
+    console.log('✅ AuthService: 2FA verificado');
+    return response.data; // { token, user }
+  }
+
+  // Reenviar código 2FA
+  async resend2FA(preAuthToken) {
+    console.log('📧 AuthService: Reenviando código 2FA');
+    
+    const response = await apiClient.post(
+      ENDPOINTS.USER_RESEND_2FA,
+      { preAuthToken },
+      { withCredentials: true }
+    );
+
+    console.log('✅ AuthService: Código reenviado');
+    return response.data;
+  }
+
+  // ========== USUARIOS ==========
+
+  // Obtener perfil del usuario
+  async getProfile() {
+    const response = await apiClient.get(ENDPOINTS.USER_PROFILE);
+    return response.data;
+  }
+
+  // Buscar usuario por email
+  async searchUser(email) {
+    const response = await apiClient.get(ENDPOINTS.USER_SEARCH, {
+      params: { q: email, limit: 1 }
+    });
+    return response.data;
+  }
+
+  // ========== TOKEN MANAGEMENT (localStorage) ==========
+  // ⭐ Estos métodos CENTRALIZAN el acceso a localStorage
+  // En React Native, solo cambiar a AsyncStorage aquí
+
+  // Guardar token JWT
+  setAuthToken(token) {
+    if (token) {
+      localStorage.setItem('token', token);
+      console.log('💾 AuthService: Token guardado');
+    }
+  }
+
+  // Obtener token JWT
+  getAuthToken() {
+    return localStorage.getItem('token');
+  }
+
+  // Eliminar token JWT
+  removeAuthToken() {
+    localStorage.removeItem('token');
+    console.log('🗑️ AuthService: Token eliminado');
+  }
+}
+
+export default new AuthService();

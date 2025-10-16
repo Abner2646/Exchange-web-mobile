@@ -53,8 +53,9 @@ const Navbar = () => {
   }
 
   const capitalizeUsername = (username) => {
-    return username.charAt(0).toUpperCase() + username.slice(1).toLowerCase()
-  }
+    if (!username) return 'Usuario';
+    return username.charAt(0).toUpperCase() + username.slice(1).toLowerCase();
+  };
 
   const getToken = () => {
     try {
@@ -358,7 +359,9 @@ const Navbar = () => {
 
             {user ? (
               <>
-                <span className="navbar-user-info">Hola, {capitalizeUsername(user.username)}</span>
+                <span className="navbar-user-info">
+                  Hola, {capitalizeUsername(user?.username)}
+                </span>
 
                 <div
                   className="navbar-dropdown navbar-notifications-dropdown"
