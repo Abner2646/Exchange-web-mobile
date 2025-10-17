@@ -42,6 +42,47 @@ export const ENDPOINTS = {
   //Depositos
   DEPOSIT_ADDRESS_BY_CRYPTO: (cryptoId) => `/direccionDeposito/user/me/crypto/${cryptoId}`,
 
+  //Retiros
+  TRANSACTIONS_WITHDRAW: '/transactions/withdraw',
+
+  //P2P:
+  P2P_CRYPTOS: '/criptomoneda',
+  P2P_METODOS_PAGO_ACTIVOS: '/metodoPago/status/active',
+  P2P_OFERTAS: '/ofertaP2P',
+  P2P_USER_PUBLIC_PROFILE: (userId) => `/usuario/public/${userId}`,
+
+  //P2P Mis Operaciones:
+  P2P_MY_OFERTAS: '/ofertaP2P/me/ofertas',
+  P2P_MY_TRANSACCIONES: '/transaccionP2P/me/transacciones',
+  P2P_MY_TRANSACCIONES_PENDING: '/transaccionP2P/me/pending',
+  P2P_OFERTA_TOGGLE: (ofertaId) => `/ofertaP2P/${ofertaId}/toggle`,
+  P2P_TRANSACCION_CONFIRM_PAYMENT: (transaccionId) => `/transaccionP2P/${transaccionId}/confirm-payment`,
+  P2P_TRANSACCION_COMPLETE: (transaccionId) => `/transaccionP2P/${transaccionId}/complete`,
+  P2P_TRANSACCION_CANCEL: (transaccionId) => `/transaccionP2P/${transaccionId}/cancel`,
+  P2P_TRANSACCION_DETAILS: (transaccionId) => `/p2p/transaction/${transaccionId}`,
+
+  // P2P Crear Oferta:
+  P2P_CREATE_OFERTA: '/ofertaP2P',
+
+  // Notificaciones
+  NOTIFICATIONS_ME: '/notificaciones/me',
+  NOTIFICATIONS_UNREAD_COUNT: '/notificaciones/me/unread-count',
+  NOTIFICATIONS_MARK_ALL_READ: '/notificaciones/me/mark-all-read',
+  NOTIFICATIONS_MARK_READ: (id) => `/notificaciones/me/${id}/mark-read`,
+  NOTIFICATIONS_MARK_UNREAD: (id) => `/notificaciones/me/${id}/mark-unread`,
+
+  //Usuario - Configuración del perfil
+  USER_CHANGE_PASSWORD: '/usuario/me/change-password',
+  USER_2FA_TOGGLE: '/usuario/me/2fa-toggle',
+
+  // Swap/Exchange
+  EXCHANGE_PAIR_BY_SYMBOLS: (base, quote) => `/parExchange/symbols/${base}/${quote}`,
+  EXCHANGE_PRICE: (base, quote) => `/parExchange/price/${base}/${quote}`,
+  EXCHANGE_CALCULATE: '/intercambioExchange/calculate',
+  EXCHANGE_EXECUTE: '/intercambioExchange/',
+  EXCHANGE_CHECK_LIMIT: '/intercambioExchange/check-limit',
+  BALANCE_CHECK: (userId, cryptoId, amount) => `/balances/user/${userId}/crypto/${cryptoId}/check?amount=${amount}`,
+
   // Markets
   COINGECKO_MARKETS: (page, perPage) =>
     `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=${perPage}&page=${page}&sparkline=false`,

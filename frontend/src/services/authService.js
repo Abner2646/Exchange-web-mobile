@@ -129,7 +129,9 @@ class AuthService {
 
   // Obtener perfil del usuario
   async getProfile() {
+    console.log('👤 AuthService: Obteniendo perfil');
     const response = await apiClient.get(ENDPOINTS.USER_PROFILE);
+    console.log('✅ AuthService: Perfil obtenido:', response.data);
     return response.data;
   }
 
@@ -138,6 +140,39 @@ class AuthService {
     const response = await apiClient.get(ENDPOINTS.USER_SEARCH, {
       params: { q: email, limit: 1 }
     });
+    return response.data;
+  }
+
+  // ========== ⭐ CONFIGURACIÓN DE PERFIL (NUEVOS) ==========
+
+  /**
+   * Cambiar contraseña del usuario
+   * @param {String} currentPassword - Contraseña actual
+   * @param {String} newPassword - Nueva contraseña
+   * @returns {Promise<Object>}
+   */
+  async changePassword(currentPassword, newPassword) {
+    console.log('🔐 AuthService: Cambiando contraseña');
+    
+    const response = await apiClient.patch(ENDPOINTS.USER_CHANGE_PASSWORD, {
+      currentPassword,
+      newPassword,
+    });
+
+    console.log('✅ AuthService: Contraseña cambiada exitosamente');
+    return response.data;
+  }
+
+  /**
+   * Activar/desactivar autenticación de dos factores
+   * @returns {Promise<Object>} { is2FAEnabled: boolean }
+   */
+  async toggle2FA() {
+    console.log('🔐 AuthService: Toggle 2FA');
+    
+    const response = await apiClient.patch(ENDPOINTS.USER_2FA_TOGGLE);
+
+    console.log('✅ AuthService: 2FA toggled:', response.data);
     return response.data;
   }
 

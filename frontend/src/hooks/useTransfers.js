@@ -13,14 +13,20 @@ export const useTransfers = () => {
   });
 
   // Obtener historial
-  const { 
-    data: transfers = [], 
-    isLoading 
-  } = useQuery(
-    'transfers',
-    () => transferService.getMyTransfers(),
+  const {
+    data: transfers = [],
+    isLoading,
+  } = useQuery('transfers', () => transferService.getMyTransfers(), {
+    staleTime: 60000, // 1 minuto
+  });
+
+  // Verificar fondos
+  const verifyFundsMutation = useMutation(
+    ({ cryptoId, amount }) => transferService.verifyFunds(cryptoId, amount),
     {
-      staleTime: 60000, // 1 minuto
+      onError: (error) => {
+        console.error('❌ Error verificando fondos:', error);
+      },
     }
   );
 
@@ -72,6 +78,8 @@ export const useTransfers = () => {
     transfers: filteredTransfers,
     allTransfers: transfers,
     isLoading,
+    verifyFunds: verifyFundsMutation.mutateAsync,
+    isVerifying: verifyFundsMutation.isLoading,
     createTransfer,
     processTransfer,
     resendCode,
@@ -79,3 +87,5 @@ export const useTransfers = () => {
     setFilters,
   };
 };
+
+export default useTransfers;
