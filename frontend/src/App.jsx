@@ -9,21 +9,21 @@ import Register from './pages/Register.jsx';
 import AuthSuccess from './pages/AuthSuccess';
 import Activos from './pages/Activos.jsx';
 import SuperAdmin from './pages/SuperAdmin.jsx';
+import Depositos from './pages/Depositos.jsx';
 //import Swap from './pages/Swap.jsx';
 //import ConfiguracionPerfil from './pages/ConfiguracionPerfil.jsx';
-//import Depositos from './pages/Depositos.jsx';
 //import Withdrawal from './pages/Retiros.jsx';
 //import P2PMarketplace from './pages/P2PMarketplace.jsx';
 //import P2PTransaction from './pages/P2PTransaction.jsx';
 //import CrearOfertaP2P from './pages/CrearOfertaP2P.jsx';
 //import MisOfertas from './pages/P2PMisOfertas.jsx';
-//import Transferencia from './pages/Transferencia.jsx';
+import Transferencia from './pages/Transferencia.jsx';
 //import Notificaciones from './pages/Notificaciones.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { ThemeProvider } from './context/ThemeContext';
 import './styles/global.css';
 
-// ⭐ Crear QueryClient
+// Crear QueryClient
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -43,22 +43,22 @@ function App() {
             <Toaster position="top-right" />
             <Routes>
               <Route path="/" element={<Layout />}>
-              <Route path="" element={<HomePage />} />
+              <Route path="/" element={<HomePage />} />
                 <Route path="login" element={<Login />} />
                 <Route path="register" element={<Register />} />
                 <Route path="auth-success" element={<AuthSuccess />} />
-                <Route path="activos" element={<Activos />} />
                 <Route path="super_admin" element={<SuperAdmin />} />
+                <Route path="activos" element={<Activos />} />
+                <Route path="depositos" element={<Depositos />} />
+                <Route path="transferir" element={<Transferencia />} />
                 {/*
                 <Route path="swap" element={<Swap />} />
                 <Route path="perfil" element={<ConfiguracionPerfil />} />
-                <Route path="depositos" element={<Depositos />} />
                 <Route path="retiros" element={<Withdrawal />} />
                 <Route path="p2p" element={<P2PMarketplace />} />
                 <Route path="p2p/transaction/:id" element={<P2PTransaction />} />
                 <Route path="p2p/crearOferta" element={<CrearOfertaP2P />} />
                 <Route path="p2p/misOfertas" element={<MisOfertas />} />
-                <Route path="transferir" element={<Transferencia />} />
                 <Route path="notificaciones" element={<Notificaciones />} />
                 */}
               </Route>

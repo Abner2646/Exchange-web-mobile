@@ -1,127 +1,41 @@
-import React, { useState, useEffect } from 'react';
-import { API_URL } from '../config';
+import React, { useEffect } from 'react';
 import QRCode from 'react-qr-code';
+import { useCryptos } from '../hooks/useCrypto';
+import { useDeposits } from '../hooks/useDeposits';
 import '../styles/deposits.css';
 
 const Deposits = () => {
-  const [criptomonedas, setCriptomonedas] = useState([]);
-  const [selectedCrypto, setSelectedCrypto] = useState(null);
-  const [selectedNetwork, setSelectedNetwork] = useState('');
-  const [depositAddress, setDepositAddress] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [loadingAddress, setLoadingAddress] = useState(false);
-  const [recentDeposits, setRecentDeposits] = useState([]);
-  const [showMoreInfo, setShowMoreInfo] = useState(false);
+  // Hook para obtener criptomonedas activas
+  const { cryptos: criptomonedas, isLoading: loading } = useCryptos();
 
-  // Cargar criptomonedas activas al montar
+  // Hook para manejar depósitos
+  const {
+    selectedCrypto,
+    selectedNetwork,
+    depositAddress,
+    loadingAddress,
+    showMoreInfo,
+    setSelectedCrypto,
+    handleCryptoChange,
+    toggleMoreInfo,
+  } = useDeposits();
+
+  // Estado local para depósitos recientes (UI ready, no implementado)
+  const recentDeposits = [];
+
+  /**
+   * Seleccionar primera criptomoneda por defecto al cargar
+   */
   useEffect(() => {
-    loadCriptomonedas();
-  }, []);
-
-  // Cargar dirección cuando se selecciona una criptomoneda
-  useEffect(() => {
-    if (selectedCrypto) {
-      loadDepositAddress(selectedCrypto.id);
+    if (criptomonedas.length > 0 && !selectedCrypto) {
+      console.log('=== Deposits: Auto-seleccionando primera crypto ===');
+      setSelectedCrypto(criptomonedas[0]);
     }
-  }, [selectedCrypto]);
+  }, [criptomonedas, selectedCrypto, setSelectedCrypto]);
 
-  const loadCriptomonedas = async () => {
-    setLoading(true);
-    try {
-  const response = await fetch(`${API_URL}/criptomoneda/public/active`);
-      
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      console.log('Respuesta API criptomonedas:', data);
-      
-      // Validar que la respuesta sea un array
-      let cryptoArray = [];
-      if (Array.isArray(data)) {
-        cryptoArray = data;
-      } else if (data && Array.isArray(data.data)) {
-        cryptoArray = data.data;
-      } else if (data && Array.isArray(data.criptomonedas)) {
-        cryptoArray = data.criptomonedas;
-      } else {
-        console.error('Formato de respuesta inesperado:', data);
-        cryptoArray = [];
-      }
-      
-      setCriptomonedas(cryptoArray);
-      
-      // Seleccionar primera criptomoneda por defecto si existe
-      if (cryptoArray.length > 0) {
-        setSelectedCrypto(cryptoArray[0]);
-        setSelectedNetwork(cryptoArray[0].red);
-      }
-    } catch (error) {
-      console.error('Error cargando criptomonedas:', error);
-      setCriptomonedas([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadDepositAddress = async (criptomonedaId) => {
-    console.log('=== GET SIMPLE ===');
-    console.log('CriptomonedaId:', criptomonedaId);
-    
-    setLoadingAddress(true);
-    setDepositAddress(null);
-    
-    try {
-      const miToken = localStorage.getItem('token');
-      console.log('Token obtenido:', miToken ? 'Existe' : 'No existe');
-      
-      if (!miToken) {
-        console.error('No hay token en localStorage');
-        setDepositAddress(null);
-        setLoadingAddress(false);
-        return;
-      }
-      
-  const url = `${API_URL}/direccionDeposito/user/me/crypto/${criptomonedaId}`;
-      console.log('URL completa:', url);
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${miToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      console.log('Status:', response.status);
-      console.log('OK:', response.ok);
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Datos:', data);
-        setDepositAddress(data);
-      } else {
-        const errorText = await response.text();
-        console.log('Error response:', errorText);
-        setDepositAddress(null);
-      }
-      
-    } catch (error) {
-      console.error('Error:', error.message);
-      setDepositAddress(null);
-    } finally {
-      setLoadingAddress(false);
-      console.log('=== FIN GET ===');
-    }
-  };
-
-  const handleCryptoChange = (crypto) => {
-    setSelectedCrypto(crypto);
-    setSelectedNetwork(crypto.red);
-    setDepositAddress(null);
-  };
-
+  /**
+   * Copiar texto al portapapeles
+   */
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
   };
@@ -294,7 +208,7 @@ const Deposits = () => {
                 
                 <button 
                   className="more-info-btn"
-                  onClick={() => setShowMoreInfo(!showMoreInfo)}
+                  onClick={toggleMoreInfo}
                 >
                   Más información {showMoreInfo ? '▲' : '▼'}
                 </button>

@@ -2,7 +2,10 @@
 import React from 'react';
 
 const TopAssets = ({ assets, onNavigate }) => {
-  if (!assets || assets.length === 0) return null;
+  // No mostrar si no hay activos
+  if (!assets || assets.length === 0) {
+    return null;
+  }
 
   return (
     <div className="assets-card card">
@@ -15,9 +18,14 @@ const TopAssets = ({ assets, onNavigate }) => {
               <span className="asset-percentage">{asset.percentage}%</span>
             </div>
             <div className="asset-bar">
-              <div className="asset-bar-fill" style={{ width: `${asset.percentage}%` }} />
+              <div 
+                className="asset-bar-fill" 
+                style={{ width: `${asset.percentage}%` }} 
+              />
             </div>
-            <span className="asset-value">${asset.value.toFixed(2)}</span>
+            <span className="asset-value">
+              ${(asset.value ?? 0).toFixed(2)}
+            </span>
           </div>
         ))}
       </div>

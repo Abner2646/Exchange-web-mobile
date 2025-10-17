@@ -15,13 +15,14 @@ const HomePage = () => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  // Hooks con toda la lógica
+  // Hook de balances con toda la lógica
   const {
     portfolio,
     topAssets,
     isLoading: loadingBalances,
   } = useBalances();
 
+  // Hook de mercado con toda la lógica
   const {
     marketData,
     isLoading: loadingMarket,
@@ -31,6 +32,7 @@ const HomePage = () => {
     isTransitioning,
   } = useMarket();
 
+  // Mostrar loading solo para usuarios autenticados
   if (isAuthenticated && loadingBalances) {
     return (
       <div className="home-loading">
@@ -49,9 +51,13 @@ const HomePage = () => {
             <BalanceCard
               totalUSDT={portfolio.totalUSDT}
               totalBTC={portfolio.totalBTC}
+              btcPriceError={portfolio.btcPriceError}
               onNavigate={navigate}
             />
-            <TopAssets assets={topAssets} onNavigate={navigate} />
+            <TopAssets 
+              assets={topAssets} 
+              onNavigate={navigate} 
+            />
           </div>
         </section>
       )}
@@ -72,4 +78,4 @@ const HomePage = () => {
   );
 };
 
-export default HomePage; // ⭐ AGREGA ESTA LÍNEA
+export default HomePage;

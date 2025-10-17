@@ -1,79 +1,11 @@
 // src/services/balanceService.js
-/*
-import apiClient from '../api/client';
-import { ENDPOINTS } from '../api/endpoints';
-
-class BalanceService {
-  // Obtener balances del usuario
-  async getMyBalances() {
-    const response = await apiClient.get(ENDPOINTS.MY_BALANCES);
-    
-    // Normalizar respuesta
-    if (Array.isArray(response.data)) return response.data;
-    if (response.data?.data) return response.data.data;
-    if (response.data?.balances) return response.data.balances;
-    return [];
-  }
-
-  // Obtener balance de una crypto específica
-  async getBalanceForCrypto(cryptoId) {
-    const balances = await this.getMyBalances();
-    return balances.find(b => b.criptomonedaId === cryptoId);
-  }
-
-  // Calcular portfolio total
-  calculatePortfolioValue(balances, cryptos, prices) {
-    if (!balances.length) return { totalUSDT: 0, totalBTC: 0 };
-
-    const totalUSDT = balances.reduce((acc, balance) => {
-      const crypto = cryptos.find(c => c.id === balance.criptomonedaId);
-      const price = prices[crypto?.symbol] || 0;
-      return acc + parseFloat(balance.balanceDisponible) * price;
-    }, 0);
-
-    const btcPrice = prices['BTC'] || 0;
-    const totalBTC = btcPrice > 0 ? totalUSDT / btcPrice : 0;
-
-    return { totalUSDT, totalBTC };
-  }
-
-  // Obtener top activos del portfolio
-  getTopAssets(balances, cryptos, prices, limit = 2) {
-    const assets = balances
-      .map(balance => {
-        const crypto = cryptos.find(c => c.id === balance.criptomonedaId);
-        if (!crypto) return null;
-
-        const price = prices[crypto.symbol] || 0;
-        const value = parseFloat(balance.balanceDisponible) * price;
-
-        return {
-          symbol: crypto.symbol,
-          value,
-          balance: balance.balanceDisponible,
-        };
-      })
-      .filter(item => item !== null && item.value > 0)
-      .sort((a, b) => b.value - a.value);
-
-    const total = assets.reduce((sum, item) => sum + item.value, 0);
-
-    return assets.slice(0, limit).map(item => ({
-      ...item,
-      percentage: ((item.value / total) * 100).toFixed(1),
-    }));
-  }
-}
-
-export default new BalanceService();*/
-
-// Esta nueva versión podría romper el balance del Home pero es bajo la que está construido "Balance.jsx"
 import apiClient from '../api/client';
 import { ENDPOINTS } from '../api/endpoints';
 
 class BalanceService {
   /**
    * Obtener balances del usuario autenticado
+   * @returns {Promise<Array>} Lista de balances
    */
   async getMyBalances() {
     const response = await apiClient.get(ENDPOINTS.MY_BALANCES);
@@ -89,6 +21,7 @@ class BalanceService {
    * @param {Array} balances - Lista de balances
    * @param {Array} cryptos - Lista de criptomonedas
    * @param {Object} prices - Mapa de precios {symbol: price}
+   * @returns {Object} Totales calculados
    */
   calculateTotals(balances, cryptos, prices) {
     if (!balances || balances.length === 0) {
@@ -103,7 +36,6 @@ class BalanceService {
 
     const btcPrice = prices['BTC'];
     
-    // Si no hay precio de BTC, no podemos calcular
     if (!btcPrice || btcPrice === 0) {
       return { totalUSDT, totalBTC: 0, btcPriceError: true };
     }
@@ -118,6 +50,7 @@ class BalanceService {
    * @param {Array} balances - Lista de balances
    * @param {Array} cryptos - Lista de criptomonedas
    * @param {Object} prices - Mapa de precios
+   * @returns {Array} Balances enriquecidos
    */
   enrichBalances(balances, cryptos, prices) {
     return balances
@@ -144,9 +77,38 @@ class BalanceService {
    * Filtrar balances pequeños
    * @param {Array} enrichedBalances - Balances enriquecidos
    * @param {Number} minValue - Valor mínimo en USDT (default: 1)
+   * @returns {Array} Balances filtrados
    */
   filterSmallBalances(enrichedBalances, minValue = 1) {
     return enrichedBalances.filter(b => b.valueInUSDT >= minValue);
+  }
+
+  /**
+   * Obtener top activos del portfolio con porcentajes
+   * @param {Array} enrichedBalances - Balances enriquecidos
+   * @param {Number} limit - Número de activos a retornar (default: 5)
+   * @returns {Array} Top activos con formato para UI
+   */
+  getTopAssets(enrichedBalances, limit = 5) {
+    if (!enrichedBalances || enrichedBalances.length === 0) {
+      return [];
+    }
+
+    // Filtrar activos con valor y ordenar por valor descendente
+    const validAssets = enrichedBalances
+      .filter(balance => balance.valueInUSDT > 0)
+      .sort((a, b) => b.valueInUSDT - a.valueInUSDT);
+
+    // Calcular total para porcentajes
+    const total = validAssets.reduce((sum, asset) => sum + asset.valueInUSDT, 0);
+
+    // Tomar top N y calcular porcentajes
+    return validAssets.slice(0, limit).map(asset => ({
+      symbol: asset.crypto.symbol,
+      value: asset.valueInUSDT,
+      balance: asset.balanceAmount,
+      percentage: total > 0 ? ((asset.valueInUSDT / total) * 100).toFixed(1) : '0.0',
+    }));
   }
 }
 

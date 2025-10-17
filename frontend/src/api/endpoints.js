@@ -27,6 +27,7 @@ export const ENDPOINTS = {
 
   // Balances
   MY_BALANCES: '/balances/my/balances',
+  BALANCE_UPDATE_USER: (userId, cryptoId) => `/balances/user/${userId}/crypto/${cryptoId}`,
 
   // Prices
   PRICE: (from, to) => `/parExchange/price/${from}/${to}`,
@@ -37,6 +38,9 @@ export const ENDPOINTS = {
   TRANSFER_VERIFY_FUNDS: '/transferencia/verify-funds',
   TRANSFER_PROCESS: (id) => `/transferencia/${id}/process`,
   TRANSFER_RESEND_CODE: (id) => `/transferencia/${id}/resend-code`,
+  
+  //Depositos
+  DEPOSIT_ADDRESS_BY_CRYPTO: (cryptoId) => `/direccionDeposito/user/me/crypto/${cryptoId}`,
 
   // Markets
   COINGECKO_MARKETS: (page, perPage) =>

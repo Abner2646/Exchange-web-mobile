@@ -1,83 +1,4 @@
 // src/hooks/useBalances.js
-/*
-import { useQuery, useQueryClient } from 'react-query';
-import balanceService from '../services/balanceService';
-import cryptoService from '../services/cryptoService';
-
-export const useBalances = () => {
-  const queryClient = useQueryClient();
-
-  // Obtener balances
-  const { 
-    data: balances = [], 
-    isLoading: loadingBalances,
-    error: balancesError,
-    refetch: refetchBalances 
-  } = useQuery(
-    'balances',
-    () => balanceService.getMyBalances(),
-    {
-      staleTime: 30000, // 30 segundos
-      cacheTime: 300000, // 5 minutos
-    }
-  );
-
-  // Obtener cryptos relacionadas
-  const cryptoIds = [...new Set(balances.map(b => b.criptomonedaId))];
-  
-  const { 
-    data: cryptos = [], 
-    isLoading: loadingCryptos 
-  } = useQuery(
-    ['cryptos', cryptoIds],
-    () => cryptoService.getCryptosByIds(cryptoIds),
-    {
-      enabled: cryptoIds.length > 0,
-      staleTime: 60000, // 1 minuto
-    }
-  );
-
-  // Obtener precios
-  const symbols = cryptos.map(c => c.symbol);
-  const { 
-    data: prices = {}, 
-    isLoading: loadingPrices 
-  } = useQuery(
-    ['prices', symbols],
-    () => cryptoService.getPrices(symbols),
-    {
-      enabled: symbols.length > 0,
-      refetchInterval: 30000, // Auto-refresh cada 30 seg
-      staleTime: 20000,
-    }
-  );
-
-  // Calcular portfolio
-  const portfolio = balanceService.calculatePortfolioValue(balances, cryptos, prices);
-  const topAssets = balanceService.getTopAssets(balances, cryptos, prices);
-
-  // Refetch manual
-  const refresh = () => {
-    queryClient.invalidateQueries('balances');
-    queryClient.invalidateQueries(['prices']);
-  };
-
-  return {
-    balances,
-    cryptos,
-    prices,
-    portfolio,
-    topAssets,
-    isLoading: loadingBalances || loadingCryptos || loadingPrices,
-    error: balancesError,
-    refresh,
-    refetchBalances,
-  };
-};
-*/
-
-// Código de arriba era el anteriorimport
-
 import { useState } from 'react';
 import { useQuery } from 'react-query';
 import { toast } from 'react-hot-toast';
@@ -88,7 +9,7 @@ export const useBalances = () => {
   const [hideSmallBalances, setHideSmallBalances] = useState(false);
   const [activeTab, setActiveTab] = useState('moneda');
 
-  // Query para obtener balances
+  // Query para obtener balances del usuario
   const {
     data: balances = [],
     isLoading: loadingBalances,
@@ -107,7 +28,7 @@ export const useBalances = () => {
     }
   );
 
-  // Query para obtener criptomonedas (depende de balances)
+  // Query para obtener criptomonedas relacionadas a los balances
   const {
     data: criptomonedas = [],
     isLoading: loadingCryptos,
@@ -116,15 +37,13 @@ export const useBalances = () => {
     async () => {
       if (balances.length === 0) return [];
 
-      // Extraer IDs únicos de criptomonedas que el usuario TIENE
+      // Extraer IDs únicos de criptomonedas que el usuario tiene
       const cryptoIds = [...new Set(balances.map(b => b.criptomonedaId))];
-      console.log('IDs de criptos con balance:', cryptoIds);
-
+      
       if (cryptoIds.length === 0) return [];
 
-      // Obtener SOLO las criptomonedas que tiene el usuario
+      // Obtener solo las criptomonedas que tiene el usuario
       const cryptoData = await cryptoService.getCryptosByIds(cryptoIds);
-      console.log('Criptomonedas obtenidas:', cryptoData);
       
       return cryptoData;
     },
@@ -134,7 +53,7 @@ export const useBalances = () => {
     }
   );
 
-  // Query para obtener precios (depende de criptomonedas)
+  // Query para obtener precios de las criptomonedas
   const {
     data: prices = {},
     isLoading: loadingPrices,
@@ -143,11 +62,11 @@ export const useBalances = () => {
     async () => {
       if (criptomonedas.length === 0) return {};
 
-      // SIEMPRE obtener precio de BTC para el cálculo del balance total
+      // Siempre incluir BTC para el cálculo del balance total
       const cryptosToFetch = [...criptomonedas];
       const hasBTC = criptomonedas.some(c => c.symbol === 'BTC');
 
-      // Si no tiene BTC, agregarlo para obtener su precio
+      // Si no tiene BTC en su balance, agregarlo para obtener su precio
       if (!hasBTC) {
         const btcData = await cryptoService.getCryptoBySymbol('BTC');
         if (btcData) {
@@ -155,9 +74,8 @@ export const useBalances = () => {
         }
       }
 
-      // Obtener todos los precios en paralelo
+      // Obtener precios en paralelo
       const pricesMap = await cryptoService.getPricesForCryptos(cryptosToFetch, 'USDT');
-      console.log('Precios obtenidos:', pricesMap);
       
       return pricesMap;
     },
@@ -167,26 +85,24 @@ export const useBalances = () => {
     }
   );
 
-  // Cálculo de totales
+  // Cálculo de totales en USDT y BTC
   const totals = balanceService.calculateTotals(balances, criptomonedas, prices);
 
-  // Enriquecimiento de balances
+  // Enriquecimiento de balances con información completa
   const enrichedBalances = balanceService.enrichBalances(balances, criptomonedas, prices);
 
-  // Filtrado de balances pequeños (para BalancePage)
+  // Balances para mostrar en BalancePage (con filtro de pequeños balances)
   const displayBalances = hideSmallBalances
     ? balanceService.filterSmallBalances(enrichedBalances, 1)
     : enrichedBalances;
 
-  // Top assets para HomePage (ordenados por valor en USDT, top 5)
-  const topAssets = enrichedBalances
-    .sort((a, b) => b.valueInUSDT - a.valueInUSDT)
-    .slice(0, 5);
+  // Top assets para HomePage (con porcentajes calculados)
+  const topAssets = balanceService.getTopAssets(enrichedBalances, 5);
 
   const isLoading = loadingBalances || loadingCryptos || loadingPrices;
 
   return {
-    // Datos para HomePage (formato portfolio)
+    // Datos para HomePage
     portfolio: {
       totalUSDT: totals.totalUSDT,
       totalBTC: totals.totalBTC,
@@ -200,16 +116,16 @@ export const useBalances = () => {
     prices,
     enrichedBalances: displayBalances,
     
-    // Totales (también disponibles directamente)
+    // Totales (disponibles directamente)
     totalUSDT: totals.totalUSDT,
     totalBTC: totals.totalBTC,
     btcPriceError: totals.btcPriceError,
     
-    // Estados
+    // Estados de carga y error
     isLoading,
     error: balancesError,
     
-    // Filtros y tabs (para BalancePage)
+    // Filtros y tabs para BalancePage
     activeTab,
     setActiveTab,
     hideSmallBalances,
