@@ -42,10 +42,10 @@ router.delete('/:id', authenticateToken, isSuperAdmin, criptomonedaController.de
 
 // ----------------------- DE LOS ICONOS -------------------------
 // Generar icono para una cripto específica
-router.post('/:id/generate-icon', isSuperAdmin, criptomonedaController.generateIconUrl);
+router.post('/:id/generate-icon', authenticateToken, isSuperAdmin, criptomonedaController.generateIconUrl);
 
 // Generar iconos para todas las criptos sin icono
-router.post('/generate-all-icons', isSuperAdmin, criptomonedaController.generateAllIconUrls);
+router.post('/generate-all-icons', authenticateToken, isSuperAdmin, criptomonedaController.generateAllIconUrls);
 
 /*Lista de simbolos de Cyptolcons.org soporta (más comunes):
 BTC, ETH, USDT, BNB, USDC, XRP, ADA, DOGE, SOL, DOT, MATIC, 

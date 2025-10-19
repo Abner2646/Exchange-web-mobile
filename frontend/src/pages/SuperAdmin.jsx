@@ -20,6 +20,18 @@ const SuperAdmin = () => {
     amount,
     setAmount,
     criptosFiltradas,
+    // Stats selector (separado)
+    criptoSeleccionadaStats,
+    setCriptoSeleccionadaStats,
+    searchCryptoStats,
+    setSearchCryptoStats,
+    showCryptoDropdownStats,
+    setShowCryptoDropdownStats,
+    criptosFiltadasStats,
+    balanceStats,
+    selectedCryptoStats,
+    loadingStats,
+    // Payment method
     nombre,
     setNombre,
     descripcion,
@@ -31,9 +43,13 @@ const SuperAdmin = () => {
     handleConfirmCancel,
     dropdownRef,
     cryptoSearchRef,
+    dropdownStatsRef,
+    cryptoSearchStatsRef,
     handleSensitiveAction,
     handleUpdateBalance,
     handleCreatePaymentMethod,
+    handleGenerateIcons,
+    handleLoadStats,
     loadingStates,
   } = useAdmin();
 
@@ -72,6 +88,7 @@ const SuperAdmin = () => {
       </div>
 
       <div className="sa-grid">
+        {/* Operaciones Sensibles */}
         <div className="sa-card sa-card-danger">
           <div className="sa-warning-badge">⚠️ Operaciones Sensibles</div>
           <h2 className="sa-card-title">Operaciones Críticas del Sistema</h2>
@@ -95,11 +112,162 @@ const SuperAdmin = () => {
             >
               {loadingStates.card3 ? 'Procesando...' : 'Generar Pares'}
             </button>
+
+            <button
+              className="sa-button sa-button-primary"
+              onClick={handleGenerateIcons}
+              disabled={loadingStates.card5}
+            >
+              {loadingStates.card5 ? 'Generando...' : '🎨 Generar Iconos'}
+            </button>
           </div>
         </div>
 
+        {/* Estadísticas de Balances */}
         <div className="sa-card">
-          <h2 className="sa-card-title">SUMAR Balance</h2>
+          <h2 className="sa-card-title">📊 Estadísticas de Balances</h2>
+          <p className="sa-card-description">
+            Visualiza las estadísticas de balances por criptomoneda
+          </p>
+
+          <div className="sa-form">
+            <div className="sa-input-group">
+              <label className="sa-label">Seleccionar Criptomoneda</label>
+              <div className="sa-crypto-selector" ref={dropdownStatsRef}>
+                <button
+                  type="button"
+                  className="sa-crypto-selector-button"
+                  onClick={() => setShowCryptoDropdownStats(!showCryptoDropdownStats)}
+                >
+                  {criptoSeleccionadaStats ? (
+                    <div className="sa-crypto-selected">
+                      <img
+                        src={criptoSeleccionadaStats.iconUrl || '/placeholder.svg'}
+                        alt={criptoSeleccionadaStats.symbol}
+                        className="sa-crypto-icon"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.nextSibling.style.display = 'flex';
+                        }}
+                      />
+                      <div className="sa-crypto-icon-fallback" style={{ display: 'none' }}>
+                        {criptoSeleccionadaStats.symbol.slice(0, 3)}
+                      </div>
+                      <div className="sa-crypto-info">
+                        <span className="sa-crypto-symbol">{criptoSeleccionadaStats.symbol}</span>
+                        <span className="sa-crypto-name">{criptoSeleccionadaStats.nombre}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="sa-crypto-placeholder">Seleccionar criptomoneda</span>
+                  )}
+                </button>
+
+                {showCryptoDropdownStats && (
+                  <div className="sa-crypto-dropdown">
+                    <div className="sa-crypto-search">
+                      <input
+                        ref={cryptoSearchStatsRef}
+                        type="text"
+                        placeholder="Buscar..."
+                        value={searchCryptoStats}
+                        onChange={(e) => setSearchCryptoStats(e.target.value)}
+                        className="sa-crypto-search-input"
+                      />
+                    </div>
+                    <div className="sa-crypto-list">
+                      {criptosFiltadasStats.map((crypto) => (
+                        <button
+                          key={crypto.id}
+                          type="button"
+                          className="sa-crypto-item"
+                          onClick={() => {
+                            setCriptoSeleccionadaStats(crypto);
+                            setShowCryptoDropdownStats(false);
+                            setSearchCryptoStats('');
+                          }}
+                        >
+                          <img
+                            src={crypto.iconUrl || '/placeholder.svg'}
+                            alt={crypto.symbol}
+                            className="sa-crypto-icon-small"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'flex';
+                            }}
+                          />
+                          <div className="sa-crypto-icon-fallback-small" style={{ display: 'none' }}>
+                            {crypto.symbol.slice(0, 3)}
+                          </div>
+                          <span className="sa-crypto-item-symbol">{crypto.symbol}</span>
+                          <span className="sa-crypto-item-name">{crypto.nombre}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Botón para refrescar stats manualmente */}
+            <button 
+              className="sa-button sa-button-primary" 
+              onClick={handleLoadStats}
+              disabled={loadingStats}
+            >
+              {loadingStats ? 'Cargando...' : '🔄 Refrescar Estadísticas'}
+            </button>
+
+            {loadingStats && (
+              <div className="sa-stats-loading">Cargando estadísticas...</div>
+            )}
+
+            {!loadingStats && criptoSeleccionadaStats && selectedCryptoStats && (
+              <div className="sa-stats-grid">
+                <div className="sa-stat-card">
+                  <div className="sa-stat-label">Total de Usuarios</div>
+                  <div className="sa-stat-value">{selectedCryptoStats.totalUsers}</div>
+                </div>
+                <div className="sa-stat-card">
+                  <div className="sa-stat-label">Balance Disponible</div>
+                  <div className="sa-stat-value">
+                    {parseFloat(selectedCryptoStats.totalDisponible).toFixed(8)}
+                  </div>
+                  <div className="sa-stat-symbol">{criptoSeleccionadaStats.symbol}</div>
+                </div>
+                <div className="sa-stat-card">
+                  <div className="sa-stat-label">Balance Bloqueado</div>
+                  <div className="sa-stat-value">
+                    {parseFloat(selectedCryptoStats.totalBloqueado).toFixed(8)}
+                  </div>
+                  <div className="sa-stat-symbol">{criptoSeleccionadaStats.symbol}</div>
+                </div>
+              </div>
+            )}
+
+            {!loadingStats && criptoSeleccionadaStats && !selectedCryptoStats && balanceStats.length > 0 && (
+              <div className="sa-stats-empty">
+                No hay estadísticas disponibles para esta criptomoneda
+              </div>
+            )}
+
+            {!loadingStats && criptoSeleccionadaStats && balanceStats.length === 0 && (
+              <div className="sa-stats-empty">
+                Haz clic en "Cargar Estadísticas" para ver los datos
+              </div>
+            )}
+
+            {!loadingStats && !criptoSeleccionadaStats && (
+              <div className="sa-stats-empty">
+                Selecciona una criptomoneda para ver sus estadísticas
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Actualizar Balance */}
+        <div className="sa-card">
+          <h2 className="sa-card-title">Balance</h2>
           <p className="sa-card-description">Actualiza el balance de un usuario para una criptomoneda específica</p>
           <div className="sa-form">
             <div className="sa-input-group">
@@ -116,6 +284,7 @@ const SuperAdmin = () => {
                   {userLookup.found ? (
                     <>
                       ✓ Usuario encontrado: <strong>{userLookup.username}</strong>
+                      {userLookup.isSelf && <span className="sa-self-badge"> (Tú mismo)</span>}
                     </>
                   ) : (
                     <>✗ Usuario no encontrado</>
@@ -207,7 +376,7 @@ const SuperAdmin = () => {
               <input
                 type="number"
                 className="sa-input"
-                placeholder="1000.50"
+                placeholder="Positiva o Negativa"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 step="0.00000001"
@@ -219,6 +388,7 @@ const SuperAdmin = () => {
           </button>
         </div>
 
+        {/* Crear Método de Pago */}
         <div className="sa-card">
           <h2 className="sa-card-title">Crear Método de Pago</h2>
           <p className="sa-card-description">Agrega un nuevo método de pago al sistema</p>

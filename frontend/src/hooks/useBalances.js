@@ -2,10 +2,12 @@
 import { useState } from 'react';
 import { useQuery } from 'react-query';
 import { toast } from 'react-hot-toast';
+import { useAuth } from '../context/AuthContext'; // ⭐ AGREGADO
 import balanceService from '../services/balanceService';
 import cryptoService from '../services/cryptoService';
 
 export const useBalances = () => {
+  const { user } = useAuth(); // ⭐ AGREGADO
   const [hideSmallBalances, setHideSmallBalances] = useState(false);
   const [activeTab, setActiveTab] = useState('moneda');
 
@@ -19,6 +21,7 @@ export const useBalances = () => {
     'myBalances',
     () => balanceService.getMyBalances(),
     {
+      enabled: !!user, // ⭐ AGREGADO - Solo ejecutar si hay usuario
       staleTime: 30000, // 30 segundos
       cacheTime: 300000, // 5 minutos
       onError: (error) => {
@@ -48,7 +51,7 @@ export const useBalances = () => {
       return cryptoData;
     },
     {
-      enabled: balances.length > 0,
+      enabled: !!user && balances.length > 0, // ⭐ MODIFICADO - Agregar verificación de usuario
       staleTime: 60000, // 1 minuto
     }
   );
@@ -80,7 +83,7 @@ export const useBalances = () => {
       return pricesMap;
     },
     {
-      enabled: criptomonedas.length > 0,
+      enabled: !!user && criptomonedas.length > 0, // ⭐ MODIFICADO - Agregar verificación de usuario
       staleTime: 30000, // 30 segundos
     }
   );

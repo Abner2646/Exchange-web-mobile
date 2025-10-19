@@ -69,6 +69,18 @@ class AdminService {
     });
     return response.data;
   }
+
+  // Obtener estadísticas de balances
+  async getBalanceStats() {
+    const response = await apiClient.get(ENDPOINTS.BALANCE_STATS);
+    return response.data;
+  }
+
+  // Generar todos los iconos de criptomonedas
+  async generateAllIcons() {
+    const response = await apiClient.post(ENDPOINTS.CRYPTO_GENERATE_ALL_ICONS);
+    return response.data;
+  }
 }
 
 export default new AdminService();

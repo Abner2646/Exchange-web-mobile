@@ -8,7 +8,7 @@ const ThemeSwitcher = () => {
   const themes = [
     { mode: 'light', icon: SunIcon, label: 'Claro' },
     { mode: 'dark', icon: MoonIcon, label: 'Oscuro' },
-    { mode: 'crypto', icon: CurrencyDollarIcon, label: 'Crypto' },
+    { mode: 'bitflow', icon: CurrencyDollarIcon, label: 'BitFlow' },
   ];
 
   const currentTheme = themes.find(theme => theme.mode === themeMode);

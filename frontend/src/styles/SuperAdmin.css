@@ -490,3 +490,81 @@
     flex-direction: column;
   }
 }
+
+/* Agregar estos estilos al final de SuperAdmin.css */
+
+/* Self badge when admin is adding balance to themselves */
+.sa-self-badge {
+  color: var(--brand-primary);
+  font-weight: 600;
+  font-style: italic;
+}
+
+/* Stats section styles */
+.sa-stats-loading,
+.sa-stats-empty {
+  padding: var(--spacing-lg);
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--border-primary);
+}
+
+.sa-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-md);
+}
+
+.sa-stat-card {
+  padding: var(--spacing-md);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.sa-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+  border-color: var(--brand-primary);
+}
+
+.sa-stat-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  margin-bottom: var(--spacing-xs);
+  letter-spacing: 0.5px;
+}
+
+.sa-stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-xs);
+  word-break: break-all;
+}
+
+.sa-stat-symbol {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--brand-primary);
+  text-transform: uppercase;
+}
+
+/* Responsive adjustments for stats */
+@media (max-width: 768px) {
+  .sa-stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sa-stat-value {
+    font-size: 1.25rem;
+  }
+}

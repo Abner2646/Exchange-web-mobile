@@ -118,61 +118,61 @@ const darkColors = {
   },
 };
 
-// TEMA CRYPTO (colores vibrantes crypto-nativos)
-const cryptoColors = {
+// TEMA CRYPTO (colores azules vibrantes de marca)
+const bitflowColors = {
   background: {
-    primary: '#0D0D2B',
-    secondary: '#1A1A3E',
-    tertiary: '#252551',
-    elevated: '#1A1A3E',
+    primary: '#0A0F1E',      // Azul muy oscuro, casi negro
+    secondary: '#0F172A',    // Azul oscuro slate
+    tertiary: '#1E293B',     // Azul grisáceo oscuro
+    elevated: '#1E293B',     // Elevado = tertiary para consistencia
   },
   text: {
-    primary: '#F0F0F3',
-    secondary: '#B8B8D1',
-    tertiary: '#8787A3',
-    disabled: '#5E5E73',
-    inverse: '#0D0D2B',
+    primary: '#F1F5F9',      // Blanco azulado muy claro
+    secondary: '#CBD5E1',    // Gris azulado claro
+    tertiary: '#94A3B8',     // Gris azulado medio
+    disabled: '#64748B',     // Gris azulado apagado
+    inverse: '#0A0F1E',      // Inverso = background primary
   },
   brand: {
-    primary: '#7C3AED',
-    secondary: '#9333EA',
-    tertiary: '#4C1D95',
+    primary: '#0052FF',      // Azul principal de la marca
+    secondary: '#0066FF',    // Azul más brillante
+    tertiary: '#001A4D',     // Azul muy oscuro para fondos
   },
   semantic: {
-    success: '#00D4AA',
-    successBg: '#003D32',
-    error: '#FF4D4D',
-    errorBg: '#4D1F1F',
-    warning: '#FFB800',
-    warningBg: '#4D3800',
-    info: '#00B8D4',
-    infoBg: '#003844',
+    success: '#00E5B8',      // Verde cyan brillante crypto
+    successBg: '#003D32',    
+    error: '#FF5370',        // Rojo rosado vibrante
+    errorBg: '#4D1F26',      
+    warning: '#FFB800',      // Amarillo dorado
+    warningBg: '#4D3800',    
+    info: '#00B8FF',         // Azul cyan brillante
+    infoBg: '#003A4D',       
   },
   trading: {
-    buy: '#00D4AA',
-    buyHover: '#00BF99',
-    buyBg: '#003D32',
-    sell: '#FF4D4D',
-    sellHover: '#E64444',
-    sellBg: '#4D1F1F',
+    buy: '#00E5B8',          // Verde cyan para comprar
+    buyHover: '#00D1A6',     
+    buyBg: '#003D32',        
+    sell: '#FF5370',         // Rojo rosado para vender
+    sellHover: '#E64860',    
+    sellBg: '#4D1F26',       
   },
   border: {
-    primary: '#363662',
-    secondary: '#252551',
-    focus: '#7C3AED',
+    primary: '#334155',      // Borde slate medio
+    secondary: '#1E293B',    // Borde = background tertiary
+    focus: '#0052FF',        // Focus = brand primary
   },
   interactive: {
-    hover: '#252551',
-    active: '#363662',
-    disabled: '#1A1A3E',
+    hover: '#1E293B',        // Hover = background tertiary
+    active: '#334155',       // Active = border primary
+    disabled: '#0F172A',     // Disabled = background secondary
   },
   chart: {
-    grid: '#252551',
-    line: '#7C3AED',
-    area: 'rgba(124, 58, 237, 0.15)',
+    grid: '#1E293B',         // Grid sutil
+    line: '#0052FF',         // Línea = brand primary
+    area: 'rgba(0, 82, 255, 0.15)',  // Área azul translúcida
     candle: {
-      up: '#00D4AA',
-      down: '#FF4D4D',
+      up: '#00E5B8',         // Vela alcista = verde cyan
+      down: '#FF5370',       // Vela bajista = rojo rosado
     },
   },
 };
@@ -212,9 +212,9 @@ export const themes = {
     colors: darkColors,
     ...commonConfig,
   },
-  crypto: {
-    mode: 'crypto',
-    colors: cryptoColors,
+  bitflow: {
+    mode: 'bitflow',
+    colors: bitflowColors,
     ...commonConfig,
   },
 };

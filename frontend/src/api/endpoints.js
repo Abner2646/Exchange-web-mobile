@@ -24,10 +24,12 @@ export const ENDPOINTS = {
   CRYPTOS_ACTIVE: '/criptomoneda/public/active',
   CRYPTO_BY_ID: (id) => `/criptomoneda/${id}`,
   CRYPTO_BY_SYMBOL: (symbol) => `/criptomoneda/symbol/${symbol}`,
+  CRYPTO_GENERATE_ALL_ICONS: '/criptomoneda/generate-all-icons',
 
   // Balances
   MY_BALANCES: '/balances/my/balances',
   BALANCE_UPDATE_USER: (userId, cryptoId) => `/balances/user/${userId}/crypto/${cryptoId}`,
+  BALANCE_STATS: '/balances/stats',
 
   // Prices
   PRICE: (from, to) => `/parExchange/price/${from}/${to}`,

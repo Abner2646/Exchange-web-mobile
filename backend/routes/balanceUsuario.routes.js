@@ -1,5 +1,5 @@
 // Balance usuario 
-// Prefijo: balances
+// Prefijo de rutas: /balances
 
 const express = require('express');
 const router = express.Router();
@@ -21,13 +21,13 @@ router.put('/user/:userId/crypto/:criptomonedaId', authenticateToken, isSuperAdm
 
 // RUTAS PÚBLICAS/ADMIN
 // GET /api/balances - Listar todos los balances (admin)
-router.get('/', isAdmin, balanceUserController.getBalances); // Bien
+router.get('/', authenticateToken, isAdmin, balanceUserController.getBalances); // Bien
 
 // GET /api/balances/stats - Estadísticas de balances (admin)
-router.get('/stats', isAdmin, balanceUserController.getBalanceStats);
+router.get('/stats', authenticateToken, isSuperAdmin, balanceUserController.getBalanceStats); // Bien
 
 // GET /api/balances/:id - Obtener balance por ID (admin)
-router.get('/:id', isAdmin, balanceUserController.getBalanceById);
+router.get('/:id', authenticateToken, isSuperAdmin, balanceUserController.getBalanceById);
 
 // =============== RUTAS DE USUARIO AUTENTICADO ===============
 

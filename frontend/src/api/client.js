@@ -22,13 +22,23 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// ⭐ PÁGINAS PÚBLICAS que NO deben redirigir al login
+const PUBLIC_PATHS = ['/', '/login', '/register', '/auth-success'];
+
 // Interceptor: Manejar errores de autenticación
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
-      window.location.href = '/login';
+      
+      // ⭐ SOLO redirigir si NO estamos en una página pública
+      const currentPath = window.location.pathname;
+      const isPublicPage = PUBLIC_PATHS.includes(currentPath);
+      
+      if (!isPublicPage) {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

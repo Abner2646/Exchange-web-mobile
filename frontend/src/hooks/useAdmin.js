@@ -16,6 +16,11 @@ export const useAdmin = () => {
   const [showCryptoDropdown, setShowCryptoDropdown] = useState(false);
   const [amount, setAmount] = useState('');
 
+  // Estados del selector de stats (completamente separado del balance)
+  const [criptoSeleccionadaStats, setCriptoSeleccionadaStats] = useState(null);
+  const [searchCryptoStats, setSearchCryptoStats] = useState('');
+  const [showCryptoDropdownStats, setShowCryptoDropdownStats] = useState(false);
+
   // Estados del formulario de método de pago
   const [nombre, setNombre] = useState('');
   const [descripcion, setDescripcion] = useState('');
@@ -28,6 +33,8 @@ export const useAdmin = () => {
   // Referencias
   const dropdownRef = useRef(null);
   const cryptoSearchRef = useRef(null);
+  const dropdownStatsRef = useRef(null);
+  const cryptoSearchStatsRef = useRef(null);
 
   // Query: Obtener información del usuario actual
   const {
@@ -36,9 +43,10 @@ export const useAdmin = () => {
     error: userError,
   } = useQuery(
     'adminUserInfo',
-    () => authService.getProfile(), // ✅ CORREGIDO: método correcto
+    () => authService.getProfile(),
     {
       staleTime: 300000, // 5 minutos
+      retry: false, // No reintentar si falla
       onSuccess: (data) => {
         console.log('✅ [useAdmin] User data loaded:', data);
         console.log('✅ [useAdmin] User rol:', data?.rol);
@@ -55,7 +63,27 @@ export const useAdmin = () => {
     isLoading: loadingCryptos,
   } = useQuery('activeCryptocurrencies', () => adminService.getActiveCryptocurrencies(), {
     staleTime: 60000, // 1 minuto
+    retry: 1,
   });
+
+  // Query: Obtener estadísticas de balances
+  const {
+    data: balanceStats = [],
+    isLoading: loadingStats,
+    refetch: refetchStats,
+  } = useQuery(
+    'balanceStats', 
+    () => adminService.getBalanceStats(), 
+    {
+      staleTime: 30000, // 30 segundos
+      retry: false, // No reintentar si falla para evitar múltiples 401
+      enabled: !!userInfo && userInfo.rol === 'super_admin', // Solo cargar si es super_admin
+      onError: (error) => {
+        console.error('❌ [useAdmin] Error loading balance stats:', error);
+        // No mostrar toast, solo log en consola
+      },
+    }
+  );
 
   // Mutation: Inicializar wallets
   const initializeWalletsMutation = useMutation(
@@ -82,6 +110,8 @@ export const useAdmin = () => {
         setUserLookup(null);
         setCriptoSeleccionada(null);
         setAmount('');
+        // Refrescar estadísticas
+        refetchStats();
       },
       onError: (error) => {
         toast.error(`Error: ${error.response?.data?.message || error.message}`);
@@ -118,10 +148,37 @@ export const useAdmin = () => {
     }
   );
 
+  // Mutation: Generar todos los iconos
+  const generateIconsMutation = useMutation(
+    () => adminService.generateAllIcons(),
+    {
+      onSuccess: () => {
+        toast.success('Iconos generados exitosamente');
+        queryClient.invalidateQueries('activeCryptocurrencies');
+      },
+      onError: (error) => {
+        toast.error(`Error: ${error.response?.data?.message || error.message}`);
+      },
+    }
+  );
+
   // Búsqueda de usuario con debounce
   useEffect(() => {
     const timer = setTimeout(async () => {
       if (userEmail && isValidEmail(userEmail)) {
+        // ✅ SOLUCIÓN #2: Permitir que el admin se busque a sí mismo
+        // Verificar si el email ingresado es el del usuario actual
+        if (userInfo && userInfo.email === userEmail) {
+          setUserLookup({
+            found: true,
+            username: userInfo.username,
+            userId: userInfo.id,
+            isSelf: true,
+          });
+          return;
+        }
+
+        // Si no es el mismo usuario, buscar en el backend
         try {
           const result = await adminService.searchUserByEmail(userEmail);
           setUserLookup(result);
@@ -135,7 +192,7 @@ export const useAdmin = () => {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [userEmail]);
+  }, [userEmail, userInfo]);
 
   // Cerrar dropdown al hacer click fuera
   useEffect(() => {
@@ -154,6 +211,24 @@ export const useAdmin = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showCryptoDropdown]);
+
+  // Cerrar dropdown de stats al hacer click fuera
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownStatsRef.current && !dropdownStatsRef.current.contains(event.target)) {
+        setShowCryptoDropdownStats(false);
+      }
+    };
+
+    if (showCryptoDropdownStats) {
+      document.addEventListener('mousedown', handleClickOutside);
+      cryptoSearchStatsRef.current?.focus();
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showCryptoDropdownStats]);
 
   // Handlers para operaciones sensibles
   const handleSensitiveAction = (action) => {
@@ -214,12 +289,37 @@ export const useAdmin = () => {
     createPaymentMethodMutation.mutate({ nombre, descripcion });
   };
 
-  // Filtrar criptomonedas
+  // Handler para cargar stats manualmente
+  const handleLoadStats = () => {
+    console.log('🔄 Intentando cargar estadísticas...');
+    refetchStats();
+  };
+
+  // Handler para generar iconos
+  const handleGenerateIcons = () => {
+    if (window.confirm('¿Estás seguro de que deseas generar todos los iconos de criptomonedas?')) {
+      generateIconsMutation.mutate();
+    }
+  };
+
+  // Filtrar criptomonedas para balance
   const criptosFiltradas = criptomonedas.filter(
     (crypto) =>
       crypto.nombre.toLowerCase().includes(searchCrypto.toLowerCase()) ||
       crypto.symbol.toLowerCase().includes(searchCrypto.toLowerCase())
   );
+
+  // Filtrar criptomonedas para stats
+  const criptosFiltadasStats = criptomonedas.filter(
+    (crypto) =>
+      crypto.nombre.toLowerCase().includes(searchCryptoStats.toLowerCase()) ||
+      crypto.symbol.toLowerCase().includes(searchCryptoStats.toLowerCase())
+  );
+
+  // Obtener estadísticas de la cripto seleccionada en el panel de stats
+  const selectedCryptoStats = criptoSeleccionadaStats
+    ? balanceStats.find(stat => stat.criptomonedaId === criptoSeleccionadaStats.id)
+    : null;
 
   // 🐛 DEBUG LOG
   console.log('🔍 [useAdmin] Current state:', {
@@ -251,6 +351,21 @@ export const useAdmin = () => {
     setAmount,
     criptosFiltradas,
 
+    // Stats selector (separado del balance)
+    criptoSeleccionadaStats,
+    setCriptoSeleccionadaStats,
+    searchCryptoStats,
+    setSearchCryptoStats,
+    showCryptoDropdownStats,
+    setShowCryptoDropdownStats,
+    criptosFiltadasStats,
+
+    // Balance stats
+    balanceStats,
+    loadingStats,
+    selectedCryptoStats,
+    refetchStats,
+
     // Payment method form
     nombre,
     setNombre,
@@ -267,11 +382,15 @@ export const useAdmin = () => {
     // Refs
     dropdownRef,
     cryptoSearchRef,
+    dropdownStatsRef,
+    cryptoSearchStatsRef,
 
     // Actions
     handleSensitiveAction,
     handleUpdateBalance,
     handleCreatePaymentMethod,
+    handleGenerateIcons,
+    handleLoadStats,
 
     // Loading states
     loadingStates: {
@@ -279,6 +398,7 @@ export const useAdmin = () => {
       card2: updateBalanceMutation.isLoading,
       card3: generatePairsMutation.isLoading,
       card4: createPaymentMethodMutation.isLoading,
+      card5: generateIconsMutation.isLoading,
     },
   };
 };
