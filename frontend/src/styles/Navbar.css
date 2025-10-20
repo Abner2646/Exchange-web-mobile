@@ -1,3 +1,5 @@
+/* src/styles/Navbar.css */
+
 /* =========================================
    NAVBAR - SISTEMA DE TEMAS
 ========================================= */ 
@@ -58,6 +60,11 @@
   margin-left: auto;
 }
 
+/* MOBILE ACTIONS - Oculto por defecto */
+.navbar-mobile-actions {
+  display: none;
+}
+
 /* LINKS */
 .navbar-link {
   display: flex;
@@ -71,6 +78,10 @@
   border-radius: var(--radius-md);
   transition: all 0.2s ease;
   white-space: nowrap;
+  position: relative;
+  background: none;
+  border: none;
+  cursor: pointer;
 }
 
 .navbar-link:hover {
@@ -82,66 +93,54 @@
   color: var(--text-primary);
 }
 
+/* INDICADOR DE RUTA ACTIVA */
+.navbar-link.active {
+  color: var(--brand-primary);
+}
+
+.navbar-link.active::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+  height: 2px;
+  background: var(--brand-primary);
+  border-radius: var(--radius-full);
+}
+
 .navbar-link-icon {
   width: 18px;
   height: 18px;
   flex-shrink: 0;
 }
 
-/* DEPOSITAR BUTTON */
-.navbar-deposit-btn {
+/* WALLET DROPDOWN */
+.navbar-wallet-trigger {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  background: var(--brand-primary);
-  color: var(--text-inverse);
-  border: none;
-  padding: var(--spacing-sm) var(--spacing-lg);
-  border-radius: var(--radius-md);
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
+  gap: var(--spacing-xs);
 }
 
-.navbar-deposit-btn:hover {
-  background: var(--brand-secondary);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-sm);
+.navbar-wallet-dropdown-menu {
+  min-width: 220px;
 }
 
-.navbar-deposit-icon {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-}
-
-/* DROPDOWN */
+/* DROPDOWN GENERAL */
 .navbar-dropdown {
   position: relative;
 }
 
-.navbar-dropdown-trigger {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  cursor: pointer;
-}
-
 .navbar-dropdown-arrow {
-  font-size: 0.6rem;
+  width: 14px;
+  height: 14px;
   color: var(--text-secondary);
   transition: all 0.2s ease;
 }
 
-/* Hover effects */
-.navbar-dropdown:hover .navbar-dropdown-trigger {
-  background: var(--interactive-hover);
-  color: var(--text-primary);
-}
-
-.navbar-dropdown:hover .navbar-dropdown-arrow {
+.navbar-dropdown:hover .navbar-dropdown-arrow,
+.navbar-wallet-dropdown:hover .navbar-dropdown-arrow {
   color: var(--text-primary);
   transform: rotate(180deg);
 }
@@ -155,20 +154,10 @@
   background: var(--bg-elevated);
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-lg);
   min-width: 200px;
   z-index: 1000;
   overflow: hidden;
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
-  transition: all 0.2s ease;
-}
-
-.navbar-dropdown:hover .navbar-dropdown-menu {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
 }
 
 .navbar-dropdown-item {
@@ -198,6 +187,12 @@
   width: 18px;
   height: 18px;
   flex-shrink: 0;
+}
+
+.navbar-dropdown-divider {
+  height: 1px;
+  background: var(--border-secondary);
+  margin: var(--spacing-xs) 0;
 }
 
 /* USER INFO */
@@ -435,6 +430,13 @@
   font-size: 0.875rem;
 }
 
+.navbar-notification-loading {
+  padding: var(--spacing-xl);
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
 .navbar-notifications-footer {
   border-top: 1px solid var(--border-primary);
   padding: 0;
@@ -509,7 +511,7 @@
   transition: all 0.2s ease;
 }
 
-.navbar-user-dropdown.open .navbar-user-dropdown-arrow {
+.navbar-user-dropdown:hover .navbar-user-dropdown-arrow {
   transform: rotate(180deg);
 }
 
@@ -526,69 +528,140 @@
 }
 
 /* =========================================
+   LOGOUT OVERLAY
+========================================= */
+
+.navbar-logout-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* =========================================
    RESPONSIVE
 ========================================= */
 
-@media (max-width: 1200px) {
-  .navbar-menu { gap: var(--spacing-md); }
-  .navbar-actions { gap: var(--spacing-sm); }
-  .navbar-link { padding: var(--spacing-xs) var(--spacing-sm); }
-}
-
 @media (max-width: 768px) {
-  .navbar-container { padding: 0 var(--spacing-md); }
-  .navbar-content { gap: var(--spacing-md); }
+  /* Ocultar menú de navegación completo en mobile */
   .navbar-menu {
-    gap: var(--spacing-sm);
-    overflow-x: auto;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
+    display: none;
   }
-  .navbar-menu::-webkit-scrollbar { display: none; }
-  .navbar-actions { gap: var(--spacing-xs); flex-shrink: 0; }
-  .navbar-link { font-size: 0.75rem; padding: var(--spacing-xs); }
-  .navbar-deposit-btn,
-  .navbar-logout-btn,
-  .navbar-login-btn {
+
+  /* Ocultar acciones desktop */
+  .navbar-actions {
+    display: none;
+  }
+
+  /* Mostrar solo mobile actions */
+  .navbar-mobile-actions {
+    display: flex;
+    margin-left: auto;
+  }
+
+  .navbar-download-app-btn {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    background: var(--brand-primary);
+    color: var(--text-inverse);
+    border: none;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
     font-size: 0.75rem;
-    padding: var(--spacing-xs) var(--spacing-sm);
-  }
-  .navbar-user-info { display: none; }
-  .navbar-user-avatar { width: 28px; height: 28px; }
-  .navbar-user-avatar-icon { width: 20px; height: 20px; }
-
-  /* Dropdowns en móvil */
-  .navbar-notifications-menu,
-  .navbar-user-dropdown-menu {
-    position: fixed;
-    top: 64px;
-    left: var(--spacing-md);
-    right: var(--spacing-md);
-    margin-top: 0;
-    min-width: auto;
-    width: calc(100vw - 2 * var(--spacing-md));
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    text-decoration: none;
   }
 
-  .navbar-link-icon,
-  .navbar-deposit-icon,
-  .navbar-dropdown-icon {
+  .navbar-download-app-btn:hover {
+    background: var(--brand-secondary);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .navbar-download-app-icon {
     width: 16px;
     height: 16px;
+    flex-shrink: 0;
   }
 
-  .navbar-dropdown:active .navbar-dropdown-menu {
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0);
+  .navbar-container {
+    padding: 0 var(--spacing-md);
   }
 
-  .navbar-notification-custom-icon {
-    width: 18px;
-    height: 18px;
+  .navbar-content {
+    gap: var(--spacing-md);
+  }
+
+  .navbar-logo {
+    font-size: 1.25rem;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1200px) {
+  .navbar-menu {
+    gap: var(--spacing-md);
+  }
+  .navbar-actions {
+    gap: var(--spacing-sm);
+  }
+  .navbar-link {
+    padding: var(--spacing-xs) var(--spacing-sm);
   }
 }
 
 @media (max-width: 480px) {
-  .navbar-logo { font-size: 1.25rem; }
-  .navbar-content { gap: var(--spacing-sm); }
+  .navbar-logo {
+    font-size: 1.125rem;
+  }
+
+  .navbar-download-app-btn {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: 0.7rem;
+  }
+
+  .navbar-download-app-icon {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+/* =========================================
+   AUTH BUTTONS
+========================================= */
+
+.navbar-auth-buttons {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+/* REGISTER BUTTON */
+.navbar-register-btn {
+  background: var(--brand-primary);
+  color: var(--text-inverse);
+  border: none;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+}
+
+.navbar-register-btn:hover {
+  background: var(--brand-secondary);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
 }

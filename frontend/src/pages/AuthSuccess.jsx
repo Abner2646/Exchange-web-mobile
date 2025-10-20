@@ -1,3 +1,4 @@
+// src/pages/AuthSuccess.jsx
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -22,28 +23,33 @@ const AuthSuccess = () => {
       try {
         // 1. Guardar token
         localStorage.setItem('token', token);
-        
+
         // 2. Decodificar token
         const payload = JSON.parse(atob(token.split('.')[1]));
-        
+
         // 3. Actualizar contexto
         login({
           id: payload.userId,
           email: payload.email,
           username: payload.username,
-          role: payload.rol //Antes payload.role
+          role: payload.rol,
         });
-        
+
         // 4. Esperar un tick para que React actualice el estado
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        // 5. Redirigir según tipo de usuario
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        // 5. Obtener ruta de redirect guardada (si existe)
+        const savedRedirect = sessionStorage.getItem('loginRedirect');
+        sessionStorage.removeItem('loginRedirect'); // Limpiar
+
+        const redirectPath = savedRedirect || '/';
+
+        // 6. Redirigir según tipo de usuario
         if (isNewUser) {
-          navigate('/', { replace: true });
+          navigate(redirectPath, { replace: true });
         } else {
-          navigate('/', { replace: true });
+          navigate(redirectPath, { replace: true });
         }
-        
       } catch (error) {
         console.error('Error processing auth:', error);
         localStorage.removeItem('token');

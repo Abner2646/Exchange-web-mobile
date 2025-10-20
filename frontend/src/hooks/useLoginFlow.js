@@ -1,6 +1,7 @@
+// src/hooks/useLoginFlow.js
 import { useState } from 'react';
 import { useMutation } from 'react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import authService from '../services/authService';
@@ -11,7 +12,11 @@ import authService from '../services/authService';
  */
 export const useLoginFlow = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login: loginContext } = useAuth();
+
+  // Obtener la ruta de destino (si existe)
+  const from = location.state?.from?.pathname || '/';
 
   // Estado del flujo de autenticación
   const [requires2FA, setRequires2FA] = useState(false);
@@ -33,19 +38,20 @@ export const useLoginFlow = () => {
         } else {
           // Login exitoso sin 2FA
           authService.setAuthToken(data.token);
-          loginContext({ 
-            id: data.user.id, 
-            username: data.user.username 
+          loginContext({
+            id: data.user.id,
+            username: data.user.username,
           });
           toast.success('¡Bienvenido!');
-          navigate('/');
+          // Redirigir a la ruta original o a home
+          navigate(from, { replace: true });
         }
       },
       onError: (error) => {
         console.error('❌ Error en login:', error);
         toast.error(
-          error.response?.data?.error || 
-          'Usuario o contraseña incorrectos. Por favor, inténtalo de nuevo.'
+          error.response?.data?.error ||
+            'Usuario o contraseña incorrectos. Por favor, inténtalo de nuevo.'
         );
       },
     }
@@ -58,18 +64,19 @@ export const useLoginFlow = () => {
       onSuccess: (data) => {
         // Login exitoso con 2FA
         authService.setAuthToken(data.token);
-        loginContext({ 
-          id: data.user.id, 
-          username: data.user.username 
+        loginContext({
+          id: data.user.id,
+          username: data.user.username,
         });
         toast.success('¡Verificación exitosa! Bienvenido.');
-        navigate('/');
+        // Redirigir a la ruta original o a home
+        navigate(from, { replace: true });
       },
       onError: (error) => {
         console.error('❌ Error en verificación 2FA:', error);
         toast.error(
-          error.response?.data?.error || 
-          'Código de verificación incorrecto. Por favor, inténtalo de nuevo.'
+          error.response?.data?.error ||
+            'Código de verificación incorrecto. Por favor, inténtalo de nuevo.'
         );
       },
     }
@@ -87,8 +94,7 @@ export const useLoginFlow = () => {
       onError: (error) => {
         console.error('❌ Error al reenviar código:', error);
         toast.error(
-          error.response?.data?.error || 
-          'Error al reenviar código. Intenta de nuevo.'
+          error.response?.data?.error || 'Error al reenviar código. Intenta de nuevo.'
         );
       },
     }
@@ -103,16 +109,18 @@ export const useLoginFlow = () => {
   return {
     // Estado
     requires2FA,
-    
+
     // Acciones
     loginWithCredentials: loginMutation.mutate,
     verify2FA: verify2FAMutation.mutate,
     resend2FA: resend2FAMutation.mutate,
     resetToLogin,
-    
+
     // Estados de carga
     isLoggingIn: loginMutation.isLoading,
     isVerifying: verify2FAMutation.isLoading,
     isResending: resend2FAMutation.isLoading,
   };
 };
+
+export default useLoginFlow;

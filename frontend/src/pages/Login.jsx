@@ -1,3 +1,4 @@
+// src/pages/Login.jsx
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLoginFlow } from '../hooks/useLoginFlow';
@@ -67,10 +68,7 @@ const Login = () => {
         {/* Botón de Google - solo mostrar en login inicial */}
         {!requires2FA && (
           <>
-            <button
-              onClick={handleGoogleLogin}
-              className="login-google-button"
-            >
+            <button onClick={handleGoogleLogin} className="login-google-button">
               <svg className="login-google-icon" viewBox="0 0 24 24">
                 <path
                   fill="#4285F4"
