@@ -2,7 +2,7 @@
 import { Link } from 'react-router-dom';
 import { CheckIcon, EyeIcon } from '@heroicons/react/24/outline';
 import { formatRelativeDate } from '../../utils/formatters';
-import { getNotificationIcon } from '../../utils/notificationHelpers';
+import { getNotificationIcon } from '../../utils/notificationHelpers'; 
 
 const NotificationsDropdown = ({
   notifications,

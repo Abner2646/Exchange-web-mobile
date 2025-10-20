@@ -6,7 +6,7 @@ import notificationService from '../services/notificationService';
 export const useNotifications = () => {
   const queryClient = useQueryClient();
 
-  // Query para obtener todas las notificaciones
+  // Query para obtener todas las notificaciones 
   const {
     data: notifications = [],
     isLoading,

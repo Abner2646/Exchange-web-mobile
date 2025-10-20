@@ -1,6 +1,6 @@
 // src/components/ThemeSwitcher.jsx
 import { useTheme } from '../hooks/useTheme';
-import { SunIcon, MoonIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline';
+import { SunIcon, MoonIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline'; 
 
 const ThemeSwitcher = () => {
   const { themeMode, setThemeMode } = useTheme();
