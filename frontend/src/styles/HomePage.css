@@ -46,7 +46,7 @@
 
 .hero-actions {
   display: flex;
-  gap: var(--spacing-md);
+  gap: var(--spacing-sm); /* Gap más pequeño */
   flex-wrap: wrap;
 }
 
@@ -74,7 +74,7 @@
   padding: var(--spacing-xxl) var(--spacing-xl);
   max-width: 1440px;
   margin: 0 auto;
-  background: var(--bg-primary); /* ⬅️ Mismo color que el fondo general */
+  background: var(--bg-primary);
 }
 
 .section-title {
@@ -92,12 +92,12 @@
 }
 
 .feature-card {
-  background: transparent; /* ⬅️ Sin fondo */
+  background: transparent;
   padding: var(--spacing-lg);
   border-radius: var(--radius-lg);
-  border: none; /* ⬅️ Sin borde */
+  border: none;
   transition: all 0.2s ease;
-  text-align: center; /* ⬅️ Centrado */
+  text-align: center;
 }
 
 .feature-card:hover {
@@ -293,11 +293,15 @@
 /* MARKETS SECTION */
 
 .markets-section {
-  padding: var(--spacing-xl) var(--spacing-xl) var(--spacing-xxl) var(--spacing-xl);
+  padding: var(--spacing-xxl) var(--spacing-xl);
   max-width: 1440px;
   margin: 0 auto;
   background: var(--bg-primary);
   scroll-margin-top: 80px;
+}
+
+.markets-table-container-wrapper {
+  width: 100%;
 }
 
 .markets-table-container {
@@ -678,9 +682,98 @@
   margin: 0;
 }
 
+/* WATCHLIST STYLES */
+.watchlist-column {
+  width: 40px !important;
+  text-align: center !important;
+}
+
+.watchlist-cell {
+  padding: var(--spacing-xs) !important;
+}
+
+.watchlist-btn {
+  background: transparent;
+  border: none;
+  padding: var(--spacing-xs);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+}
+
+.watchlist-btn:hover {
+  background: var(--interactive-hover);
+}
+
+.watchlist-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--text-tertiary);
+  transition: all 0.2s ease;
+}
+
+.watchlist-icon-active {
+  color: var(--warning);
+}
+
+.watchlist-btn:hover .watchlist-icon {
+  color: var(--warning);
+  transform: scale(1.1);
+}
+
+.skeleton-icon-small {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  margin: 0 auto;
+}
+
+/* ASSETS EMPTY STATE */
+.assets-empty {
+  padding: var(--spacing-xl);
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.assets-empty p {
+  margin: 0;
+  font-size: 0.9375rem;
+}
+
+/* BALANCE ERROR STATE */
+.balance-btc-error {
+  color: var(--error) !important;
+  font-size: 0.8125rem !important;
+}
+
+/* VIEW ALL ASSETS BUTTON */
+.home-view-all-assets-btn {
+  width: 100%;
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.home-view-all-assets-btn:hover {
+  background: var(--brand-primary);
+  color: var(--text-inverse);
+  border-color: var(--brand-primary);
+  transform: translateY(-1px);
+}
+
 /* RESPONSIVE */
 
-@media (max-width: 1024px) {
+@media (max-width: 1200px) {
   .dashboard-grid {
     grid-template-columns: 1fr;
   }
@@ -775,6 +868,12 @@
   .markets-section {
     scroll-margin-top: 40px;
   }
+
+  .watchlist-column,
+  .watchlist-cell {
+    display: none;
+  }
+
 }
 
 @media (max-width: 480px) {
@@ -820,139 +919,76 @@
   }
 }
 
-/* WATCHLIST STYLES */
-.watchlist-column {
-  width: 40px !important;
-  text-align: center !important;
+/* ============================================
+   TOP GAINERS - USUARIO REGISTRADO (SOLO)
+   ============================================ */
+
+/* Cuando TopGainersSection aparece solo (usuario registrado) */
+.dashboard-section + .gainers-section {
+  padding: 0 var(--spacing-xl);
+  max-width: 1440px;
+  margin: var(--spacing-xxl) auto;
 }
 
-.watchlist-cell {
-  padding: var(--spacing-xs) !important;
+.dashboard-section + .gainers-section .gainers-container {
+  max-width: 600px; /* Reducir ancho */
+  margin: 0 auto; /* Centrar */
 }
 
-.watchlist-btn {
-  background: transparent;
-  border: none;
-  padding: var(--spacing-xs);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-sm);
-  transition: all 0.2s ease;
-}
+@media (max-width: 1200px) {
+  .hero-with-gainers {
+    gap: var(--spacing-lg); /* 24px */
+    min-height: auto;
+  }
+  
+  /* Notebook: Hero más a la izquierda */
+  .hero-with-gainers .hero-section {
+    flex: 0 0 580px; /* 580px en notebook */
+  }
+  
+  .hero-with-gainers .hero-title {
+    font-size: 3.5rem; /* 56px en notebook */
+    max-width: 540px;
+  }
+  
+  .hero-with-gainers .gainers-section {
+    flex: 0 0 320px; /* 320px en notebook */
+  }
+  
+  .hero-with-gainers .gainers-container {
+    min-height: 260px;
+  }
 
-.watchlist-btn:hover {
-  background: var(--interactive-hover);
-}
-
-.watchlist-icon {
-  width: 20px;
-  height: 20px;
-  color: var(--text-tertiary);
-  transition: all 0.2s ease;
-}
-
-.watchlist-icon-active {
-  color: var(--warning);
-}
-
-.watchlist-btn:hover .watchlist-icon {
-  color: var(--warning);
-  transform: scale(1.1);
-}
-
-.skeleton-icon-small {
-  width: 20px;
-  height: 20px;
-  border-radius: var(--radius-sm);
-  margin: 0 auto;
-}
-
-/* Mobile: hide watchlist column */
-@media (max-width: 768px) {
-  .watchlist-column,
-  .watchlist-cell {
-    display: none;
+  /* Usuario registrado - notebook */
+  .dashboard-section + .gainers-section .gainers-container {
+    max-width: 550px;
   }
 }
 
-/* ASSETS EMPTY STATE */
-.assets-empty {
-  padding: var(--spacing-xl);
-  text-align: center;
-  color: var(--text-secondary);
-}
-
-.assets-empty p {
-  margin: 0;
-  font-size: 0.9375rem;
-}
-
-/* BALANCE ERROR STATE */
-.balance-btc-error {
-  color: var(--error) !important;
-  font-size: 0.8125rem !important;
-}
-
-/* VIEW ALL ASSETS BUTTON */
-.home-view-all-assets-btn {
-  width: 100%;
-  margin-top: var(--spacing-md);
-  padding: var(--spacing-sm) var(--spacing-md);
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.home-view-all-assets-btn:hover {
-  background: var(--brand-primary);
-  color: var(--text-inverse);
-  border-color: var(--brand-primary);
-  transform: translateY(-1px);
-}
-
-
-/* Responsive */
-@media (max-width: 1200px) {
-  .markets-header-container {
+/* Tablet: cambiar a columna */
+@media (max-width: 900px) {
+  .hero-with-gainers {
     flex-direction: column;
     align-items: stretch;
-    gap: var(--spacing-lg);
+    gap: var(--spacing-xxl);
   }
-
-  .markets-header-container .section-title {
-    text-align: center;
+  
+  .hero-with-gainers .hero-section,
+  .hero-with-gainers .gainers-section {
+    flex: 1;
   }
-
-  .markets-top-gainers {
+  
+  .hero-with-gainers .hero-title {
+    font-size: 2.75rem;
     max-width: 100%;
   }
-}
-
-@media (max-width: 768px) {
-  .markets-top-gainers {
-    display: none;
+  
+  .hero-with-gainers .gainers-container {
+    min-height: 300px;
   }
-}
 
-@media (max-width: 768px) {
-  .markets-top-gainers {
-    display: none;
+  /* Usuario registrado - tablet */
+  .dashboard-section + .gainers-section .gainers-container {
+    max-width: 100%;
   }
-}
-
-/* MARKETS SECTION */
-
-.markets-section {
-  padding: 0 var(--spacing-xl) var(--spacing-xxl) var(--spacing-xl); /* ⬅️ Sin padding-top */
-  max-width: 1440px;
-  margin: 0 auto;
-  background: var(--bg-primary);
-  scroll-margin-top: 80px;
 }

@@ -17,8 +17,8 @@ const HeroSection = ({ onNavigate }) => {
             className="home-action-btn primary"
             onClick={() => onNavigate('/register')}
             style={{
-              padding: 'var(--spacing-md) var(--spacing-xxl)',
-              fontSize: '1.125rem',
+              padding: 'var(--spacing-sm) var(--spacing-xl)',
+              fontSize: '1rem',
             }}
           >
             Empezar Ahora
@@ -29,6 +29,9 @@ const HeroSection = ({ onNavigate }) => {
               document.getElementById('markets-section')?.scrollIntoView({ 
                 behavior: 'smooth' 
               });
+            }}
+            style={{
+              padding: 'var(--spacing-sm) var(--spacing-lg)',
             }}
           >
             Ver Mercados
