@@ -1,0 +1,270 @@
+/* src/styles/DownloadSection.css */
+
+/* === SECTION CONTAINER === */
+.download-section {
+  padding: var(--spacing-xxl) var(--spacing-xl);
+  max-width: 1440px;
+  margin: 0 auto;
+  background: var(--bg-primary);
+}
+
+.download-container {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: var(--spacing-xxl);
+  align-items: center;
+  padding: var(--spacing-xl);
+}
+
+/* === MOCKUP IMAGE === */
+.download-mockup {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.download-mockup-image {
+  max-width: 85%;
+  height: auto;
+  max-height: 480px;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.1));
+}
+
+/* === CONTENT === */
+.download-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.download-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+  margin: 0;
+}
+
+.download-subtitle {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+  margin: 0;
+  margin-bottom: var(--spacing-sm);
+}
+
+/* === QR CODE === */
+.download-qr-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-lg) 0;
+}
+
+.download-qr-wrapper {
+  padding: var(--spacing-sm);
+  background: white;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.download-qr-code {
+  display: block;
+}
+
+.download-qr-text {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+  text-align: center;
+}
+
+.download-qr-platforms {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  margin: 0;
+  text-align: center;
+}
+
+/* === PLATFORMS === */
+.download-platforms {
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: center;
+  margin-top: var(--spacing-sm);
+}
+
+.download-platform-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: transparent;
+  border: none;
+  transition: all 0.2s ease;
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.download-platform-item:hover {
+  opacity: 1;
+}
+
+.download-platform-icon {
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.download-icon-size {
+  width: 36px;
+  height: 36px;
+}
+
+.download-platform-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.download-platform-name {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* === DEV NOTICE === */
+.download-dev-notice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: transparent;
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  margin-top: var(--spacing-sm);
+}
+
+.download-dev-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+}
+
+/* === RESPONSIVE === */
+
+/* Tablet */
+@media (max-width: 1024px) {
+  .download-container {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-xl);
+  }
+
+  .download-mockup {
+    order: 2;
+  }
+
+  .download-content {
+    order: 1;
+  }
+
+  .download-title {
+    font-size: 1.75rem;
+    text-align: center;
+  }
+
+  .download-subtitle {
+    font-size: 1.375rem;
+    text-align: center;
+  }
+
+  .download-mockup-image {
+    max-height: 420px;
+  }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .download-section {
+    padding: var(--spacing-xl) var(--spacing-md);
+  }
+
+  .download-container {
+    padding: var(--spacing-md);
+    gap: var(--spacing-lg);
+  }
+
+  .download-title {
+    font-size: 1.5rem;
+  }
+
+  .download-subtitle {
+    font-size: 1.125rem;
+  }
+
+  .download-qr-container {
+    padding: var(--spacing-md) 0;
+  }
+
+  .download-qr-wrapper {
+    padding: var(--spacing-xs);
+  }
+
+  .download-platforms {
+    flex-direction: column;
+    gap: var(--spacing-xs);
+  }
+
+  .download-platform-item {
+    width: 100%;
+    flex-direction: row;
+    justify-content: center;
+    padding: var(--spacing-sm) var(--spacing-md);
+  }
+
+  .download-mockup-image {
+    max-height: 360px;
+    max-width: 90%;
+  }
+}
+
+@media (max-width: 480px) {
+  .download-title {
+    font-size: 1.375rem;
+  }
+
+  .download-subtitle {
+    font-size: 1rem;
+  }
+
+  .download-mockup-image {
+    max-height: 320px;
+  }
+
+  .download-icon-size {
+    width: 32px;
+    height: 32px;
+  }
+
+  .download-qr-text {
+    font-size: 0.875rem;
+  }
+
+  .download-qr-platforms {
+    font-size: 0.75rem;
+  }
+}

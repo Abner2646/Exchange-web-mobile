@@ -1,0 +1,145 @@
+/* src/styles/HowToStartSection.css */
+
+.howto-section {
+  padding: var(--spacing-xxl) var(--spacing-xl);
+  max-width: 1440px;
+  margin: 0 auto;
+  background: var(--bg-secondary);
+  position: relative;
+}
+
+.howto-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-align: center;
+  margin-bottom: var(--spacing-sm);
+}
+
+.howto-subtitle {
+  font-size: 1.125rem;
+  color: var(--text-secondary);
+  text-align: center;
+  margin-bottom: var(--spacing-xxl);
+}
+
+.howto-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--spacing-xl);
+  position: relative;
+  z-index: 2;
+}
+
+.howto-step {
+  background: var(--bg-elevated);
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-primary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.howto-step:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--brand-primary);
+}
+
+.howto-step-number {
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 32px;
+  height: 32px;
+  background: var(--brand-primary);
+  color: var(--text-inverse);
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 700;
+  box-shadow: var(--shadow-sm);
+}
+
+.howto-step-icon {
+  margin-bottom: var(--spacing-md);
+  color: var(--brand-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.howto-icon-size {
+  width: 48px;
+  height: 48px;
+  stroke-width: 1.5;
+}
+
+.howto-step-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.howto-step-description {
+  font-size: 0.9375rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* Connector Line (desktop only) */
+.howto-connector {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .howto-connector {
+    display: block;
+    position: absolute;
+    top: 50%;
+    left: 10%;
+    right: 10%;
+    height: 2px;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .howto-connector-line {
+    height: 100%;
+    background: linear-gradient(
+      to right,
+      var(--border-primary) 0%,
+      var(--brand-primary) 50%,
+      var(--border-primary) 100%
+    );
+    opacity: 0.3;
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .howto-section {
+    padding: var(--spacing-xl) var(--spacing-md);
+  }
+
+  .howto-title {
+    font-size: 1.75rem;
+  }
+
+  .howto-subtitle {
+    font-size: 1rem;
+  }
+
+  .howto-grid {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-lg);
+  }
+}

@@ -1,63 +1,60 @@
+// src/hooks/useRegister.js
 import { useState } from 'react';
 import { useMutation } from 'react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import authService from '../services/authService';
 import { useAuth } from '../context/AuthContext';
+import { validateRegistrationForm } from '../utils/validators';
 
 export const useRegister = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
+
+  const from = location.state?.from?.pathname || '/';
 
   const [formData, setFormData] = useState({
     email: '',
     username: '',
     password: '',
     confirmPassword: '',
-    pais: 'AR',
+    // ✅ PAÍS REMOVIDO
   });
 
   const [validationErrors, setValidationErrors] = useState({});
 
-  // Mutation para registro
   const registerMutation = useMutation(
     async (userData) => {
       console.log('🚀 useRegister - Iniciando registro...');
       
-      // Validar formulario antes de enviar
-      const errors = authService.validateRegistrationForm(userData);
+      const errors = validateRegistrationForm(userData);
       if (Object.keys(errors).length > 0) {
         setValidationErrors(errors);
         throw new Error('Formulario inválido');
       }
 
-      // Remover confirmPassword antes de enviar
       const { confirmPassword, ...registerData } = userData;
       
-      // 1. Registrar usuario
       const registerResponse = await authService.register(registerData);
       
-      // 2. Intentar login automático
       try {
-        // Si el backend devuelve token directamente
         if (registerResponse.token) {
           console.log('✅ Token recibido en registro');
-          localStorage.setItem('token', registerResponse.token);
+          authService.setAuthToken(registerResponse.token);
           login({ 
             id: registerResponse.user.id, 
             username: registerResponse.user.username 
           });
-          return { success: true, navigateTo: '/' };
+          return { success: true, navigateTo: from };
         }
         
-        // Si no hay token, hacer login con credenciales
         console.log('🔄 Intentando login automático...');
         const loginResponse = await authService.loginWithCredentials(
           registerData.username,
           registerData.password
         );
         
-        // Manejar respuesta de login
         if (loginResponse.requires2FA) {
           console.log('🔐 Requiere 2FA');
           return {
@@ -70,17 +67,15 @@ export const useRegister = () => {
           };
         }
         
-        // Login exitoso sin 2FA
         console.log('✅ Login automático exitoso');
-        localStorage.setItem('token', loginResponse.token);
+        authService.setAuthToken(loginResponse.token);
         login({ 
           id: loginResponse.user.id, 
           username: loginResponse.user.username 
         });
-        return { success: true, navigateTo: '/' };
+        return { success: true, navigateTo: from };
         
       } catch (loginError) {
-        // Si falla el login automático, redirigir a login manual
         console.warn('⚠️ Login automático falló, redirigiendo a login:', loginError);
         return {
           success: true,
@@ -94,13 +89,13 @@ export const useRegister = () => {
     },
     {
       onSuccess: (result) => {
-        if (result.navigateTo === '/') {
-          toast.success('¡Cuenta creada exitosamente! Bienvenido/a');
-        } else {
+        if (result.navigateTo === '/login') {
           toast.success(result.state?.message || '¡Cuenta creada exitosamente!');
+        } else {
+          toast.success('¡Cuenta creada exitosamente! Bienvenido/a');
         }
         
-        navigate(result.navigateTo, { state: result.state });
+        navigate(result.navigateTo, { state: result.state, replace: true });
       },
       onError: (error) => {
         console.error('❌ Error en registro:', error);
@@ -120,7 +115,6 @@ export const useRegister = () => {
     }
   );
 
-  // Handlers
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -128,7 +122,6 @@ export const useRegister = () => {
       [name]: value,
     }));
     
-    // Limpiar error específico cuando el usuario empieza a escribir
     if (validationErrors[name]) {
       setValidationErrors((prev) => ({
         ...prev,
@@ -139,7 +132,7 @@ export const useRegister = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    setValidationErrors({}); // Limpiar errores previos
+    setValidationErrors({});
     registerMutation.mutate(formData);
   };
 
@@ -151,3 +144,5 @@ export const useRegister = () => {
     handleSubmit,
   };
 };
+
+export default useRegister;

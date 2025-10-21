@@ -1,45 +1,44 @@
 // src/components/features/FeaturesSection.jsx
 import {
-  BuildingOfficeIcon,
+  CurrencyDollarIcon,
   ShieldCheckIcon,
-  LockClosedIcon,
-  UserCircleIcon,
+  ClockIcon,
+  UserGroupIcon,
 } from '@heroicons/react/24/outline';
 
 const FeaturesSection = () => {
   return (
     <section className="features-section">
-      <h2 className="section-title">¿Por qué somos la compañía más confiable?</h2>
+      <h2 className="section-title">¿Por qué elegirnos?</h2>
       <div className="features-grid">
         <div className="feature-card">
           <div className="feature-icon">
-            <BuildingOfficeIcon className="icon-size" />
+            <CurrencyDollarIcon className="icon-size" />
           </div>
-          <h3>La empresa crypto pública más grande del mundo</h3>
-          <p>Operamos con transparencia financiera.</p>
+          <h3>Comisiones ultra competitivas</h3>
+          <p>Opera con las comisiones más bajas del mercado. Sin sorpresas, sin costos ocultos.</p>
         </div>
         <div className="feature-card">
           <div className="feature-icon">
             <ShieldCheckIcon className="icon-size" />
           </div>
-          <h3>Tus activos están protegidos</h3>
-          <p>Nuestras medidas de gestión de riesgos están diseñadas para proteger tus activos.</p>
+          <h3>Seguridad de nivel institucional</h3>
+          <p>Tus fondos protegidos con tecnología de última generación y cold storage.</p>
         </div>
         <div className="feature-card">
           <div className="feature-icon">
-            <LockClosedIcon className="icon-size" />
+            <ClockIcon className="icon-size" />
           </div>
-          <h3>Funcionalidades de seguridad avanzadas</h3>
-          <p>Utilizamos las mejores prácticas de la industria para aumentar la seguridad de nuestra plataforma.</p>
+          <h3>Soporte 24/7 en español</h3>
+          <p>Nuestro equipo está disponible todo el día, todos los días para ayudarte.</p>
         </div>
         <div className="feature-card">
           <div className="feature-icon">
-            <UserCircleIcon className="icon-size" />
+            <UserGroupIcon className="icon-size" />
           </div>
-          <h3>Respetamos tu privacidad</h3>
+          <h3>Comunidad activa y confiable</h3>
           <p>
-            Solo recopilamos los datos personales para brindarte la mejor protección y los mejores servicios
-            posibles.
+            Únete a una comunidad de traders comprometidos con el crecimiento y el aprendizaje continuo.
           </p>
         </div>
       </div>

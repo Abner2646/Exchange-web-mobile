@@ -37,11 +37,6 @@ export const validateRegistrationForm = (formData) => {
     errors.confirmPassword = 'Las contraseñas no coinciden';
   }
 
-  // País
-  if (!formData.pais) {
-    errors.pais = 'El país es requerido';
-  }
-
   return errors;
 };
 

@@ -1,9 +1,11 @@
 // src/components/features/MarketTable.jsx
 import {
-  ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  StarIcon as StarOutline,
 } from '@heroicons/react/24/outline';
+import { StarIcon as StarSolid } from '@heroicons/react/24/solid';
+import useWatchlist from '../../hooks/useWatchlist';
 
 const MarketTable = ({ 
   data = [], 
@@ -12,25 +14,34 @@ const MarketTable = ({
   totalPages, 
   onPageChange, 
   onCryptoClick,
-  isTransitioning = false 
+  isTransitioning = false,
 }) => {
+  const { isInWatchlist, toggleWatchlist } = useWatchlist();
+
   const handlePageChange = (newPage) => {
     if (newPage !== currentPage && newPage >= 1 && newPage <= totalPages) {
       onPageChange(newPage);
     }
   };
 
+  const handleWatchlistClick = (e, coinId) => {
+    e.stopPropagation();
+    toggleWatchlist(coinId);
+  };
+
   return (
     <section className="markets-section" id="markets-section">
       <h2 className="section-title">Mercados Populares</h2>
+      
       <div className={`markets-table-container ${isTransitioning ? 'transitioning' : ''}`}>
         {loading && data.length === 0 ? (
           <table className="markets-table">
             <thead>
               <tr>
+                <th className="watchlist-column">★</th>
                 <th>Moneda</th>
-                <th>Precio</th>
-                <th>Cambio 24h</th>
+                <th className="text-center">Precio</th>
+                <th className="text-center">Cambio 24h</th>
                 <th>Volumen 24h</th>
                 <th>Cap. Mercado</th>
               </tr>
@@ -38,6 +49,9 @@ const MarketTable = ({
             <tbody>
               {[...Array(10)].map((_, i) => (
                 <tr key={i} className="skeleton-row">
+                  <td>
+                    <div className="skeleton skeleton-icon-small"></div>
+                  </td>
                   <td className="coin-cell">
                     <div className="coin-info">
                       <div className="skeleton skeleton-icon"></div>
@@ -70,9 +84,10 @@ const MarketTable = ({
               <table className="markets-table">
                 <thead>
                   <tr>
+                    <th className="watchlist-column">★</th>
                     <th>Moneda</th>
-                    <th>Precio</th>
-                    <th>Cambio 24h</th>
+                    <th className="text-center">Precio</th>
+                    <th className="text-center">Cambio 24h</th>
                     <th>Volumen 24h</th>
                     <th>Cap. Mercado</th>
                   </tr>
@@ -84,6 +99,19 @@ const MarketTable = ({
                       className="market-row"
                       onClick={() => onCryptoClick(coin.symbol.toUpperCase())}
                     >
+                      <td className="watchlist-cell">
+                        <button
+                          className="watchlist-btn"
+                          onClick={(e) => handleWatchlistClick(e, coin.id)}
+                          aria-label={isInWatchlist(coin.id) ? 'Remove from watchlist' : 'Add to watchlist'}
+                        >
+                          {isInWatchlist(coin.id) ? (
+                            <StarSolid className="watchlist-icon watchlist-icon-active" />
+                          ) : (
+                            <StarOutline className="watchlist-icon" />
+                          )}
+                        </button>
+                      </td>
                       <td className="coin-cell">
                         <div className="coin-info">
                           <img 

@@ -3,69 +3,61 @@ import { useState } from 'react';
 import { ChevronDownIcon } from '@heroicons/react/24/outline';
 
 const FAQSection = () => {
-  const [openFaqIndex, setOpenFaqIndex] = useState(null);
+  const [openIndex, setOpenIndex] = useState(null);
 
-  const toggleFaq = (index) => {
-    setOpenFaqIndex(openFaqIndex === index ? null : index);
-  };
-
-  const faqData = [
+  const faqs = [
     {
-      question: '¿Qué es un exchange de criptomonedas?',
+      question: '¿Cómo empiezo a operar?',
       answer:
-        'Un exchange de criptomonedas es una plataforma digital que permite comprar, vender e intercambiar criptomonedas. Funciona como intermediario entre compradores y vendedores, ofreciendo un entorno seguro para realizar transacciones con activos digitales como Bitcoin, Ethereum y otras criptomonedas.',
+        'Regístrate con tu email, verifica tu identidad, deposita fondos y comienza a operar. Todo el proceso toma menos de 10 minutos.',
     },
     {
-      question: '¿Cómo comprar Bitcoin en nuestro exchange?',
+      question: '¿Qué comisiones cobran?',
       answer:
-        'Para comprar Bitcoin, primero debes crear una cuenta y verificar tu identidad. Luego, deposita fondos mediante transferencia bancaria o tarjeta. Una vez que tengas saldo disponible, dirígete a la sección de Mercados o Swap, selecciona Bitcoin (BTC), ingresa la cantidad que deseas comprar y confirma la transacción.',
+        'Nuestras comisiones son ultra competitivas: 0.1% por transacción en trading spot y 0% en depósitos. Sin costos ocultos.',
     },
     {
-      question: '¿Es seguro operar en este exchange?',
+      question: '¿Es seguro depositar mis fondos?',
       answer:
-        'Sí, implementamos múltiples capas de seguridad: autenticación de dos factores (2FA), encriptación de datos, almacenamiento en frío para la mayoría de fondos, y auditorías de seguridad regulares. Además, cumplimos con regulaciones financieras internacionales para proteger tus activos.',
+        'Absolutamente. Utilizamos cold storage para el 95% de los fondos, autenticación de dos factores y las mejores prácticas de seguridad de la industria.',
     },
     {
-      question: '¿Qué comisiones cobra el exchange?',
+      question: '¿Cuánto tiempo tardan los retiros?',
       answer:
-        'Nuestras comisiones son competitivas y transparentes. Cobramos una comisión por transacción que varía entre 0.1% y 0.5% dependiendo del volumen de trading mensual. Los depósitos suelen ser gratuitos, mientras que los retiros tienen una tarifa mínima de red. Consulta nuestra página de tarifas para más detalles.',
+        'Los retiros de criptomonedas se procesan en menos de 30 minutos. Los retiros bancarios pueden tardar de 1 a 3 días hábiles según tu banco.',
     },
     {
-      question: '¿Cómo verifico mi cuenta?',
+      question: '¿Ofrecen soporte al cliente?',
       answer:
-        'La verificación de cuenta es un proceso simple: 1) Proporciona tu información personal básica, 2) Sube una foto de tu documento de identidad vigente, 3) Realiza una selfie para verificación facial. El proceso usualmente toma entre 24-48 horas hábiles.',
+        'Sí, nuestro equipo de soporte está disponible 24/7 en español a través de chat en vivo y email para resolver cualquier consulta.',
     },
     {
-      question: '¿Cuánto tiempo tarda un retiro?',
+      question: '¿Puedo operar desde mi móvil?',
       answer:
-        'Los retiros de criptomonedas generalmente se procesan en 15-30 minutos después de la confirmación. Los retiros en moneda fiat (dinero tradicional) pueden tardar de 1 a 5 días hábiles dependiendo del método bancario. Todos los retiros pasan por verificaciones de seguridad para proteger tus fondos.',
-    },
-    {
-      question: '¿Qué métodos de pago aceptan?',
-      answer:
-        'Aceptamos múltiples métodos de pago: transferencias bancarias, tarjetas de crédito/débito, y depósitos en criptomonedas desde otras wallets. También ofrecemos opciones de pago locales en diferentes países para facilitar el acceso a nuestros servicios.',
-    },
-    {
-      question: '¿Puedo operar desde mi país?',
-      answer:
-        'Operamos en la mayoría de países de Latinoamérica y el mundo. Sin embargo, por regulaciones locales, algunos países pueden tener restricciones. Puedes verificar si tu país está disponible durante el proceso de registro o contactando a nuestro equipo de soporte.',
+        'Sí, nuestra aplicación móvil está disponible para iOS y Android. Descárgala desde las tiendas oficiales y opera desde cualquier lugar.',
     },
   ];
+
+  const toggleFAQ = (index) => {
+    setOpenIndex(openIndex === index ? null : index);
+  };
 
   return (
     <section className="faq-section">
       <h2 className="section-title">Preguntas Frecuentes</h2>
       <div className="faq-container">
-        {faqData.map((faq, index) => (
+        {faqs.map((faq, index) => (
           <div key={index} className="faq-item">
             <button
-              className={`faq-question ${openFaqIndex === index ? 'active' : ''}`}
-              onClick={() => toggleFaq(index)}
+              className={`faq-question ${openIndex === index ? 'active' : ''}`}
+              onClick={() => toggleFAQ(index)}
             >
-              <span>{faq.question}</span>
-              <ChevronDownIcon className={`faq-icon ${openFaqIndex === index ? 'rotated' : ''}`} />
+              {faq.question}
+              <ChevronDownIcon
+                className={`faq-icon ${openIndex === index ? 'rotated' : ''}`}
+              />
             </button>
-            <div className={`faq-answer ${openFaqIndex === index ? 'open' : ''}`}>
+            <div className={`faq-answer ${openIndex === index ? 'open' : ''}`}>
               <p>{faq.answer}</p>
             </div>
           </div>

@@ -1,3 +1,4 @@
+// src/pages/Register.jsx
 import { useAuth } from '../context/AuthContext';
 import { useRegister } from '../hooks/useRegister';
 import '../styles/Register.css';
@@ -90,34 +91,6 @@ const Register = () => {
             />
             {validationErrors.username && (
               <span className="register-field-error">{validationErrors.username}</span>
-            )}
-          </div>
-
-          <div className="register-form-group">
-            <label htmlFor="pais" className="register-label">
-              País *
-            </label>
-            <select
-              id="pais"
-              name="pais"
-              className={`register-input ${validationErrors.pais ? 'error' : ''}`}
-              value={formData.pais}
-              onChange={handleChange}
-              required
-            >
-              <option value="AR">Argentina</option>
-              <option value="BR">Brasil</option>
-              <option value="CL">Chile</option>
-              <option value="CO">Colombia</option>
-              <option value="MX">México</option>
-              <option value="PE">Perú</option>
-              <option value="UY">Uruguay</option>
-              <option value="US">Estados Unidos</option>
-              <option value="ES">España</option>
-              <option value="OTHER">Otro</option>
-            </select>
-            {validationErrors.pais && (
-              <span className="register-field-error">{validationErrors.pais}</span>
             )}
           </div>
 
