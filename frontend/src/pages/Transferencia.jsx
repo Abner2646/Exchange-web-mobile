@@ -33,9 +33,10 @@ export default function Transferencia() {
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
 
   // Hooks personalizados
-  // ⭐ CAMBIO: Renombrar cryptos a criptomonedas para mantener consistencia
   const { cryptos: criptomonedas = [], isLoading: loadingCryptos } = useCryptos();
   const { balances = [] } = useBalances();
+  
+  // ⭐ CAMBIO: Pasar user.id al hook
   const {
     transfers,
     allTransfers,
@@ -46,7 +47,8 @@ export default function Transferencia() {
     resendCode,
     filters,
     setFilters,
-  } = useTransfers();
+    counts, // ⭐ NUEVO: Contadores para tabs
+  } = useTransfers(user?.id);
 
   const {
     destinatario,
@@ -56,10 +58,6 @@ export default function Transferencia() {
     setDestinatario,
     setError: setSearchError,
   } = useUserSearch(email);
-
-  // ⭐ LOG DE DEBUG (puedes removerlo después)
-  console.log('🔍 Criptomonedas cargadas:', criptomonedas.length);
-  console.log('🔍 Loading cryptos:', loadingCryptos);
 
   // Redirigir si no está autenticado
   useEffect(() => {
@@ -259,12 +257,13 @@ export default function Transferencia() {
           </div>
         </div>
 
-        {/* Historial */}
+        {/* Historial - ⭐ NUEVO: Pasar counts */}
         <TransferHistory
           transfers={transfers}
           loading={loadingHistorial}
           filters={filters}
           setFilters={setFilters}
+          counts={counts}
         />
       </div>
 

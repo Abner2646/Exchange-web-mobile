@@ -26,7 +26,7 @@
 .download-mockup-image {
   max-width: 85%;
   height: auto;
-  max-height: 480px;
+  max-height: 520px;
   object-fit: contain;
   filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.1));
 }
