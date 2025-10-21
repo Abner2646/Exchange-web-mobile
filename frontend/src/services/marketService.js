@@ -1,14 +1,98 @@
-// src/services/marketService.js
+// src/services/marketService.js (ACTUALIZAR - eliminar método getGlobalStats)
 import axios from 'axios';
 import { ENDPOINTS } from '../api/endpoints';
 
+// Lista de stablecoins a filtrar
+const STABLECOINS = [
+  'USDT', 'USDC', 'BUSD', 'DAI', 'TUSD', 
+  'USDP', 'USDD', 'GUSD', 'FRAX', 'PYUSD'
+];
+
 class MarketService {
-  // Obtener datos del mercado (CoinGecko)
+  /**
+   * Obtener datos del mercado (CoinGecko)
+   */
   async getMarketData(page = 1, perPage = 10) {
-    const response = await axios.get(
-      ENDPOINTS.COINGECKO_MARKETS(page, perPage)
-    );
-    return response.data;
+    try {
+      const response = await axios.get(
+        ENDPOINTS.COINGECKO_MARKETS(page, perPage)
+      );
+      console.log('MarketService.getMarketData response:', response);
+      return response.data;
+    } catch (error) {
+      console.error('MarketService.getMarketData error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtener múltiples páginas en paralelo
+   */
+  async getMultiplePages(pages = 3, perPage = 10) {
+    try {
+      const requests = Array.from({ length: pages }, (_, i) =>
+        this.getMarketData(i + 1, perPage)
+      );
+
+      const results = await Promise.all(requests);
+      const allData = results.flat();
+
+      console.log(`MarketService.getMultiplePages: ${allData.length} cryptos cargadas`);
+      return allData;
+    } catch (error) {
+      console.error('MarketService.getMultiplePages error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Calcular top gainers con filtros inteligentes
+   */
+  getTopGainers(marketData, limit = 5, timeframe = '24h', minChange = 0.5) {
+    if (!marketData || marketData.length === 0) return [];
+    
+    const priceChangeKey = timeframe === '7d' 
+      ? 'price_change_percentage_7d_in_currency' 
+      : 'price_change_percentage_24h';
+
+    return [...marketData]
+      .filter(coin => !STABLECOINS.includes(coin.symbol.toUpperCase()))
+      .filter(coin => {
+        const change = coin[priceChangeKey];
+        return change && change >= minChange;
+      })
+      .sort((a, b) => b[priceChangeKey] - a[priceChangeKey])
+      .slice(0, limit)
+      .map(coin => ({
+        ...coin,
+        changePercentage: coin[priceChangeKey],
+        timeframe,
+      }));
+  }
+
+  /**
+   * Calcular top losers con filtros inteligentes
+   */
+  getTopLosers(marketData, limit = 5, timeframe = '24h', minChange = 0.5) {
+    if (!marketData || marketData.length === 0) return [];
+    
+    const priceChangeKey = timeframe === '7d' 
+      ? 'price_change_percentage_7d_in_currency' 
+      : 'price_change_percentage_24h';
+
+    return [...marketData]
+      .filter(coin => !STABLECOINS.includes(coin.symbol.toUpperCase()))
+      .filter(coin => {
+        const change = coin[priceChangeKey];
+        return change && change <= -minChange;
+      })
+      .sort((a, b) => a[priceChangeKey] - b[priceChangeKey])
+      .slice(0, limit)
+      .map(coin => ({
+        ...coin,
+        changePercentage: coin[priceChangeKey],
+        timeframe,
+      }));
   }
 }
 

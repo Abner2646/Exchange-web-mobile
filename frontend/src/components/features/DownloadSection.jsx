@@ -1,11 +1,10 @@
-// src/components/features/DownloadSection.jsx
+// src/components/features/DownloadSection.jsx (ACTUALIZAR)
 import QRCode from 'react-qr-code';
 import { DevicePhoneMobileIcon } from '@heroicons/react/24/outline';
 import mockupApp from '../../assets/images/mockup-app.png';
 import '../../styles/DownloadSection.css';
 
 const DownloadSection = () => {
-  // URL placeholder para el QR
   const downloadURL = 'https://bitflow-exchange.com/download';
 
   return (
@@ -51,6 +50,7 @@ const DownloadSection = () => {
           <div className="download-platforms">
             <div className="download-platform-item">
               <div className="download-platform-icon">
+                {/* ⭐ iOS - Apple Logo */}
                 <svg
                   className="download-icon-size"
                   viewBox="0 0 24 24"
@@ -66,12 +66,13 @@ const DownloadSection = () => {
 
             <div className="download-platform-item">
               <div className="download-platform-icon">
+                {/* ⭐ OPCIÓN B: Google Play Store (RECOMENDADO) */}
                 <svg
                   className="download-icon-size"
                   viewBox="0 0 24 24"
                   fill="currentColor"
                 >
-                  <path d="M17.523 15.341c-.54-.537-1.005-1.006-1.005-1.972 0-.967.465-1.435 1.005-1.973.54-.537 1.078-1.074 1.078-2.483 0-1.411-.77-2.667-1.914-3.391l.643-1.018-1.018-.643-.643 1.018c-.773-.308-1.598-.463-2.423-.463-1.41 0-2.667.77-3.391 1.914L9.838 4.28 9.195 5.299l1.018.643c-.308.773-.463 1.598-.463 2.423 0 1.41.77 2.667 1.914 3.391l-.643 1.018 1.018.643.643-1.018c.773.308 1.598.463 2.423.463 1.409 0 2.666-.77 3.391-1.914l1.018 1.018.643-1.018-1.018-.643c.308-.773.463-1.598.463-2.423 0-1.409-.538-1.946-1.078-2.483-.54-.537-1.005-1.006-1.005-1.972s.465-1.435 1.005-1.973c.54-.537 1.078-1.074 1.078-2.483 0-1.41-.77-2.667-1.914-3.391l.643-1.018-1.018-.643-.643 1.018C13.924.155 13.099 0 12.274 0c-1.41 0-2.667.77-3.391 1.914L7.865.896l-.643 1.018 1.018.643c-.308.773-.463 1.598-.463 2.423 0 1.409.538 1.946 1.078 2.483.54.537 1.005 1.006 1.005 1.972s-.465 1.435-1.005 1.973c-.54.537-1.078 1.074-1.078 2.483 0 1.41.77 2.667 1.914 3.391l-.643 1.018 1.018.643.643-1.018c.773.308 1.598.463 2.423.463 1.41 0 2.667-.77 3.391-1.914l1.018 1.018.643-1.018-1.018-.643c.308-.773.463-1.598.463-2.423 0-1.409-.538-1.946-1.078-2.483zM12.274 18.274c-3.313 0-6-2.687-6-6s2.687-6 6-6 6 2.687 6 6-2.687 6-6 6z" />
+                  <path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.16,10.81C20.5,11.08 20.75,11.5 20.75,12C20.75,12.5 20.53,12.9 20.18,13.18L17.89,14.5L15.39,12L17.89,9.5L20.16,10.81M6.05,2.66L16.81,8.88L14.54,11.15L6.05,2.66Z"/>
                 </svg>
               </div>
               <div className="download-platform-info">

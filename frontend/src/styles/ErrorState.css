@@ -1,0 +1,92 @@
+/* src/styles/ErrorState.css */
+
+.errorstate-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xxl);
+  text-align: center;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-secondary);
+  min-height: 300px;
+}
+
+.errorstate-icon-wrapper {
+  width: 64px;
+  height: 64px;
+  background: var(--error-bg);
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--spacing-lg);
+}
+
+.errorstate-icon {
+  width: 32px;
+  height: 32px;
+  color: var(--error);
+}
+
+.errorstate-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.errorstate-message {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  max-width: 400px;
+  margin-bottom: var(--spacing-lg);
+}
+
+.errorstate-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: var(--brand-primary);
+  color: var(--text-inverse);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.errorstate-btn:hover {
+  background: var(--brand-secondary);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.errorstate-btn:active {
+  transform: translateY(0);
+}
+
+.errorstate-btn-icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .errorstate-container {
+    padding: var(--spacing-xl) var(--spacing-md);
+    min-height: 250px;
+  }
+
+  .errorstate-title {
+    font-size: 1.25rem;
+  }
+
+  .errorstate-message {
+    font-size: 0.9375rem;
+  }
+}
