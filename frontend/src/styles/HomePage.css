@@ -992,3 +992,89 @@
     max-width: 100%;
   }
 }
+
+/* src/styles/HomePage.css (AGREGAR al final del archivo) */
+
+/* === PAGINACIÓN MEJORADA PARA 10 PÁGINAS === */
+
+.pagination-pages {
+  display: flex;
+  gap: var(--spacing-xs);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* En desktop: mostrar máximo 7 páginas a la vez */
+@media (min-width: 769px) {
+  .pagination-pages {
+    max-width: 400px;
+  }
+}
+
+/* En mobile: mostrar solo 5 páginas */
+@media (max-width: 768px) {
+  .pagination-pages {
+    max-width: 250px;
+  }
+  
+  /* Ocultar páginas intermedias en mobile si hay muchas */
+  .pagination-page:not(.active):not(:first-child):not(:last-child):not(:nth-child(2)):not(:nth-last-child(2)) {
+    display: none;
+  }
+}
+
+/* src/styles/HomePage.css (AGREGAR) */
+
+.pagination-ellipsis {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  color: var(--text-tertiary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  user-select: none;
+}
+
+@media (max-width: 768px) {
+  .pagination-ellipsis {
+    width: 32px;
+    height: 32px;
+    font-size: 0.8125rem;
+  }
+}
+
+/* src/styles/HomePage.css (AGREGAR al final) */
+
+/* === PAGINATION ELLIPSIS === */
+.pagination-ellipsis {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  color: var(--text-tertiary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  user-select: none;
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .pagination-ellipsis {
+    width: 32px;
+    height: 32px;
+    font-size: 0.8125rem;
+  }
+  
+  .pagination-btn span {
+    display: none; /* Ocultar texto en mobile, solo iconos */
+  }
+}
+
+@media (max-width: 480px) {
+  .pagination-pages {
+    gap: 4px; /* Menos espacio en mobile pequeño */
+  }
+}

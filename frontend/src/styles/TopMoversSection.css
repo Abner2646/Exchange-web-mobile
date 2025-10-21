@@ -136,19 +136,20 @@
     display: none; /* ⭐ OCULTAR EN MOBILE */
   }
 }
+/* src/styles/TopMoversSection.css (ACTUALIZAR - buscar .topmovers-tabs y reemplazar) */
 
-/* ⭐ NUEVO: TABS */
+/* === TABS === */
 .topmovers-tabs {
   display: flex;
   gap: var(--spacing-xs);
   margin-bottom: var(--spacing-lg);
-  padding: 0 var(--spacing-xs);
+  padding: var(--spacing-xs);
   background: var(--bg-elevated);
   border-radius: var(--radius-md);
   border: 1px solid var(--border-primary);
   width: fit-content;
-  margin-left: auto;
-  margin-right: auto;
+  /* ⭐ ELIMINADO: margin-left: auto; margin-right: auto; */
+  /* Ahora está alineado a la izquierda por defecto */
 }
 
 .topmovers-tab {
@@ -181,12 +182,12 @@
 /* RESPONSIVE para tabs */
 @media (max-width: 1024px) {
   .topmovers-tabs {
-    margin-left: 0;
+    /* Ya no necesita margin-left: 0 porque ya está a la izquierda */
   }
 }
 
 @media (max-width: 768px) {
   .topmovers-section {
-    display: none; /* ⭐ OCULTAR EN MOBILE como solicitaste */
+    display: none; /* ⭐ OCULTAR EN MOBILE */
   }
 }

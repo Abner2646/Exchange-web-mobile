@@ -82,14 +82,6 @@ export default function TransferHistory({ transfers, loading, filters, setFilter
               strokeLinejoin="round"
               opacity="0.3"
             />
-            <circle cx="100" cy="60" r="15" stroke="currentColor" strokeWidth="2" opacity="0.3" />
-            <path
-              d="M100 75V100M100 100L85 115M100 100L115 115"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              opacity="0.3"
-            />
           </svg>
           <h3 className="empty-title">No se encontraron resultados</h3>
           <p className="empty-description">Intenta ajustar los filtros de búsqueda</p>

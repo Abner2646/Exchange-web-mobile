@@ -1,4 +1,4 @@
-// src/services/marketService.js (ACTUALIZAR - eliminar método getGlobalStats)
+// src/services/marketService.js (ACTUALIZAR COMPLETO)
 import axios from 'axios';
 import { ENDPOINTS } from '../api/endpoints';
 
@@ -11,13 +11,15 @@ const STABLECOINS = [
 class MarketService {
   /**
    * Obtener datos del mercado (CoinGecko)
+   * @param {Number} page - Número de página (default: 1)
+   * @param {Number} perPage - Cryptos por página (default: 100, máximo permitido)
    */
-  async getMarketData(page = 1, perPage = 10) {
+  async getMarketData(page = 1, perPage = 100) {
     try {
       const response = await axios.get(
         ENDPOINTS.COINGECKO_MARKETS(page, perPage)
       );
-      console.log('MarketService.getMarketData response:', response);
+      console.log(`MarketService.getMarketData: ${response.data.length} cryptos cargadas`);
       return response.data;
     } catch (error) {
       console.error('MarketService.getMarketData error:', error);
@@ -26,27 +28,27 @@ class MarketService {
   }
 
   /**
-   * Obtener múltiples páginas en paralelo
+   * ⭐ MODIFICADO: Obtener todas las cryptos con 1 SOLA llamada
+   * Simplificado para usar el máximo permitido por CoinGecko (100)
    */
-  async getMultiplePages(pages = 3, perPage = 10) {
+  async getAllMarketData() {
     try {
-      const requests = Array.from({ length: pages }, (_, i) =>
-        this.getMarketData(i + 1, perPage)
-      );
-
-      const results = await Promise.all(requests);
-      const allData = results.flat();
-
-      console.log(`MarketService.getMultiplePages: ${allData.length} cryptos cargadas`);
-      return allData;
+      console.log('MarketService.getAllMarketData: Obteniendo top 100 cryptos...');
+      const data = await this.getMarketData(1, 100);
+      console.log(`MarketService.getAllMarketData: ${data.length} cryptos cargadas exitosamente`);
+      return data;
     } catch (error) {
-      console.error('MarketService.getMultiplePages error:', error);
+      console.error('MarketService.getAllMarketData error:', error);
       throw error;
     }
   }
 
   /**
    * Calcular top gainers con filtros inteligentes
+   * @param {Array} marketData - Datos del mercado
+   * @param {Number} limit - Límite de resultados (default: 5)
+   * @param {String} timeframe - '24h' o '7d'
+   * @param {Number} minChange - Cambio mínimo porcentual (default: 0.5)
    */
   getTopGainers(marketData, limit = 5, timeframe = '24h', minChange = 0.5) {
     if (!marketData || marketData.length === 0) return [];
@@ -72,6 +74,10 @@ class MarketService {
 
   /**
    * Calcular top losers con filtros inteligentes
+   * @param {Array} marketData - Datos del mercado
+   * @param {Number} limit - Límite de resultados (default: 5)
+   * @param {String} timeframe - '24h' o '7d'
+   * @param {Number} minChange - Cambio mínimo porcentual (default: 0.5)
    */
   getTopLosers(marketData, limit = 5, timeframe = '24h', minChange = 0.5) {
     if (!marketData || marketData.length === 0) return [];

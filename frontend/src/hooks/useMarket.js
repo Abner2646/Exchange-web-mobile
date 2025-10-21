@@ -1,4 +1,4 @@
-// src/hooks/useMarket.js (ACTUALIZAR - eliminar query de globalStats)
+// src/hooks/useMarket.js (ACTUALIZAR COMPLETO)
 import { useState } from 'react';
 import { useQuery } from 'react-query';
 import marketService from '../services/marketService';
@@ -7,35 +7,40 @@ export const useMarket = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const cryptosPerPage = 10;
-  const totalPages = 3;
+  const totalPages = 10; // ⭐ MODIFICADO: Ahora son 10 páginas (100 cryptos / 10 por página)
 
-  // Query: Obtener 3 páginas de market data
+  // ⭐ MODIFICADO: Query con 1 SOLA llamada de 100 cryptos
   const { 
     data: allMarketData = [], 
     isLoading: loadingMarketData,
     error: marketDataError,
     refetch: refetchMarketData,
   } = useQuery(
-    'marketAllPages',
-    () => marketService.getMultiplePages(3, 10),
+    'marketAllData', // ⭐ MODIFICADO: Nuevo key
+    () => marketService.getAllMarketData(),
     {
       staleTime: 30000, // 30 segundos
-      refetchInterval: 30000,
+      refetchInterval: 30000, // Auto-refresh cada 30 segundos
+      onSuccess: (data) => {
+        console.log(`useMarket: ${data.length} cryptos cargadas exitosamente`);
+      },
       onError: (error) => {
         console.error('useMarket marketData error:', error);
       },
     }
   );
 
-  // Paginar los datos para la tabla
+  // ⭐ MODIFICADO: Paginar los 100 cryptos en el frontend
   const startIndex = (currentPage - 1) * cryptosPerPage;
   const endIndex = startIndex + cryptosPerPage;
   const marketData = allMarketData.slice(startIndex, endIndex);
 
-  // Top Gainers 24h (con filtros)
+  console.log(`useMarket: Mostrando página ${currentPage}/${totalPages} (${marketData.length} cryptos)`);
+
+  // Top Gainers 24h (calculados desde los 100 cryptos)
   const topGainers24h = marketService.getTopGainers(allMarketData, 5, '24h', 0.5);
   
-  // Top Losers 24h (con filtros)
+  // Top Losers 24h
   const topLosers24h = marketService.getTopLosers(allMarketData, 5, '24h', 0.5);
 
   // Top Gainers 7d
@@ -66,10 +71,10 @@ export const useMarket = () => {
 
   return {
     // Data
-    marketData,        // Para la tabla (paginada)
-    allMarketData,     // Todos los datos
+    marketData,        // Para la tabla (10 cryptos paginados)
+    allMarketData,     // Todos los 100 cryptos
     
-    // Top Movers por timeframe
+    // Top Movers por timeframe (calculados desde 100 cryptos)
     topGainers24h,
     topLosers24h,
     topGainers7d,
@@ -83,7 +88,7 @@ export const useMarket = () => {
     
     // Pagination
     currentPage,
-    totalPages,
+    totalPages, // ⭐ Ahora son 10 páginas
     isTransitioning,
     goToPage,
     

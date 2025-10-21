@@ -1,9 +1,7 @@
-"use client"
-
-// src/components/features/MarketTable.jsx
-import { ChevronLeftIcon, ChevronRightIcon, StarIcon as StarOutline } from "@heroicons/react/24/outline"
-import { StarIcon as StarSolid } from "@heroicons/react/24/solid"
-import useWatchlist from "../../hooks/useWatchlist"
+// src/components/features/MarketTable.jsx (COMPLETO)
+import { ChevronLeftIcon, ChevronRightIcon, StarIcon as StarOutline } from "@heroicons/react/24/outline";
+import { StarIcon as StarSolid } from "@heroicons/react/24/solid";
+import useWatchlist from "../../hooks/useWatchlist";
 
 const MarketTable = ({
   data = [],
@@ -14,18 +12,61 @@ const MarketTable = ({
   onCryptoClick,
   isTransitioning = false,
 }) => {
-  const { isInWatchlist, toggleWatchlist } = useWatchlist()
+  const { isInWatchlist, toggleWatchlist } = useWatchlist();
 
   const handlePageChange = (newPage) => {
     if (newPage !== currentPage && newPage >= 1 && newPage <= totalPages) {
-      onPageChange(newPage)
+      onPageChange(newPage);
     }
-  }
+  };
 
   const handleWatchlistClick = (e, coinId) => {
-    e.stopPropagation()
-    toggleWatchlist(coinId)
-  }
+    e.stopPropagation();
+    toggleWatchlist(coinId);
+  };
+
+  // ⭐ NUEVO: Calcular páginas a mostrar (máximo 7 páginas visibles)
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisible = 7; // Máximo de páginas visibles
+    
+    if (totalPages <= maxVisible) {
+      // Si hay 7 o menos páginas, mostrar todas
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Si hay más de 7 páginas, mostrar con ellipsis
+      if (currentPage <= 4) {
+        // Cerca del inicio: 1 2 3 4 5 ... 10
+        for (let i = 1; i <= 5; i++) {
+          pages.push(i);
+        }
+        pages.push('...');
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 3) {
+        // Cerca del final: 1 ... 6 7 8 9 10
+        pages.push(1);
+        pages.push('...');
+        for (let i = totalPages - 4; i <= totalPages; i++) {
+          pages.push(i);
+        }
+      } else {
+        // En el medio: 1 ... 4 5 6 ... 10
+        pages.push(1);
+        pages.push('...');
+        pages.push(currentPage - 1);
+        pages.push(currentPage);
+        pages.push(currentPage + 1);
+        pages.push('...');
+        pages.push(totalPages);
+      }
+    }
+    
+    return pages;
+  };
+
+  const pageNumbers = getPageNumbers();
 
   return (
     <div className={`markets-table-container ${isTransitioning ? "transitioning" : ""}`}>
@@ -131,6 +172,7 @@ const MarketTable = ({
             </table>
           </div>
 
+          {/* Paginación */}
           <div className="pagination">
             <button
               className="pagination-btn"
@@ -138,19 +180,25 @@ const MarketTable = ({
               disabled={currentPage === 1 || isTransitioning}
             >
               <ChevronLeftIcon className="pagination-icon" />
-              Anterior
+              <span>Anterior</span>
             </button>
 
             <div className="pagination-pages">
-              {[...Array(totalPages)].map((_, i) => (
-                <button
-                  key={i + 1}
-                  className={`pagination-page ${currentPage === i + 1 ? "active" : ""}`}
-                  onClick={() => handlePageChange(i + 1)}
-                  disabled={isTransitioning}
-                >
-                  {i + 1}
-                </button>
+              {pageNumbers.map((page, index) => (
+                page === '...' ? (
+                  <span key={`ellipsis-${index}`} className="pagination-ellipsis">
+                    ...
+                  </span>
+                ) : (
+                  <button
+                    key={page}
+                    className={`pagination-page ${currentPage === page ? "active" : ""}`}
+                    onClick={() => handlePageChange(page)}
+                    disabled={isTransitioning}
+                  >
+                    {page}
+                  </button>
+                )
               ))}
             </div>
 
@@ -159,14 +207,14 @@ const MarketTable = ({
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages || isTransitioning}
             >
-              Siguiente
+              <span>Siguiente</span>
               <ChevronRightIcon className="pagination-icon" />
             </button>
           </div>
         </>
       )}
     </div>
-  )
-}
+  );
+};
 
-export default MarketTable
+export default MarketTable;
