@@ -263,7 +263,6 @@ export default function Transferencia() {
           loading={loadingHistorial}
           filters={filters}
           setFilters={setFilters}
-          counts={counts}
         />
       </div>
 

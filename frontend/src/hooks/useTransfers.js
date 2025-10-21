@@ -13,9 +13,6 @@ export const useTransfers = (currentUserId) => {
     type: 'all',
   });
 
-  // ⭐ DEBUG: Ver qué llega como currentUserId
-  console.log('🔍 useTransfers recibió currentUserId:', currentUserId);
-
   // Obtener historial
   const { data: allTransfers = [], isLoading } = useQuery(
     'transfers',
@@ -77,13 +74,13 @@ export const useTransfers = (currentUserId) => {
     },
   });
 
-  // ⭐ FILTRADO MANUAL (más seguro que llamar al service)
+  // Filtrado
   let filtered = [...allTransfers];
 
-  // 1. Ocultar pendientes SIEMPRE
+  // 1. Ocultar pendientes
   filtered = filtered.filter((t) => t.estado !== 'pendiente');
 
-  // 2. Filtro por tipo (solo si currentUserId existe)
+  // 2. Filtro por tipo
   if (currentUserId && filters.type !== 'all') {
     filtered = filtered.filter((t) => {
       const type = transferService.getTransferType(t, currentUserId);
@@ -128,29 +125,6 @@ export const useTransfers = (currentUserId) => {
     }
   }
 
-  // ⭐ CALCULAR CONTADORES (solo si currentUserId existe)
-  let sentCount = 0;
-  let receivedCount = 0;
-  const allFiltered = allTransfers.filter((t) => t.estado !== 'pendiente');
-
-  if (currentUserId) {
-    sentCount = allFiltered.filter((t) => {
-      const type = transferService.getTransferType(t, currentUserId);
-      return type === 'sent';
-    }).length;
-
-    receivedCount = allFiltered.filter((t) => {
-      const type = transferService.getTransferType(t, currentUserId);
-      return type === 'received';
-    }).length;
-  }
-
-  console.log('🔍 useTransfers counts:', {
-    all: allFiltered.length,
-    sent: sentCount,
-    received: receivedCount,
-  });
-
   return {
     transfers: filtered,
     allTransfers,
@@ -162,11 +136,6 @@ export const useTransfers = (currentUserId) => {
     resendCode,
     filters,
     setFilters,
-    counts: {
-      all: allFiltered.length,
-      sent: sentCount,
-      received: receivedCount,
-    },
   };
 };
 

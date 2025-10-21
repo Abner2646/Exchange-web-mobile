@@ -4,6 +4,7 @@ import {
   ArrowDownTrayIcon,
   ArrowUpIcon,
   ArrowDownIcon,
+  QueueListIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -15,7 +16,7 @@ import {
 import transferService from '../../services/transferService';
 import { toast } from 'react-hot-toast';
 
-export default function TransferHistory({ transfers, loading, filters, setFilters, counts }) {
+export default function TransferHistory({ transfers, loading, filters, setFilters }) {
   const { user } = useAuth();
   const uniqueCryptos = getUniqueCryptos(transfers);
 
@@ -35,37 +36,33 @@ export default function TransferHistory({ transfers, loading, filters, setFilter
   const getUserText = (transfer) => {
     const type = getTransferType(transfer);
     if (type === 'sent') {
-      return `A ${transfer.destinatario?.username || 'N/A'}`;
+      return `Enviado a ${transfer.destinatario?.username || 'N/A'}`;
     } else {
-      return `De ${transfer.remitente?.username || 'N/A'}`;
+      return `Recibido de ${transfer.remitente?.username || 'N/A'}`;
     }
   };
-
-  console.log('🎨 TransferHistory render:', { filters, counts, transfersLength: transfers.length });
 
   return (
     <div className="historial-section">
       <div className="historial-header">
         <h2 className="historial-title">Historial de Transferencias</h2>
 
-        {/* TABS */}
+        {/* ⭐ TABS SIN CONTADORES - Solo HeroIcons */}
         <div className="historial-tabs">
           <button
             className={`historial-tab ${filters.type === 'all' ? 'historial-tab-active' : ''}`}
             onClick={() => handleTabChange('all')}
           >
-            <span className="tab-icon">📋</span>
+            <QueueListIcon className="tab-icon" />
             <span className="tab-label">Todas</span>
-            <span className="tab-count">{counts?.all || 0}</span>
           </button>
 
           <button
             className={`historial-tab ${filters.type === 'sent' ? 'historial-tab-active' : ''}`}
             onClick={() => handleTabChange('sent')}
           >
-            <span className="tab-icon">📤</span>
+            <ArrowUpIcon className="tab-icon" />
             <span className="tab-label">Enviadas</span>
-            <span className="tab-count">{counts?.sent || 0}</span>
           </button>
 
           <button
@@ -74,9 +71,8 @@ export default function TransferHistory({ transfers, loading, filters, setFilter
             }`}
             onClick={() => handleTabChange('received')}
           >
-            <span className="tab-icon">📥</span>
+            <ArrowDownIcon className="tab-icon" />
             <span className="tab-label">Recibidas</span>
-            <span className="tab-count">{counts?.received || 0}</span>
           </button>
         </div>
 

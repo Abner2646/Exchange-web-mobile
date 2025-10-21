@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from 'react-query';
 import { Toaster } from 'react-hot-toast';
 import Layout from './components/layout/Layout.jsx';
 import ProtectedRoute from './components/common/ProtectedRoute.jsx';
+import ScrollToTop from './components/common/ScrollToTop.jsx';
 
 // Páginas públicas
 import HomePage from './pages/Home';
@@ -46,6 +47,7 @@ function App() {
       <ThemeProvider>
         <AuthProvider>
           <BrowserRouter>
+           <ScrollToTop />
             <Toaster position="top-right" />
             <Routes>
               <Route path="/" element={<Layout />}>
