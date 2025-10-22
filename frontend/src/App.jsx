@@ -13,6 +13,7 @@ import Register from './pages/Register.jsx';
 import AuthSuccess from './pages/AuthSuccess';
 
 // Páginas protegidas
+import VerificarEmail from './pages/VerificarEmail.jsx';
 import Activos from './pages/Activos.jsx';
 import SuperAdmin from './pages/SuperAdmin.jsx';
 import Depositos from './pages/Depositos.jsx';
@@ -58,6 +59,16 @@ function App() {
                 <Route path="auth-success" element={<AuthSuccess />} />
 
                 {/* ========== RUTAS PROTEGIDAS ========== */}
+
+                {/* Verificar email */}
+                <Route 
+                  path="/verificar-email" 
+                  element={
+                    <ProtectedRoute>
+                      <VerificarEmail />
+                    </ProtectedRoute>
+                  } 
+                />
 
                 {/* Swap */}
                 <Route

@@ -40,10 +40,16 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  // ⭐ Función para actualizar el user (útil después de verificar email)
+  const updateUser = (updatedData) => {
+    setUser((prev) => ({ ...prev, ...updatedData }));
+  };
+
   const value = {
     user,
     login,
     logout,
+    updateUser, // ⭐ Nueva función
     loginWithGoogle: authService.loginWithGoogle,
     isAuthenticated: !!user,
   };

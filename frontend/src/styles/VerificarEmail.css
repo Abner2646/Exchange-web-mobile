@@ -1,0 +1,302 @@
+/* src/styles/VerificarEmail.css */
+
+/* === CONTAINER === */
+.verifyemail-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-lg);
+  background: var(--bg-primary);
+}
+
+/* === CARD === */
+.verifyemail-card {
+  background: var(--bg-elevated);
+  padding: var(--spacing-xxl);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  border: 1px solid var(--border-primary);
+}
+
+/* === ICON === */
+.verifyemail-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  margin: 0 auto var(--spacing-lg);
+  background: var(--brand-tertiary);
+  border-radius: var(--radius-full);
+}
+
+.verifyemail-icon-svg {
+  width: 40px;
+  height: 40px;
+  color: var(--brand-primary);
+}
+
+/* === TITLE === */
+.verifyemail-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-md);
+}
+
+/* === DESCRIPTION === */
+.verifyemail-description {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.verifyemail-email {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--brand-primary);
+  margin-bottom: var(--spacing-xl);
+  word-break: break-all;
+}
+
+/* === FORM === */
+.verifyemail-form {
+  margin-bottom: var(--spacing-lg);
+}
+
+.verifyemail-form-group {
+  margin-bottom: var(--spacing-lg);
+  text-align: left;
+}
+
+.verifyemail-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+/* === INPUT === */
+.verifyemail-input {
+  width: 100%;
+  padding: var(--spacing-md);
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  font-weight: 600;
+  text-align: center;
+  letter-spacing: 0.5em;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.verifyemail-input::placeholder {
+  color: var(--text-tertiary);
+  letter-spacing: 0.5em;
+}
+
+.verifyemail-input:focus {
+  border-color: var(--brand-primary);
+  background: var(--bg-primary);
+  box-shadow: 0 0 0 3px var(--brand-tertiary);
+}
+
+.verifyemail-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* === HINT === */
+.verifyemail-hint {
+  margin-top: var(--spacing-sm);
+  font-size: 0.875rem;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+/* === SUBMIT BUTTON === */
+.verifyemail-submit-button {
+  width: 100%;
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--brand-primary);
+  color: var(--text-inverse);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+}
+
+.verifyemail-submit-button:hover:not(:disabled) {
+  background: var(--brand-secondary);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.verifyemail-submit-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.verifyemail-submit-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.verifyemail-submit-button.loading {
+  opacity: 0.8;
+}
+
+/* === ACTIONS === */
+.verifyemail-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+  flex-wrap: wrap;
+}
+
+.verifyemail-separator {
+  color: var(--text-tertiary);
+  font-weight: 600;
+}
+
+/* === RESEND BUTTON === */
+.verifyemail-resend-button {
+  background: none;
+  border: none;
+  color: var(--brand-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) 0;
+}
+
+.verifyemail-resend-button:hover:not(:disabled) {
+  color: var(--brand-secondary);
+  text-decoration: underline;
+}
+
+.verifyemail-resend-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+/* === SKIP BUTTON === */
+.verifyemail-skip-button {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: var(--spacing-xs) 0;
+}
+
+.verifyemail-skip-button:hover:not(:disabled) {
+  color: var(--text-primary);
+  text-decoration: underline;
+}
+
+.verifyemail-skip-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* === INFO === */
+.verifyemail-info {
+  padding: var(--spacing-md);
+  background: var(--info-bg);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-secondary);
+}
+
+.verifyemail-info-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.verifyemail-info-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--info);
+  flex-shrink: 0;
+}
+
+/* === SPINNERS === */
+.verifyemail-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--text-inverse);
+  border-top-color: transparent;
+  border-radius: var(--radius-full);
+  animation: verifyemail-spin 0.8s linear infinite;
+}
+
+.verifyemail-spinner-small {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--brand-primary);
+  border-top-color: transparent;
+  border-radius: var(--radius-full);
+  animation: verifyemail-spin 0.8s linear infinite;
+}
+
+@keyframes verifyemail-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* === RESPONSIVE === */
+@media (max-width: 640px) {
+  .verifyemail-container {
+    padding: var(--spacing-md);
+  }
+
+  .verifyemail-card {
+    padding: var(--spacing-xl);
+  }
+
+  .verifyemail-title {
+    font-size: 1.5rem;
+  }
+
+  .verifyemail-input {
+    font-size: 1.25rem;
+    letter-spacing: 0.3em;
+  }
+
+  .verifyemail-actions {
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+
+  .verifyemail-separator {
+    display: none;
+  }
+}

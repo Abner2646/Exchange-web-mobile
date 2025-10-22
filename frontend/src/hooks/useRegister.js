@@ -19,7 +19,6 @@ export const useRegister = () => {
     username: '',
     password: '',
     confirmPassword: '',
-    // ✅ PAÍS REMOVIDO
   });
 
   const [validationErrors, setValidationErrors] = useState({});
@@ -44,9 +43,17 @@ export const useRegister = () => {
           authService.setAuthToken(registerResponse.token);
           login({ 
             id: registerResponse.user.id, 
-            username: registerResponse.user.username 
+            username: registerResponse.user.username,
+            email: registerResponse.user.email,
+            emailVerificado: registerResponse.user.emailVerificado || false, // ⭐ Agregado
           });
-          return { success: true, navigateTo: from };
+          
+          // ⭐ REDIRIGIR A VERIFICAR EMAIL
+          return { 
+            success: true, 
+            navigateTo: '/verificar-email',
+            state: { email: registerResponse.user.email }
+          };
         }
         
         console.log('🔄 Intentando login automático...');
@@ -71,9 +78,17 @@ export const useRegister = () => {
         authService.setAuthToken(loginResponse.token);
         login({ 
           id: loginResponse.user.id, 
-          username: loginResponse.user.username 
+          username: loginResponse.user.username,
+          email: loginResponse.user.email || registerData.email,
+          emailVerificado: loginResponse.user.emailVerificado || false, // ⭐ Agregado
         });
-        return { success: true, navigateTo: from };
+        
+        // ⭐ REDIRIGIR A VERIFICAR EMAIL
+        return { 
+          success: true, 
+          navigateTo: '/verificar-email',
+          state: { email: loginResponse.user.email || registerData.email }
+        };
         
       } catch (loginError) {
         console.warn('⚠️ Login automático falló, redirigiendo a login:', loginError);
@@ -91,6 +106,10 @@ export const useRegister = () => {
       onSuccess: (result) => {
         if (result.navigateTo === '/login') {
           toast.success(result.state?.message || '¡Cuenta creada exitosamente!');
+        } else if (result.navigateTo === '/verificar-email') {
+          toast.success('¡Cuenta creada exitosamente! Ahora verifica tu email', {
+            duration: 4000,
+          });
         } else {
           toast.success('¡Cuenta creada exitosamente! Bienvenido/a');
         }

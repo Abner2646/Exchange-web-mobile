@@ -38,6 +38,7 @@ class AuthService {
       email: payload.email,
       username: payload.username || payload.user || payload.name || 'Usuario',
       role: payload.rol || payload.role || 'user',
+      emailVerificado: payload.emailVerificado || false, // ⭐ Agregado
     };
   }
 
@@ -90,6 +91,37 @@ class AuthService {
     } finally {
       this.removeAuthToken();
     }
+  }
+
+  // ========== VERIFICACIÓN DE EMAIL ==========
+
+  /**
+   * Verificar email con código de 6 dígitos
+   * @param {String} codigo - Código de verificación de 6 dígitos
+   * @returns {Promise<Object>}
+   */
+  async verifyEmail(codigo) {
+    console.log('📧 AuthService: Verificando email con código');
+    
+    const response = await apiClient.post(ENDPOINTS.USER_VERIFY_EMAIL, {
+      codigo
+    });
+
+    console.log('✅ AuthService: Email verificado exitosamente');
+    return response.data;
+  }
+
+  /**
+   * Reenviar código de verificación de email
+   * @returns {Promise<Object>}
+   */
+  async resendVerificationEmail() {
+    console.log('📧 AuthService: Reenviando código de verificación');
+    
+    const response = await apiClient.post(ENDPOINTS.USER_RESEND_VERIFICATION_EMAIL);
+
+    console.log('✅ AuthService: Código de verificación reenviado');
+    return response.data;
   }
 
   // ========== 2FA ==========

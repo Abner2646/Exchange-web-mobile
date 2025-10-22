@@ -15,6 +15,10 @@ export const ENDPOINTS = {
   USER_VERIFY_2FA: '/usuario/verify-2fa',
   USER_RESEND_2FA: '/usuario/resend-2fa',
 
+  //Verificación de Email
+  USER_VERIFY_EMAIL: '/usuario/verify-email',
+  USER_RESEND_VERIFICATION_EMAIL: '/usuario/resend-verification-email',
+
   //Super_admin
   SETUP_WALLETS_INITIALIZE: '/setupWallets/initialize',
   EXCHANGE_PAIRS_GENERATE: '/parExchange/generate-all',
