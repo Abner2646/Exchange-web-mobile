@@ -27,12 +27,14 @@ const AuthSuccess = () => {
         // 2. Decodificar token
         const payload = JSON.parse(atob(token.split('.')[1]));
 
-        // 3. Actualizar contexto
+        // 3. Actualizar contexto con TODAS las propiedades del token
         login({
-          id: payload.userId,
+          id: payload.id || payload.userId,
           email: payload.email,
           username: payload.username,
           role: payload.rol,
+          emailVerificado: payload.emailVerificado || false, // ⭐ CRÍTICO para Google users
+          googleId: payload.googleId || null, // ⭐ CRÍTICO para Google users
         });
 
         // 4. Esperar un tick para que React actualice el estado

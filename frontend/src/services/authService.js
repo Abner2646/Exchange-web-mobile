@@ -38,7 +38,8 @@ class AuthService {
       email: payload.email,
       username: payload.username || payload.user || payload.name || 'Usuario',
       role: payload.rol || payload.role || 'user',
-      emailVerificado: payload.emailVerificado || false, // ⭐ Agregado
+      emailVerificado: payload.emailVerificado || false,
+      googleId: payload.googleId || null, // ⭐ Agregado para detectar usuarios de Google
     };
   }
 

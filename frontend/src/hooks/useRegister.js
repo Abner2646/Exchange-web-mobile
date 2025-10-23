@@ -41,19 +41,36 @@ export const useRegister = () => {
         if (registerResponse.token) {
           console.log('✅ Token recibido en registro');
           authService.setAuthToken(registerResponse.token);
-          login({ 
+          
+          const userData = {
             id: registerResponse.user.id, 
             username: registerResponse.user.username,
             email: registerResponse.user.email,
-            emailVerificado: registerResponse.user.emailVerificado || false, // ⭐ Agregado
-          });
-          
-          // ⭐ REDIRIGIR A VERIFICAR EMAIL
-          return { 
-            success: true, 
-            navigateTo: '/verificar-email',
-            state: { email: registerResponse.user.email }
+            emailVerificado: registerResponse.user.emailVerificado || false,
+            googleId: registerResponse.user.googleId || null, // ⭐ Detectar si es usuario de Google
           };
+          
+          login(userData);
+          
+          // ⭐ LÓGICA DE REDIRECCIÓN SEGÚN TIPO DE USUARIO
+          // Si es usuario de Google (googleId existe) → home
+          // Si es usuario tradicional (sin googleId) → verificar email
+          if (userData.googleId) {
+            console.log('👤 Usuario de Google detectado - Redirigiendo a home');
+            return { 
+              success: true, 
+              navigateTo: '/',
+              isGoogleUser: true,
+            };
+          } else {
+            console.log('📧 Usuario tradicional - Redirigiendo a verificar email');
+            return { 
+              success: true, 
+              navigateTo: '/verificar-email',
+              state: { email: registerResponse.user.email },
+              isGoogleUser: false,
+            };
+          }
         }
         
         console.log('🔄 Intentando login automático...');
@@ -76,19 +93,34 @@ export const useRegister = () => {
         
         console.log('✅ Login automático exitoso');
         authService.setAuthToken(loginResponse.token);
-        login({ 
+        
+        const userData = {
           id: loginResponse.user.id, 
           username: loginResponse.user.username,
           email: loginResponse.user.email || registerData.email,
-          emailVerificado: loginResponse.user.emailVerificado || false, // ⭐ Agregado
-        });
-        
-        // ⭐ REDIRIGIR A VERIFICAR EMAIL
-        return { 
-          success: true, 
-          navigateTo: '/verificar-email',
-          state: { email: loginResponse.user.email || registerData.email }
+          emailVerificado: loginResponse.user.emailVerificado || false,
+          googleId: loginResponse.user.googleId || null, // ⭐ Detectar si es usuario de Google
         };
+        
+        login(userData);
+        
+        // ⭐ LÓGICA DE REDIRECCIÓN SEGÚN TIPO DE USUARIO
+        if (userData.googleId) {
+          console.log('👤 Usuario de Google detectado - Redirigiendo a home');
+          return { 
+            success: true, 
+            navigateTo: '/',
+            isGoogleUser: true,
+          };
+        } else {
+          console.log('📧 Usuario tradicional - Redirigiendo a verificar email');
+          return { 
+            success: true, 
+            navigateTo: '/verificar-email',
+            state: { email: loginResponse.user.email || registerData.email },
+            isGoogleUser: false,
+          };
+        }
         
       } catch (loginError) {
         console.warn('⚠️ Login automático falló, redirigiendo a login:', loginError);
@@ -109,6 +141,12 @@ export const useRegister = () => {
         } else if (result.navigateTo === '/verificar-email') {
           toast.success('¡Cuenta creada exitosamente! Ahora verifica tu email', {
             duration: 4000,
+          });
+        } else if (result.navigateTo === '/' && result.isGoogleUser) {
+          // Usuario de Google - email ya verificado
+          toast.success('¡Bienvenido/a! Tu cuenta está lista', {
+            duration: 3000,
+            icon: '🎉',
           });
         } else {
           toast.success('¡Cuenta creada exitosamente! Bienvenido/a');

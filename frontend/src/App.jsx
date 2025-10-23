@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from 'react-query';
 import { Toaster } from 'react-hot-toast';
 import Layout from './components/layout/Layout.jsx';
 import ProtectedRoute from './components/common/ProtectedRoute.jsx';
+import RequireEmailVerified from './components/common/RequireEmailVerified.jsx';
 import ScrollToTop from './components/common/ScrollToTop.jsx';
 
 // Páginas públicas
@@ -48,7 +49,7 @@ function App() {
       <ThemeProvider>
         <AuthProvider>
           <BrowserRouter>
-           <ScrollToTop />
+            <ScrollToTop />
             <Toaster position="top-right" />
             <Routes>
               <Route path="/" element={<Layout />}>
@@ -58,107 +59,19 @@ function App() {
                 <Route path="register" element={<Register />} />
                 <Route path="auth-success" element={<AuthSuccess />} />
 
-                {/* ========== RUTAS PROTEGIDAS ========== */}
+                {/* ========== RUTAS PROTEGIDAS (solo autenticación) ========== */}
 
-                {/* Verificar email */}
-                <Route 
-                  path="/verificar-email" 
+                {/* Verificar email - Solo requiere estar autenticado */}
+                <Route
+                  path="verificar-email"
                   element={
                     <ProtectedRoute>
                       <VerificarEmail />
                     </ProtectedRoute>
-                  } 
-                />
-
-                {/* Swap */}
-                <Route
-                  path="swap"
-                  element={
-                    <ProtectedRoute>
-                      <Swap />
-                    </ProtectedRoute>
                   }
                 />
 
-                {/* P2P */}
-                <Route
-                  path="p2p"
-                  element={
-                    <ProtectedRoute>
-                      <P2PMarketplace />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="p2p/transaction/:id"
-                  element={
-                    <ProtectedRoute>
-                      <P2PTransaction />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="p2p/crearOferta"
-                  element={
-                    <ProtectedRoute>
-                      <CrearOfertaP2P />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="p2p/misOfertas"
-                  element={
-                    <ProtectedRoute>
-                      <MisOfertas />
-                    </ProtectedRoute>
-                  }
-                />
-
-                {/* Wallet */}
-                <Route
-                  path="activos"
-                  element={
-                    <ProtectedRoute>
-                      <Activos />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="depositos"
-                  element={
-                    <ProtectedRoute>
-                      <Depositos />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="retiros"
-                  element={
-                    <ProtectedRoute>
-                      <Withdrawal />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="transferir"
-                  element={
-                    <ProtectedRoute>
-                      <Transferencia />
-                    </ProtectedRoute>
-                  }
-                />
-
-                {/* Notificaciones */}
-                <Route
-                  path="notificaciones"
-                  element={
-                    <ProtectedRoute>
-                      <Notificaciones />
-                    </ProtectedRoute>
-                  }
-                />
-
-                {/* Perfil */}
+                {/* Perfil - Solo requiere estar autenticado (para que puedan verificar desde aquí) */}
                 <Route
                   path="perfil"
                   element={
@@ -168,12 +81,122 @@ function App() {
                   }
                 />
 
-                {/* Super Admin */}
+                {/* Notificaciones - Solo requiere estar autenticado */}
+                <Route
+                  path="notificaciones"
+                  element={
+                    <ProtectedRoute>
+                      <Notificaciones />
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* ========== RUTAS QUE REQUIEREN EMAIL VERIFICADO ========== */}
+
+                {/* Swap - Requiere email verificado */}
+                <Route
+                  path="swap"
+                  element={
+                    <ProtectedRoute>
+                      <RequireEmailVerified>
+                        <Swap />
+                      </RequireEmailVerified>
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* P2P - Requiere email verificado */}
+                <Route
+                  path="p2p"
+                  element={
+                    <ProtectedRoute>
+                      <RequireEmailVerified>
+                        <P2PMarketplace />
+                      </RequireEmailVerified>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="p2p/transaction/:id"
+                  element={
+                    <ProtectedRoute>
+                      <RequireEmailVerified>
+                        <P2PTransaction />
+                      </RequireEmailVerified>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="p2p/crearOferta"
+                  element={
+                    <ProtectedRoute>
+                      <RequireEmailVerified>
+                        <CrearOfertaP2P />
+                      </RequireEmailVerified>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="p2p/misOfertas"
+                  element={
+                    <ProtectedRoute>
+                      <RequireEmailVerified>
+                        <MisOfertas />
+                      </RequireEmailVerified>
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* Wallet - Requiere email verificado */}
+                <Route
+                  path="activos"
+                  element={
+                    <ProtectedRoute>
+                      <RequireEmailVerified>
+                        <Activos />
+                      </RequireEmailVerified>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="depositos"
+                  element={
+                    <ProtectedRoute>
+                      <RequireEmailVerified>
+                        <Depositos />
+                      </RequireEmailVerified>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="retiros"
+                  element={
+                    <ProtectedRoute>
+                      <RequireEmailVerified>
+                        <Withdrawal />
+                      </RequireEmailVerified>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="transferir"
+                  element={
+                    <ProtectedRoute>
+                      <RequireEmailVerified>
+                        <Transferencia />
+                      </RequireEmailVerified>
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* Super Admin - Requiere email verificado */}
                 <Route
                   path="super_admin"
                   element={
                     <ProtectedRoute>
-                      <SuperAdmin />
+                      <RequireEmailVerified>
+                        <SuperAdmin />
+                      </RequireEmailVerified>
                     </ProtectedRoute>
                   }
                 />

@@ -28,8 +28,18 @@ const VerificarEmail = () => {
     resendCountdown,
   } = useEmailVerification();
 
-  // ⭐ Verificar si el email ya está verificado al cargar la página
+  // ⭐ Verificar si el email ya está verificado o si es usuario de Google
   useEffect(() => {
+    // Si es usuario de Google, redirigir automáticamente (Google verifica emails)
+    if (user?.googleId) {
+      toast.success('Tu cuenta de Google ya está verificada', {
+        duration: 3000,
+        icon: '✅',
+      });
+      navigate('/', { replace: true });
+      return;
+    }
+
     // Si el usuario ya tiene el email verificado, redirigir a home
     if (user?.emailVerificado) {
       toast.success('Tu email ya está verificado', {

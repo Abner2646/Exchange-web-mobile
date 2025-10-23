@@ -36,11 +36,15 @@ export const useLoginFlow = () => {
             duration: 5000,
           });
         } else {
-          // Login exitoso sin 2FA
+          // Login exitoso sin 2FA - ⭐ PASAR TODAS LAS PROPIEDADES
           authService.setAuthToken(data.token);
           loginContext({
             id: data.user.id,
+            email: data.user.email,
             username: data.user.username,
+            role: data.user.rol || data.user.role,
+            emailVerificado: data.user.emailVerificado || false,
+            googleId: data.user.googleId || null,
           });
           toast.success('¡Bienvenido!');
           // Redirigir a la ruta original o a home
@@ -62,11 +66,15 @@ export const useLoginFlow = () => {
     (codigo) => authService.verify2FA(codigo, preAuthToken),
     {
       onSuccess: (data) => {
-        // Login exitoso con 2FA
+        // Login exitoso con 2FA - ⭐ PASAR TODAS LAS PROPIEDADES
         authService.setAuthToken(data.token);
         loginContext({
           id: data.user.id,
+          email: data.user.email,
           username: data.user.username,
+          role: data.user.rol || data.user.role,
+          emailVerificado: data.user.emailVerificado || false,
+          googleId: data.user.googleId || null,
         });
         toast.success('¡Verificación exitosa! Bienvenido.');
         // Redirigir a la ruta original o a home
