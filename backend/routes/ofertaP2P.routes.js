@@ -3,7 +3,7 @@ const { Router } = require('express');
 const router = Router();
 
 // Middleware
-const { authenticateToken } = require('../middleware/authMiddleware.js');
+const { authenticateToken, requireEmailVerified } = require('../middleware/authMiddleware.js');
 const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
 
 // Importa el controlador
@@ -35,13 +35,13 @@ router.get('/activas', authenticateToken, ofertaP2PController.getOfertasActivas)
 router.get('/:id', authenticateToken, ofertaP2PController.getOfertaById);
 
 // Crear nueva oferta
-router.post('/', authenticateToken, ofertaP2PController.createOferta);
+router.post('/', authenticateToken, requireEmailVerified, ofertaP2PController.createOferta);
 
 // Actualizar oferta por ID
-router.put('/:id', authenticateToken, ofertaP2PController.updateOferta);
+router.put('/:id', authenticateToken, requireEmailVerified, ofertaP2PController.updateOferta);
 
 // Eliminar/Desactivar oferta por ID
-router.delete('/:id', authenticateToken, ofertaP2PController.deleteOferta);
+router.delete('/:id', authenticateToken, requireEmailVerified, ofertaP2PController.deleteOferta);
 
 // --------------------- RUTAS ESPECÍFICAS DEL USUARIO ---------------------
 
@@ -49,7 +49,7 @@ router.delete('/:id', authenticateToken, ofertaP2PController.deleteOferta);
 router.get('/me/ofertas', authenticateToken, ofertaP2PController.getMyOfertas);
 
 // Activar/Desactivar mi oferta
-router.patch('/:id/toggle', authenticateToken, ofertaP2PController.toggleMyOferta);
+router.patch('/:id/toggle', authenticateToken, requireEmailVerified, ofertaP2PController.toggleMyOferta);
 
 // Verificar si puedo aceptar una oferta
 router.get('/:id/can-accept', authenticateToken, ofertaP2PController.checkOfferAcceptability);
@@ -57,10 +57,10 @@ router.get('/:id/can-accept', authenticateToken, ofertaP2PController.checkOfferA
 // --------------------- RUTAS DE MÉTODOS DE PAGO ---------------------
 
 // Agregar métodos de pago a una oferta
-router.post('/:id/metodos-pago', authenticateToken, ofertaP2PController.addMetodosPago);
+router.post('/:id/metodos-pago', authenticateToken, requireEmailVerified, ofertaP2PController.addMetodosPago);
 
 // Eliminar métodos de pago de una oferta
-router.delete('/:id/metodos-pago', authenticateToken, ofertaP2PController.removeMetodosPago);
+router.delete('/:id/metodos-pago', authenticateToken, requireEmailVerified, ofertaP2PController.removeMetodosPago);
 
 // --------------------- RUTAS ADMINISTRATIVAS ---------------------
 

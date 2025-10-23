@@ -67,6 +67,44 @@ class EmailService {
     }
   }
 
+  // Enviar código de verificación de email
+  async enviarCodigoVerificacionEmail(email, codigo, username) {
+    const mailOptions = {
+      from: `"${process.env.APP_NAME || 'Crypto Exchange'}" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: 'Verifica tu email - Código de activación',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333;">¡Bienvenido a ${process.env.APP_NAME || 'Crypto Exchange'}!</h2>
+          <p>Hola <strong>${username}</strong>,</p>
+          <p>Gracias por registrarte. Para activar tu cuenta, por favor verifica tu email usando el siguiente código:</p>
+          
+          <div style="background: #f5f5f5; padding: 20px; text-align: center; margin: 20px 0;">
+            <h1 style="color: #007bff; letter-spacing: 5px; margin: 0;">${codigo}</h1>
+          </div>
+          
+          <p><strong>Este código expira en 1 hora.</strong></p>
+          
+          <p>Si no te registraste en nuestra plataforma, puedes ignorar este email.</p>
+          
+          <hr style="margin: 30px 0;">
+          <p style="color: #666; font-size: 12px;">
+            ${process.env.APP_NAME || 'Crypto Exchange'} - No responder a este email
+          </p>
+        </div>
+      `
+    };
+
+    try {
+      const result = await this.transporter.sendMail(mailOptions);
+      console.log(`Código de verificación de email enviado a ${email}`);
+      return result;
+    } catch (error) {
+      console.error('Error enviando código de verificación de email:', error);
+      throw new Error('Error al enviar email de verificación');
+    }
+  }
+
   // Enviar código de autenticación de dos factores
   async enviarCodigo2FA(email, codigo, username) {
     const mailOptions = {
@@ -278,6 +316,7 @@ class EmailService {
       throw new Error(`Error al enviar notificación de transferencia ${tipo}`);
     }
   }
+
 }
 
 // Singleton instance

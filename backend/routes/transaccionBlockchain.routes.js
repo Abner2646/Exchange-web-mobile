@@ -2,14 +2,14 @@
 const express = require('express');
 const router = express.Router();
 const transaccionBlockchainController = require('../controllers/transaccionBlockchain.controller');
-const {authenticateToken} = require('../middleware/authMiddleware');
+const {authenticateToken, requireEmailVerified} = require('../middleware/authMiddleware');
 const validationMiddleware = require('../middleware/rateLimit.middleware');
 const rateLimitMiddleware = require('../middleware/rateLimit.middleware');
 
 // =================== RUTAS PÚBLICAS (con auth) ===================
 
-// Aplicar autenticación a todas las rutas
-router.use(authenticateToken);
+// Aplicar autenticación y email verificado a todas las rutas
+router.use(authenticateToken, requireEmailVerified);
 
 // GET /api/transactions/my - Obtener mis transacciones
 router.get('/my', /*rateLimitMiddleware.general,*/ transaccionBlockchainController.getMyTransactions);

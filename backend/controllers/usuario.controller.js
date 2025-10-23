@@ -150,41 +150,70 @@ const getUsuarioById = async (req, res) => {
   }
 };
 
-// Registrar nuevo usuario
+// ==================== REGISTRAR NUEVO USUARIO (SIN TOKEN TEMPORAL) ==================== //
 const registerUsuario = async (req, res) => {
   const transaction = await sequelize.transaction();
   
   try {
     const userData = req.body;
-    const { user, token } = await Usuario.createWithPassword(userData);
+    const { user, codigoVerificacion } = await Usuario.createWithPassword(userData);
     
-    // const inicializacionResult = await inicializarUsuarioCompleto(user, transaction);
+    // Generar JWT NORMAL (no temporal)
+    const jwt = require('jsonwebtoken');
+    const token = jwt.sign(
+      { 
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        rol: user.rol,
+        emailVerificado: false, // ⚠️ Importante: marca como NO verificado
+        kycVerificado: user.kycVerificado,
+        activo: user.activo,
+        reputacionPromedio: user.reputacionPromedio,
+        pais: user.pais,
+        dosFactoresActivado: false
+      },
+      process.env.JWT_SECRET,
+      { 
+        expiresIn: '7d', // Token normal con duración estándar
+        issuer: 'crypto-exchange',
+        audience: 'crypto-exchange-users'
+      }
+    );
+    
+    // Enviar código de verificación por email
+    try {
+      await emailService.enviarCodigoVerificacionEmail(
+        user.email,
+        codigoVerificacion,
+        user.username
+      );
+      console.log(`✅ Código de verificación enviado a ${user.email}`);
+    } catch (emailError) {
+      console.error('❌ Error enviando código de verificación:', emailError);
+      // NO fallar el registro si el email falla, pero informar al usuario
+    }
     
     await transaction.commit();
 
     res.status(201).json({
-      message: 'Usuario registrado exitosamente',
+      message: 'Usuario registrado exitosamente. Por favor verifica tu email.',
       user: {
         id: user.id,
         email: user.email,
         username: user.username,
         rol: user.rol,
-        kycVerificado: user.kycVerificado,
-        pais: user.pais
+        emailVerificado: user.emailVerificado
       },
-      token,
-      inicializacion: {
-        // direccionesCreadas: inicializacionResult.direccionesCreadas.length,
-        // balancesCreados: inicializacionResult.balancesCreados.length,
-        // criptomonedas: inicializacionResult.direccionesCreadas.map(d => d.criptomoneda)
-      }
+      token, // Token normal (no temporal)
+      requiresEmailVerification: true
     });
   } catch (error) {
     await transaction.rollback();
     console.error('Error en registro de usuario:', error);
     res.status(400).json({ 
       error: error.message,
-      details: 'Error durante la inicialización del usuario'
+      details: 'Error durante el registro del usuario'
     });
   }
 };
@@ -269,323 +298,223 @@ const loginWithGoogle = async (req, res) => {
   }
 };
 
-// --------------------- MÉTODOS DE RECUPERACIÓN DE CONTRASEÑA --------------------- //
+// ==================== VERIFICACIÓN DE EMAIL (VERSIÓN MEJORADA) ==================== //
 
-// Solicitar código de recuperación de contraseña
-const requestPasswordReset = async (req, res) => {
+// Verificar email con código 
+const verifyEmail = async (req, res) => {
   try {
-    const { email } = req.body;
-    
-    if (!email) {
-      return res.status(400).json({ error: 'Email es requerido' });
-    }
-
-    const result = await Usuario.requestPasswordReset(email);
-    
-    if (result.sent && result.codigo) {
-      try {
-        await emailService.enviarCodigoRecuperacion(
-          email, 
-          result.codigo, 
-          result.user.username
-        );
-      } catch (emailError) {
-        console.error('Error enviando email:', emailError);
-      }
-    }
-
-    res.json({ 
-      message: 'Si el email existe en nuestro sistema, recibirás un código de recuperación en tu bandeja de entrada' 
-    });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-};
-
-// Verificar código de recuperación
-const verifyResetCode = async (req, res) => {
-  try {
-    const { email, codigo } = req.body;
-    
-    if (!email || !codigo) {
-      return res.status(400).json({ error: 'Email y código son requeridos' });
-    }
-
-    const result = await Usuario.verifyResetCode(email, codigo);
-    
-    res.json({
-      message: 'Código verificado correctamente',
-      valid: result.valid
-    });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-};
-
-// Resetear contraseña con código
-const resetPassword = async (req, res) => {
-  try {
-    const { email, codigo, newPassword, confirmPassword } = req.body;
-    
-    if (!email || !codigo || !newPassword || !confirmPassword) {
-      return res.status(400).json({ 
-        error: 'Email, código, nueva contraseña y confirmación son requeridos' 
-      });
-    }
-
-    if (newPassword !== confirmPassword) {
-      return res.status(400).json({ error: 'Las contraseñas no coinciden' });
-    }
-
-    const { user, token } = await Usuario.resetPasswordWithCode(email, codigo, newPassword);
-    
-    try {
-      await emailService.notificarCambioPassword(user.email, user.username);
-    } catch (emailError) {
-      console.error('Error enviando notificación:', emailError);
-    }
-
-    res.json({
-      message: 'Contraseña restablecida exitosamente',
-      user: {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        rol: user.rol
-      },
-      token
-    });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-};
-
-// --------------------- MÉTODOS DE AUTENTICACIÓN EN DOS PASOS --------------------- //
-
-// Activar/desactivar autenticación en dos pasos
-const toggle2FA = async (req, res) => {
-  try {
+    // Obtener userId del usuario autenticado (req.user ya está seteado por middleware)
     const userId = req.user.id;
-    const { activar, currentPassword } = req.body;
-    
-    if (activar === undefined) {
-      return res.status(400).json({ error: 'El parámetro "activar" es requerido' });
-    }
-
-    if (!currentPassword) {
-      return res.status(400).json({ error: 'Contraseña actual requerida para cambios de seguridad' });
-    }
-
-    const user = await Usuario.findByPk(userId);
-    if (!user.passwordHash) {
-      return res.status(400).json({ error: 'Usuarios OAuth no pueden usar 2FA por email' });
-    }
-
-    const bcrypt = require('bcrypt');
-    const isPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
-    if (!isPasswordValid) {
-      return res.status(400).json({ error: 'Contraseña actual incorrecta' });
-    }
-
-    const { user: updatedUser, token, activado } = await Usuario.toggle2FA(userId, activar);
-    
-    try {
-      await emailService.notificar2FAChange(user.email, user.username, activado);
-    } catch (emailError) {
-      console.error('Error enviando notificación:', emailError);
-    }
-
-    res.json({
-      message: `Autenticación en dos pasos ${activado ? 'activada' : 'desactivada'} exitosamente`,
-      dosFactoresActivado: activado,
-      token
-    });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-};
-
-// Login paso 1 - Verificar credenciales
-// Login paso 1 - Verificar credenciales (ACTUALIZADO)
-const loginStep1 = async (req, res) => {
-  try {
-    const { emailOrUsername, password } = req.body;
-    
-    if (!emailOrUsername || !password) {
-      return res.status(400).json({ error: 'Email/username y contraseña son requeridos' });
-    }
-
-    const result = await Usuario.loginStep1(emailOrUsername, password);
-    
-    if (result.loginComplete) {
-      // Login sin 2FA - respuesta normal
-      res.json({
-        message: 'Login exitoso',
-        user: {
-          id: result.user.id,
-          email: result.user.email,
-          username: result.user.username,
-          rol: result.user.rol,
-          kycVerificado: result.user.kycVerificado,
-          reputacionPromedio: result.user.reputacionPromedio,
-          dosFactoresActivado: result.user.dosFactoresActivado
-        },
-        token: result.token,
-        requires2FA: false
-      });
-    } else {
-      // REQUIERE 2FA - Generar token temporal de pre-autenticación
-      const { codigo } = await Usuario.generateAndSave2FACode(result.userId);
-      
-      // Token temporal que SOLO sirve para verificar 2FA
-      const jwt = require('jsonwebtoken');
-      const preAuthToken = jwt.sign(
-        { 
-          userId: result.userId, 
-          purpose: 'pre-auth-2fa',
-          email: result.email 
-        }, 
-        process.env.JWT_SECRET, 
-        { expiresIn: '10m' }
-      );
-      
-      try {
-        await emailService.enviarCodigo2FA(result.email, codigo, result.username);
-      } catch (emailError) {
-        console.error('Error enviando código 2FA:', emailError);
-        return res.status(500).json({ error: 'Error enviando código de verificación' });
-      }
-
-      res.json({
-        message: 'Credenciales correctas. Revisa tu email para el código de verificación',
-        requires2FA: true,
-        preAuthToken: preAuthToken
-      });
-    }
-  } catch (error) {
-    res.status(401).json({ error: error.message });
-  }
-};
-
-// Verificar código 2FA y completar login (ACTUALIZADO)
-const verify2FA = async (req, res) => {
-  try {
-    // Opción 1: Con Bearer (estándar)
-    //const authHeader = req.headers['authorization'];
-    //const preAuthToken = authHeader && authHeader.split(' ')[1];
-    
-    // Opción 2: Sin Bearer (directo)
-    const preAuthToken = req.headers['authorization'];
-
     const { codigo } = req.body;
     
-    if (!preAuthToken || !codigo) {
-      return res.status(400).json({ error: 'Token de pre-autenticación y código son requeridos' });
+    if (!codigo) {
+      return res.status(400).json({ 
+        error: 'codigo es requerido' 
+      });
     }
 
-    // Verificar token temporal
-    let decoded;
+
+    const { user, token, message } = await Usuario.verifyEmail(userId, codigo);
+    
+    // Inicializar usuario completo después de verificar email
+    const transaction = await sequelize.transaction();
     try {
-      const jwt = require('jsonwebtoken');
-      decoded = jwt.verify(preAuthToken, process.env.JWT_SECRET);
-    } catch (error) {
-      return res.status(401).json({ error: 'Token de pre-autenticación inválido o expirado' });
-    }
-    
-    if (decoded.purpose !== 'pre-auth-2fa') {
-      return res.status(401).json({ error: 'Token inválido' });
+      await inicializarUsuarioCompleto(user, transaction);
+      await transaction.commit();
+    } catch (initError) {
+      await transaction.rollback();
+      console.error('Error inicializando usuario:', initError);
+      // No fallar la verificación si falla la inicialización
     }
 
-    // Verificar código 2FA
-    const { user, token } = await Usuario.verify2FACode(decoded.userId, codigo);
-    
     res.json({
-      message: 'Login exitoso con verificación 2FA',
+      message,
       user: {
         id: user.id,
         email: user.email,
         username: user.username,
         rol: user.rol,
-        kycVerificado: user.kycVerificado,
-        reputacionPromedio: user.reputacionPromedio,
-        dosFactoresActivado: user.dosFactoresActivado
+        emailVerificado: user.emailVerificado,
+        kycVerificado: user.kycVerificado
       },
-      token
-    });
-  } catch (error) {
-    res.status(401).json({ error: error.message });
-  }
-};
-
-// Reenviar código 2FA (NUEVO - SEGURO)
-const resend2FACode = async (req, res) => {
-  try {
-    const { preAuthToken } = req.body;
-    
-    if (!preAuthToken) {
-      return res.status(400).json({ error: 'Token de pre-autenticación requerido' });
-    }
-
-    // Verificar token temporal
-    let decoded;
-    try {
-      const jwt = require('jsonwebtoken');
-      decoded = jwt.verify(preAuthToken, process.env.JWT_SECRET);
-    } catch (error) {
-      return res.status(401).json({ error: 'Token de pre-autenticación inválido o expirado' });
-    }
-    
-    if (decoded.purpose !== 'pre-auth-2fa') {
-      return res.status(401).json({ error: 'Token inválido para reenvío' });
-    }
-
-    // Verificar que el usuario existe y tiene 2FA activado
-    const user = await Usuario.findByPk(decoded.userId);
-    if (!user) {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
-    }
-    
-    if (!user.dosFactoresActivado) {
-      return res.status(400).json({ error: 'Usuario no tiene 2FA activado' });
-    }
-
-    // Generar nuevo código y enviarlo
-    const { codigo } = await Usuario.generateAndSave2FACode(decoded.userId);
-    
-    try {
-      await emailService.enviarCodigo2FA(user.email, codigo, user.username);
-    } catch (emailError) {
-      console.error('Error enviando código 2FA:', emailError);
-      return res.status(500).json({ error: 'Error enviando código de verificación' });
-    }
-
-    res.json({
-      message: 'Nuevo código de verificación enviado a tu email'
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// --------------------- MÉTODOS EXISTENTES (mantenidos sin cambio) --------------------- //
-
-// Actualizar perfil propio
-const updateMyProfile = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const updateData = req.body;
-    
-    const { user, token } = await Usuario.updateProfile(userId, updateData);
-    
-    res.json({
-      message: 'Perfil actualizado exitosamente'
+      token // Token actualizado con emailVerificado: true
     });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 };
 
-// Obtener mi perfil
+// Reenviar código de verificación de email 
+const resendVerificationEmail = async (req, res) => {
+  try {
+    // Obtener userId del usuario autenticado
+    const userId = req.user.id;
+    
+
+    const { user, codigo, message } = await Usuario.resendEmailVerification(userId);
+    
+    // Enviar código por email
+    try {
+      await emailService.enviarCodigoVerificacionEmail(
+        user.email,
+        codigo,
+        user.username
+      );
+      
+      res.json({
+        message: 'Código de verificación reenviado exitosamente',
+        email: user.email
+      });
+    } catch (emailError) {
+      console.error('Error enviando código:', emailError);
+      res.status(500).json({ 
+        error: 'Error al enviar el código de verificación',
+        details: emailError.message
+      });
+    }
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+// ==================== RESTO DE MÉTODOS (SIN CAMBIOS) ==================== //
+
+// Métodos de recuperación de contraseña
+const requestPasswordReset = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const result = await Usuario.requestPasswordReset(email);
+    
+    if (result.sent) {
+      await emailService.enviarCodigoRecuperacion(
+        result.user.email,
+        result.codigo,
+        result.user.username
+      );
+    }
+    
+    res.json({ message: result.message });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+const verifyResetCode = async (req, res) => {
+  try {
+    const { email, codigo } = req.body;
+    const result = await Usuario.verifyResetCode(email, codigo);
+    res.json(result);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+const resetPassword = async (req, res) => {
+  try {
+    const { email, codigo, newPassword, confirmPassword } = req.body;
+    
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ error: 'Las contraseñas no coinciden' });
+    }
+    
+    const { user, token } = await Usuario.resetPasswordWithCode(email, codigo, newPassword);
+    
+    await emailService.notificarCambioPassword(user.email, user.username);
+    
+    res.json({
+      message: 'Contraseña actualizada exitosamente',
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username
+      },
+      token
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+// Métodos de 2FA
+const toggle2FA = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { activar } = req.body;
+    
+    const { user, token } = await Usuario.toggle2FA(userId, activar);
+    
+    await emailService.notificar2FAChange(user.email, user.username, activar);
+    
+    res.json({
+      message: `Autenticación en dos pasos ${activar ? 'activada' : 'desactivada'} exitosamente`,
+      user,
+      token
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+const loginStep1 = async (req, res) => {
+  try {
+    const { emailOrUsername, password } = req.body;
+    const result = await Usuario.loginStep1(emailOrUsername, password);
+    
+    if (result.requires2FA) {
+      await emailService.enviarCodigo2FA(
+        result.user.email,
+        result.codigo2FA,
+        result.user.username
+      );
+      
+      return res.json({
+        message: 'Código de verificación enviado a tu email',
+        requires2FA: true,
+        temporalToken: result.temporalToken
+      });
+    }
+    
+    res.json({
+      message: 'Login exitoso',
+      user: result.user,
+      token: result.token
+    });
+  } catch (error) {
+    res.status(401).json({ error: error.message });
+  }
+};
+
+const verify2FA = async (req, res) => {
+  try {
+    const { temporalToken, codigo } = req.body;
+    const { user, token } = await Usuario.verify2FA(temporalToken, codigo);
+    
+    res.json({
+      message: 'Verificación 2FA exitosa',
+      user,
+      token
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+const resend2FACode = async (req, res) => {
+  try {
+    const { temporalToken } = req.body;
+    const { user, codigo } = await Usuario.resend2FACode(temporalToken);
+    
+    await emailService.enviarCodigo2FA(user.email, codigo, user.username);
+    
+    res.json({
+      message: 'Código 2FA reenviado exitosamente'
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+// Métodos de perfil de usuario
 const getMyProfile = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -596,92 +525,28 @@ const getMyProfile = async (req, res) => {
   }
 };
 
-// Obtener mis direcciones de depósito
-const getMyDepositAddresses = async (req, res) => {
+const updateMyProfile = async (req, res) => {
   try {
     const userId = req.user.id;
-    
-    const direcciones = await DireccionDeposito.getByUser(userId);
-    
-    const direccionesFormateadas = direcciones.map(addr => ({
-      id: addr.id,
-      criptomoneda: {
-        id: addr.criptomoneda.id,
-        symbol: addr.criptomoneda.symbol,
-        nombre: addr.criptomoneda.nombre,
-        red: addr.criptomoneda.red
-      },
-      direccion: addr.direccion,
-      activa: addr.activa,
-      created_at: addr.created_at
-    }));
-    
-    res.json({
-      direcciones: direccionesFormateadas,
-      total: direccionesFormateadas.length
-    });
+    const { user, token } = await Usuario.updateProfile(userId, req.body);
+    res.json({ user, token });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(400).json({ error: error.message });
   }
 };
 
-// Obtener mis balances
-const getMyBalances = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    
-    const balances = await BalanceUsuario.getByUserId(userId);
-    
-    const balancesDetallados = await Promise.all(
-      balances.map(async (balance) => {
-        const criptomoneda = await Criptomoneda.getById(balance.criptomonedaId);
-        const totalBalance = parseFloat(balance.balanceDisponible) + parseFloat(balance.balanceBloqueado);
-        
-        return {
-          criptomoneda: {
-            id: criptomoneda.id,
-            symbol: criptomoneda.symbol,
-            nombre: criptomoneda.nombre,
-            decimales: criptomoneda.decimales
-          },
-          balanceDisponible: parseFloat(balance.balanceDisponible),
-          balanceBloqueado: parseFloat(balance.balanceBloqueado),
-          balanceTotal: totalBalance,
-          updated_at: balance.updated_at
-        };
-      })
-    );
-
-    const balancesConFondos = balancesDetallados.filter(
-      balance => balance.balanceTotal > 0
-    );
-    
-    res.json({
-      balances: balancesConFondos,
-      total: balancesConFondos.length,
-      balancesCompletos: balancesDetallados.length
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// Cambiar contraseña (actualizado con notificación por email)
 const changePassword = async (req, res) => {
   try {
     const userId = req.user.id;
     const { currentPassword, newPassword } = req.body;
     
     const { user, token } = await Usuario.changePassword(userId, currentPassword, newPassword);
-
-    try {
-      await emailService.notificarCambioPassword(user.email, user.username);
-    } catch (emailError) {
-      console.error('Error enviando notificación:', emailError);
-    }
+    
+    await emailService.notificarCambioPassword(user.email, user.username);
     
     res.json({
-      message: 'Contraseña cambiada exitosamente',
+      message: 'Contraseña actualizada exitosamente',
+      user,
       token
     });
   } catch (error) {
@@ -689,19 +554,37 @@ const changePassword = async (req, res) => {
   }
 };
 
-// Resto de métodos administrativos (sin cambios)
+const getPublicProfile = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await Usuario.getById(id);
+    
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    
+    const publicProfile = {
+      id: user.id,
+      username: user.username,
+      reputacionPromedio: user.reputacionPromedio,
+      totalValoraciones: user.totalValoraciones,
+      kycVerificado: user.kycVerificado,
+      created_at: user.created_at
+    };
+    
+    res.json(publicProfile);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Métodos administrativos
 const updateUsuarioStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { activo } = req.body;
-    
     const { user, token } = await Usuario.updateStatus(id, activo);
-    
-    res.json({
-      message: `Usuario ${activo ? 'activado' : 'desactivado'} exitosamente`,
-      user,
-      token
-    });
+    res.json({ user, token });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -711,35 +594,10 @@ const updateUsuarioRole = async (req, res) => {
   try {
     const { id } = req.params;
     const { rol } = req.body;
-    
-    if (req.user.rol !== 'super_admin') {
-      return res.status(403).json({ error: 'Solo super administradores pueden cambiar roles' });
-    }
-    
     const { user, token } = await Usuario.updateRole(id, rol);
-    
-    res.json({
-      message: 'Rol actualizado exitosamente',
-      user,
-      token
-    });
+    res.json({ user, token });
   } catch (error) {
     res.status(400).json({ error: error.message });
-  }
-};
-
-const searchUsuarios = async (req, res) => {
-  try {
-    const { q: term, limit = 10 } = req.query;
-    
-    if (!term) {
-      return res.status(400).json({ error: 'Término de búsqueda requerido' });
-    }
-
-    const results = await Usuario.search(term, parseInt(limit));
-    res.json(results);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
   }
 };
 
@@ -747,36 +605,10 @@ const updateUsuarioKYC = async (req, res) => {
   try {
     const { id } = req.params;
     const { kycData, verified } = req.body;
-    
     const { user, token } = await Usuario.updateKYC(id, kycData, verified);
-    
-    res.json({
-      message: `KYC ${verified ? 'aprobado' : 'actualizado'} exitosamente`,
-      user,
-      token
-    });
+    res.json({ user, token });
   } catch (error) {
     res.status(400).json({ error: error.message });
-  }
-};
-
-const checkTransactionLimit = async (req, res) => {
-  try {
-    const userId = req.params.userId || req.user.id;
-    const { amount } = req.query;
-    
-    if (req.user.rol !== 'admin' && userId !== req.user.id) {
-      return res.status(403).json({ error: 'Sin permisos para verificar este límite' });
-    }
-    
-    if (!amount) {
-      return res.status(400).json({ error: 'Monto requerido' });
-    }
-
-    const result = await Usuario.canMakeTransaction(userId, parseFloat(amount));
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
   }
 };
 
@@ -784,36 +616,63 @@ const updateDailyLimit = async (req, res) => {
   try {
     const { id } = req.params;
     const { limiteDiarioUsd } = req.body;
-    
     const { user, token } = await Usuario.updateDailyLimit(id, limiteDiarioUsd);
-    
-    res.json({
-      message: 'Límite diario actualizado exitosamente',
-      user,
-      token
-    });
+    res.json({ user, token });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 };
 
-const getDailyVolume = async (req, res) => {
+const updateUsuarioReputation = async (req, res) => {
   try {
-    const userId = req.params.userId || req.user.id;
-    const { fecha } = req.query;
-    
-    if (req.user.rol !== 'admin' && userId !== req.user.id) {
-      return res.status(403).json({ error: 'Sin permisos para ver este volumen' });
-    }
-    
-    const fechaConsulta = fecha ? new Date(fecha) : new Date();
-    const volume = await Usuario.getDailyVolume(userId, fechaConsulta);
-    
+    const { id } = req.params;
+    const { reputacionPromedio, totalValoraciones } = req.body;
+    const { user, token } = await Usuario.updateReputation(id, reputacionPromedio, totalValoraciones);
+    res.json({ user, token });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+const deleteUsuario = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await Usuario.destroy({ where: { id } });
+    res.json({ message: 'Usuario eliminado exitosamente' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const deactivateInactiveUsers = async (req, res) => {
+  try {
+    const { days } = req.body;
+    const affectedRows = await Usuario.deactivateInactiveUsers(days || 365);
     res.json({
-      usuarioId: userId,
-      fecha: fechaConsulta.toISOString().split('T')[0],
-      volumenDiario: volume
+      message: `${affectedRows} usuarios inactivos desactivados`,
+      affectedRows
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Otros métodos
+const searchUsuarios = async (req, res) => {
+  try {
+    const { query } = req.query;
+    const usuarios = await Usuario.findAll({
+      where: {
+        [Op.or]: [
+          { username: { [Op.iLike]: `%${query}%` } },
+          { email: { [Op.iLike]: `%${query}%` } }
+        ],
+        activo: true
+      },
+      attributes: ['id', 'username', 'reputacionPromedio', 'totalValoraciones', 'kycVerificado'],
+      limit: 10
+    });
+    res.json(usuarios);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -830,139 +689,50 @@ const getUsuariosStats = async (req, res) => {
 
 const getTopTraders = async (req, res) => {
   try {
-    const { limit = 10, period = '30d' } = req.query;
-    const topTraders = await Usuario.getTopTraders(parseInt(limit), period);
-    res.json(topTraders);
+    const { limit, period } = req.query;
+    const traders = await Usuario.getTopTraders(limit, period);
+    res.json(traders);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-const deactivateInactiveUsers = async (req, res) => {
+const getDailyVolume = async (req, res) => {
   try {
-    const { days = 365 } = req.query;
-    const deactivatedCount = await Usuario.deactivateInactiveUsers(parseInt(days));
-    
-    res.json({
-      message: `${deactivatedCount} usuarios desactivados por inactividad`,
-      deactivatedCount,
-      daysSinceLogin: parseInt(days)
-    });
+    const userId = req.params.id || req.user.id;
+    const volume = await Usuario.getDailyVolume(userId);
+    res.json({ userId, volume });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-const updateUsuarioReputation = async (req, res) => {
+const checkTransactionLimit = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { reputacionPromedio, totalValoraciones } = req.body;
-    
-    const { user, token } = await Usuario.updateReputation(id, reputacionPromedio, totalValoraciones);
-    
-    res.json({
-      message: 'Reputación actualizada exitosamente',
-      user,
-      token
-    });
+    const userId = req.params.id || req.user.id;
+    const { amount } = req.query;
+    const result = await Usuario.canMakeTransaction(userId, parseFloat(amount));
+    res.json(result);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    res.status(500).json({ error: error.message });
   }
 };
 
-const deleteUsuario = async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    if (req.user.rol !== 'super_admin') {
-      return res.status(403).json({ error: 'Solo super administradores pueden eliminar usuarios' });
-    }
-
-    if (req.user.id === id) {
-      return res.status(400).json({ error: 'No puedes eliminar tu propia cuenta' });
-    }
-
-    const user = await Usuario.findByPk(id);
-    if (!user) {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
-    }
-
-    const { TransaccionP2P } = require('../models/index.js');
-    const activeTransactions = await TransaccionP2P.count({
-      where: {
-        [Op.or]: [
-          { compradorId: id },
-          { vendedorId: id }
-        ],
-        estado: { [Op.in]: ['iniciada', 'cryptos_bloqueadas', 'pago_confirmado'] }
-      }
-    });
-
-    if (activeTransactions > 0) {
-      return res.status(400).json({ 
-        error: 'No se puede eliminar usuario con transacciones activas' 
-      });
-    }
-
-    await user.update({ 
-      activo: false,
-      email: `deleted_${Date.now()}_${user.email}`,
-      username: `deleted_${Date.now()}_${user.username}`
-    });
-
-    res.json({ message: 'Usuario eliminado (desactivado) exitosamente' });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-};
-
-const renewToken = async (req, res) => {
+const getMyDepositAddresses = async (req, res) => {
   try {
     const userId = req.user.id;
-    const user = await Usuario.findByPk(userId);
-    
-    if (!user || !user.activo) {
-      return res.status(401).json({ error: 'Usuario no válido' });
-    }
-
-    const newToken = user.generateUpdatedJWT();
-    
-    res.json({
-      message: 'Token renovado exitosamente',
-      token: newToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        rol: user.rol,
-        kycVerificado: user.kycVerificado,
-        reputacionPromedio: user.reputacionPromedio
-      }
-    });
+    const direcciones = await DireccionDeposito.getByUser(userId);
+    res.json(direcciones);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-const getPublicProfile = async (req, res) => {
+const getMyBalances = async (req, res) => {
   try {
-    const { id } = req.params;
-    const user = await Usuario.findByPk(id, {
-      attributes: [
-        'id', 
-        'username', 
-        'reputacionPromedio', 
-        'totalValoraciones', 
-        'kycVerificado', 
-        'created_at'
-      ]
-    });
-    
-    if (!user) {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
-    }
-
-    res.json(user);
+    const userId = req.user.id;
+    const balances = await BalanceUsuario.getByUserId(userId);
+    res.json(balances);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -1040,6 +810,17 @@ const logout = async (req, res) => {
     const result = await Usuario.logout(userId);
     
     res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const renewToken = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = await Usuario.findByPk(userId);
+    const token = user.generateUpdatedJWT();
+    res.json({ token });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -1184,16 +965,20 @@ module.exports = {
   logout,
   renewToken,
   
-  // Métodos de recuperación de contraseña (NUEVOS)
+  // Métodos de recuperación de contraseña
   requestPasswordReset,
   verifyResetCode,
   resetPassword,
   
-  // Métodos de 2FA (NUEVOS)
+  // Métodos de 2FA
   toggle2FA,
   loginStep1,
   verify2FA,
   resend2FACode,
+  
+  // Métodos de verificación de email (NUEVOS)
+  verifyEmail,
+  resendVerificationEmail,
   
   // Métodos de perfil de usuario
   updateMyProfile,

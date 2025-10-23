@@ -1,6 +1,9 @@
 // controllers/auth.controller.js
 // Solo la lógica de autenticación de google, la normal está en controllers/usuario.controller.js
 
+// controllers/auth.controller.js
+// Solo la lógica de autenticación de google, la normal está en controllers/usuario.controller.js
+
 const jwt = require('jsonwebtoken');
 
 class AuthController {
@@ -10,7 +13,9 @@ class AuthController {
         id: req.user.id,
         email: req.user.email,
         username: req.user.username,
-        rol: req.user.rol || 'normal'
+        rol: req.user.rol || 'normal',
+        emailVerificado: true, // ⭐ AGREGADO - Google verifica emails automáticamente
+        googleId: req.user.googleId, // ⭐ AGREGADO - ID de Google del usuario
       },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }

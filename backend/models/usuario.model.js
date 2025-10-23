@@ -157,14 +157,18 @@ function createUsuarioModel(sequelize) {
       username: username.toLowerCase(),
       passwordHash,
       pais,
-      rol, // Asignar rol según si es el primer usuario o no
+      rol,
+      emailVerificado: false, // ⚠️ NUEVO: No verificado por defecto
       ...otherData
     };
 
     const newUser = await Usuario.create(userData);
-    const token = newUser.generateUpdatedJWT();
+    
+    // ⚠️ NUEVO: Generar código de verificación de email
+    const codigoVerificacion = await newUser.generarCodigoVerificacionEmail();
 
-    return { user: newUser, token };
+    // ⚠️ CAMBIO: NO devolver token hasta que verifique email
+    return { user: newUser, codigoVerificacion };
   };
 
   Usuario.createWithProvider = async (providerData) => {
@@ -185,6 +189,7 @@ function createUsuarioModel(sequelize) {
       googleId,
       pais,
       passwordHash: null,
+      emailVerificado: true, // ⚠️ NUEVO: Google ya verificó el email
       ...otherData
     };
 
@@ -256,6 +261,83 @@ function createUsuarioModel(sequelize) {
 
     return { valid: true, userId: user.id };
   };
+
+  // --------------------- MÉTODOS PARA VERIFICACIÓN DE EMAIL --------------------- //
+
+  Usuario.requestEmailVerification = async (userId) => {
+    const user = await Usuario.findByPk(userId);
+    
+    if (!user) {
+      throw new Error('Usuario no encontrado');
+    }
+
+    if (user.emailVerificado) {
+      throw new Error('Email ya verificado');
+    }
+
+    if (user.googleId) {
+      throw new Error('Usuarios de Google no necesitan verificar email');
+    }
+
+    const codigo = await user.generarCodigoVerificacionEmail();
+
+    return {
+      user,
+      codigo,
+      message: 'Código de verificación generado'
+    };
+  };
+
+  Usuario.verifyEmail = async (userId, codigo) => {
+    const user = await Usuario.findByPk(userId);
+
+    if (!user) {
+      throw new Error('Usuario no encontrado');
+    }
+
+    if (user.emailVerificado) {
+      throw new Error('Email ya verificado');
+    }
+
+    if (!user.validarCodigoVerificacionEmail(codigo)) {
+      throw new Error('Código inválido o expirado');
+    }
+
+    await user.update({
+      emailVerificado: true,
+      codigoVerificacionEmail: null,
+      codigoVerificacionEmailExpiracion: null
+    });
+
+    const token = user.generateUpdatedJWT();
+
+    return { user, token, message: 'Email verificado exitosamente' };
+  };
+
+  Usuario.resendEmailVerification = async (userId) => {
+    const user = await Usuario.findByPk(userId);
+    
+    if (!user) {
+      throw new Error('Usuario no encontrado');
+    }
+
+    if (user.emailVerificado) {
+      throw new Error('Email ya verificado');
+    }
+
+    if (user.googleId) {
+      throw new Error('Usuarios de Google no necesitan verificar email');
+    }
+
+    const codigo = await user.generarCodigoVerificacionEmail();
+
+    return {
+      user,
+      codigo,
+      message: 'Código de verificación reenviado'
+    };
+  };
+
 
   Usuario.resetPasswordWithCode = async (email, codigo, newPassword) => {
     const user = await Usuario.findOne({

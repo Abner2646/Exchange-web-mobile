@@ -1,3 +1,5 @@
+// Hay rutas que lógicamente deberáin tener requireEmailVerified pero no se lo puse porque capaz se llamand e forma prematura sin que el usuario esté con el mail verificado
+
 // routes/direccionDeposito.routes.js
 const { Router } = require('express');
 const router = Router();
@@ -6,7 +8,7 @@ const router = Router();
 const direccionDepositoController = require('../controllers/direccionDeposito.controller.js');
 
 // Middleware de autenticación
-const { authenticateToken } = require('../middleware/authMiddleware.js');
+const { authenticateToken, requireEmailVerified } = require('../middleware/authMiddleware.js');
 const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
 
 // --------------------- RUTAS CRUD BÁSICAS --------------------- //
@@ -40,10 +42,10 @@ router.post('/', authenticateToken, direccionDepositoController.createDireccionD
 // --------------------- RUTAS POR USUARIO --------------------- //
 
 // Obtener mis direcciones de depósito (usuario autenticado)
-router.get('/user/me', authenticateToken, direccionDepositoController.getMyDirecciones);
+router.get('/user/me', authenticateToken, requireEmailVerified, requireEmailVerified, direccionDepositoController.getMyDirecciones);
 
 // Obtener mi dirección para una criptomoneda específica
-router.get('/user/me/crypto/:criptomonedaId', authenticateToken, direccionDepositoController.getMyDireccionForCrypto);
+router.get('/user/me/crypto/:criptomonedaId',  authenticateToken, requireEmailVerified, direccionDepositoController.getMyDireccionForCrypto);
 
 // Obtener direcciones de depósito por usuario específico (admin)
 router.get('/user/:userId', authenticateToken, isAdmin, direccionDepositoController.getDireccionesByUser);

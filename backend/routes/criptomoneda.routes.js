@@ -57,7 +57,7 @@ SAND, MANA, AXS, GALA, CHZ, ENJ, FLOW, etc.
 // --------------------- RUTAS DE BÚSQUEDA Y CONSULTA --------------------- //
 
 // Buscar criptomonedas por término
-router.get('/search/query', authenticateToken, criptomonedaController.searchCriptomonedas);
+router.get('/search/query', /*authenticateToken,*/ criptomonedaController.searchCriptomonedas);
 
 // Obtener criptomoneda por símbolo
 router.get('/symbol/:symbol', criptomonedaController.getCriptomonedaBySymbol);
@@ -76,7 +76,7 @@ router.get('/public/active', criptomonedaController.getCriptomonedasActivas);
 // --------------------- RUTAS ADMINISTRATIVAS --------------------- //
 
 // Obtener estadísticas de criptomonedas
-router.get('/admin/stats', authenticateToken, criptomonedaController.getCriptomonedaStats);
+router.get('/admin/stats', authenticateToken, isSuperAdmin, criptomonedaController.getCriptomonedaStats);
 
 // Actualizar estado específico de criptomoneda
 router.patch('/:id/status', authenticateToken, isSuperAdmin, criptomonedaController.updateCriptomonedaStatus);

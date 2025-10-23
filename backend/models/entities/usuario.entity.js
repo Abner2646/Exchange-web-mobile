@@ -33,6 +33,42 @@ class Usuario extends Model {
   puedeRecuperarPassword() {
     return this.passwordHash !== null; // Solo usuarios con contraseña local
   }
+
+  // ==================== MÉTODOS DE VERIFICACIÓN DE EMAIL ==================== //
+  
+  // Método para generar código de verificación de email
+  async generarCodigoVerificacionEmail() {
+    const codigo = Math.floor(100000 + Math.random() * 900000).toString(); // 6 dígitos
+    const expiracion = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
+    
+    await this.update({
+      codigoVerificacionEmail: codigo,
+      codigoVerificacionEmailExpiracion: expiracion
+    });
+    
+    return codigo;
+  }
+
+  // Método para validar código de verificación de email
+  validarCodigoVerificacionEmail(codigo) {
+    return this.codigoVerificacionEmail === codigo && 
+           this.codigoVerificacionEmailExpiracion && 
+           new Date() < this.codigoVerificacionEmailExpiracion;
+  }
+
+  // Método para limpiar código de verificación después de uso
+  async limpiarCodigoVerificacionEmail() {
+    await this.update({
+      codigoVerificacionEmail: null,
+      codigoVerificacionEmailExpiracion: null
+    });
+  }
+
+  // Método para verificar si necesita verificar email
+  necesitaVerificarEmail() {
+    // Usuarios de Google no necesitan verificar
+    return !this.emailVerificado && !this.googleId;
+  }
 }
 
 function initUsuario(sequelize) {
@@ -69,6 +105,27 @@ function initUsuario(sequelize) {
       allowNull: true,
       unique: true,
       field: 'google_id'
+    },
+    // ==================== CAMPOS DE VERIFICACIÓN DE EMAIL ==================== //
+    emailVerificado: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      allowNull: false,
+      field: 'email_verificado'
+    },
+    codigoVerificacionEmail: {
+      type: DataTypes.STRING(6),
+      allowNull: true,
+      field: 'codigo_verificacion_email',
+      validate: {
+        len: [6, 6],
+        isNumeric: true
+      }
+    },
+    codigoVerificacionEmailExpiracion: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'codigo_verificacion_email_expiracion'
     },
     // Campos para recuperación de contraseña
     tokenRecuperacion: {
@@ -118,7 +175,7 @@ function initUsuario(sequelize) {
     },
     pais: {
       type: DataTypes.STRING(2),
-      allowNull: false,
+      allowNull: true,
       validate: {
         len: [2, 2], // Código ISO de 2 letras
         isAlpha: true
@@ -187,6 +244,20 @@ function initUsuario(sequelize) {
     createdAt: 'created_at',
     updatedAt: 'updated_at',
     indexes: [
+      // Índice para el código de verificación de email
+      {
+        fields: ['codigo_verificacion_email'],
+        unique: true,
+        where: {
+          codigo_verificacion_email: {
+            [sequelize.Sequelize.Op.ne]: null
+          }
+        }
+      },
+      // Índice para email verificado
+      {
+        fields: ['email_verificado']
+      },
       // Índice para el token de recuperación
       {
         fields: ['token_recuperacion'],
@@ -245,6 +316,12 @@ function initUsuario(sequelize) {
         if (usuario.codigo2FAExpiracion && new Date() > usuario.codigo2FAExpiracion) {
           usuario.codigo2FA = null;
           usuario.codigo2FAExpiracion = null;
+        }
+
+        // Limpiar código de verificación de email expirado
+        if (usuario.codigoVerificacionEmailExpiracion && new Date() > usuario.codigoVerificacionEmailExpiracion) {
+          usuario.codigoVerificacionEmail = null;
+          usuario.codigoVerificacionEmailExpiracion = null;
         }
       }
     }

@@ -97,7 +97,7 @@ function createNotificacionModel(sequelize) {
     'TRANSFERENCIA_CREADA': {
       tipo: 'transaccion',
       titulo: 'Transferencia creada - Verifica con código',
-      mensaje: 'Has creado una transferencia de {cantidad} {simbolo} a {destinatario}. Usa el código {codigo} para verificarla.',
+      mensaje: 'Has creado una transferencia de {cantidad} {simbolo} a {destinatario}. Usa el código enviado a tu email para verificarla.',
       importante: true
     },
     'TRANSFERENCIA_COMPLETADA_REMITENTE': {

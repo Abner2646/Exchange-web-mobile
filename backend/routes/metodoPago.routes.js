@@ -12,7 +12,7 @@ const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
 // --------------------- RUTAS CRUD BÁSICAS --------------------- //
 
 // Obtener todos los métodos de pago
-router.get('/', /*authenticateToken,*/ metodoPagoController.getMetodosPago); //Bien
+router.get('/', authenticateToken, metodoPagoController.getMetodosPago); //Bien
 /*
 Devuelve ej: 
 [
@@ -26,7 +26,7 @@ Devuelve ej:
 */
 
 // Obtener método de pago por ID
-router.get('/:id', /*authenticateToken,*/ metodoPagoController.getMetodoPagoById);
+router.get('/:id', authenticateToken, metodoPagoController.getMetodoPagoById);
 
 // Crear nuevo método de pago (solo super admin)
 router.post('/', authenticateToken, isSuperAdmin, metodoPagoController.createMetodoPago); // Bien
@@ -40,10 +40,10 @@ router.delete('/:id', authenticateToken, isSuperAdmin, metodoPagoController.dele
 // --------------------- RUTAS DE BÚSQUEDA --------------------- //
 
 // Buscar métodos de pago por término
-router.get('/search/query', /*authenticateToken,*/ metodoPagoController.searchMetodosPago);
+router.get('/search/query', authenticateToken, metodoPagoController.searchMetodosPago);
 
 // Obtener método de pago por nombre
-router.get('/name/:nombre', /*authenticateToken,*/ metodoPagoController.getMetodoPagoByName);
+router.get('/name/:nombre', authenticateToken, metodoPagoController.getMetodoPagoByName);
 
 // --------------------- RUTAS DE ESTADO --------------------- //
 

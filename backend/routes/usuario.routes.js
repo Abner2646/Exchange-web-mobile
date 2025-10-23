@@ -16,100 +16,77 @@ const usuarioController = require('../controllers/usuario.controller.js');
 // Verificar disponibilidad de username  
 //router.get('/check-username', usuarioController.checkUsernameAvailability);
 
-// Registro de usuario
-router.post('/register', usuarioController.registerUsuario); //Bien
-
-/*
-{
-    "emailOrUsername": "u1@g.com",
-    "email": "u1@g.com",
-    "username": "usuario1",
-    "password": "12345678",
-    "currentPassword": "12345678",
-    "newPassword": "12345678",
-    "pais":  "AR"
-}
-
-{
-    "emailOrUsername": "grgurichabner@gmail.com",
-    "email": "grgurichabner@gmail.com",
-    "codigo": "903996",
-    "username": "usuario2",
-    "password": "12345678",
-    "currentPassword": "12345678",
-    "newPassword": "12345678",
-    "confirmPassword": "12345678",
-    "pais":  "AR"
-}
-*/
+// Registro de usuario (devuelve token temporal)
+router.post('/register', usuarioController.registerUsuario);
 
 // Login con Google
-router.post('/login/google', usuarioController.loginWithGoogle); //Cuando haga el frontend
+router.post('/login/google', usuarioController.loginWithGoogle);
 
 // Logout
-router.post('/logout', authenticateToken, usuarioController.logout); //Debería funcionar pero como todas las rutas son públicas no me doy cuenta
+router.post('/logout', authenticateToken, usuarioController.logout);
 
 // Renovar token
 //router.post('/refresh-token', authenticateToken, usuarioController.renewToken);
 
+// --------------------- RUTAS DE VERIFICACIÓN DE EMAIL --------------------- //
+
+// ⚠️ CAMBIO: Ahora requiere authenticateToken (con token temporal)
+// Verificar email con código
+router.post('/verify-email', authenticateToken, usuarioController.verifyEmail);
+
+// ⚠️ CAMBIO: Ahora requiere authenticateToken (con token temporal)
+// Reenviar código de verificación
+router.post('/resend-verification-email', authenticateToken, usuarioController.resendVerificationEmail);
+
 // --------------------- RUTAS DE RECUPERACIÓN DE CONTRASEÑA --------------------- //
 
 // Solicitar código de recuperación de contraseña
-router.post('/forgot-password', usuarioController.requestPasswordReset); // Bien
+router.post('/forgot-password', usuarioController.requestPasswordReset);
 
 // Verificar código de recuperación
-router.post('/verify-reset-code', usuarioController.verifyResetCode); // 
+router.post('/verify-reset-code', usuarioController.verifyResetCode);
 
 // Resetear contraseña con código
-router.post('/reset-password', usuarioController.resetPassword); // Bien
-// {email, codigo, newPassword, confirmPassword}
+router.post('/reset-password', usuarioController.resetPassword);
 
 // --------------------- RUTAS DE AUTENTICACIÓN EN DOS PASOS --------------------- //
 
 // Login paso 1 (solo credenciales, puede requerir 2FA)
-router.post('/login', usuarioController.loginStep1); // Bien
+router.post('/login', usuarioController.loginStep1);
 
 // Verificar código 2FA durante login
-router.post('/verify-2fa', usuarioController.verify2FA); // Bien (verifica el JWT temporal en el controller, no middleware)
+router.post('/verify-2fa', usuarioController.verify2FA);
 
 // Reenviar código 2FA
-router.post('', usuarioController.resend2FACode); // Bien (verifica el JWT temporal en el controller, no middleware)
+router.post('/resend-2fa', usuarioController.resend2FACode);
 
 // Activar/desactivar 2FA
-router.patch('/me/2fa-toggle', authenticateToken, usuarioController.toggle2FA); // Bien
+router.patch('/me/2fa-toggle', authenticateToken, usuarioController.toggle2FA);
 
 // --------------------- RUTAS DE PERFIL PERSONAL --------------------- //
 
 // Obtener mi perfil
-router.get('/me', authenticateToken, usuarioController.getMyProfile); // Bien
+router.get('/me', authenticateToken, usuarioController.getMyProfile);
 
 // Actualizar mi perfil (Username y pais)
-router.put('/me', authenticateToken, usuarioController.updateMyProfile); //Bien
+router.put('/me', authenticateToken, usuarioController.updateMyProfile);
 
 // Cambiar mi contraseña. Parametros (currentPassword y newPassword)
-router.patch('/me/change-password', authenticateToken, usuarioController.changePassword); //Bien
+router.patch('/me/change-password', authenticateToken, usuarioController.changePassword);
 
 // Solicitar verificación KYC
-router.post('/me/kyc-request', authenticateToken, usuarioController.requestKYCVerification); //Cuando haga el front y vea que api uso
+router.post('/me/kyc-request', authenticateToken, usuarioController.requestKYCVerification);
 
 // Obtener mi volumen diario
-router.get('/me/daily-volume', authenticateToken, usuarioController.getDailyVolume); //Cuando haga la entidad "TransaccionP2P"
-
-// Verificar mi límite de transacción
-//router.get('/me/transaction-limit', authenticateToken, usuarioController.checkTransactionLimit); //Ya está en la ruta GET /me el monto
-
-
+router.get('/me/daily-volume', authenticateToken, usuarioController.getDailyVolume);
 
 // --------------------- RUTAS DE CONSULTA PÚBLICA --------------------- //
 
 // Buscar usuarios públicamente
 router.get('/search', authenticateToken, usuarioController.searchUsuarios);
 
-// Obtener top traders
-//router.get('/top-traders', authenticateToken, usuarioController.getTopTraders);
-
 // Obtener perfil público de usuario
-router.get('/public/:id', usuarioController.getPublicProfile); //Bien (pasa que primero hay que conseguir el id)
+router.get('/public/:id', usuarioController.getPublicProfile);
 
 // --------------------- RUTAS CRUD BÁSICAS --------------------- //
 

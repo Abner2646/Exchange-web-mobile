@@ -85,7 +85,7 @@ const createTransferencia = async (req, res) => {
     }
 
     // Crear notificación para el remitente
-    try {
+    /*try {
       await Notificaciones.createNotification({
         usuarioId: usuarioRemitenteId,
         template: 'TRANSFERENCIA_CREADA',
@@ -98,7 +98,7 @@ const createTransferencia = async (req, res) => {
       }, { transaction });
     } catch (notifError) {
       console.error('Error creando notificación:', notifError);
-    }
+    }*/
 
     await transaction.commit();
 

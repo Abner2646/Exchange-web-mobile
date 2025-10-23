@@ -3,7 +3,7 @@ const { Router } = require('express');
 const router = Router();
 
 // Middleware
-const { authenticateToken } = require('../middleware/authMiddleware.js');
+const { authenticateToken, requireEmailVerified } = require('../middleware/authMiddleware.js');
 const { isAdmin } = require('../middleware/adminMiddleware.js');
 
 // Importa el controlador
@@ -23,10 +23,10 @@ router.get('/me/pending', authenticateToken, valoracionController.getPendingRati
 // --------------------- RUTAS DE CONSULTA Y ANÁLISIS --------------------- //
 
 // Verificar si puedo valorar una transacción específica
-router.get('/can-rate/:transaccionP2PId/:usuarioEvaluadoId', authenticateToken, valoracionController.checkCanRate);
+router.get('/can-rate/:transaccionP2PId/:usuarioEvaluadoId', authenticateToken, requireEmailVerified, valoracionController.checkCanRate);
 
 // Obtener valoraciones de una transacción específica
-router.get('/transaction/:transaccionP2PId', authenticateToken, valoracionController.getTransactionRatings);
+router.get('/transaction/:transaccionP2PId', authenticateToken, requireEmailVerified, valoracionController.getTransactionRatings);
 
 // Obtener estadísticas de reputación de un usuario específico
 router.get('/user/:usuarioId/stats', authenticateToken, valoracionController.getUserReputationStats);
@@ -52,16 +52,16 @@ router.get('/', authenticateToken, valoracionController.getValoraciones);
 router.get('/:id', authenticateToken, valoracionController.getValoracionById);
 
 // Crear nueva valoración
-router.post('/', authenticateToken, valoracionController.createValoracion);
+router.post('/', authenticateToken, requireEmailVerified, valoracionController.createValoracion);
 
 // Crear múltiples valoraciones (batch)
-router.post('/batch', authenticateToken, valoracionController.createMultipleRatings);
+router.post('/batch', authenticateToken, requireEmailVerified, valoracionController.createMultipleRatings);
 
 // Actualizar valoración por ID
-router.put('/:id', authenticateToken, valoracionController.updateValoracion);
+router.put('/:id', authenticateToken, requireEmailVerified, valoracionController.updateValoracion);
 
 // Eliminar valoración por ID
-router.delete('/:id', authenticateToken, valoracionController.deleteValoracion);
+router.delete('/:id', authenticateToken, requireEmailVerified, valoracionController.deleteValoracion);
 
 // --------------------- RUTAS ADMINISTRATIVAS --------------------- //
 

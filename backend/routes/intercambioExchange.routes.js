@@ -4,7 +4,7 @@
 const express = require('express');
 const router = express.Router();
 const intercambioController = require('../controllers/intercambioExchange.controller');
-const { authenticateToken } = require('../middleware/authMiddleware');
+const { authenticateToken, requireEmailVerified } = require('../middleware/authMiddleware');
 const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware');
 
 // ================================
@@ -31,7 +31,7 @@ Query params:
 // ================================
 // RUTAS AUTENTICADAS
 // ================================
-router.use(authenticateToken);
+router.use(authenticateToken, requireEmailVerified);
 
 //Crear un intercambio
 router.post('/', intercambioController.createOrder);

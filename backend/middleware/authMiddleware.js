@@ -1,21 +1,9 @@
-
-// middleware/authAiddleware.js
-
-// Extrae y verifica el token JWT del header Authorization
-
-// Formato esperado: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." o "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...", es flexble.
-
-// Verifica:
-// 1. ✅ Que el token existe
-// 2. ✅ Que sea válido (firma JWT)
-// 3. ✅ Que el usuario exista en la BD
-// 4. ✅ Que el usuario esté activo
-// 5. ✅ Que no haya hecho logout con este token
+// middleware/authMiddleware.js
 
 const jwt = require('jsonwebtoken');
 const { Usuario } = require('../models');
 
-// Middleware para autenticar usuario
+// Middleware para autenticar usuario (solo tokens normales)
 const authenticateToken = async (req, res, next) => {
   try {
     let token = req.header('Authorization');
@@ -37,11 +25,11 @@ const authenticateToken = async (req, res, next) => {
     }
 
     // Verificar que no haya hecho un logout con este token
-    //t * 1000 < user.lastLogoutAt.getTime()) {
     if (user.ultimoLogout && decoded.iat * 1000 < user.ultimoLogout.getTime()) {
       return res.status(401).json({ error: 'Token invalidado por logout' });
     }
 
+    // Incluir info del usuario en req.user (SIN flags de temporal)
     req.user = {
       id: user.id,
       email: user.email,
@@ -49,7 +37,9 @@ const authenticateToken = async (req, res, next) => {
       rol: user.rol,
       kycVerificado: user.kycVerificado,
       activo: user.activo,
-      limiteDiarioUsd: user.limiteDiarioUsd
+      limiteDiarioUsd: user.limiteDiarioUsd,
+      emailVerificado: user.emailVerificado,
+      googleId: user.googleId
     };
 
     next();
@@ -57,6 +47,30 @@ const authenticateToken = async (req, res, next) => {
     console.error('Error en autenticación:', error);
     return res.status(401).json({ success: false, message: 'Token inválido' });
   }
+};
+
+// Middleware para verificar email verificado (sin restricción de tokens temporales)
+const requireEmailVerified = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, message: 'No autenticado' });
+  }
+
+  // Usuarios de Google están automáticamente verificados
+  if (req.user.googleId) {
+    return next();
+  }
+
+  // Verificar que el email esté verificado en la base de datos
+  if (!req.user.emailVerificado) {
+    return res.status(403).json({ 
+      success: false, 
+      message: 'Debes verificar tu email antes de realizar esta operación',
+      requiresEmailVerification: true,
+      email: req.user.email
+    });
+  }
+
+  next();
 };
 
 // Middleware opcional de autenticación (no lanza error si no hay token)
@@ -76,14 +90,16 @@ const optionalAuth = async (req, res, next) => {
         rol: user.rol,
         kycVerificado: user.kycVerificado,
         activo: user.activo,
-        limiteDiarioUsd: user.limiteDiarioUsd
+        limiteDiarioUsd: user.limiteDiarioUsd,
+        emailVerificado: user.emailVerificado,
+        googleId: user.googleId
       };
     }
 
     next();
   } catch (error) {
     console.error('Error en autenticación opcional:', error);
-    next(); // simplemente ignoramos si es inválido
+    next();
   }
 };
 
@@ -135,6 +151,7 @@ const checkUserLimits = async (req, res, next) => {
 
 module.exports = {
   authenticateToken,
+  requireEmailVerified,
   optionalAuth,
   requireKYC,
   requireActiveAccount,

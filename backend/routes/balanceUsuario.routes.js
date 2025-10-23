@@ -13,8 +13,8 @@ const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
 // GET /api/balances/my/balances - Obtener mis balances
 router.get('/my/balances', authenticateToken, balanceUserController.getMyBalances); // Bien
 
-// PUT /api/balances/user/:userId/crypto/:criptomonedaId - Actualizar balance (en realidad añadir, suma)
-router.put('/user/:userId/crypto/:criptomonedaId', authenticateToken, isSuperAdmin, balanceUserController.updateBalance); // Bien
+// PUT /api/balances/user/:userId/crypto/:criptomonedaId - Actualizar balance
+router.put('/user/:userId/crypto/:criptomonedaId', authenticateToken, isAdmin, balanceUserController.updateBalance); // Bien
 // {"amount": 100}
 
 // =============== NO TESTEADO ===============
@@ -27,7 +27,7 @@ router.get('/', authenticateToken, isAdmin, balanceUserController.getBalances); 
 router.get('/stats', authenticateToken, isSuperAdmin, balanceUserController.getBalanceStats); // Bien
 
 // GET /api/balances/:id - Obtener balance por ID (admin)
-router.get('/:id', authenticateToken, isSuperAdmin, balanceUserController.getBalanceById);
+router.get('/:id', authenticateToken, isAdmin, balanceUserController.getBalanceById);
 
 // =============== RUTAS DE USUARIO AUTENTICADO ===============
 

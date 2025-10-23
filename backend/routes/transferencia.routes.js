@@ -3,13 +3,13 @@ const router = express.Router();
 const transferenciaController = require('../controllers/transferencia.controller');
 
 // Middleware
-const { authenticateToken } = require('../middleware/authMiddleware.js');
+const { authenticateToken, requireEmailVerified } = require('../middleware/authMiddleware.js');
 const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
 
 // =============== RUTAS DE USUARIO AUTENTICADO ===============
 
 // POST /api/transfers - Crear nueva transferencia
-router.post('/', authenticateToken, transferenciaController.createTransferencia);
+router.post('/', authenticateToken, requireEmailVerified, transferenciaController.createTransferencia);
 /*
 {
   "usuarioDestinatarioId": "uuid-del-usuario-destinatario",
@@ -20,7 +20,7 @@ router.post('/', authenticateToken, transferenciaController.createTransferencia)
 */
 
 // POST /api/transfers/:id/process - Procesar transferencia con código
-router.post('/:id/process', authenticateToken, transferenciaController.procesarTransferencia);
+router.post('/:id/process', authenticateToken, requireEmailVerified, transferenciaController.procesarTransferencia);
 /*
 {
   "codigoVerificacion": "123456"
@@ -28,19 +28,19 @@ router.post('/:id/process', authenticateToken, transferenciaController.procesarT
 */
 
 // GET /api/transfers/my - Obtener mis transferencias
-router.get('/my', authenticateToken, transferenciaController.getMyTransferencias);
+router.get('/my', authenticateToken, requireEmailVerified, transferenciaController.getMyTransferencias);
 
 // GET /api/transfers/:id - Obtener transferencia por ID
-router.get('/:id', authenticateToken, transferenciaController.getTransferenciaById);
+router.get('/:id', authenticateToken, requireEmailVerified, transferenciaController.getTransferenciaById);
 
 // PUT /api/transfers/:id/cancel - Cancelar transferencia
-router.put('/:id/cancel', authenticateToken, transferenciaController.cancelarTransferencia);
+router.put('/:id/cancel', authenticateToken, requireEmailVerified, transferenciaController.cancelarTransferencia);
 
 // POST /api/transfers/:id/resend-code - Reenviar código de verificación
-router.post('/:id/resend-code', authenticateToken, transferenciaController.reenviarCodigo);
+router.post('/:id/resend-code', authenticateToken, requireEmailVerified, transferenciaController.reenviarCodigo);
 
 // POST /api/transfers/verify-funds - Verificar fondos antes de transferir
-router.post('/verify-funds', authenticateToken, transferenciaController.verificarFondos);
+router.post('/verify-funds', authenticateToken, requireEmailVerified, transferenciaController.verificarFondos);
 /*
 {
   "criptomonedaId": "uuid-de-la-criptomoneda",
