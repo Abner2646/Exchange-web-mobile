@@ -11,7 +11,7 @@ const secretWord = process.env.JWT_SECRET;
 function createUsuarioModel(sequelize) {
   const Usuario = initUsuario(sequelize);
 
-  // Función para generar JWT actualizado (instancia)
+// Función para generar JWT actualizado (instancia)
   Usuario.prototype.generateUpdatedJWT = function() {
     const payload = {
       id: this.id,
@@ -22,7 +22,9 @@ function createUsuarioModel(sequelize) {
       activo: this.activo,
       reputacionPromedio: this.reputacionPromedio,
       pais: this.pais,
-      dosFactoresActivado: this.dosFactoresActivado || false
+      dosFactoresActivado: this.dosFactoresActivado || false,
+      emailVerificado: this.emailVerificado || false, // ⭐ AGREGADO
+      googleId: this.googleId || null, // ⭐ AGREGADO
     };
 
     return jwt.sign(payload, secretWord, { 
@@ -43,7 +45,9 @@ function createUsuarioModel(sequelize) {
       activo: userData.activo,
       reputacionPromedio: userData.reputacionPromedio,
       pais: userData.pais,
-      dosFactoresActivado: userData.dosFactoresActivado || false
+      dosFactoresActivado: userData.dosFactoresActivado || false,
+      emailVerificado: userData.emailVerificado || false, // ⭐ AGREGADO
+      googleId: userData.googleId || null, // ⭐ AGREGADO
     };
 
     return jwt.sign(payload, secretWord, { 

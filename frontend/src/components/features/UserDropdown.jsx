@@ -23,17 +23,17 @@ const UserDropdown = ({ onLogout, onClose, onMouseEnter, onMouseLeave }) => {
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
+      <Link to="/perfil" className="navbar-dropdown-item" onClick={handleLinkClick}>
+        <Cog6ToothIcon className="navbar-dropdown-icon" />
+        Mi Perfil
+      </Link>
       <Link to="/activos" className="navbar-dropdown-item" onClick={handleLinkClick}>
         <WalletIcon className="navbar-dropdown-icon" />
-        Activos
+        Mis Activos
       </Link>
       <Link to="/p2p/misOfertas" className="navbar-dropdown-item" onClick={handleLinkClick}>
         <BanknotesIcon className="navbar-dropdown-icon" />
-        Mis Ofertas
-      </Link>
-      <Link to="/perfil" className="navbar-dropdown-item" onClick={handleLinkClick}>
-        <Cog6ToothIcon className="navbar-dropdown-icon" />
-        Configuración
+        Mis Ofertas P2P
       </Link>
       <div className="navbar-dropdown-divider"></div>
       <div className="navbar-dropdown-logout">
