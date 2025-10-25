@@ -2,7 +2,7 @@ import React from 'react';
 import OfertaItem from './OfertaItem';
 
 /**
- * Lista completa de ofertas P2P con headers de tabla
+ * Lista completa de ofertas P2P con headers de tabla 
  */
 const OfertasList = ({
   ofertas,

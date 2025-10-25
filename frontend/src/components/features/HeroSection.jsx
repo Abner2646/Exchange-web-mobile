@@ -1,4 +1,4 @@
-// src/components/features/HeroSection.jsx
+// src/components/features/HeroSection.jsx 
 import '../../styles/HomePage.css';
 
 const HeroSection = ({ onNavigate }) => {

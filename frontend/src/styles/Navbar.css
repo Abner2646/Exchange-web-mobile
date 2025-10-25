@@ -4,6 +4,7 @@
    NAVBAR - SISTEMA DE TEMAS
 ========================================= */ 
 
+/* Asegúrate de que el navbar ocupe todo el ancho disponible */
 .navbar {
   position: fixed;
   top: 0;
@@ -15,20 +16,23 @@
   z-index: 1000;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  width: 100% !important; /* Forzar ancho completo */
 }
 
 .navbar-container {
-  max-width: 1440px;
+  max-width: 100% !important; /* Cambiado de 1440px a 100% */
+  width: 100% !important;
   margin: 0 auto;
   height: 100%;
-  padding: 0 var(--spacing-lg);
+  padding: 0 var(--spacing-md);
 }
 
 .navbar-content {
   display: flex;
   align-items: center;
   height: 100%;
-  gap: var(--spacing-xl);
+  gap: var(--spacing-md);
+  width: 100% !important; /* Asegurar que ocupe el 100% */
 }
 
 /* LOGO */
@@ -45,19 +49,22 @@
   opacity: 0.8;
 }
 
-/* MENU */
+/* Asegurar que el menú ocupe espacio disponible */
 .navbar-menu {
   display: flex;
   align-items: center;
-  gap: var(--spacing-lg);
+  gap: var(--spacing-sm);
+  justify-content: flex-start;
+  margin-left: var(--spacing-md); /* Menos espacio después del logo */
 }
 
-/* ACTIONS SECTION */
+/* Asegurar que las acciones estén a la derecha */
 .navbar-actions {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
+  gap: var(--spacing-sm);
   margin-left: auto;
+  flex-shrink: 0; /* Evitar que se comprima */
 }
 
 /* MOBILE ACTIONS - Oculto por defecto */
@@ -665,3 +672,19 @@
   transform: translateY(-1px);
   box-shadow: var(--shadow-sm);
 }
+
+/* TEMPORAL: Estilos de debugging - agregar al final de Navbar.css */
+/*.navbar {
+  border: 2px solid red !important;
+  background: rgba(255, 0, 0, 0.1) !important;
+}
+
+.navbar-container {
+  border: 2px solid blue !important;
+  background: rgba(0, 0, 255, 0.1) !important;
+}
+
+.navbar-content {
+  border: 2px solid green !important;
+  background: rgba(0, 255, 0, 0.1) !important;
+}*/

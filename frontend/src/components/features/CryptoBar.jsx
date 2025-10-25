@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * Componente de ícono de crypto con fallback
+ * Componente de ícono de crypto con fallback 
  */
 const CryptoIcon = ({ cripto, size = 32 }) => {
   const [imgError, setImgError] = React.useState(false);

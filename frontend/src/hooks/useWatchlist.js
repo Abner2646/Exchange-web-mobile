@@ -1,4 +1,4 @@
-// src/hooks/useWatchlist.js
+// src/hooks/useWatchlist.js 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 

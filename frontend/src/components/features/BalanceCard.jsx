@@ -1,4 +1,4 @@
-// src/components/features/BalanceCard.jsx (ACTUALIZAR)
+// src/components/features/BalanceCard.jsx (ACTUALIZAR) 
 import { useEffect, useRef, useState } from 'react';
 import SkeletonLoader from '../common/SkeletonLoader';
 import EmptyPortfolioMessage from './EmptyPortfolioMessage'; // ⭐ NUEVO
@@ -40,7 +40,7 @@ const BalanceCard = ({ totalUSDT, totalBTC, btcPriceError, onNavigate, isLoading
   }
 
   // ⭐ NUEVO: Mostrar mensaje de portfolio vacío
-  const isEmptyPortfolio = totalUSDT === 0;
+  const isEmptyPortfolio = false/*totalUSDT === 0*/; /* HARDCODEADO PARA QUE NUNCA APAREZCA EL EMPTY PORTFOLIO */
 
   return (
     <div className="balance-card card">

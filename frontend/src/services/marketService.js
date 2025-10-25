@@ -1,4 +1,4 @@
-// src/services/marketService.js (ACTUALIZAR COMPLETO)
+// src/services/marketService.js
 import axios from 'axios';
 import { ENDPOINTS } from '../api/endpoints';
 
@@ -50,7 +50,7 @@ class MarketService {
    * @param {String} timeframe - '24h' o '7d'
    * @param {Number} minChange - Cambio mínimo porcentual (default: 0.5)
    */
-  getTopGainers(marketData, limit = 5, timeframe = '24h', minChange = 0.5) {
+  getTopGainers(marketData, limit = 5, timeframe = '24h', minChange = 0.05) {
     if (!marketData || marketData.length === 0) return [];
     
     const priceChangeKey = timeframe === '7d' 

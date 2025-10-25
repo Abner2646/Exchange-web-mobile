@@ -1,4 +1,4 @@
-// src/components/common/SkeletonLoader.jsx
+// src/components/common/SkeletonLoader.jsx 
 import '../../styles/SkeletonLoader.css';
 
 const SkeletonLoader = ({ type = 'text', width, height, count = 1, className = '' }) => {

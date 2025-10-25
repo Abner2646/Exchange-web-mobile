@@ -66,7 +66,7 @@ const TopAssets = ({ assets, onNavigate }) => {
 export default TopAssets;
 */
 
-// src/components/features/TopAssets.jsx
+// src/components/features/TopAssets.jsx 
 import SkeletonLoader from '../common/SkeletonLoader';
 
 const TopAssets = ({ assets, onNavigate, isLoading }) => {

@@ -1,4 +1,4 @@
-// src/hooks/useMarket.js (ACTUALIZAR COMPLETO)
+// src/hooks/useMarket.js  
 import { useState } from 'react';
 import { useQuery } from 'react-query';
 import marketService from '../services/marketService';
