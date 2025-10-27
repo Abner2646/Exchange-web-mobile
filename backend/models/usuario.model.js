@@ -1,4 +1,4 @@
-// models/usuario.model.js
+// models/usuario.model.js - PARCHEADO
 const initUsuario = require('./entities/usuario.entity');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
@@ -23,8 +23,8 @@ function createUsuarioModel(sequelize) {
       reputacionPromedio: this.reputacionPromedio,
       pais: this.pais,
       dosFactoresActivado: this.dosFactoresActivado || false,
-      emailVerificado: this.emailVerificado || false, // ⭐ AGREGADO
-      googleId: this.googleId || null, // ⭐ AGREGADO
+      emailVerificado: this.emailVerificado || false,
+      googleId: this.googleId || null,
     };
 
     return jwt.sign(payload, secretWord, { 
@@ -46,8 +46,8 @@ function createUsuarioModel(sequelize) {
       reputacionPromedio: userData.reputacionPromedio,
       pais: userData.pais,
       dosFactoresActivado: userData.dosFactoresActivado || false,
-      emailVerificado: userData.emailVerificado || false, // ⭐ AGREGADO
-      googleId: userData.googleId || null, // ⭐ AGREGADO
+      emailVerificado: userData.emailVerificado || false,
+      googleId: userData.googleId || null,
     };
 
     return jwt.sign(payload, secretWord, { 
@@ -91,43 +91,6 @@ function createUsuarioModel(sequelize) {
       where: { googleId, activo: true }
     });
   };
-/*// Méodo viejo, no hace super_admin al primer usuario.
-  Usuario.createWithPassword = async (data) => {
-    const { email, username, password, pais, ...otherData } = data;
-
-    const existingUser = await Usuario.findOne({
-      where: {
-        [Op.or]: [
-          { email: email.toLowerCase() },
-          { username: username.toLowerCase() }
-        ]
-      }
-    });
-
-    if (existingUser) {
-      throw new Error('Email o username ya están en uso');
-    }
-
-    if (!password || password.length < 8) {
-      throw new Error('La contraseña debe tener al menos 8 caracteres');
-    }
-
-    const saltRounds = 12;
-    const passwordHash = await bcrypt.hash(password, saltRounds);
-
-    const userData = {
-      email: email.toLowerCase(),
-      username: username.toLowerCase(),
-      passwordHash,
-      pais,
-      ...otherData
-    };
-
-    const newUser = await Usuario.create(userData);
-    const token = newUser.generateUpdatedJWT();
-
-    return { user: newUser, token };
-  };*/
 
   Usuario.createWithPassword = async (data) => {
     const { email, username, password, pais, ...otherData } = data;
@@ -162,16 +125,15 @@ function createUsuarioModel(sequelize) {
       passwordHash,
       pais,
       rol,
-      emailVerificado: false, // ⚠️ NUEVO: No verificado por defecto
+      emailVerificado: false,
       ...otherData
     };
 
     const newUser = await Usuario.create(userData);
     
-    // ⚠️ NUEVO: Generar código de verificación de email
+    // Generar código de verificación de email
     const codigoVerificacion = await newUser.generarCodigoVerificacionEmail();
 
-    // ⚠️ CAMBIO: NO devolver token hasta que verifique email
     return { user: newUser, codigoVerificacion };
   };
 
@@ -193,7 +155,7 @@ function createUsuarioModel(sequelize) {
       googleId,
       pais,
       passwordHash: null,
-      emailVerificado: true, // ⚠️ NUEVO: Google ya verificó el email
+      emailVerificado: true,
       ...otherData
     };
 
@@ -468,6 +430,7 @@ function createUsuarioModel(sequelize) {
     return { user, token };
   };
 
+  // ============ MÉTODO CORREGIDO: loginStep1 ============
   Usuario.loginStep1 = async (emailOrUsername, password) => {
     try {
       const user = await Usuario.findOne({
@@ -489,6 +452,7 @@ function createUsuarioModel(sequelize) {
         throw new Error('Credenciales inválidas');
       }
 
+      // Si NO tiene 2FA activado, login normal
       if (!user.dosFactoresActivado) {
         await user.update({ ultimoLogin: new Date() });
         const token = user.generateUpdatedJWT();
@@ -500,16 +464,117 @@ function createUsuarioModel(sequelize) {
         };
       }
 
+      // ============ NUEVO: Si tiene 2FA activado ============
+      // Generar código 2FA de 6 dígitos
+      const codigo2FA = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiracion = new Date(Date.now() + 5 * 60 * 1000); // 5 minutos
+
+      // Guardar código en la base de datos
+      await user.update({
+        codigo2FA: codigo2FA,
+        codigo2FAExpiracion: expiracion
+      });
+
+      // Generar token temporal (válido por 10 minutos) para verificar 2FA
+      const temporalToken = jwt.sign(
+        { 
+          userId: user.id, 
+          purpose: '2fa',
+          email: user.email 
+        },
+        secretWord,
+        { expiresIn: '10m' }
+      );
+
       return { 
-        userId: user.id,
-        username: user.username,
-        email: user.email,
+        user: {  // ⚠️ IMPORTANTE: Devolver objeto user anidado
+          id: user.id,
+          username: user.username,
+          email: user.email
+        },
+        codigo2FA: codigo2FA,  // ⚠️ NUEVO: Código generado
+        temporalToken: temporalToken,  // ⚠️ NUEVO: Token temporal
         requires2FA: true,
         loginComplete: false
       };
     } catch (error) {
       throw new Error('Credenciales inválidas');
     }
+  };
+
+  // ============ NUEVA FUNCIÓN: verify2FA ============
+  Usuario.verify2FA = async (temporalToken, codigo) => {
+    // Verificar y decodificar el token temporal
+    let decoded;
+    try {
+      decoded = jwt.verify(temporalToken, secretWord);
+    } catch (error) {
+      throw new Error('Token temporal inválido o expirado');
+    }
+
+    // Verificar que sea un token de 2FA
+    if (decoded.purpose !== '2fa') {
+      throw new Error('Token inválido');
+    }
+
+    // Buscar el usuario
+    const user = await Usuario.findByPk(decoded.userId);
+    if (!user) {
+      throw new Error('Usuario no encontrado');
+    }
+
+    // Verificar el código 2FA
+    if (!user.codigo2FA || 
+        user.codigo2FA !== codigo || 
+        !user.codigo2FAExpiracion || 
+        new Date() > user.codigo2FAExpiracion) {
+      throw new Error('Código 2FA inválido o expirado');
+    }
+
+    // Limpiar código 2FA y actualizar último login
+    await user.update({
+      codigo2FA: null,
+      codigo2FAExpiracion: null,
+      ultimoLogin: new Date()
+    });
+
+    // Generar token JWT normal
+    const token = user.generateUpdatedJWT();
+
+    return { user, token };
+  };
+
+  // ============ NUEVA FUNCIÓN: resend2FACode ============
+  Usuario.resend2FACode = async (temporalToken) => {
+    // Verificar y decodificar el token temporal
+    let decoded;
+    try {
+      decoded = jwt.verify(temporalToken, secretWord);
+    } catch (error) {
+      throw new Error('Token temporal inválido o expirado');
+    }
+
+    // Verificar que sea un token de 2FA
+    if (decoded.purpose !== '2fa') {
+      throw new Error('Token inválido');
+    }
+
+    // Buscar el usuario
+    const user = await Usuario.findByPk(decoded.userId);
+    if (!user) {
+      throw new Error('Usuario no encontrado');
+    }
+
+    // Generar nuevo código 2FA
+    const codigo = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiracion = new Date(Date.now() + 5 * 60 * 1000); // 5 minutos
+
+    await user.update({
+      codigo2FA: codigo,
+      codigo2FAExpiracion: expiracion
+    });
+
+    return { user, codigo };
   };
 
   // Métodos de consulta y gestión existentes

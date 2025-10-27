@@ -117,48 +117,6 @@ function createBalanceUserModel(sequelize) {
       throw new Error(`Error al actualizar balance: ${error.message}`);
     }
   };
-/*
-//ESTE MÉTODO NO SE USA
-  BalanceUser.updateBalance = async (userId, criptomonedaId, amount, type = 'disponible', options = {}) => {
-    const transaction = options.transaction || null;
-    
-    try {
-      const [balance, created] = await BalanceUsuario.findOrCreate({
-        where: { 
-          userId: userId,
-          criptomonedaId: criptomonedaId
-        },
-        defaults: {
-          userId: userId,
-          criptomonedaId: criptomonedaId,
-          balanceDisponible: 0,
-          balanceBloqueado: 0
-        },
-        transaction: transaction
-      });
-
-      const field = type === 'disponible' ? 'balanceDisponible' : 'balanceBloqueado';
-      const currentBalance = parseFloat(balance[field]) || 0;
-      const newBalance = currentBalance + parseFloat(amount);
-
-      // Validar que no quede negativo
-      if (newBalance < 0) {
-        throw new Error(
-          `Balance insuficiente. ${type === 'disponible' ? 'Disponible' : 'Bloqueado'}: ${currentBalance}, ` +
-          `Operación: ${amount}, Resultado: ${newBalance}`
-        );
-      }
-
-      // Actualizar el balance
-      balance[field] = newBalance;
-      await balance.save({ transaction: transaction });
-
-      return balance;
-    } catch (error) {
-      console.error('Error en updateBalance:', error);
-      throw new Error(`Error al actualizar balance: ${error.message}`);
-    }
-  };*/
 
   // 🆕 MÉTODO PARA OBTENER BALANCE EN TRANSACCIÓN
   BalanceUser.getByUserAndCrypto = async (userId, criptomonedaId, options = {}) => {
@@ -275,6 +233,52 @@ function createBalanceUserModel(sequelize) {
       return stats;
     } catch (error) {
       throw new Error(`Error al obtener estadísticas de balance: ${error.message}`);
+    }
+  };
+
+  // Método para reclamar BTC (SOLO TESTNET - ELIMINAR EN PRODUCCIÓN)
+  BalanceUser.reclamarBtcGratis = async (userId, transaction = null) => {
+    try {
+      // 1. Verificar que el usuario NO tenga ningún balance existente
+      const balancesExistentes = await BalanceUser.findAll({
+        where: { userId }
+      });
+
+      // Si tiene algún balance con saldo > 0, no puede reclamar
+      const tieneSaldo = balancesExistentes.some(balance => {
+        const total = parseFloat(balance.balanceDisponible) + parseFloat(balance.balanceBloqueado);
+        return total > 0;
+      });
+
+      /*if (tieneSaldo) {
+        throw new Error('Ya tienes saldo en tu cuenta. El regalo de BTC es solo para usuarios nuevos.');
+      }*/
+
+      // 2. Buscar el BTC en la base de datos
+      const Criptomoneda = sequelize.models.Criptomoneda;
+      const btc = await Criptomoneda.getBySymbol('BTC');
+      
+      if (!btc) {
+        throw new Error('BTC no está disponible en el sistema');
+      }
+
+      // 3. Agregar 1 BTC al usuario
+      const nuevoBalance = await BalanceUser.updateBalance(
+        userId, 
+        btc.id, 
+        1, 
+        'disponible',
+        transaction
+      );
+
+      return {
+        success: true,
+        message: '¡Felicidades! Has reclamado 1 BTC de regalo 🎉',
+        balance: nuevoBalance
+      };
+
+    } catch (error) {
+      throw new Error(`Error al reclamar BTC: ${error.message}`);
     }
   };
 

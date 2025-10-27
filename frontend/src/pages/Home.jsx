@@ -1,27 +1,29 @@
+"use client"
+
 // src/pages/Home.jsx (ACTUALIZAR COMPLETO)
-import { useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { useBalances } from '../hooks/useBalances';
-import { useMarket } from '../hooks/useMarket';
-import HeroSection from '../components/features/HeroSection';
-import BalanceCard from '../components/features/BalanceCard';
-import TopAssets from '../components/features/TopAssets';
-import TopMoversSection from '../components/features/TopMoversSection';
-import MarketTable from '../components/features/MarketTable';
-import DownloadSection from '../components/features/DownloadSection';
-import TrustBadgesSection from '../components/features/TrustBadgesSection';
-import FeaturesSection from '../components/features/FeaturesSection';
-import FAQSection from '../components/features/FAQSection';
-import ErrorState from '../components/common/ErrorState';
-import '../styles/HomePage.css';
+import { useNavigate } from "react-router-dom"
+import { useState, useEffect } from "react"
+import { useAuth } from "../context/AuthContext"
+import { useBalances } from "../hooks/useBalances"
+import { useMarket } from "../hooks/useMarket"
+import HeroSection from "../components/features/HeroSection"
+import BalanceCard from "../components/features/BalanceCard"
+import TopAssets from "../components/features/TopAssets"
+import TopMoversSection from "../components/features/TopMoversSection"
+import MarketTable from "../components/features/MarketTable"
+import DownloadSection from "../components/features/DownloadSection"
+import TrustBadgesSection from "../components/features/TrustBadgesSection"
+import FeaturesSection from "../components/features/FeaturesSection"
+import FAQSection from "../components/features/FAQSection"
+import ErrorState from "../components/common/ErrorState"
+import "../styles/HomePage.css"
 
 const HomePage = () => {
-  const { isAuthenticated } = useAuth();
-  const navigate = useNavigate();
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const { isAuthenticated } = useAuth()
+  const navigate = useNavigate()
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
 
-  const { portfolio, topAssets, isLoading: loadingBalances } = useBalances();
+  const { portfolio, topAssets, isLoading: loadingBalances } = useBalances()
 
   const {
     marketData: cryptoData,
@@ -36,18 +38,18 @@ const HomePage = () => {
     goToPage: handlePageChange,
     isTransitioning,
     refresh: refreshMarketData,
-  } = useMarket();
+  } = useMarket()
 
-  const handleCryptoClick = (symbol) => navigate(`/swap?from=${symbol}&to=USDT`);
+  const handleCryptoClick = (symbol) => navigate(`/swap?from=${symbol}&to=USDT`)
 
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
+      setIsMobile(window.innerWidth < 768)
+    }
 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [])
 
   if (isMobile) {
     return (
@@ -55,25 +57,19 @@ const HomePage = () => {
         <DownloadSection />
         <TrustBadgesSection />
       </div>
-    );
+    )
   }
 
   return (
     <div className="home-page">
       {!isAuthenticated ? (
         <>
-          <HeroSection onNavigate={navigate} />
-
-          {/* Top Movers Section */}
-          <TopMoversSection 
-            gainers24h={topGainers24h}
-            losers24h={topLosers24h}
-            gainers7d={topGainers7d}
-            losers7d={topLosers7d}
+          <HeroSection
+            onNavigate={navigate}
+            showTopGainers={true}
+            topGainers={topGainers24h}
             onCryptoClick={handleCryptoClick}
             isLoading={loading}
-            error={marketDataError}
-            onRetry={refreshMarketData}
           />
 
           {/* Markets Section */}
@@ -82,7 +78,7 @@ const HomePage = () => {
 
             <div className="markets-table-container-wrapper">
               {marketDataError ? (
-                <ErrorState 
+                <ErrorState
                   title="Error al cargar mercados"
                   message="No pudimos obtener los datos del mercado. Por favor, intenta nuevamente."
                   onRetry={refreshMarketData}
@@ -119,16 +115,12 @@ const HomePage = () => {
                 onNavigate={navigate}
                 isLoading={loadingBalances}
               />
-              <TopAssets 
-                assets={topAssets} 
-                onNavigate={navigate} 
-                isLoading={loadingBalances} 
-              />
+              <TopAssets assets={topAssets} onNavigate={navigate} isLoading={loadingBalances} />
             </div>
           </section>
 
           {/* Top Movers Section */}
-          <TopMoversSection 
+          <TopMoversSection
             gainers24h={topGainers24h}
             losers24h={topLosers24h}
             gainers7d={topGainers7d}
@@ -145,7 +137,7 @@ const HomePage = () => {
 
             <div className="markets-table-container-wrapper">
               {marketDataError ? (
-                <ErrorState 
+                <ErrorState
                   title="Error al cargar mercados"
                   message="No pudimos obtener los datos del mercado. Por favor, intenta nuevamente."
                   onRetry={refreshMarketData}
@@ -171,7 +163,7 @@ const HomePage = () => {
         </>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default HomePage;
+export default HomePage

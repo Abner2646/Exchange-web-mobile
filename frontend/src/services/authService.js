@@ -1,4 +1,4 @@
-// src/services/authService.js 
+// src/services/authService.js - CORREGIDO PARA 2FA
 import apiClient from '../api/client';
 import { ENDPOINTS } from '../api/endpoints';
 import { API_URL } from '../config';
@@ -39,7 +39,7 @@ class AuthService {
       username: payload.username || payload.user || payload.name || 'Usuario',
       role: payload.rol || payload.role || 'user',
       emailVerificado: payload.emailVerificado || false,
-      googleId: payload.googleId || null, // ⭐ Agregado para detectar usuarios de Google
+      googleId: payload.googleId || null,
     };
   }
 
@@ -71,8 +71,8 @@ class AuthService {
       { withCredentials: true }
     );
 
-    console.log('✅ AuthService: Login exitoso');
-    return response.data; // { requires2FA?, preAuthToken?, token?, user? }
+    console.log('✅ AuthService: Login exitoso', response.data);
+    return response.data; // { requires2FA?, temporalToken?, token?, user? }
   }
 
   // Registro de usuario
@@ -125,32 +125,46 @@ class AuthService {
     return response.data;
   }
 
-  // ========== 2FA ==========
+  // ========== 2FA (CORREGIDO) ==========
 
-  // Verificar código 2FA
-  async verify2FA(codigo, preAuthToken) {
+  /**
+   * Verificar código 2FA
+   * @param {String} codigo - Código de 6 dígitos del email
+   * @param {String} temporalToken - Token temporal del login
+   * @returns {Promise<Object>}
+   */
+  async verify2FA(codigo, temporalToken) {
     console.log('🔐 AuthService: Verificando código 2FA');
+    console.log('   - Código:', codigo);
+    console.log('   - temporalToken (primeros 50 chars):', temporalToken?.substring(0, 50) + '...');
     
+    // ✅ CORREGIDO: Enviar AMBOS en el body, SIN Authorization header
     const response = await apiClient.post(
       ENDPOINTS.USER_VERIFY_2FA,
-      { codigo },
-      {
-        headers: { Authorization: preAuthToken },
-        withCredentials: true,
-      }
+      { 
+        codigo: codigo,
+        temporalToken: temporalToken  // ✅ En el body, no en el header
+      },
+      { withCredentials: true }
     );
 
     console.log('✅ AuthService: 2FA verificado');
     return response.data; // { token, user }
   }
 
-  // Reenviar código 2FA
-  async resend2FA(preAuthToken) {
+  /**
+   * Reenviar código 2FA
+   * @param {String} temporalToken - Token temporal del login
+   * @returns {Promise<Object>}
+   */
+  async resend2FA(temporalToken) {
     console.log('📧 AuthService: Reenviando código 2FA');
+    console.log('   - temporalToken (primeros 50 chars):', temporalToken?.substring(0, 50) + '...');
     
+    // ✅ CORREGIDO: Enviar como temporalToken (no preAuthToken)
     const response = await apiClient.post(
       ENDPOINTS.USER_RESEND_2FA,
-      { preAuthToken },
+      { temporalToken: temporalToken },  // ✅ Nombre correcto
       { withCredentials: true }
     );
 
@@ -176,7 +190,7 @@ class AuthService {
     return response.data;
   }
 
-  // ========== ⭐ CONFIGURACIÓN DE PERFIL (NUEVOS) ==========
+  // ========== CONFIGURACIÓN DE PERFIL ==========
 
   /**
    * Cambiar contraseña del usuario
@@ -210,8 +224,6 @@ class AuthService {
   }
 
   // ========== TOKEN MANAGEMENT (localStorage) ==========
-  // ⭐ Estos métodos CENTRALIZAN el acceso a localStorage
-  // En React Native, solo cambiar a AsyncStorage aquí
 
   // Guardar token JWT
   setAuthToken(token) {

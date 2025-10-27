@@ -17,6 +17,9 @@ router.get('/my/balances', authenticateToken, balanceUserController.getMyBalance
 router.put('/user/:userId/crypto/:criptomonedaId', authenticateToken, isAdmin, balanceUserController.updateBalance); // Bien
 // {"amount": 100}
 
+// PUT /api/reclamarBTC - Actualizar balance ¡¡¡¡ELIMINAR EN DEPLOY REAl!!!
+router.put('/reclamarBTC', authenticateToken, balanceUserController.reclamarBtc); // 
+
 // =============== NO TESTEADO ===============
 
 // RUTAS PÚBLICAS/ADMIN

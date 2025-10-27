@@ -2,134 +2,373 @@
 const { Router } = require('express');
 const router = Router();
 
-// Middleware
+// Middleware de autenticación y autorización
 const { authenticateToken } = require('../middleware/authMiddleware.js');
 const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
-// Importa el controlador
+
+// Rate Limiters
+const {
+  registerLimiter,
+  loginLimiter,
+  googleLoginLimiter,
+  verifyEmailCodeLimiter,
+  resendVerificationEmailLimiter,
+  forgotPasswordLimiter,
+  verifyResetCodeLimiter,
+  resetPasswordLimiter,
+  verify2FALimiter,
+  resend2FALimiter,
+  changePasswordLimiter
+} = require('../middleware/rateLimiters');
+
+// Controlador
 const usuarioController = require('../controllers/usuario.controller.js');
 
-// --------------------- RUTAS DE AUTENTICACIÓN --------------------- //
+// =====================================================================
+// RUTAS DE AUTENTICACIÓN
+// =====================================================================
 
-// Verificar disponibilidad de email
-//router.get('/check-email', usuarioController.checkEmailAvailability);
+/**
+ * POST /register
+ * Registro de usuario (devuelve token temporal)
+ * Rate Limit: 3 intentos/hora por IP
+ */
+router.post('/register', 
+  /*registerLimiter,*/
+  usuarioController.registerUsuario
+);
 
-// Verificar disponibilidad de username  
-//router.get('/check-username', usuarioController.checkUsernameAvailability);
+/**
+ * POST /login
+ * Login paso 1 (credenciales, puede requerir 2FA)
+ * Rate Limit: 5 intentos/15min por email
+ */
+router.post('/login', 
+  /*loginLimiter,*/
+  usuarioController.loginStep1
+);
 
-// Registro de usuario (devuelve token temporal)
-router.post('/register', usuarioController.registerUsuario);
+/**
+ * POST /login/google
+ * Login con Google OAuth
+ * Rate Limit: 10 intentos/15min por IP
+ */
+router.post('/login/google', 
+  /*googleLoginLimiter,*/
+  usuarioController.loginWithGoogle
+);
 
-// Login con Google
-router.post('/login/google', usuarioController.loginWithGoogle);
+/**
+ * POST /logout
+ * Cerrar sesión (requiere autenticación)
+ */
+router.post('/logout', 
+  authenticateToken,
+  usuarioController.logout
+);
 
-// Logout
-router.post('/logout', authenticateToken, usuarioController.logout);
+// =====================================================================
+// RUTAS DE VERIFICACIÓN DE EMAIL
+// =====================================================================
 
-// Renovar token
-//router.post('/refresh-token', authenticateToken, usuarioController.renewToken);
+/**
+ * POST /verify-email
+ * Verificar email con código (requiere token temporal)
+ * Rate Limit: 5 intentos/15min por usuario
+ */
+router.post('/verify-email', 
+  authenticateToken,
+  /*verifyEmailCodeLimiter,*/
+  usuarioController.verifyEmail
+);
 
-// --------------------- RUTAS DE VERIFICACIÓN DE EMAIL --------------------- //
+/**
+ * POST /resend-verification-email
+ * Reenviar código de verificación (requiere token temporal)
+ * Rate Limit: 3 intentos/hora por usuario
+ */
+router.post('/resend-verification-email', 
+  authenticateToken,
+  /*resendVerificationEmailLimiter,*/
+  usuarioController.resendVerificationEmail
+);
 
-// ⚠️ CAMBIO: Ahora requiere authenticateToken (con token temporal)
-// Verificar email con código
-router.post('/verify-email', authenticateToken, usuarioController.verifyEmail);
+// =====================================================================
+// RUTAS DE RECUPERACIÓN DE CONTRASEÑA
+// =====================================================================
 
-// ⚠️ CAMBIO: Ahora requiere authenticateToken (con token temporal)
-// Reenviar código de verificación
-router.post('/resend-verification-email', authenticateToken, usuarioController.resendVerificationEmail);
+/**
+ * POST /forgot-password
+ * Solicitar código de recuperación de contraseña
+ * Rate Limit: 3 intentos/15min por email
+ */
+router.post('/forgot-password', 
+  forgotPasswordLimiter,
+  usuarioController.requestPasswordReset
+);
 
-// --------------------- RUTAS DE RECUPERACIÓN DE CONTRASEÑA --------------------- //
+/**
+ * POST /verify-reset-code
+ * Verificar código de recuperación
+ * Rate Limit: 5 intentos/10min por email
+ */
+router.post('/verify-reset-code', 
+  /*verifyResetCodeLimiter,*/
+  usuarioController.verifyResetCode
+);
 
-// Solicitar código de recuperación de contraseña
-router.post('/forgot-password', usuarioController.requestPasswordReset);
+/**
+ * POST /reset-password
+ * Resetear contraseña con código verificado
+ * Rate Limit: 3 intentos/15min por email
+ */
+router.post('/reset-password', 
+  /*resetPasswordLimiter,*/
+  usuarioController.resetPassword
+);
 
-// Verificar código de recuperación
-router.post('/verify-reset-code', usuarioController.verifyResetCode);
+// =====================================================================
+// RUTAS DE AUTENTICACIÓN EN DOS PASOS (2FA)
+// =====================================================================
 
-// Resetear contraseña con código
-router.post('/reset-password', usuarioController.resetPassword);
+/**
+ * POST /verify-2fa
+ * Verificar código 2FA durante login
+ * Rate Limit: 5 intentos/5min por email
+ */
+router.post('/verify-2fa', 
+  /*verify2FALimiter,*/
+  usuarioController.verify2FA
+);
 
-// --------------------- RUTAS DE AUTENTICACIÓN EN DOS PASOS --------------------- //
+/**
+ * POST /resend-2fa
+ * Reenviar código 2FA
+ * Rate Limit: 5 intentos/10min por email
+ */
+router.post('/resend-2fa', 
+  /*resend2FALimiter,*/
+  usuarioController.resend2FACode
+);
 
-// Login paso 1 (solo credenciales, puede requerir 2FA)
-router.post('/login', usuarioController.loginStep1);
+/**
+ * PATCH /me/2fa-toggle
+ * Activar/desactivar 2FA (requiere autenticación)
+ */
+router.patch('/me/2fa-toggle', 
+  authenticateToken,
+  usuarioController.toggle2FA
+);
 
-// Verificar código 2FA durante login
-router.post('/verify-2fa', usuarioController.verify2FA);
+// =====================================================================
+// RUTAS DE PERFIL PERSONAL
+// =====================================================================
 
-// Reenviar código 2FA
-router.post('/resend-2fa', usuarioController.resend2FACode);
+/**
+ * GET /me
+ * Obtener mi perfil (requiere autenticación)
+ */
+router.get('/me', 
+  authenticateToken,
+  usuarioController.getMyProfile
+);
 
-// Activar/desactivar 2FA
-router.patch('/me/2fa-toggle', authenticateToken, usuarioController.toggle2FA);
+/**
+ * PUT /me
+ * Actualizar mi perfil (username y país)
+ * Requiere autenticación
+ */
+router.put('/me', 
+  authenticateToken,
+  usuarioController.updateMyProfile
+);
 
-// --------------------- RUTAS DE PERFIL PERSONAL --------------------- //
+/**
+ * PATCH /me/change-password
+ * Cambiar mi contraseña
+ * Rate Limit: 3 intentos/hora por usuario
+ * Parámetros: currentPassword, newPassword
+ */
+router.patch('/me/change-password', 
+  authenticateToken,
+  changePasswordLimiter,
+  usuarioController.changePassword
+);
 
-// Obtener mi perfil
-router.get('/me', authenticateToken, usuarioController.getMyProfile);
+/**
+ * POST /me/kyc-request
+ * Solicitar verificación KYC
+ */
+router.post('/me/kyc-request', 
+  authenticateToken,
+  usuarioController.requestKYCVerification
+);
 
-// Actualizar mi perfil (Username y pais)
-router.put('/me', authenticateToken, usuarioController.updateMyProfile);
+/**
+ * GET /me/daily-volume
+ * Obtener mi volumen diario
+ */
+router.get('/me/daily-volume', 
+  authenticateToken,
+  usuarioController.getDailyVolume
+);
 
-// Cambiar mi contraseña. Parametros (currentPassword y newPassword)
-router.patch('/me/change-password', authenticateToken, usuarioController.changePassword);
+// =====================================================================
+// RUTAS DE CONSULTA PÚBLICA
+// =====================================================================
 
-// Solicitar verificación KYC
-router.post('/me/kyc-request', authenticateToken, usuarioController.requestKYCVerification);
+/**
+ * GET /search
+ * Buscar usuarios públicamente (requiere autenticación)
+ */
+router.get('/search', 
+  authenticateToken,
+  usuarioController.searchUsuarios
+);
 
-// Obtener mi volumen diario
-router.get('/me/daily-volume', authenticateToken, usuarioController.getDailyVolume);
+/**
+ * GET /public/:id
+ * Obtener perfil público de usuario
+ */
+router.get('/public/:id', 
+  usuarioController.getPublicProfile
+);
 
-// --------------------- RUTAS DE CONSULTA PÚBLICA --------------------- //
+// =====================================================================
+// RUTAS CRUD BÁSICAS (ADMIN)
+// =====================================================================
 
-// Buscar usuarios públicamente
-router.get('/search', authenticateToken, usuarioController.searchUsuarios);
+/**
+ * GET /
+ * Obtener todos los usuarios (solo admin)
+ */
+router.get('/', 
+  authenticateToken,
+  isAdmin,
+  usuarioController.getUsuarios
+);
 
-// Obtener perfil público de usuario
-router.get('/public/:id', usuarioController.getPublicProfile);
+/**
+ * GET /:id
+ * Obtener usuario por ID
+ * Admin: perfil completo
+ * Usuario normal: perfil público
+ */
+router.get('/:id', 
+  authenticateToken,
+  usuarioController.getUsuarioById
+);
 
-// --------------------- RUTAS CRUD BÁSICAS --------------------- //
+/**
+ * DELETE /:id
+ * Eliminar usuario (solo super_admin)
+ */
+router.delete('/:id', 
+  authenticateToken,
+  isSuperAdmin,
+  usuarioController.deleteUsuario
+);
 
-// Obtener todos los usuarios (admin)
-router.get('/', authenticateToken, isAdmin, usuarioController.getUsuarios);
+// =====================================================================
+// RUTAS DE GESTIÓN INDIVIDUAL (ADMIN)
+// =====================================================================
 
-// Obtener usuario por ID (perfil público para usuarios normales)
-router.get('/:id', authenticateToken, usuarioController.getUsuarioById);
+/**
+ * PATCH /:id/status
+ * Actualizar estado de usuario (admin)
+ */
+router.patch('/:id/status', 
+  authenticateToken,
+  isAdmin,
+  usuarioController.updateUsuarioStatus
+);
 
-// Eliminar usuario (solo super_admin)
-router.delete('/:id', authenticateToken, isSuperAdmin, usuarioController.deleteUsuario);
+/**
+ * PATCH /:id/role
+ * Actualizar rol de usuario (super_admin)
+ */
+router.patch('/:id/role', 
+  authenticateToken,
+  isSuperAdmin,
+  usuarioController.updateUsuarioRole
+);
 
-// --------------------- RUTAS DE GESTIÓN INDIVIDUAL --------------------- //
+/**
+ * PATCH /:id/kyc
+ * Actualizar KYC de usuario (admin)
+ */
+router.patch('/:id/kyc', 
+  authenticateToken,
+  isAdmin,
+  usuarioController.updateUsuarioKYC
+);
 
-// Actualizar estado de usuario (admin)
-router.patch('/:id/status', authenticateToken, isAdmin, usuarioController.updateUsuarioStatus);
+/**
+ * PATCH /:id/daily-limit
+ * Actualizar límite diario (admin)
+ */
+router.patch('/:id/daily-limit', 
+  authenticateToken,
+  isAdmin,
+  usuarioController.updateDailyLimit
+);
 
-// Actualizar rol de usuario (super_admin)
-router.patch('/:id/role', authenticateToken, isSuperAdmin, usuarioController.updateUsuarioRole);
+/**
+ * PATCH /:id/reputation
+ * Actualizar reputación de usuario (admin)
+ */
+router.patch('/:id/reputation', 
+  authenticateToken,
+  isAdmin,
+  usuarioController.updateUsuarioReputation
+);
 
-// Actualizar KYC de usuario (admin)
-router.patch('/:id/kyc', authenticateToken, isAdmin, usuarioController.updateUsuarioKYC);
+// =====================================================================
+// RUTAS DE CONSULTA INDIVIDUAL (ADMIN)
+// =====================================================================
 
-// Actualizar límite diario (admin)
-router.patch('/:id/daily-limit', authenticateToken, isAdmin, usuarioController.updateDailyLimit);
+/**
+ * GET /:id/daily-volume
+ * Obtener volumen diario de usuario específico (admin)
+ */
+router.get('/:id/daily-volume', 
+  authenticateToken,
+  isAdmin,
+  usuarioController.getDailyVolume
+);
 
-// Actualizar reputación (sistema interno - admin)
-router.patch('/:id/reputation', authenticateToken, isAdmin, usuarioController.updateUsuarioReputation);
+/**
+ * GET /:id/transaction-limit
+ * Verificar límite de transacción de usuario (admin)
+ */
+router.get('/:id/transaction-limit', 
+  authenticateToken,
+  isAdmin,
+  usuarioController.checkTransactionLimit
+);
 
-// --------------------- RUTAS DE CONSULTA INDIVIDUAL --------------------- //
+// =====================================================================
+// RUTAS ADMINISTRATIVAS
+// =====================================================================
 
-// Obtener volumen diario de usuario específico (admin)
-router.get('/:id/daily-volume', authenticateToken, isAdmin, usuarioController.getDailyVolume);
+/**
+ * GET /admin/stats
+ * Obtener estadísticas de usuarios (admin)
+ */
+router.get('/admin/stats', 
+  authenticateToken,
+  isAdmin,
+  usuarioController.getUsuariosStats
+);
 
-// Verificar límite de transacción de usuario específico (admin)
-router.get('/:id/transaction-limit', authenticateToken, isAdmin, usuarioController.checkTransactionLimit);
-
-// --------------------- RUTAS ADMINISTRATIVAS --------------------- //
-
-// Obtener estadísticas de usuarios (admin)
-router.get('/admin/stats', authenticateToken, isAdmin, usuarioController.getUsuariosStats);
-
-// Desactivar usuarios inactivos (admin)
-router.post('/admin/deactivate-inactive', authenticateToken, isAdmin, usuarioController.deactivateInactiveUsers);
+/**
+ * POST /admin/deactivate-inactive
+ * Desactivar usuarios inactivos (admin)
+ */
+router.post('/admin/deactivate-inactive', 
+  authenticateToken,
+  isAdmin,
+  usuarioController.deactivateInactiveUsers
+);
 
 module.exports = router;

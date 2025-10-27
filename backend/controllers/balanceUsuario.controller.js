@@ -85,6 +85,30 @@ const updateBalance = async (req, res) => {
   }
 };
 
+const reclamarBtc = async (req, res) => {
+  try {
+    const userId = req.user.id; // Del token JWT
+    
+    const resultado = await BalanceUsuario.reclamarBtcGratis(userId);
+    
+    res.json({
+      success: true,
+      message: resultado.message,
+      data: {
+        criptomoneda: 'BTC',
+        cantidad: '1.00000000',
+        balanceDisponible: resultado.balance.balanceDisponible,
+        balanceBloqueado: resultado.balance.balanceBloqueado
+      }
+    });
+  } catch (error) {
+    res.status(400).json({ 
+      success: false,
+      error: error.message 
+    });
+  }
+};
+
 // Bloquear balance
 const blockBalance = async (req, res) => {
   try {
@@ -194,6 +218,7 @@ module.exports = {
   getMyBalances,
   getTotalBalance,
   updateBalance,
+  reclamarBtc,
   blockBalance,
   unblockBalance,
   checkAvailableBalance,

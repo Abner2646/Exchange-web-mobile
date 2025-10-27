@@ -656,7 +656,7 @@ const executeCompleteSetup = async (req, res) => {
     await transaction.commit();
     
     // Logs de datos privados (SOLO EN DESARROLLO)
-    console.log('\n🔒 =================== DATOS PRIVADOS ===================');
+    /*console.log('\n🔒 =================== DATOS PRIVADOS ===================');
     console.log('⚠️  GUARDAR INMEDIATAMENTE - NO DEJAR EN LOGS DE PRODUCCIÓN');
     console.log('========================================================');
     
@@ -673,7 +673,7 @@ const executeCompleteSetup = async (req, res) => {
     console.log('\n========================================================');
     console.log('🔒 FIN DATOS PRIVADOS - ELIMINAR DE LOGS INMEDIATAMENTE');
     console.log('========================================================\n');
-    
+    */
     // Respuesta exitosa
     res.status(201).json({
       success: true,

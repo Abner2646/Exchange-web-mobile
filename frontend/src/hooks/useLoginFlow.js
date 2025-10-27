@@ -1,4 +1,4 @@
-// src/hooks/useLoginFlow.js
+// src/hooks/useLoginFlow.js - CORREGIDO PARA 2FA
 import { useState } from 'react';
 import { useMutation } from 'react-query';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -20,7 +20,7 @@ export const useLoginFlow = () => {
 
   // Estado del flujo de autenticación
   const [requires2FA, setRequires2FA] = useState(false);
-  const [preAuthToken, setPreAuthToken] = useState('');
+  const [temporalToken, setTemporalToken] = useState(''); // ✅ CORREGIDO: era preAuthToken
 
   // Mutation: Login con credenciales
   const loginMutation = useMutation(
@@ -31,12 +31,12 @@ export const useLoginFlow = () => {
         if (data.requires2FA) {
           // Requiere verificación 2FA
           setRequires2FA(true);
-          setPreAuthToken(data.preAuthToken);
+          setTemporalToken(data.temporalToken); // ✅ CORREGIDO: era data.preAuthToken
           toast.success('Credenciales correctas. Revisa tu email para el código de verificación.', {
             duration: 5000,
           });
         } else {
-          // Login exitoso sin 2FA - ⭐ PASAR TODAS LAS PROPIEDADES
+          // Login exitoso sin 2FA
           authService.setAuthToken(data.token);
           loginContext({
             id: data.user.id,
@@ -47,7 +47,6 @@ export const useLoginFlow = () => {
             googleId: data.user.googleId || null,
           });
           toast.success('¡Bienvenido!');
-          // Redirigir a la ruta original o a home
           navigate(from, { replace: true });
         }
       },
@@ -63,10 +62,10 @@ export const useLoginFlow = () => {
 
   // Mutation: Verificar código 2FA
   const verify2FAMutation = useMutation(
-    (codigo) => authService.verify2FA(codigo, preAuthToken),
+    (codigo) => authService.verify2FA(codigo, temporalToken), // ✅ CORREGIDO: era preAuthToken
     {
       onSuccess: (data) => {
-        // Login exitoso con 2FA - ⭐ PASAR TODAS LAS PROPIEDADES
+        // Login exitoso con 2FA
         authService.setAuthToken(data.token);
         loginContext({
           id: data.user.id,
@@ -77,7 +76,6 @@ export const useLoginFlow = () => {
           googleId: data.user.googleId || null,
         });
         toast.success('¡Verificación exitosa! Bienvenido.');
-        // Redirigir a la ruta original o a home
         navigate(from, { replace: true });
       },
       onError: (error) => {
@@ -92,7 +90,7 @@ export const useLoginFlow = () => {
 
   // Mutation: Reenviar código 2FA
   const resend2FAMutation = useMutation(
-    () => authService.resend2FA(preAuthToken),
+    () => authService.resend2FA(temporalToken), // ✅ CORREGIDO: era preAuthToken
     {
       onSuccess: () => {
         toast.success('Nuevo código enviado a tu email', {
@@ -111,7 +109,7 @@ export const useLoginFlow = () => {
   // Función para resetear el flujo y volver al login inicial
   const resetToLogin = () => {
     setRequires2FA(false);
-    setPreAuthToken('');
+    setTemporalToken(''); // ✅ CORREGIDO: era preAuthToken
   };
 
   return {

@@ -12,7 +12,7 @@ import authService from '../services/authService';
  */
 export const useEmailVerification = () => {
   const navigate = useNavigate();
-  const { updateUser } = useAuth(); // ⭐ Obtener updateUser del context
+  const { updateUser } = useAuth();
 
   // Estado para el contador de reenvío
   const [canResend, setCanResend] = useState(true);
@@ -22,7 +22,13 @@ export const useEmailVerification = () => {
   const verifyEmailMutation = useMutation(
     (codigo) => authService.verifyEmail(codigo),
     {
-      onSuccess: () => {
+      onSuccess: (data) => {
+        // ⭐ GUARDAR EL NUEVO TOKEN (con emailVerificado: true)
+        if (data.token) {
+          authService.setAuthToken(data.token);
+          console.log('✅ Nuevo token guardado después de verificar email');
+        }
+        
         // ⭐ Actualizar el estado del user en el context
         updateUser({ emailVerificado: true });
         

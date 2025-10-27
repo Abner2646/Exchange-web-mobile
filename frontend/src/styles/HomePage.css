@@ -25,16 +25,47 @@
   background: var(--bg-primary);
 }
 
+/* Agregar estilos para hero con gainers card */
+.hero-section.hero-with-gainers {
+  display: flex;
+  flex-direction: row;
+  gap: var(--spacing-xxl);
+  /* Alineación superior para eliminar espacio arriba de la card */
+  align-items: flex-start;
+  min-height: 70vh;
+}
+
+.hero-section.hero-with-gainers .hero-content {
+  flex: 1;
+  max-width: 700px;
+  
+}
+
+.hero-section.hero-with-gainers .gainers-section {
+  /* Aumentar el ancho fijo para mover la card más a la derecha */
+  flex: 0 0 460px;
+  display: flex;
+  align-items: flex-start;
+  /* Eliminar padding-top para que la card esté alineada arriba */
+  padding-top: 0;
+  margin-left: 50px;
+}
+
+.hero-section.hero-with-gainers .gainers-container {
+  width: 100%;
+  min-height: 320px;
+}
+
 .hero-content {
   max-width: 700px;
 }
 
 .hero-title {
-  font-size: 4rem;
+  font-size: 4.1rem;
   font-weight: 700;
   color: var(--text-primary);
   margin-bottom: var(--spacing-lg);
-  line-height: 1.2;
+  line-height: 1.4;
 }
 
 .hero-subtitle {
