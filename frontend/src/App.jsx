@@ -27,6 +27,7 @@ import Transferencia from './pages/Transferencia.jsx';
 import Notificaciones from './pages/Notificaciones.jsx';
 import ConfiguracionPerfil from './pages/ConfiguracionPerfil.jsx';
 import Swap from './pages/Swap.jsx';
+import Trading from './pages/Trading.jsx'
 
 import { AuthProvider } from './context/AuthContext.jsx';
 import { ThemeProvider } from './context/ThemeContext';
@@ -100,6 +101,17 @@ function App() {
                     <ProtectedRoute>
                       <RequireEmailVerified>
                         <Swap />
+                      </RequireEmailVerified>
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="trading"
+                  element={
+                    <ProtectedRoute>
+                      <RequireEmailVerified>
+                        <Trading />
                       </RequireEmailVerified>
                     </ProtectedRoute>
                   }

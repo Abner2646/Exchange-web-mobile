@@ -374,21 +374,21 @@ function createUsuarioModel(sequelize) {
 
   // --------------------- MÉTODOS PARA AUTENTICACIÓN EN DOS PASOS --------------------- //
 
-  Usuario.toggle2FA = async (id, activar) => {
-    const user = await Usuario.findByPk(id);
-    if (!user) {
-      throw new Error('Usuario no encontrado');
-    }
+Usuario.toggle2FA = async (id, nuevoEstado) => {
+  const user = await Usuario.findByPk(id);
+  if (!user) {
+    throw new Error('Usuario no encontrado');
+  }
 
-    await user.update({ 
-      dosFactoresActivado: activar,
-      codigo2FA: null,
-      codigo2FAExpiracion: null
-    });
+  await user.update({ 
+    dosFactoresActivado: nuevoEstado,
+    codigo2FA: null,
+    codigo2FAExpiracion: null
+  });
 
-    const token = user.generateUpdatedJWT();
-    return { user, token, activado: activar };
-  };
+  const token = user.generateUpdatedJWT();
+  return { user, token };
+};
 
   Usuario.generateAndSave2FACode = async (id) => {
     const user = await Usuario.findByPk(id);

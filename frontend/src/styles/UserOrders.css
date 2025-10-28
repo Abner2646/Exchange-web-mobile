@@ -1,0 +1,309 @@
+/* src/styles/UserOrders.css */
+
+/* === CONTAINER === */
+.userorders-container {
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-lg);
+}
+
+/* === HEADER === */
+.userorders-header {
+  margin-bottom: var(--spacing-lg);
+}
+
+.userorders-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+/* === FILTERS === */
+.userorders-filters {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+  overflow-x: auto;
+}
+
+.userorders-filter-btn {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.userorders-filter-btn:hover {
+  border-color: var(--border-primary);
+  background: var(--bg-secondary);
+}
+
+.userorders-filter-btn.active {
+  background: var(--brand-primary);
+  border-color: var(--brand-primary);
+  color: var(--text-inverse);
+}
+
+/* === LIST === */
+.userorders-list {
+  min-height: 300px;
+}
+
+/* === LOADING === */
+.userorders-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xxl);
+  gap: var(--spacing-md);
+}
+
+.userorders-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border-subtle);
+  border-top-color: var(--brand-primary);
+  border-radius: 50%;
+  animation: userorders-spin 0.8s linear infinite;
+}
+
+@keyframes userorders-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.userorders-loading p {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+/* === EMPTY === */
+.userorders-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xxl);
+}
+
+.userorders-empty p {
+  color: var(--text-tertiary);
+  font-size: 0.875rem;
+}
+
+/* === TABLE === */
+.userorders-table {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.userorders-table-header {
+  display: grid;
+  grid-template-columns: 140px 100px 80px 80px 100px 100px 120px 100px 120px;
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+}
+
+.userorders-table-row {
+  display: grid;
+  grid-template-columns: 140px 100px 80px 80px 100px 100px 120px 100px 120px;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background 0.2s ease;
+}
+
+.userorders-table-row:hover {
+  background: var(--bg-tertiary);
+}
+
+.userorders-table-row:last-child {
+  border-bottom: none;
+}
+
+.userorders-table-cell {
+  display: flex;
+  align-items: center;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* === PAIR === */
+.userorders-pair {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* === TYPE === */
+.userorders-type {
+  text-transform: capitalize;
+  font-size: 0.8125rem;
+}
+
+/* === SIDE === */
+.userorders-side {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.userorders-side-buy {
+  background: var(--buy-bg);
+  color: var(--buy);
+}
+
+.userorders-side-sell {
+  background: var(--sell-bg);
+  color: var(--sell);
+}
+
+/* === PERCENTAGE === */
+.userorders-percentage {
+  margin-left: var(--spacing-xs);
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+/* === STATUS BADGE === */
+.userorders-status-badge {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.userorders-status-pending {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.userorders-status-open {
+  background: var(--info-bg);
+  color: var(--info);
+}
+
+.userorders-status-partial {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.userorders-status-filled {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.userorders-status-cancelled {
+  background: var(--error-bg);
+  color: var(--error);
+}
+
+.userorders-status-expired {
+  background: rgba(128, 128, 128, 0.1);
+  color: var(--text-tertiary);
+}
+
+.userorders-status-rejected {
+  background: var(--error-bg);
+  color: var(--error);
+}
+
+/* === CANCEL BUTTON === */
+.userorders-cancel-btn {
+  padding: var(--spacing-xs) var(--spacing-md);
+  background: transparent;
+  border: 1px solid var(--error);
+  border-radius: var(--radius-sm);
+  color: var(--error);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.userorders-cancel-btn:hover:not(:disabled) {
+  background: var(--error);
+  color: white;
+}
+
+.userorders-cancel-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.userorders-cancel-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: userorders-cancel-spin 0.8s linear infinite;
+}
+
+@keyframes userorders-cancel-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* === RESPONSIVE === */
+@media (max-width: 1200px) {
+  .userorders-table-header,
+  .userorders-table-row {
+    grid-template-columns: repeat(9, minmax(100px, 1fr));
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .userorders-container {
+    padding: var(--spacing-md);
+  }
+
+  .userorders-table {
+    display: block;
+    overflow-x: auto;
+  }
+
+  .userorders-table-header,
+  .userorders-table-row {
+    min-width: 900px;
+  }
+}
+
+/* === SCROLLBAR === */
+.userorders-filters::-webkit-scrollbar {
+  height: 4px;
+}
+
+.userorders-filters::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.userorders-filters::-webkit-scrollbar-thumb {
+  background: var(--border-primary);
+  border-radius: var(--radius-sm);
+}

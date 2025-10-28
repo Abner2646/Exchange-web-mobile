@@ -439,18 +439,30 @@ const resetPassword = async (req, res) => {
 const toggle2FA = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { activar } = req.body;
     
-    const { user, token } = await Usuario.toggle2FA(userId, activar);
+    // Obtener el usuario actual
+    const usuario = await Usuario.findByPk(userId);
+    if (!usuario) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
     
-    await emailService.notificar2FAChange(user.email, user.username, activar);
+    // Alternar el estado actual
+    const nuevoEstado = !usuario.dosFactoresActivado;
+    
+    // Actualizar en la base de datos
+    const { user, token } = await Usuario.toggle2FA(userId, nuevoEstado);
+    
+    // Notificar por email
+    await emailService.notificar2FAChange(user.email, user.username, nuevoEstado);
     
     res.json({
-      message: `Autenticación en dos pasos ${activar ? 'activada' : 'desactivada'} exitosamente`,
+      message: `Autenticación en dos pasos ${nuevoEstado ? 'activada' : 'desactivada'} exitosamente`,
       user,
-      token
+      token,
+      dosFactoresActivado: nuevoEstado
     });
   } catch (error) {
+    console.error('Error en toggle2FA:', error);
     res.status(400).json({ error: error.message });
   }
 };

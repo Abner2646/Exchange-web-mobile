@@ -8,7 +8,6 @@ export const ENDPOINTS = {
 
   //Registros
   USER_REGISTER: '/usuario/register',
-  USER_LOGIN: '/usuario/login',
 
   //Login
   USER_LOGIN: '/usuario/login',
@@ -95,4 +94,51 @@ export const ENDPOINTS = {
 
   // Stats globales de mercado
   COINGECKO_GLOBAL: 'https://api.coingecko.com/api/v3/global',
+
+  
+};
+
+// ==================== TRADING ENDPOINTS ====================
+export const TRADING_ENDPOINTS = {
+  // Trading Pairs
+  PAIRS: '/trading/pairs',
+  PAIRS_ACTIVE: '/trading/pairs/active',
+  PAIRS_TOP: '/trading/pairs/top',
+  PAIRS_STATS: '/trading/pairs/stats',
+  PAIR_BY_SYMBOL: (symbol) => `/trading/pairs/symbol/${symbol}`,
+  PAIR_DETAIL: (pairId) => `/trading/pairs/${pairId}`,
+
+  // Orders
+  CREATE_ORDER: '/trading/orders',
+  CANCEL_ORDER: (orderId) => `/trading/orders/${orderId}`,
+  USER_ORDERS: '/trading/orders',
+  ACTIVE_ORDERS: '/trading/orders/active',
+  ORDER_DETAIL: (orderId) => `/trading/orders/${orderId}`,
+
+  // Order Book
+  ORDER_BOOK: (tradingPairId) => `/trading/orderbook/${tradingPairId}`,
+  ORDER_BOOK_STATS: (tradingPairId) => `/trading/orderbook/${tradingPairId}/stats`,
+  SPREAD: (tradingPairId) => `/trading/spread/${tradingPairId}`,
+
+  // Trades
+  RECENT_TRADES: (tradingPairId) => `/trading/trades/${tradingPairId}`,
+  USER_TRADES: '/trading/trades/user/all',
+  USER_TRADE_STATS: '/trading/trades/user/stats',
+  TRADE_DETAIL: (tradeId) => `/trading/trades/detail/${tradeId}`,
+
+  // Chart Data ORIGINAL
+  /*CHART_DATA: (tradingPairId) => `/trading/chart/${tradingPairId}`,
+  CHART_DATA_BINANCE: (tradingPairId) => `/trading/chart/${tradingPairId}/binance`,*/
+
+  CHART_DATA_BINANCE: (tradingPairId) => `/trading/chart/${tradingPairId}`,
+  CHART_DATA: (tradingPairId) => `/trading/chart/${tradingPairId}/binance`,
+
+  // Statistics
+  PAIR_STATS: (tradingPairId) => `/i/trading/stats/${tradingPairId}`,
+  VOLUME: '/trading/volume',
+  TICKERS: '/trading/tickers',
+  USER_SUMMARY: '/trading/summary',
+
+  // Balance
+  BALANCE: '/trading/balance',
 };

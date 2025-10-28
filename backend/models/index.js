@@ -28,6 +28,12 @@ const usuarioModel = require('./usuario.model');
 const valoracionModel = require('./valoracion.model');
 const walletMaestraModel = require('./walletMaestra.model');
 
+// 🆕 TRADING MODELS
+const tradingPairModel = require('./tradingPair.model.js');
+const orderModel = require('./order.model');
+const tradeModel = require('./trade.model');
+const priceCandleModel = require('./priceCandle.model');
+
 
 
 // Connecting to the database
@@ -68,6 +74,12 @@ const Transferencia = transferenciaModel(sequelize);
 const Usuario = usuarioModel(sequelize);
 const Valoracion = valoracionModel(sequelize);
 const WalletMaestra = walletMaestraModel(sequelize);
+
+// 🆕 INITIALIZE TRADING MODELS
+const TradingPair = tradingPairModel(sequelize);
+const Order = orderModel(sequelize);
+const Trade = tradeModel(sequelize);
+const PriceCandle = priceCandleModel(sequelize);
 
 
 
@@ -116,6 +128,19 @@ TransaccionBlockchain.belongsTo(Usuario, { foreignKey: 'usuarioId', as: 'usuario
 // Admin puede aprobar transacciones blockchain
 Usuario.hasMany(TransaccionBlockchain, { foreignKey: 'aprobadoPor', as: 'transaccionesAprobadas' });
 TransaccionBlockchain.belongsTo(Usuario, { foreignKey: 'aprobadoPor', as: 'adminAprobador' });
+
+// 🆕 Usuario puede crear muchas órdenes de trading
+Usuario.hasMany(Order, { foreignKey: 'userId', as: 'orders' });
+Order.belongsTo(Usuario, { foreignKey: 'userId', as: 'user' });
+
+// 🆕 Usuario puede ser comprador en trades
+Usuario.hasMany(Trade, { foreignKey: 'buyerId', as: 'buyTrades' });
+Trade.belongsTo(Usuario, { foreignKey: 'buyerId', as: 'buyer' });
+
+// 🆕 Usuario puede ser vendedor en trades
+Usuario.hasMany(Trade, { foreignKey: 'sellerId', as: 'sellTrades' });
+Trade.belongsTo(Usuario, { foreignKey: 'sellerId', as: 'seller' });
+
 /*
 // Usuario puede crear reclamos
 Usuario.hasMany(Reclamo, { foreignKey: 'usuarioId', as: 'reclamos' });
@@ -173,6 +198,14 @@ ParExchange.belongsTo(Criptomoneda, { foreignKey: 'criptoQuoteId', as: 'criptoQu
 Criptomoneda.hasMany(TransaccionBlockchain, { foreignKey: 'criptomonedaId', as: 'transaccionesBlockchain' });
 TransaccionBlockchain.belongsTo(Criptomoneda, { foreignKey: 'criptomonedaId', as: 'criptomoneda' });
 
+// 🆕 Criptomoneda puede ser base asset en pares de trading
+Criptomoneda.hasMany(TradingPair, { foreignKey: 'baseAssetId', as: 'tradingPairsAsBase' });
+TradingPair.belongsTo(Criptomoneda, { foreignKey: 'baseAssetId', as: 'baseAsset' });
+
+// 🆕 Criptomoneda puede ser quote asset en pares de trading
+Criptomoneda.hasMany(TradingPair, { foreignKey: 'quoteAssetId', as: 'tradingPairsAsQuote' });
+TradingPair.belongsTo(Criptomoneda, { foreignKey: 'quoteAssetId', as: 'quoteAsset' });
+
 // ================================
 // RELACIONES DE PARES EXCHANGE
 // ================================
@@ -180,6 +213,30 @@ TransaccionBlockchain.belongsTo(Criptomoneda, { foreignKey: 'criptomonedaId', as
 // Par exchange puede tener muchos intercambios
 ParExchange.hasMany(IntercambioExchange, { foreignKey: 'parId', as: 'intercambios' });
 IntercambioExchange.belongsTo(ParExchange, { foreignKey: 'parId', as: 'par' });
+
+// ================================
+// 🆕 RELACIONES DE TRADING
+// ================================
+
+// TradingPair puede tener muchas órdenes
+TradingPair.hasMany(Order, { foreignKey: 'tradingPairId', as: 'orders' });
+Order.belongsTo(TradingPair, { foreignKey: 'tradingPairId', as: 'tradingPair' });
+
+// TradingPair puede tener muchos trades
+TradingPair.hasMany(Trade, { foreignKey: 'tradingPairId', as: 'trades' });
+Trade.belongsTo(TradingPair, { foreignKey: 'tradingPairId', as: 'tradingPair' });
+
+// TradingPair puede tener muchas velas de precio
+TradingPair.hasMany(PriceCandle, { foreignKey: 'tradingPairId', as: 'candles' });
+PriceCandle.belongsTo(TradingPair, { foreignKey: 'tradingPairId', as: 'tradingPair' });
+
+// Order puede tener muchos trades como orden de compra
+Order.hasMany(Trade, { foreignKey: 'buyOrderId', as: 'buyTrades' });
+Trade.belongsTo(Order, { foreignKey: 'buyOrderId', as: 'buyOrder' });
+
+// Order puede tener muchos trades como orden de venta
+Order.hasMany(Trade, { foreignKey: 'sellOrderId', as: 'sellTrades' });
+Trade.belongsTo(Order, { foreignKey: 'sellOrderId', as: 'sellOrder' });
 
 // ================================
 // RELACIONES DE WALLETS
@@ -286,7 +343,11 @@ module.exports = {
   TransaccionP2P,
   Transferencia,
   Usuario,
-  //Valoracion,
-  WalletMaestra
+  Valoracion,
+  WalletMaestra,
+  // 🆕 TRADING MODELS
+  TradingPair,
+  Order,
+  Trade,
+  PriceCandle
 };
-

@@ -1,0 +1,300 @@
+/* src/styles/OrderForm.css */
+
+/* === CONTAINER === */
+.orderform-container {
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-lg);
+}
+
+/* === SIDE SELECTOR === */
+.orderform-side-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+.orderform-side-btn {
+  padding: var(--spacing-md);
+  background: var(--bg-secondary);
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.orderform-side-btn:hover {
+  background: var(--bg-tertiary);
+}
+
+.orderform-side-buy.active {
+  background: var(--buy-bg);
+  border-color: var(--buy);
+  color: var(--buy);
+}
+
+.orderform-side-sell.active {
+  background: var(--sell-bg);
+  border-color: var(--sell);
+  color: var(--sell);
+}
+
+/* === TYPE SELECTOR === */
+.orderform-type-selector {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+.orderform-type-btn {
+  flex: 1;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.orderform-type-btn:hover {
+  border-color: var(--border-primary);
+  background: var(--bg-secondary);
+}
+
+.orderform-type-btn.active {
+  background: var(--brand-primary);
+  border-color: var(--brand-primary);
+  color: var(--text-inverse);
+}
+
+/* === BALANCE === */
+.orderform-balance {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.orderform-balance-label {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.orderform-balance-value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* === FORM === */
+.orderform-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+/* === INPUT GROUP === */
+.orderform-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.orderform-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.orderform-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.orderform-input {
+  width: 100%;
+  padding: var(--spacing-lg);
+  padding-right: 60px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 1rem;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.orderform-input:hover {
+  border-color: var(--border-primary);
+}
+
+.orderform-input:focus {
+  border-color: var(--border-focus);
+  background: var(--bg-primary);
+  box-shadow: 0 0 0 3px var(--border-focus-ring);
+}
+
+.orderform-input.error {
+  border-color: var(--error);
+}
+
+.orderform-input-suffix {
+  position: absolute;
+  right: var(--spacing-lg);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+
+.orderform-error {
+  font-size: 0.75rem;
+  color: var(--error);
+}
+
+/* === PERCENTAGES === */
+.orderform-percentages {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--spacing-sm);
+}
+
+.orderform-percentage-btn {
+  padding: var(--spacing-sm);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.orderform-percentage-btn:hover {
+  border-color: var(--border-primary);
+  background: var(--bg-tertiary);
+}
+
+.orderform-percentage-btn.active {
+  background: var(--brand-tertiary);
+  border-color: var(--brand-primary);
+  color: var(--brand-primary);
+}
+
+/* === TOTAL === */
+.orderform-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+}
+
+.orderform-total-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.orderform-total-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* === ERROR BANNER === */
+.orderform-error-banner {
+  padding: var(--spacing-md);
+  background: var(--error-bg);
+  border: 1px solid var(--error);
+  border-radius: var(--radius-md);
+  color: var(--error);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: center;
+}
+
+/* === SUBMIT BUTTON === */
+.orderform-submit {
+  padding: var(--spacing-lg);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+}
+
+.orderform-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.orderform-submit-buy {
+  background: var(--buy);
+  color: white;
+}
+
+.orderform-submit-buy:hover:not(:disabled) {
+  background: var(--buy-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.orderform-submit-sell {
+  background: var(--sell);
+  color: white;
+}
+
+.orderform-submit-sell:hover:not(:disabled) {
+  background: var(--sell-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.orderform-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: orderform-spin 0.8s linear infinite;
+}
+
+@keyframes orderform-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* === RESPONSIVE === */
+@media (max-width: 768px) {
+  .orderform-container {
+    padding: var(--spacing-md);
+  }
+
+  .orderform-input {
+    padding: var(--spacing-md);
+  }
+
+  .orderform-submit {
+    padding: var(--spacing-md);
+  }
+}

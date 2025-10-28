@@ -17,6 +17,7 @@ import {
   WalletIcon,
   ArrowDownCircleIcon,
   GiftIcon,
+  ArrowTrendingUpIcon
 } from '@heroicons/react/24/outline';
 import '../../styles/Navbar.css';
 
@@ -300,6 +301,16 @@ const Navbar = () => {
               >
                 <UserGroupIcon className="navbar-link-icon" />
                 P2P
+              </Link>
+
+              <Link
+                to="/trading"
+                className={`navbar-link ${
+                  isRouteActive(['/trading' /* Otros links acá */]) ? 'active' : ''
+                }`}
+              >
+                <ArrowTrendingUpIcon className="navbar-link-icon" />
+                Trading
               </Link>
 
               {/* Wallet Dropdown - Solo si está autenticado */}

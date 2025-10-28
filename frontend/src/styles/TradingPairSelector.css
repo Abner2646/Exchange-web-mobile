@@ -1,0 +1,215 @@
+/* src/styles/TradingPairSelector.css */
+
+/* === CONTAINER === */
+.tradingpairs-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-height: 800px;
+}
+
+/* === HEADER === */
+.tradingpairs-header {
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.tradingpairs-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+/* === SEARCH === */
+.tradingpairs-search {
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.tradingpairs-search-input {
+  width: 100%;
+  padding: var(--spacing-md);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.tradingpairs-search-input:hover {
+  border-color: var(--border-primary);
+}
+
+.tradingpairs-search-input:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--border-focus-ring);
+}
+
+.tradingpairs-search-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* === FILTERS === */
+.tradingpairs-filters {
+  display: flex;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--border-subtle);
+  overflow-x: auto;
+}
+
+.tradingpairs-filter-btn {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tradingpairs-filter-btn:hover {
+  border-color: var(--border-primary);
+  background: var(--bg-secondary);
+}
+
+.tradingpairs-filter-btn.active {
+  background: var(--brand-primary);
+  border-color: var(--brand-primary);
+  color: var(--text-inverse);
+}
+
+/* === HEADERS === */
+.tradingpairs-headers {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 0.8fr;
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.tradingpairs-header-cell {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+}
+
+.tradingpairs-header-price,
+.tradingpairs-header-change {
+  text-align: right;
+}
+
+/* === LIST === */
+.tradingpairs-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* === ITEM === */
+.tradingpairs-item {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 0.8fr;
+  padding: var(--spacing-md) var(--spacing-lg);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.tradingpairs-item:hover {
+  background: var(--bg-tertiary);
+}
+
+.tradingpairs-item.active {
+  background: var(--brand-tertiary);
+  border-left: 3px solid var(--brand-primary);
+  padding-left: calc(var(--spacing-lg) - 3px);
+}
+
+.tradingpairs-item-pair {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.tradingpairs-item-symbol {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.tradingpairs-item-quote {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+.tradingpairs-item-price {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-align: right;
+}
+
+.tradingpairs-item-change {
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: right;
+}
+
+.tradingpairs-item-change.positive {
+  color: var(--buy);
+}
+
+.tradingpairs-item-change.negative {
+  color: var(--sell);
+}
+
+/* === EMPTY === */
+.tradingpairs-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xxl);
+}
+
+.tradingpairs-empty p {
+  color: var(--text-tertiary);
+  font-size: 0.875rem;
+}
+
+/* === SCROLLBAR === */
+.tradingpairs-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.tradingpairs-list::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+.tradingpairs-list::-webkit-scrollbar-thumb {
+  background: var(--border-primary);
+  border-radius: var(--radius-sm);
+}
+
+.tradingpairs-list::-webkit-scrollbar-thumb:hover {
+  background: var(--border-focus);
+}
+
+.tradingpairs-filters::-webkit-scrollbar {
+  height: 4px;
+}
+
+.tradingpairs-filters::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tradingpairs-filters::-webkit-scrollbar-thumb {
+  background: var(--border-primary);
+  border-radius: var(--radius-sm);
+}

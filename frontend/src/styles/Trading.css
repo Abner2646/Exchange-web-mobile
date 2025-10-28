@@ -1,0 +1,121 @@
+/* src/styles/Trading.css */
+
+/* === CONTAINER === */
+.trading-container {
+  padding: var(--spacing-xxl);
+  max-width: 1920px;
+  margin: 0 auto;
+  min-height: 100vh;
+}
+
+/* === HEADER === */
+.trading-header {
+  margin-bottom: var(--spacing-xxl);
+  padding-bottom: var(--spacing-xl);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.trading-title {
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-md);
+  line-height: 1.1;
+}
+
+.trading-description {
+  font-size: 1.25rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* === LAYOUT === */
+.trading-layout {
+  display: grid;
+  grid-template-columns: 300px 1fr 380px;
+  gap: var(--spacing-lg);
+  min-height: calc(100vh - 300px);
+}
+
+.trading-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.trading-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.trading-sidebar-section {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+/* === CHART SECTION === */
+.trading-chart-section {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-md);
+  min-height: 600px;
+  overflow: hidden;
+}
+
+/* === ORDERS SECTION === */
+.trading-orders-section {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+/* === RESPONSIVE === */
+@media (max-width: 1440px) {
+  .trading-layout {
+    grid-template-columns: 280px 1fr 350px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .trading-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+
+  .trading-sidebar-left {
+    order: 1;
+  }
+
+  .trading-main {
+    order: 2;
+  }
+
+  .trading-sidebar-right {
+    order: 3;
+  }
+}
+
+@media (max-width: 768px) {
+  .trading-container {
+    padding: var(--spacing-lg);
+  }
+
+  .trading-title {
+    font-size: 2rem;
+  }
+
+  .trading-description {
+    font-size: 1rem;
+  }
+
+  .trading-chart-section {
+    min-height: 400px;
+  }
+}

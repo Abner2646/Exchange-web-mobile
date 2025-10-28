@@ -1,111 +1,122 @@
 // src/hooks/useProfile.js
-import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { toast } from 'react-hot-toast';
-import authService from '../services/authService';
-import { validatePasswordChange } from '../utils/validators';
+import { useState, useEffect } from 'react';
+import userService from '../services/userService';
+import { useAuth } from '../context/AuthContext';
 
 export const useProfile = () => {
-  const queryClient = useQueryClient();
+  const { user, updateUser } = useAuth();
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Query para obtener perfil del usuario
-  const {
-    data: profile,
-    isLoading,
-    error,
-    refetch: refetchProfile,
-  } = useQuery('userProfile', () => authService.getProfile(), {
-    staleTime: 60000, // 1 minuto
-    onSuccess: (data) => {
-      console.log('[useProfile] Perfil cargado:', data);
-    },
-    onError: (error) => {
-      console.error('[useProfile] Error al cargar perfil:', error);
-      toast.error('Error al cargar el perfil');
-    },
-  });
+  // Estado para cambio de contraseña
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState(null);
 
-  // Mutation para cambiar contraseña
-  const changePasswordMutation = useMutation(
-    ({ currentPassword, newPassword }) =>
-      authService.changePassword(currentPassword, newPassword),
-    {
-      onSuccess: () => {
-        console.log('[useProfile] Contraseña cambiada exitosamente');
-        toast.success('Contraseña cambiada exitosamente');
-      },
-      onError: (error) => {
-        console.error('[useProfile] Error al cambiar contraseña:', error);
-        const errorMessage = error.response?.data?.message || error.response?.data?.error || 'Error al cambiar contraseña';
-        toast.error(errorMessage);
-      },
+  // Estado para 2FA
+  const [toggling2FA, setToggling2FA] = useState(false);
+  const [twoFAError, setTwoFAError] = useState(null);
+
+  // Estado para KYC
+  const [submittingKYC, setSubmittingKYC] = useState(false);
+  const [kycError, setKycError] = useState(null);
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await userService.getMyProfile();
+      setProfile(data);
+      console.log('✅ Perfil cargado:', data);
+    } catch (err) {
+      console.error('❌ Error cargando perfil:', err);
+      setError(err.response?.data?.message || 'Error cargando perfil');
+    } finally {
+      setLoading(false);
     }
-  );
+  };
 
-  // Mutation para toggle 2FA
-  const toggle2FAMutation = useMutation(() => authService.toggle2FA(), {
-    onSuccess: (data) => {
-      console.log('[useProfile] 2FA toggled:', data);
-      
-      // Actualizar el cache del perfil con el nuevo estado de 2FA
-      queryClient.setQueryData('userProfile', (oldData) => ({
-        ...oldData,
-        is2FAEnabled: data.is2FAEnabled,
-      }));
-
-      const message = data.is2FAEnabled
-        ? 'Autenticación de dos factores activada'
-        : 'Autenticación de dos factores desactivada';
-      
-      toast.success(message);
-    },
-    onError: (error) => {
-      console.error('[useProfile] Error al cambiar configuración 2FA:', error);
-      const errorMessage = error.response?.data?.message || error.response?.data?.error || 'Error al cambiar configuración 2FA';
-      toast.error(errorMessage);
-    },
-  });
-
-  // Helper para cambiar contraseña con validación
-  const changePassword = (passwordForm) => {
-    console.log('[useProfile] Validando formulario de contraseña');
-    
-    // Validar formulario
-    const validation = validatePasswordChange(passwordForm);
-    
-    if (!validation.isValid) {
-      console.log('[useProfile] Validación fallida:', validation.errors);
-      
-      // Mostrar primer error
-      const firstError = Object.values(validation.errors)[0];
-      toast.error(firstError);
-      return;
+  const changePassword = async (currentPassword, newPassword) => {
+    try {
+      setChangingPassword(true);
+      setPasswordError(null);
+      await userService.changePassword(currentPassword, newPassword);
+      console.log('✅ Contraseña cambiada');
+      return { success: true };
+    } catch (err) {
+      console.error('❌ Error cambiando contraseña:', err);
+      const errorMsg = err.response?.data?.message || 'Error cambiando contraseña';
+      setPasswordError(errorMsg);
+      return { success: false, error: errorMsg };
+    } finally {
+      setChangingPassword(false);
     }
+  };
 
-    // Si pasa la validación, ejecutar mutation
-    changePasswordMutation.mutate({
-      currentPassword: passwordForm.currentPassword,
-      newPassword: passwordForm.newPassword,
-    });
+  const toggle2FA = async (enable) => {
+    try {
+      setToggling2FA(true);
+      setTwoFAError(null);
+      await userService.toggle2FA(enable);
+      
+      // Actualizar perfil local
+      setProfile((prev) => ({ ...prev, dosFactoresActivado: enable }));
+      
+      // Actualizar contexto
+      updateUser({ dosFactoresActivado: enable });
+      
+      console.log(`✅ 2FA ${enable ? 'activado' : 'desactivado'}`);
+      return { success: true };
+    } catch (err) {
+      console.error('❌ Error cambiando 2FA:', err);
+      const errorMsg = err.response?.data?.message || 'Error cambiando estado 2FA';
+      setTwoFAError(errorMsg);
+      return { success: false, error: errorMsg };
+    } finally {
+      setToggling2FA(false);
+    }
+  };
+
+  const submitKYC = async (kycData) => {
+    try {
+      setSubmittingKYC(true);
+      setKycError(null);
+      const result = await userService.submitKYC(kycData);
+      console.log('✅ KYC enviado');
+      return { success: true, data: result };
+    } catch (err) {
+      console.error('❌ Error enviando KYC:', err);
+      const errorMsg = err.response?.data?.message || 'Error enviando verificación KYC';
+      setKycError(errorMsg);
+      return { success: false, error: errorMsg };
+    } finally {
+      setSubmittingKYC(false);
+    }
   };
 
   return {
-    // Data
     profile,
-    isLoading,
+    loading,
     error,
-
-    // Actions
+    fetchProfile,
+    
+    // Password
     changePassword,
-    toggle2FA: toggle2FAMutation.mutate,
-    refetchProfile,
-
-    // Loading states
-    isChangingPassword: changePasswordMutation.isLoading,
-    isToggling2FA: toggle2FAMutation.isLoading,
-
-    // Success states
-    passwordChanged: changePasswordMutation.isSuccess,
+    changingPassword,
+    passwordError,
+    
+    // 2FA
+    toggle2FA,
+    toggling2FA,
+    twoFAError,
+    
+    // KYC
+    submitKYC,
+    submittingKYC,
+    kycError,
   };
 };
-
-export default useProfile;

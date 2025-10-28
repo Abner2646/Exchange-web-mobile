@@ -302,7 +302,7 @@ const createOrder = async (req, res) => {
     const dailyVolume = await IntercambioExchange.getDailyVolume(usuarioId, new Date(), transaction);
     const newDailyVolume = dailyVolume + cantidadQuote;
     
-    if (newDailyVolume > usuario.limiteDiarioUsd) {
+    /*if (newDailyVolume > usuario.limiteDiarioUsd) {
       await transaction.rollback();
       return res.status(400).json({ 
         error: 'Límite diario excedido',
@@ -311,7 +311,7 @@ const createOrder = async (req, res) => {
         requestedAmount: cantidadQuote,
         currentPrice: precio
       });
-    }
+    }*/
 
     // Determinar qué criptomonedas se necesitan
     const criptoBaseId = par.criptoBaseId;
@@ -594,7 +594,7 @@ const checkTransactionLimit = async (req, res) => {
     
     const remainingLimit = usuario.limiteDiarioUsd - dailyVolume;
     
-    if (remainingLimit < cantidadQuote) {
+    /*if (remainingLimit < cantidadQuote) {
       return res.status(400).json({ 
         error: 'Límite diario excedido',
         dailyVolume,
@@ -602,7 +602,7 @@ const checkTransactionLimit = async (req, res) => {
         remainingLimit,
         requestedAmount: cantidadQuote
       });
-    }
+    }*/
     
     res.json({ 
       canTransact: true,
