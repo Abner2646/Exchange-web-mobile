@@ -13,11 +13,11 @@
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
   overflow: hidden;
-  height: 450px;
-  min-height: 450px;
-  max-height: 450px;
   box-sizing: border-box;
   box-shadow: none;
+  /* ✅ SOLUCIÓN: Altura calculada para encajar */
+  height: calc((100vh - 120px - 600px - 12px) / 2);
+  min-height: 300px;
 }
 
 .orderbook-header {
@@ -232,12 +232,10 @@
    ============================================ */
 
 /* === LARGE DESKTOP: 1920px+ === */
-@media (min-width: 1920px) {
-  .orderbook-container {
-    height: 480px;
-    min-height: 480px;
-    max-height: 480px;
-  }
+  @media (min-width: 1920px) {
+    .orderbook-container {
+      height: calc((100vh - 120px - 650px - 16px) / 2);
+    }
 
   .orderbook-header {
     padding: 14px 20px;
@@ -268,9 +266,7 @@
 /* === LARGE LAPTOP: 1280-1440px === */
 @media (max-width: 1440px) {
   .orderbook-container {
-    height: 420px;
-    min-height: 420px;
-    max-height: 420px;
+    height: calc((100vh - 120px - 550px - 12px) / 2);
   }
 
   .orderbook-header {
@@ -306,10 +302,7 @@
 /* === STANDARD LAPTOP: 1024-1280px === */
 @media (max-width: 1280px) {
   .orderbook-container {
-    height: 400px;
-    min-height: 400px;
-    max-height: 400px;
-    font-size: 95%;
+    height: calc((100vh - 120px - 500px - 10px) / 2);
   }
 
   .orderbook-header {

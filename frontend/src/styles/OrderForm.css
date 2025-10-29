@@ -15,8 +15,12 @@
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
   box-sizing: border-box;
-  min-width: 340px;
   box-shadow: none;
+  /* ✅ SOLUCIÓN: Altura exacta del gráfico */
+  height: 600px;
+  min-height: 600px;
+  max-height: 600px;
+  overflow-y: auto;
 }
 
 /* === SIDE SELECTOR === */
@@ -311,7 +315,9 @@
 /* === LARGE DESKTOP: 1920px+ === */
 @media (min-width: 1920px) {
   .orderform-container {
-    min-width: 360px;
+    height: 650px;
+    min-height: 650px;
+    max-height: 650px;
     padding: 18px;
     gap: 16px;
   }
@@ -346,7 +352,9 @@
 /* === LARGE LAPTOP: 1280-1440px === */
 @media (max-width: 1440px) {
   .orderform-container {
-    min-width: 320px;
+    height: 550px;
+    min-height: 550px;
+    max-height: 550px;
     padding: 14px;
     gap: 12px;
   }
@@ -376,7 +384,9 @@
 /* === STANDARD LAPTOP: 1024-1280px === */
 @media (max-width: 1280px) {
   .orderform-container {
-    min-width: 300px;
+    height: 500px;
+    min-height: 500px;
+    max-height: 500px;
     padding: 12px;
     gap: 12px;
     font-size: 95%;

@@ -4,18 +4,14 @@
    TRADING PAGE - PROFESSIONAL BINANCE STYLE
    ============================================ */
 
-/* === BASE: 1440-1920px (Desktop Standard) === */
-
 .trading-container {
   padding: 16px;
-  max-width: 100%;
   margin: 0 auto;
   min-height: 100vh;
   background: var(--bg-primary);
   box-sizing: border-box;
 }
 
-/* === HEADER === */
 .trading-header {
   margin-bottom: 16px;
   padding-bottom: 12px;
@@ -43,6 +39,8 @@
   gap: 12px;
   width: 100%;
   box-sizing: border-box;
+  /* ✅ CLAVE: Definir filas para alinear alturas */
+  grid-template-rows: auto;
   align-items: start;
 }
 
@@ -57,13 +55,15 @@
 .trading-sidebar-left {
   position: sticky;
   top: 16px;
+  /* ✅ SOLUCIÓN: Altura dinámica calculada */
+  height: calc(100vh - 120px);
+  max-height: calc(100vh - 120px);
 }
 
 .trading-sidebar-right {
   position: sticky;
   top: 16px;
-  /* ✅ SOLUCIÓN PROBLEMA 1: Asegurar altura mínima */
-  min-height: 862px;
+  /* ✅ SOLUCIÓN: Sin min-height fijo, se adapta al contenido */
 }
 
 .trading-sidebar-section {
@@ -100,6 +100,9 @@
   border: 1px solid var(--border-subtle);
   box-shadow: none;
   overflow: hidden;
+  /* ✅ SOLUCIÓN: Altura dinámica para llenar espacio restante */
+  height: calc(100vh - 120px - 600px - 12px);
+  min-height: 300px;
 }
 
 /* ============================================
@@ -109,15 +112,10 @@
 /* === LARGE DESKTOP: 1920px+ === */
 @media (min-width: 1920px) {
   .trading-container {
-    /* ✅ SOLUCIÓN PROBLEMA 2: Aumentar ancho y padding */
     padding: 20px 40px;
-    max-width: 1920px;
-    padding: 20px 40px;
-    max-width: none;
   }
 
   .trading-layout {
-    /* ✅ Columnas más anchas para aprovechar espacio */
     grid-template-columns: 300px 1fr 380px;
     gap: 16px;
   }
@@ -128,6 +126,10 @@
     max-height: 650px;
   }
 
+  .trading-orders-section {
+    height: calc(100vh - 120px - 650px - 16px);
+  }
+
   .trading-header {
     margin-bottom: 20px;
     padding-bottom: 16px;
@@ -136,18 +138,12 @@
   .trading-title {
     font-size: 1.75rem;
   }
-
-  /* ✅ Ajustar altura mínima de sidebar derecha */
-  .trading-sidebar-right {
-    min-height: 920px;
-  }
 }
 
 /* === EXTRA LARGE DESKTOP: 2560px+ === */
 @media (min-width: 2560px) {
   .trading-container {
     padding: 24px 60px;
-    max-width: 2400px;
   }
 
   .trading-layout {
@@ -161,8 +157,8 @@
     max-height: 700px;
   }
 
-  .trading-sidebar-right {
-    min-height: 980px;
+  .trading-orders-section {
+    height: calc(100vh - 120px - 700px - 20px);
   }
 }
 
@@ -179,8 +175,8 @@
     max-height: 550px;
   }
 
-  .trading-sidebar-right {
-    min-height: 812px;
+  .trading-orders-section {
+    height: calc(100vh - 120px - 550px - 12px);
   }
 }
 
@@ -201,6 +197,10 @@
     max-height: 500px;
   }
 
+  .trading-orders-section {
+    height: calc(100vh - 120px - 500px - 10px);
+  }
+
   .trading-title {
     font-size: 1.25rem;
   }
@@ -211,10 +211,6 @@
 
   .trading-header {
     margin-bottom: 12px;
-  }
-
-  .trading-sidebar-right {
-    min-height: 762px;
   }
 }
 
@@ -229,6 +225,8 @@
   .trading-sidebar-left {
     order: 1;
     position: static;
+    height: auto;
+    max-height: 600px;
   }
 
   .trading-main {
@@ -238,13 +236,17 @@
   .trading-sidebar-right {
     order: 3;
     position: static;
-    min-height: auto;
   }
 
   .trading-chart-section {
     height: 450px;
     min-height: 450px;
     max-height: 450px;
+  }
+
+  .trading-orders-section {
+    height: auto;
+    min-height: 400px;
   }
 }
 
@@ -277,4 +279,3 @@
     gap: 12px;
   }
 }
-

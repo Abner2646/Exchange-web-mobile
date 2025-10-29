@@ -13,11 +13,11 @@
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
   overflow: hidden;
-  height: 400px;
-  min-height: 400px;
-  max-height: 400px;
   box-sizing: border-box;
   box-shadow: none;
+  /* ✅ SOLUCIÓN: Misma altura que OrderBook */
+  height: calc((100vh - 120px - 600px - 12px) / 2);
+  min-height: 300px;
 }
 
 .tradehistory-header {
@@ -156,10 +156,7 @@
 /* === LARGE DESKTOP: 1920px+ === */
 @media (min-width: 1920px) {
   .tradehistory-container {
-    /* ✅ Aumentar también en monitores grandes */
-    height: 440px;
-    min-height: 440px;
-    max-height: 440px;
+    height: calc((100vh - 120px - 650px - 16px) / 2);
   }
 
   .tradehistory-header {
@@ -201,9 +198,7 @@
 /* === LARGE LAPTOP: 1280-1440px === */
 @media (max-width: 1440px) {
   .tradehistory-container {
-    height: 362px;
-    min-height: 362px;
-    max-height: 362px;
+    height: calc((100vh - 120px - 550px - 12px) / 2);
   }
 
   .tradehistory-header {
@@ -231,10 +226,7 @@
 /* === STANDARD LAPTOP: 1024-1280px === */
 @media (max-width: 1280px) {
   .tradehistory-container {
-    height: 352px;
-    min-height: 352px;
-    max-height: 352px;
-    font-size: 95%;
+    height: calc((100vh - 120px - 500px - 10px) / 2);
   }
 
   .tradehistory-header {

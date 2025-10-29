@@ -9,6 +9,7 @@ const TradingChart = ({ data = [], pair, loading, onIntervalChange }) => {
   const chartRef = useRef(null);
   const candlestickSeriesRef = useRef(null);
   const volumeSeriesRef = useRef(null);
+  const resizeObserverRef = useRef(null);
   const { themeMode } = useTheme();
   
   const [selectedInterval, setSelectedInterval] = useState('1h');
@@ -24,18 +25,25 @@ const TradingChart = ({ data = [], pair, loading, onIntervalChange }) => {
     { value: '1w', label: '1W' },
   ];
 
-  // Configuración del tema
+  // ✅ SOLUCIÓN: Configuración del tema con colores sólidos
   const getChartOptions = () => {
     const isDark = themeMode === 'dark' || themeMode === 'bitflow';
     
     return {
       layout: {
-        background: { color: 'transparent' },
+        // ✅ CAMBIO CRÍTICO: Fondo sólido en lugar de transparent
+        background: { 
+          color: isDark ? '#1a1d24' : '#ffffff' 
+        },
         textColor: isDark ? '#D1D4DC' : '#191919',
       },
       grid: {
-        vertLines: { color: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' },
-        horzLines: { color: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' },
+        vertLines: { 
+          color: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' 
+        },
+        horzLines: { 
+          color: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' 
+        },
       },
       crosshair: {
         mode: 1,
@@ -61,112 +69,152 @@ const TradingChart = ({ data = [], pair, loading, onIntervalChange }) => {
     };
   };
 
-  // Crear el gráfico
+  // ✅ Crear/Recrear el gráfico cuando cambia el tema
   useEffect(() => {
-  if (!chartContainerRef.current) return;
+    if (!chartContainerRef.current) return;
 
-  // Limpiar gráfico anterior
-  if (chartRef.current) {
-    chartRef.current.remove();
-    chartRef.current = null;
-  }
+    // ✅ DELAY para asegurar que el DOM se haya actualizado
+    const timeoutId = setTimeout(() => {
+      // Limpiar gráfico anterior
+      if (chartRef.current) {
+        console.log('🗑️ Destruyendo chart anterior...');
+        chartRef.current.remove();
+        chartRef.current = null;
+        candlestickSeriesRef.current = null;
+        volumeSeriesRef.current = null;
+      }
 
-  // ✅ OBTENER dimensiones del contenedor PADRE
-  const wrapper = chartContainerRef.current;
-  const rect = wrapper.getBoundingClientRect();
-  const width = rect.width;
-  const height = rect.height;
+      // Desconectar ResizeObserver anterior
+      if (resizeObserverRef.current) {
+        resizeObserverRef.current.disconnect();
+        resizeObserverRef.current = null;
+      }
 
-  console.log('📐 Dimensiones del contenedor:', { width, height });
+      const wrapper = chartContainerRef.current;
+      if (!wrapper) return;
 
-  // ✅ Si no hay dimensiones válidas, esperar
-  if (width === 0 || height === 0) {
-    console.warn('⚠️ Contenedor sin dimensiones, esperando...');
-    return;
-  }
+      const rect = wrapper.getBoundingClientRect();
+      const width = rect.width;
+      const height = rect.height;
 
-  // Crear gráfico con dimensiones exactas del contenedor
-  const chart = LightweightCharts.createChart(wrapper, {
-    width: width,
-    height: height,
-    ...getChartOptions(),
-  });
+      console.log('📐 Creando chart con dimensiones:', { width, height, theme: themeMode });
 
-  chartRef.current = chart;
+      // Validar dimensiones
+      if (width === 0 || height === 0) {
+        console.warn('⚠️ Contenedor sin dimensiones válidas');
+        return;
+      }
 
-  // Crear series
-  const candlestickSeries = chart.addCandlestickSeries({
-    upColor: '#0ECB81',
-    downColor: '#F6465D',
-    borderUpColor: '#0ECB81',
-    borderDownColor: '#F6465D',
-    wickUpColor: '#0ECB81',
-    wickDownColor: '#F6465D',
-  });
+      // ✅ Crear gráfico con configuración del tema actual
+      const chart = LightweightCharts.createChart(wrapper, {
+        width: width,
+        height: height,
+        ...getChartOptions(),
+      });
 
-  candlestickSeriesRef.current = candlestickSeries;
+      chartRef.current = chart;
 
-  const volumeSeries = chart.addHistogramSeries({
-    color: '#26a69a',
-    priceFormat: {
-      type: 'volume',
-    },
-    priceScaleId: '',
-    scaleMargins: {
-      top: 0.8,
-      bottom: 0,
-    },
-  });
+      // Crear series de velas
+      const candlestickSeries = chart.addCandlestickSeries({
+        upColor: '#0ECB81',
+        downColor: '#F6465D',
+        borderUpColor: '#0ECB81',
+        borderDownColor: '#F6465D',
+        wickUpColor: '#0ECB81',
+        wickDownColor: '#F6465D',
+      });
 
-  volumeSeriesRef.current = volumeSeries;
+      candlestickSeriesRef.current = candlestickSeries;
 
-  // ✅ Manejar resize con ResizeObserver (mejor que window.resize)
-  const resizeObserver = new ResizeObserver((entries) => {
-    if (!chartRef.current || !wrapper) return;
-    
-    const entry = entries[0];
-    const { width, height } = entry.contentRect;
-    
-    console.log('📐 Resize detectado:', { width, height });
-    
-    chartRef.current.applyOptions({
-      width: width,
-      height: height,
-    });
-    
-    chartRef.current.timeScale().fitContent();
-  });
+      // Crear series de volumen
+      const volumeSeries = chart.addHistogramSeries({
+        color: '#26a69a',
+        priceFormat: {
+          type: 'volume',
+        },
+        priceScaleId: '',
+        scaleMargins: {
+          top: 0.8,
+          bottom: 0,
+        },
+      });
 
-  resizeObserver.observe(wrapper);
+      volumeSeriesRef.current = volumeSeries;
 
-  // Cleanup
-  return () => {
-    resizeObserver.disconnect();
-    if (chartRef.current) {
-      chartRef.current.remove();
-      chartRef.current = null;
-    }
-  };
-}, [themeMode]);
-
-  // Actualizar datos
-  useEffect(() => {
-    if (candlestickSeriesRef.current && data.length > 0) {
-      candlestickSeriesRef.current.setData(data);
-      
-      // Actualizar volumen
-      if (volumeSeriesRef.current) {
+      // ✅ Cargar datos existentes si los hay
+      if (data.length > 0) {
+        console.log('📊 Cargando', data.length, 'velas al chart');
+        candlestickSeries.setData(data);
+        
         const volumeData = data.map(d => ({
           time: d.time,
           value: d.volume,
           color: d.close >= d.open ? 'rgba(14, 203, 129, 0.5)' : 'rgba(246, 70, 93, 0.5)',
         }));
-        volumeSeriesRef.current.setData(volumeData);
+        volumeSeries.setData(volumeData);
+        
+        chart.timeScale().fitContent();
       }
 
-      // Ajustar vista
-      chartRef.current?.timeScale().fitContent();
-    }
+      // ✅ ResizeObserver para manejar cambios de tamaño
+      const resizeObserver = new ResizeObserver((entries) => {
+        if (!chartRef.current || !wrapper) return;
+        
+        const entry = entries[0];
+        const { width, height } = entry.contentRect;
+        
+        if (width > 0 && height > 0) {
+          chartRef.current.applyOptions({
+            width: width,
+            height: height,
+          });
+          
+          chartRef.current.timeScale().fitContent();
+        }
+      });
+
+      resizeObserver.observe(wrapper);
+      resizeObserverRef.current = resizeObserver;
+
+      console.log('✅ Chart creado exitosamente');
+    }, 50); // ✅ Pequeño delay para asegurar que el DOM esté listo
+
+    // Cleanup
+    return () => {
+      clearTimeout(timeoutId);
+      
+      if (resizeObserverRef.current) {
+        resizeObserverRef.current.disconnect();
+        resizeObserverRef.current = null;
+      }
+      
+      if (chartRef.current) {
+        console.log('🧹 Limpiando chart en cleanup');
+        chartRef.current.remove();
+        chartRef.current = null;
+        candlestickSeriesRef.current = null;
+        volumeSeriesRef.current = null;
+      }
+    };
+  }, [themeMode]); // ✅ Se recrea cuando cambia el tema
+
+  // ✅ Actualizar datos cuando cambian (independiente del tema)
+  useEffect(() => {
+    if (!candlestickSeriesRef.current || !volumeSeriesRef.current) return;
+    if (data.length === 0) return;
+
+    console.log('📊 Actualizando datos del chart:', data.length, 'velas');
+
+    candlestickSeriesRef.current.setData(data);
+    
+    const volumeData = data.map(d => ({
+      time: d.time,
+      value: d.volume,
+      color: d.close >= d.open ? 'rgba(14, 203, 129, 0.5)' : 'rgba(246, 70, 93, 0.5)',
+    }));
+    volumeSeriesRef.current.setData(volumeData);
+
+    chartRef.current?.timeScale().fitContent();
   }, [data]);
 
   // Manejar cambio de intervalo
