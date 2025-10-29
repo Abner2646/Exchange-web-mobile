@@ -63,70 +63,91 @@ const TradingChart = ({ data = [], pair, loading, onIntervalChange }) => {
 
   // Crear el gráfico
   useEffect(() => {
-    if (!chartContainerRef.current) return;
-    console.log('📈 Chart data received:', data);
-  console.log('📊 Chart container:', chartContainerRef.current);
-  console.log('📐 Container dimensions:', {
-    width: chartContainerRef.current?.clientWidth,
-    height: chartContainerRef.current?.clientHeight
-  })
+  if (!chartContainerRef.current) return;
 
-    // Crear instancia del gráfico
-    const chart = LightweightCharts.createChart(chartContainerRef.current, {
-      width: chartContainerRef.current.clientWidth,
-      height: chartContainerRef.current.clientHeight,
-      ...getChartOptions(),
+  // Limpiar gráfico anterior
+  if (chartRef.current) {
+    chartRef.current.remove();
+    chartRef.current = null;
+  }
+
+  // ✅ OBTENER dimensiones del contenedor PADRE
+  const wrapper = chartContainerRef.current;
+  const rect = wrapper.getBoundingClientRect();
+  const width = rect.width;
+  const height = rect.height;
+
+  console.log('📐 Dimensiones del contenedor:', { width, height });
+
+  // ✅ Si no hay dimensiones válidas, esperar
+  if (width === 0 || height === 0) {
+    console.warn('⚠️ Contenedor sin dimensiones, esperando...');
+    return;
+  }
+
+  // Crear gráfico con dimensiones exactas del contenedor
+  const chart = LightweightCharts.createChart(wrapper, {
+    width: width,
+    height: height,
+    ...getChartOptions(),
+  });
+
+  chartRef.current = chart;
+
+  // Crear series
+  const candlestickSeries = chart.addCandlestickSeries({
+    upColor: '#0ECB81',
+    downColor: '#F6465D',
+    borderUpColor: '#0ECB81',
+    borderDownColor: '#F6465D',
+    wickUpColor: '#0ECB81',
+    wickDownColor: '#F6465D',
+  });
+
+  candlestickSeriesRef.current = candlestickSeries;
+
+  const volumeSeries = chart.addHistogramSeries({
+    color: '#26a69a',
+    priceFormat: {
+      type: 'volume',
+    },
+    priceScaleId: '',
+    scaleMargins: {
+      top: 0.8,
+      bottom: 0,
+    },
+  });
+
+  volumeSeriesRef.current = volumeSeries;
+
+  // ✅ Manejar resize con ResizeObserver (mejor que window.resize)
+  const resizeObserver = new ResizeObserver((entries) => {
+    if (!chartRef.current || !wrapper) return;
+    
+    const entry = entries[0];
+    const { width, height } = entry.contentRect;
+    
+    console.log('📐 Resize detectado:', { width, height });
+    
+    chartRef.current.applyOptions({
+      width: width,
+      height: height,
     });
+    
+    chartRef.current.timeScale().fitContent();
+  });
 
-    chartRef.current = chart;
+  resizeObserver.observe(wrapper);
 
-    // Crear serie de velas
-    const candlestickSeries = chart.addCandlestickSeries({
-      upColor: '#0ECB81',
-      downColor: '#F6465D',
-      borderUpColor: '#0ECB81',
-      borderDownColor: '#F6465D',
-      wickUpColor: '#0ECB81',
-      wickDownColor: '#F6465D',
-    });
-
-    candlestickSeriesRef.current = candlestickSeries;
-
-    // Crear serie de volumen
-    const volumeSeries = chart.addHistogramSeries({
-      color: '#26a69a',
-      priceFormat: {
-        type: 'volume',
-      },
-      priceScaleId: '',
-      scaleMargins: {
-        top: 0.8,
-        bottom: 0,
-      },
-    });
-
-    volumeSeriesRef.current = volumeSeries;
-
-    // Manejar resize
-    const handleResize = () => {
-      if (chartContainerRef.current && chartRef.current) {
-        chartRef.current.applyOptions({
-          width: chartContainerRef.current.clientWidth,
-          height: chartContainerRef.current.clientHeight,
-        });
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-
-    // Cleanup
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      if (chartRef.current) {
-        chartRef.current.remove();
-      }
-    };
-  }, [themeMode]);
+  // Cleanup
+  return () => {
+    resizeObserver.disconnect();
+    if (chartRef.current) {
+      chartRef.current.remove();
+      chartRef.current = null;
+    }
+  };
+}, [themeMode]);
 
   // Actualizar datos
   useEffect(() => {

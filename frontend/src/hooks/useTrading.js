@@ -127,38 +127,59 @@ const loadTradingPairs = useCallback(async () => {
   /**
    * Cargar order book
    */
-  const loadOrderBook = useCallback(async (depth = 20) => {
-    if (!activePair) return;
+const loadOrderBook = useCallback(async (depth = 20) => {
+  if (!activePair) {
+    console.log('⚠️ No hay par activo para order book');
+    return;
+  }
 
-    try {
-      setLoading(prev => ({ ...prev, orderBook: true }));
-      setErrors(prev => ({ ...prev, orderBook: null }));
+  try {
+    setLoading(prev => ({ ...prev, orderBook: true }));
+    setErrors(prev => ({ ...prev, orderBook: null }));
 
-      const response = await tradingService.getOrderBook(activePair.id, depth);
-      
-      // ✅ MANEJO SEGURO DE LA RESPUESTA
-      let orderBookData = { bids: [], asks: [] };
-      
-      if (response && response.success && response.data) {
-        orderBookData = response.data;
-      } else if (response && (response.bids || response.asks)) {
-        orderBookData = response;
-      }
-      
-      // ✅ ASEGURAR ESTRUCTURA CORRECTA
-      setOrderBook({
-        bids: Array.isArray(orderBookData.bids) ? orderBookData.bids : [],
-        asks: Array.isArray(orderBookData.asks) ? orderBookData.asks : []
-      });
-      
-    } catch (error) {
-      console.error('Error loading order book:', error);
-      setErrors(prev => ({ ...prev, orderBook: error.message }));
-      setOrderBook({ bids: [], asks: [] }); // ✅ RESET EN CASO DE ERROR
-    } finally {
-      setLoading(prev => ({ ...prev, orderBook: false }));
+    console.log('📖 === CARGANDO ORDER BOOK ===');
+    console.log('🎯 Pair:', activePair.symbol);
+    console.log('🆔 Pair ID:', activePair.id);
+    console.log('📏 Depth:', depth);
+
+    const response = await tradingService.getOrderBook(activePair.id, depth);
+    
+    console.log('📦 Response COMPLETA de Order Book:', response);
+    console.log('📦 Response JSON:', JSON.stringify(response, null, 2));
+    
+    let orderBookData = { bids: [], asks: [] };
+    
+    if (response && response.success && response.data) {
+      orderBookData = response.data;
+    } else if (response && (response.bids || response.asks)) {
+      orderBookData = response;
     }
-  }, [activePair]);
+    
+    console.log('✅ Order Book procesado:');
+    console.log('  📗 Bids:', orderBookData.bids?.length || 0);
+    console.log('  📕 Asks:', orderBookData.asks?.length || 0);
+    
+    if (orderBookData.bids?.length > 0) {
+      console.log('  📗 Primer bid:', orderBookData.bids[0]);
+    }
+    if (orderBookData.asks?.length > 0) {
+      console.log('  📕 Primer ask:', orderBookData.asks[0]);
+    }
+    
+    setOrderBook({
+      bids: Array.isArray(orderBookData.bids) ? orderBookData.bids : [],
+      asks: Array.isArray(orderBookData.asks) ? orderBookData.asks : []
+    });
+    
+  } catch (error) {
+    console.error('❌ Error loading order book:', error);
+    console.error('❌ Error completo:', error.response?.data || error.message);
+    setErrors(prev => ({ ...prev, orderBook: error.message }));
+    setOrderBook({ bids: [], asks: [] });
+  } finally {
+    setLoading(prev => ({ ...prev, orderBook: false }));
+  }
+}, [activePair]);
 
   // ==================== CHART DATA ====================
 
@@ -370,26 +391,41 @@ const loadChartData = useCallback(async (interval = '1h', filters = {}) => {
   /**
    * Cargar órdenes activas del usuario
    */
-  const loadActiveOrders = useCallback(async () => {
-    try {
-      const response = await tradingService.getActiveOrders();
-      
-      // ✅ MANEJO SEGURO DE LA RESPUESTA
-      let ordersData = [];
-      
-      if (response && response.success && Array.isArray(response.data)) {
-        ordersData = response.data;
-      } else if (Array.isArray(response)) {
-        ordersData = response;
-      }
-      
-      setActiveOrders(ordersData);
-      
-    } catch (error) {
-      console.error('Error loading active orders:', error);
-      setActiveOrders([]); // ✅ ARRAY VACÍO EN CASO DE ERROR
+
+const loadActiveOrders = useCallback(async () => {
+  try {
+    console.log('📋 === CARGANDO ÓRDENES ACTIVAS ===');
+    
+    const response = await tradingService.getActiveOrders();
+    
+    console.log('📦 Response COMPLETA de Active Orders:', response);
+    console.log('📦 Response JSON:', JSON.stringify(response, null, 2));
+    
+    let ordersData = [];
+    
+    if (response && response.success && Array.isArray(response.data)) {
+      ordersData = response.data;
+    } else if (Array.isArray(response)) {
+      ordersData = response;
+    } else if (response && Array.isArray(response.orders)) {
+      ordersData = response.orders;
     }
-  }, []);
+    
+    console.log('✅ Órdenes activas procesadas:', ordersData.length);
+    if (ordersData.length > 0) {
+      console.log('📋 Primera orden:', ordersData[0]);
+    } else {
+      console.log('⚠️ No hay órdenes activas');
+    }
+    
+    setActiveOrders(ordersData);
+    
+  } catch (error) {
+    console.error('❌ Error loading active orders:', error);
+    console.error('❌ Error completo:', error.response?.data || error.message);
+    setActiveOrders([]);
+  }
+}, []);
 
   /**
    * Cargar todas las órdenes del usuario

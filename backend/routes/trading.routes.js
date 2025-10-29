@@ -208,6 +208,51 @@ router.get('/pairs/:pairId',
 // RUTAS DE ADMIN (Gestión de Pares)
 // ================================
 
+router.post('/pairs/auto-create',
+  authenticateToken,
+  isSuperAdmin,
+  tradingPairsController.autoCreatePairs
+);
+/*
+POST /api/trading/pairs/auto-create
+
+Crea automáticamente todos los pares de trading contra:
+- Stablecoins (USDT, USDC, BUSD, DAI, TUSD, USDD)
+- BTC
+- ETH
+
+También crea pares estratégicos entre quote assets (ETH/BTC, ETH/USDT, BTC/USDT, etc.)
+
+Body (opcional):
+{
+  "dryRun": false,  // true para simular sin crear
+  "customQuoteAssets": ["USDT", "BTC"],  // opcional: usar solo estas quote assets
+  "skipExisting": true,  // true para no reintentrar pares existentes (default: true)
+  "defaultFees": {
+    "makerFeePercent": 0.1,
+    "takerFeePercent": 0.15
+  }
+}
+
+Response:
+{
+  "success": true,
+  "created": 45,
+  "skipped": 3,
+  "errors": 0,
+  "pairs": [...],
+  "summary": {
+    "totalPairs": 45,
+    "byQuoteAsset": {
+      "USDT": 15,
+      "BTC": 12,
+      "ETH": 10,
+      ...
+    }
+  }
+}
+*/
+
 router.post('/pairs', //Bien
   authenticateToken,
   isSuperAdmin,

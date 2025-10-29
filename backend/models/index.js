@@ -28,7 +28,7 @@ const usuarioModel = require('./usuario.model');
 const valoracionModel = require('./valoracion.model');
 const walletMaestraModel = require('./walletMaestra.model');
 
-// 🆕 TRADING MODELS
+// TRADING MODELS
 const tradingPairModel = require('./tradingPair.model.js');
 const orderModel = require('./order.model');
 const tradeModel = require('./trade.model');

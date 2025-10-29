@@ -12,38 +12,42 @@ const OrderForm = ({ pair, balance, onSubmit, loading }) => {
 
   // Obtener balance disponible según el lado de la orden
 const availableBalance = useMemo(() => {
-  if (!balance || !pair) return 0;
+  console.log('💰 === CALCULANDO BALANCE DISPONIBLE ===');
+  console.log('📦 Balance completo:', balance);
+  console.log('🎯 Pair actual:', pair);
+  console.log('🔄 Side:', side);
+  
+  if (!balance || !pair) {
+    console.log('⚠️ No hay balance o pair');
+    return 0;
+  }
 
   if (side === 'buy') {
-    // Intentar diferentes propiedades para encontrar el balance
-    const quoteBalance = balance.find(b => 
-      b.criptomonedaId === pair.quoteAssetId ||
-      b.assetId === pair.quoteAssetId ||
-      b.symbol === pair.quoteAsset?.simbolo ||
-      b.asset === pair.quoteAsset?.simbolo
-    );
+    console.log('🔍 Buscando QUOTE asset (para comprar)');
+    console.log('🆔 Quote Asset ID buscado:', pair.quoteAssetId);
     
-    // Intentar diferentes propiedades para el saldo disponible
-    return parseFloat(
-      quoteBalance?.disponible || 
-      quoteBalance?.available || 
-      quoteBalance?.free || 
-      0
-    );
+    const quoteBalance = balance.find(b => {
+      console.log('  Comparando:', b.criptomonedaId, '===', pair.quoteAssetId, '?', b.criptomonedaId === pair.quoteAssetId);
+      return b.criptomonedaId === pair.quoteAssetId;
+    });
+    
+    console.log('✅ Quote balance encontrado:', quoteBalance);
+    const available = parseFloat(quoteBalance?.available || 0);
+    console.log('💵 Disponible (QUOTE):', available);
+    return available;
   } else {
-    const baseBalance = balance.find(b => 
-      b.criptomonedaId === pair.baseAssetId ||
-      b.assetId === pair.baseAssetId ||
-      b.symbol === pair.baseAsset?.simbolo ||
-      b.asset === pair.baseAsset?.simbolo
-    );
+    console.log('🔍 Buscando BASE asset (para vender)');
+    console.log('🆔 Base Asset ID buscado:', pair.baseAssetId);
     
-    return parseFloat(
-      baseBalance?.disponible || 
-      baseBalance?.available || 
-      baseBalance?.free || 
-      0
-    );
+    const baseBalance = balance.find(b => {
+      console.log('  Comparando:', b.criptomonedaId, '===', pair.baseAssetId, '?', b.criptomonedaId === pair.baseAssetId);
+      return b.criptomonedaId === pair.baseAssetId;
+    });
+    
+    console.log('✅ Base balance encontrado:', baseBalance);
+    const available = parseFloat(baseBalance?.available || 0);
+    console.log('💵 Disponible (BASE):', available);
+    return available;
   }
 }, [balance, pair, side]);
 

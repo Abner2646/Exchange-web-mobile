@@ -1,6 +1,6 @@
 /* src/styles/Trading.css */
 
-/* === CONTAINER === */
+/* === CONTAINER ===  */
 .trading-container {
   padding: var(--spacing-xxl);
   max-width: 1920px;
@@ -30,41 +30,68 @@
 }
 
 /* === LAYOUT === */
-.trading-layout {
-  display: grid;
-  grid-template-columns: 300px 1fr 380px;
-  gap: var(--spacing-lg);
-  min-height: calc(100vh - 300px);
-}
-
 .trading-main {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-lg);
+  gap: 20px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
+.trading-layout {
+  display: grid;
+  /* ✅ Aumentar el ancho de las columnas laterales */
+  grid-template-columns: 300px 1fr 380px; /* izq: 300px, centro: flexible, der: 380px */
+  gap: 20px;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 0;
+}
+.trading-container {
+  width: 100%;
+  max-width: 100%;
+  padding: 20px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+/* ✅ Para evitar overflow */
 .trading-sidebar {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-lg);
+  gap: 20px;
+  height: fit-content;
+  overflow-y: auto;
+}
+
+.trading-sidebar-left {
+  position: sticky;
+  top: 20px;
+}
+
+.trading-sidebar-right {
+  position: sticky;
+  top: 20px;
 }
 
 .trading-sidebar-section {
-  background: var(--bg-elevated);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border-subtle);
-  box-shadow: var(--shadow-md);
+  background: var(--bg-secondary);
+  border-radius: 12px;
   overflow: hidden;
+  /* ✅ Sin padding que reduzca espacio interno */
 }
 
 /* === CHART SECTION === */
 .trading-chart-section {
-  background: var(--bg-elevated);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border-subtle);
-  box-shadow: var(--shadow-md);
-  min-height: 600px;
-  overflow: hidden;
+  width: 100%;
+  height: 500px; /* ✅ ALTURA FIJA */
+  min-height: 500px;
+  max-height: 500px;
+  margin-bottom: 20px;
+  box-sizing: border-box;
 }
 
 /* === ORDERS SECTION === */
@@ -119,3 +146,9 @@
     min-height: 400px;
   }
 }
+
+/* src/styles/Trading.css - TEMPORAL PARA DEBUG */
+/*
+* {
+  outline: 1px solid red !important;
+}*/
