@@ -1,27 +1,36 @@
 /* src/styles/OrderBook.css */
 
+/* ============================================
+   ORDER BOOK - PROFESSIONAL BINANCE STYLE
+   ============================================ */
+
+/* === BASE: 1440-1920px === */
+
 .orderbook-container {
   display: flex;
   flex-direction: column;
-  background: var(--bg-secondary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
   border-radius: 12px;
   overflow: hidden;
-  height: 500px; /* ✅ Altura fija */
-  min-height: 500px;
+  height: 450px;
+  min-height: 450px;
+  max-height: 450px;
   box-sizing: border-box;
+  box-shadow: none;
 }
 
 .orderbook-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px; /* ✅ Aumentar padding */
-  border-bottom: 1px solid var(--border-color);
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 
 .orderbook-title {
-  font-size: 15px; /* ✅ Aumentar tamaño */
+  font-size: 0.938rem;
   font-weight: 600;
   color: var(--text-primary);
   margin: 0;
@@ -34,28 +43,29 @@
 }
 
 .orderbook-spread-label {
-  font-size: 12px;
+  font-size: 0.688rem;
   color: var(--text-secondary);
 }
 
 .orderbook-spread-value {
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
 }
 
 .orderbook-headers {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 8px;
-  padding: 8px 20px; /* ✅ Aumentar padding lateral */
-  background: var(--bg-tertiary);
-  border-bottom: 1px solid var(--border-color);
+  padding: 6px 16px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 
 .orderbook-header-cell {
-  font-size: 11px;
+  font-size: 0.688rem;
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
@@ -72,12 +82,15 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 .orderbook-section {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   position: relative;
+  min-height: 0;
 }
 
 .orderbook-section::-webkit-scrollbar {
@@ -85,7 +98,7 @@
 }
 
 .orderbook-section::-webkit-scrollbar-thumb {
-  background: var(--border-color);
+  background: var(--border-primary);
   border-radius: 2px;
 }
 
@@ -99,14 +112,14 @@
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 8px;
-  padding: 4px 20px; /* ✅ Aumentar padding lateral */
+  padding: 3px 16px;
   cursor: pointer;
-  transition: background 0.1s;
-  font-size: 12px; /* ✅ Aumentar tamaño de texto */
+  transition: background 0.1s ease;
+  font-size: 0.75rem;
 }
 
 .orderbook-row:hover {
-  background: var(--bg-tertiary);
+  background: var(--bg-secondary);
 }
 
 .orderbook-row-bg {
@@ -114,16 +127,16 @@
   top: 0;
   right: 0;
   height: 100%;
-  opacity: 0.15;
+  opacity: 0.12;
   pointer-events: none;
 }
 
 .orderbook-row-bg-bid {
-  background: var(--success-color);
+  background: var(--success);
 }
 
 .orderbook-row-bg-ask {
-  background: var(--error-color);
+  background: var(--error);
 }
 
 .orderbook-cell {
@@ -131,6 +144,7 @@
   font-variant-numeric: tabular-nums;
   position: relative;
   z-index: 1;
+  color: var(--text-primary);
 }
 
 .orderbook-cell:first-child {
@@ -138,12 +152,12 @@
 }
 
 .orderbook-price-buy {
-  color: var(--success-color);
+  color: var(--success);
   font-weight: 600;
 }
 
 .orderbook-price-sell {
-  color: var(--error-color);
+  color: var(--error);
   font-weight: 600;
 }
 
@@ -155,30 +169,30 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 20px; /* ✅ Aumentar padding */
-  background: var(--bg-tertiary);
-  border-top: 1px solid var(--border-color);
-  border-bottom: 1px solid var(--border-color);
+  padding: 10px 16px;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 
 .orderbook-price-label {
-  font-size: 12px;
+  font-size: 0.688rem;
   color: var(--text-secondary);
 }
 
 .orderbook-price-value {
-  font-size: 14px; /* ✅ Aumentar tamaño */
+  font-size: 0.875rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
 .orderbook-price-value.positive {
-  color: var(--success-color);
+  color: var(--success);
 }
 
 .orderbook-price-value.negative {
-  color: var(--error-color);
+  color: var(--error);
 }
 
 .orderbook-loading,
@@ -187,24 +201,160 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px 20px;
+  padding: 32px 16px;
   color: var(--text-secondary);
   text-align: center;
   height: 100%;
 }
 
 .orderbook-spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid var(--border-color);
-  border-top-color: var(--primary-color);
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--border-subtle);
+  border-top-color: var(--brand-primary);
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin-bottom: 12px;
+  animation: orderbook-spin 0.8s linear infinite;
+  margin-bottom: 10px;
+}
+
+@keyframes orderbook-spin {
+  to { transform: rotate(360deg); }
 }
 
 .orderbook-loading p,
 .orderbook-empty p {
   margin: 4px 0;
-  font-size: 13px;
+  font-size: 0.75rem;
+}
+
+/* ============================================
+   RESPONSIVE BREAKPOINTS
+   ============================================ */
+
+/* === LARGE DESKTOP: 1920px+ === */
+@media (min-width: 1920px) {
+  .orderbook-container {
+    height: 480px;
+    min-height: 480px;
+    max-height: 480px;
+  }
+
+  .orderbook-header {
+    padding: 14px 20px;
+  }
+
+  .orderbook-headers {
+    padding: 8px 20px;
+  }
+
+  .orderbook-row {
+    padding: 4px 20px;
+    font-size: 0.813rem;
+  }
+
+  .orderbook-current-price {
+    padding: 12px 20px;
+  }
+
+  .orderbook-title {
+    font-size: 1rem;
+  }
+
+  .orderbook-price-value {
+    font-size: 0.938rem;
+  }
+}
+
+/* === LARGE LAPTOP: 1280-1440px === */
+@media (max-width: 1440px) {
+  .orderbook-container {
+    height: 420px;
+    min-height: 420px;
+    max-height: 420px;
+  }
+
+  .orderbook-header {
+    padding: 10px 14px;
+  }
+
+  .orderbook-headers {
+    padding: 6px 14px;
+  }
+
+  .orderbook-row {
+    padding: 3px 14px;
+    font-size: 0.688rem;
+  }
+
+  .orderbook-current-price {
+    padding: 8px 14px;
+  }
+
+  .orderbook-title {
+    font-size: 0.875rem;
+  }
+
+  .orderbook-spread-value {
+    font-size: 0.688rem;
+  }
+
+  .orderbook-price-value {
+    font-size: 0.813rem;
+  }
+}
+
+/* === STANDARD LAPTOP: 1024-1280px === */
+@media (max-width: 1280px) {
+  .orderbook-container {
+    height: 400px;
+    min-height: 400px;
+    max-height: 400px;
+    font-size: 95%;
+  }
+
+  .orderbook-header {
+    padding: 10px 12px;
+  }
+
+  .orderbook-headers {
+    padding: 6px 12px;
+  }
+
+  .orderbook-row {
+    padding: 2px 12px;
+    font-size: 0.688rem;
+  }
+
+  .orderbook-current-price {
+    padding: 8px 12px;
+  }
+
+  .orderbook-title {
+    font-size: 0.813rem;
+  }
+}
+
+/* === TABLET/MOBILE: <1024px === */
+@media (max-width: 1024px) {
+  .orderbook-container {
+    height: 450px;
+    min-height: 450px;
+    max-height: 450px;
+  }
+}
+
+@media (max-width: 768px) {
+  .orderbook-container {
+    height: 400px;
+    min-height: 400px;
+    max-height: 400px;
+  }
+
+  .orderbook-header {
+    padding: 10px 12px;
+  }
+
+  .orderbook-row {
+    padding: 3px 12px;
+  }
 }

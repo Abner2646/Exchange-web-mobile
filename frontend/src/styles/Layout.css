@@ -12,7 +12,7 @@
 .layout-main {
   flex: 1;
   width: 100%;
-  max-width: 1440px;
+  max-width: 1940px; /*1440*/
   margin: 0 auto;
   
   /* ⬇️ AGREGÁ ESTO - Compensa la altura de navbar (64px) + espaciado */

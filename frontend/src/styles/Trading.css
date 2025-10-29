@@ -1,123 +1,234 @@
 /* src/styles/Trading.css */
 
-/* === CONTAINER ===  */
+/* ============================================
+   TRADING PAGE - PROFESSIONAL BINANCE STYLE
+   ============================================ */
+
+/* === BASE: 1440-1920px (Desktop Standard) === */
+
 .trading-container {
-  padding: var(--spacing-xxl);
-  max-width: 1920px;
+  padding: 16px;
+  max-width: 100%;
   margin: 0 auto;
   min-height: 100vh;
+  background: var(--bg-primary);
+  box-sizing: border-box;
 }
 
 /* === HEADER === */
 .trading-header {
-  margin-bottom: var(--spacing-xxl);
-  padding-bottom: var(--spacing-xl);
+  margin-bottom: 16px;
+  padding-bottom: 12px;
   border-bottom: 1px solid var(--border-subtle);
 }
 
 .trading-title {
-  font-size: 3rem;
-  font-weight: 700;
+  font-size: 1.5rem;
+  font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: var(--spacing-md);
-  line-height: 1.1;
+  margin-bottom: 4px;
+  line-height: 1.2;
 }
 
 .trading-description {
-  font-size: 1.25rem;
+  font-size: 0.875rem;
   color: var(--text-secondary);
-  line-height: 1.6;
+  line-height: 1.4;
 }
 
-/* === LAYOUT === */
+/* === LAYOUT GRID === */
+.trading-layout {
+  display: grid;
+  grid-template-columns: 260px 1fr 340px;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+  align-items: start;
+}
+
+/* === SIDEBARS === */
+.trading-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: fit-content;
+}
+
+.trading-sidebar-left {
+  position: sticky;
+  top: 16px;
+}
+
+.trading-sidebar-right {
+  position: sticky;
+  top: 16px;
+  /* ✅ SOLUCIÓN PROBLEMA 1: Asegurar altura mínima */
+  min-height: 862px;
+}
+
+.trading-sidebar-section {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: none;
+}
+
+/* === MAIN CONTENT === */
 .trading-main {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
   min-width: 0;
   width: 100%;
   box-sizing: border-box;
 }
 
-.trading-layout {
-  display: grid;
-  /* ✅ Aumentar el ancho de las columnas laterales */
-  grid-template-columns: 300px 1fr 380px; /* izq: 300px, centro: flexible, der: 380px */
-  gap: 20px;
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  box-sizing: border-box;
-  min-height: 0;
-}
-.trading-container {
-  width: 100%;
-  max-width: 100%;
-  padding: 20px;
-  margin: 0 auto;
-  box-sizing: border-box;
-}
-
-/* ✅ Para evitar overflow */
-.trading-sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  height: fit-content;
-  overflow-y: auto;
-}
-
-.trading-sidebar-left {
-  position: sticky;
-  top: 20px;
-}
-
-.trading-sidebar-right {
-  position: sticky;
-  top: 20px;
-}
-
-.trading-sidebar-section {
-  background: var(--bg-secondary);
-  border-radius: 12px;
-  overflow: hidden;
-  /* ✅ Sin padding que reduzca espacio interno */
-}
-
 /* === CHART SECTION === */
 .trading-chart-section {
   width: 100%;
-  height: 500px; /* ✅ ALTURA FIJA */
-  min-height: 500px;
-  max-height: 500px;
-  margin-bottom: 20px;
+  height: 600px;
+  min-height: 600px;
+  max-height: 600px;
   box-sizing: border-box;
 }
 
 /* === ORDERS SECTION === */
 .trading-orders-section {
   background: var(--bg-elevated);
-  border-radius: var(--radius-lg);
+  border-radius: 12px;
   border: 1px solid var(--border-subtle);
-  box-shadow: var(--shadow-md);
+  box-shadow: none;
   overflow: hidden;
 }
 
-/* === RESPONSIVE === */
-@media (max-width: 1440px) {
+/* ============================================
+   RESPONSIVE BREAKPOINTS
+   ============================================ */
+
+/* === LARGE DESKTOP: 1920px+ === */
+@media (min-width: 1920px) {
+  .trading-container {
+    /* ✅ SOLUCIÓN PROBLEMA 2: Aumentar ancho y padding */
+    padding: 20px 40px;
+    max-width: 1920px;
+    padding: 20px 40px;
+    max-width: none;
+  }
+
   .trading-layout {
-    grid-template-columns: 280px 1fr 350px;
+    /* ✅ Columnas más anchas para aprovechar espacio */
+    grid-template-columns: 300px 1fr 380px;
+    gap: 16px;
+  }
+
+  .trading-chart-section {
+    height: 650px;
+    min-height: 650px;
+    max-height: 650px;
+  }
+
+  .trading-header {
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+  }
+
+  .trading-title {
+    font-size: 1.75rem;
+  }
+
+  /* ✅ Ajustar altura mínima de sidebar derecha */
+  .trading-sidebar-right {
+    min-height: 920px;
   }
 }
 
-@media (max-width: 1200px) {
+/* === EXTRA LARGE DESKTOP: 2560px+ === */
+@media (min-width: 2560px) {
+  .trading-container {
+    padding: 24px 60px;
+    max-width: 2400px;
+  }
+
+  .trading-layout {
+    grid-template-columns: 320px 1fr 400px;
+    gap: 20px;
+  }
+
+  .trading-chart-section {
+    height: 700px;
+    min-height: 700px;
+    max-height: 700px;
+  }
+
+  .trading-sidebar-right {
+    min-height: 980px;
+  }
+}
+
+/* === LARGE LAPTOP: 1280-1440px === */
+@media (max-width: 1440px) {
+  .trading-layout {
+    grid-template-columns: 240px 1fr 320px;
+    gap: 12px;
+  }
+
+  .trading-chart-section {
+    height: 550px;
+    min-height: 550px;
+    max-height: 550px;
+  }
+
+  .trading-sidebar-right {
+    min-height: 812px;
+  }
+}
+
+/* === STANDARD LAPTOP: 1024-1280px === */
+@media (max-width: 1280px) {
+  .trading-container {
+    padding: 12px;
+  }
+
+  .trading-layout {
+    grid-template-columns: 220px 1fr 300px;
+    gap: 10px;
+  }
+
+  .trading-chart-section {
+    height: 500px;
+    min-height: 500px;
+    max-height: 500px;
+  }
+
+  .trading-title {
+    font-size: 1.25rem;
+  }
+
+  .trading-description {
+    font-size: 0.813rem;
+  }
+
+  .trading-header {
+    margin-bottom: 12px;
+  }
+
+  .trading-sidebar-right {
+    min-height: 762px;
+  }
+}
+
+/* === TABLET: 768-1024px === */
+@media (max-width: 1024px) {
   .trading-layout {
     grid-template-columns: 1fr;
     grid-template-rows: auto;
+    gap: 16px;
   }
 
   .trading-sidebar-left {
     order: 1;
+    position: static;
   }
 
   .trading-main {
@@ -126,29 +237,44 @@
 
   .trading-sidebar-right {
     order: 3;
-  }
-}
-
-@media (max-width: 768px) {
-  .trading-container {
-    padding: var(--spacing-lg);
-  }
-
-  .trading-title {
-    font-size: 2rem;
-  }
-
-  .trading-description {
-    font-size: 1rem;
+    position: static;
+    min-height: auto;
   }
 
   .trading-chart-section {
-    min-height: 400px;
+    height: 450px;
+    min-height: 450px;
+    max-height: 450px;
   }
 }
 
-/* src/styles/Trading.css - TEMPORAL PARA DEBUG */
-/*
-* {
-  outline: 1px solid red !important;
-}*/
+/* === MOBILE: <768px === */
+@media (max-width: 768px) {
+  .trading-container {
+    padding: 8px;
+  }
+
+  .trading-header {
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+  }
+
+  .trading-title {
+    font-size: 1.125rem;
+  }
+
+  .trading-description {
+    font-size: 0.75rem;
+  }
+
+  .trading-chart-section {
+    height: 400px;
+    min-height: 400px;
+    max-height: 400px;
+  }
+
+  .trading-layout {
+    gap: 12px;
+  }
+}
+

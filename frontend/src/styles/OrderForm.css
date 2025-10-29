@@ -1,39 +1,47 @@
 /* src/styles/OrderForm.css */
 
-/* === CONTAINER === */
+/* ============================================
+   ORDER FORM - PROFESSIONAL BINANCE STYLE
+   ============================================ */
+
+/* === BASE: 1440-1920px === */
+
 .orderform-container {
   display: flex;
   flex-direction: column;
-  padding: 20px; /* ✅ Aumentar padding */
-  gap: 16px;
-  background: var(--bg-secondary);
+  padding: 16px;
+  gap: 14px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
   border-radius: 12px;
   box-sizing: border-box;
-  min-width: 340px; /* ✅ Ancho mínimo */
+  min-width: 340px;
+  box-shadow: none;
 }
 
 /* === SIDE SELECTOR === */
 .orderform-side-selector {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-lg);
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
 .orderform-side-btn {
-  padding: var(--spacing-md);
+  padding: 10px;
   background: var(--bg-secondary);
-  border: 2px solid transparent;
-  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
   color: var(--text-secondary);
-  font-size: 1rem;
+  font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 
 .orderform-side-btn:hover {
   background: var(--bg-tertiary);
+  border-color: var(--border-primary);
 }
 
 .orderform-side-buy.active {
@@ -51,21 +59,21 @@
 /* === TYPE SELECTOR === */
 .orderform-type-selector {
   display: flex;
-  gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-lg);
+  gap: 6px;
+  margin-bottom: 12px;
 }
 
 .orderform-type-btn {
   flex: 1;
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: 8px 12px;
   background: transparent;
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
+  border-radius: 6px;
   color: var(--text-secondary);
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 
 .orderform-type-btn:hover {
@@ -84,39 +92,41 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--spacing-md);
+  padding: 10px 12px;
   background: var(--bg-secondary);
-  border-radius: var(--radius-md);
-  margin-bottom: var(--spacing-lg);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  margin-bottom: 12px;
 }
 
 .orderform-balance-label {
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   color: var(--text-secondary);
 }
 
 .orderform-balance-value {
-  font-size: 0.875rem;
+  font-size: 0.813rem;
   font-weight: 600;
   color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
 }
 
 /* === FORM === */
 .orderform-form {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-lg);
+  gap: 14px;
 }
 
 /* === INPUT GROUP === */
 .orderform-input-group {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  gap: 6px;
 }
 
 .orderform-label {
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 500;
   color: var(--text-secondary);
 }
@@ -129,15 +139,16 @@
 
 .orderform-input {
   width: 100%;
-  padding: var(--spacing-lg);
-  padding-right: 60px;
+  padding: 10px 12px;
+  padding-right: 52px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
+  border-radius: 6px;
   color: var(--text-primary);
-  font-size: 1rem;
+  font-size: 0.875rem;
   outline: none;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
+  font-variant-numeric: tabular-nums;
 }
 
 .orderform-input:hover {
@@ -147,44 +158,49 @@
 .orderform-input:focus {
   border-color: var(--border-focus);
   background: var(--bg-primary);
-  box-shadow: 0 0 0 3px var(--border-focus-ring);
+  box-shadow: 0 0 0 2px var(--border-focus-ring);
 }
 
 .orderform-input.error {
   border-color: var(--error);
 }
 
+.orderform-input::placeholder {
+  color: var(--text-tertiary);
+}
+
 .orderform-input-suffix {
   position: absolute;
-  right: var(--spacing-lg);
-  font-size: 0.875rem;
+  right: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--text-tertiary);
   pointer-events: none;
 }
 
 .orderform-error {
-  font-size: 0.75rem;
+  font-size: 0.688rem;
   color: var(--error);
+  margin-top: 4px;
 }
 
 /* === PERCENTAGES === */
 .orderform-percentages {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: var(--spacing-sm);
+  gap: 6px;
 }
 
 .orderform-percentage-btn {
-  padding: var(--spacing-sm);
+  padding: 6px 8px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
+  border-radius: 4px;
   color: var(--text-secondary);
-  font-size: 0.875rem;
+  font-size: 0.688rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 
 .orderform-percentage-btn:hover {
@@ -203,48 +219,51 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--spacing-md);
-  background: var(--bg-tertiary);
-  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
 }
 
 .orderform-total-label {
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 500;
   color: var(--text-secondary);
 }
 
 .orderform-total-value {
-  font-size: 1rem;
+  font-size: 0.938rem;
   font-weight: 700;
   color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
 }
 
 /* === ERROR BANNER === */
 .orderform-error-banner {
-  padding: var(--spacing-md);
+  padding: 10px 12px;
   background: var(--error-bg);
   border: 1px solid var(--error);
-  border-radius: var(--radius-md);
+  border-radius: 6px;
   color: var(--error);
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 500;
   text-align: center;
 }
 
 /* === SUBMIT BUTTON === */
 .orderform-submit {
-  padding: var(--spacing-lg);
+  padding: 12px 16px;
   border: none;
-  border-radius: var(--radius-md);
-  font-size: 1rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--spacing-sm);
+  gap: 8px;
+  margin-top: 4px;
 }
 
 .orderform-submit:disabled {
@@ -259,8 +278,7 @@
 
 .orderform-submit-buy:hover:not(:disabled) {
   background: var(--buy-hover);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
 }
 
 .orderform-submit-sell {
@@ -270,13 +288,12 @@
 
 .orderform-submit-sell:hover:not(:disabled) {
   background: var(--sell-hover);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
 }
 
 .orderform-spinner {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border: 2px solid rgba(255, 255, 255, 0.3);
   border-top-color: white;
   border-radius: 50%;
@@ -284,22 +301,139 @@
 }
 
 @keyframes orderform-spin {
-  to {
-    transform: rotate(360deg);
-  }
+  to { transform: rotate(360deg); }
 }
 
-/* === RESPONSIVE === */
-@media (max-width: 768px) {
+/* ============================================
+   RESPONSIVE BREAKPOINTS
+   ============================================ */
+
+/* === LARGE DESKTOP: 1920px+ === */
+@media (min-width: 1920px) {
   .orderform-container {
-    padding: var(--spacing-md);
+    min-width: 360px;
+    padding: 18px;
+    gap: 16px;
+  }
+
+  .orderform-side-btn {
+    padding: 12px;
+    font-size: 0.938rem;
   }
 
   .orderform-input {
-    padding: var(--spacing-md);
+    padding: 12px 14px;
+    padding-right: 56px;
+    font-size: 0.938rem;
   }
 
   .orderform-submit {
-    padding: var(--spacing-md);
+    padding: 14px 18px;
+    font-size: 0.938rem;
+  }
+
+  .orderform-balance,
+  .orderform-total {
+    padding: 12px 14px;
+  }
+
+  .orderform-balance-value,
+  .orderform-total-value {
+    font-size: 1rem;
+  }
+}
+
+/* === LARGE LAPTOP: 1280-1440px === */
+@media (max-width: 1440px) {
+  .orderform-container {
+    min-width: 320px;
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .orderform-side-btn {
+    padding: 9px;
+    font-size: 0.813rem;
+  }
+
+  .orderform-input {
+    padding: 9px 10px;
+    padding-right: 48px;
+    font-size: 0.813rem;
+  }
+
+  .orderform-submit {
+    padding: 10px 14px;
+    font-size: 0.813rem;
+  }
+
+  .orderform-balance,
+  .orderform-total {
+    padding: 9px 10px;
+  }
+}
+
+/* === STANDARD LAPTOP: 1024-1280px === */
+@media (max-width: 1280px) {
+  .orderform-container {
+    min-width: 300px;
+    padding: 12px;
+    gap: 12px;
+    font-size: 95%;
+  }
+
+  .orderform-side-btn {
+    padding: 8px;
+    font-size: 0.75rem;
+  }
+
+  .orderform-input {
+    padding: 8px 10px;
+    padding-right: 44px;
+    font-size: 0.75rem;
+  }
+
+  .orderform-submit {
+    padding: 10px 12px;
+    font-size: 0.75rem;
+  }
+
+  .orderform-balance,
+  .orderform-total {
+    padding: 8px 10px;
+  }
+
+  .orderform-label {
+    font-size: 0.688rem;
+  }
+
+  .orderform-balance-label,
+  .orderform-total-label {
+    font-size: 0.688rem;
+  }
+}
+
+/* === TABLET/MOBILE: <1024px === */
+@media (max-width: 1024px) {
+  .orderform-container {
+    min-width: auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .orderform-container {
+    padding: 14px;
+  }
+
+  .orderform-side-btn {
+    padding: 10px;
+  }
+
+  .orderform-input {
+    padding: 10px 12px;
+  }
+
+  .orderform-submit {
+    padding: 12px 14px;
   }
 }

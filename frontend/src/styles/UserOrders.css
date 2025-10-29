@@ -1,19 +1,28 @@
 /* src/styles/UserOrders.css */
 
-/* === CONTAINER === */
+/* ============================================
+   USER ORDERS - PROFESSIONAL BINANCE STYLE
+   ============================================ */
+
+/* === BASE: 1440-1920px === */
+
 .userorders-container {
   display: flex;
   flex-direction: column;
-  padding: var(--spacing-lg);
+  padding: 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  box-shadow: none;
 }
 
 /* === HEADER === */
 .userorders-header {
-  margin-bottom: var(--spacing-lg);
+  margin-bottom: 14px;
 }
 
 .userorders-title {
-  font-size: 1.5rem;
+  font-size: 0.938rem;
   font-weight: 600;
   color: var(--text-primary);
   margin: 0;
@@ -22,22 +31,36 @@
 /* === FILTERS === */
 .userorders-filters {
   display: flex;
-  gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-lg);
+  gap: 6px;
+  margin-bottom: 14px;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.userorders-filters::-webkit-scrollbar {
+  height: 3px;
+}
+
+.userorders-filters::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.userorders-filters::-webkit-scrollbar-thumb {
+  background: var(--border-primary);
+  border-radius: 2px;
 }
 
 .userorders-filter-btn {
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: 6px 12px;
   background: transparent;
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
+  border-radius: 6px;
   color: var(--text-secondary);
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 
 .userorders-filter-btn:hover {
@@ -53,7 +76,9 @@
 
 /* === LIST === */
 .userorders-list {
-  min-height: 300px;
+  min-height: 280px;
+  max-height: 280px;
+  overflow-y: auto;
 }
 
 /* === LOADING === */
@@ -62,13 +87,13 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: var(--spacing-xxl);
-  gap: var(--spacing-md);
+  padding: 40px;
+  gap: 12px;
 }
 
 .userorders-spinner {
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   border: 3px solid var(--border-subtle);
   border-top-color: var(--brand-primary);
   border-radius: 50%;
@@ -76,14 +101,12 @@
 }
 
 @keyframes userorders-spin {
-  to {
-    transform: rotate(360deg);
-  }
+  to { transform: rotate(360deg); }
 }
 
 .userorders-loading p {
   color: var(--text-secondary);
-  font-size: 0.875rem;
+  font-size: 0.75rem;
 }
 
 /* === EMPTY === */
@@ -91,12 +114,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--spacing-xxl);
+  padding: 40px;
 }
 
 .userorders-empty p {
   color: var(--text-tertiary);
-  font-size: 0.875rem;
+  font-size: 0.75rem;
 }
 
 /* === TABLE === */
@@ -104,32 +127,34 @@
   display: flex;
   flex-direction: column;
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
+  border-radius: 8px;
   overflow: hidden;
 }
 
 .userorders-table-header {
   display: grid;
-  grid-template-columns: 140px 100px 80px 80px 100px 100px 120px 100px 120px;
-  padding: var(--spacing-md) var(--spacing-lg);
+  grid-template-columns: 130px 90px 75px 75px 90px 90px 110px 90px 110px;
+  padding: 8px 16px;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-subtle);
-  font-size: 0.75rem;
+  font-size: 0.688rem;
   font-weight: 600;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .userorders-table-row {
   display: grid;
-  grid-template-columns: 140px 100px 80px 80px 100px 100px 120px 100px 120px;
-  padding: var(--spacing-md) var(--spacing-lg);
+  grid-template-columns: 130px 90px 75px 75px 90px 90px 110px 90px 110px;
+  padding: 8px 16px;
   border-bottom: 1px solid var(--border-subtle);
-  transition: background 0.2s ease;
+  transition: background 0.1s ease;
+  font-size: 0.75rem;
 }
 
 .userorders-table-row:hover {
-  background: var(--bg-tertiary);
+  background: var(--bg-secondary);
 }
 
 .userorders-table-row:last-child {
@@ -139,8 +164,7 @@
 .userorders-table-cell {
   display: flex;
   align-items: center;
-  font-size: 0.875rem;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -150,19 +174,21 @@
 .userorders-pair {
   font-weight: 600;
   color: var(--text-primary);
+  font-size: 0.813rem;
 }
 
 /* === TYPE === */
 .userorders-type {
   text-transform: capitalize;
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
 }
 
 /* === SIDE === */
 .userorders-side {
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-sm);
-  font-size: 0.75rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.688rem;
   font-weight: 600;
   text-transform: uppercase;
 }
@@ -179,16 +205,16 @@
 
 /* === PERCENTAGE === */
 .userorders-percentage {
-  margin-left: var(--spacing-xs);
-  font-size: 0.75rem;
+  margin-left: 6px;
+  font-size: 0.688rem;
   color: var(--text-tertiary);
 }
 
 /* === STATUS BADGE === */
 .userorders-status-badge {
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--radius-sm);
-  font-size: 0.75rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.688rem;
   font-weight: 600;
   text-transform: uppercase;
 }
@@ -230,18 +256,18 @@
 
 /* === CANCEL BUTTON === */
 .userorders-cancel-btn {
-  padding: var(--spacing-xs) var(--spacing-md);
+  padding: 4px 10px;
   background: transparent;
   border: 1px solid var(--error);
-  border-radius: var(--radius-sm);
+  border-radius: 4px;
   color: var(--error);
-  font-size: 0.75rem;
+  font-size: 0.688rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   display: flex;
   align-items: center;
-  gap: var(--spacing-xs);
+  gap: 4px;
 }
 
 .userorders-cancel-btn:hover:not(:disabled) {
@@ -255,8 +281,8 @@
 }
 
 .userorders-cancel-spinner {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border: 2px solid rgba(255, 255, 255, 0.3);
   border-top-color: currentColor;
   border-radius: 50%;
@@ -264,25 +290,121 @@
 }
 
 @keyframes userorders-cancel-spin {
-  to {
-    transform: rotate(360deg);
-  }
+  to { transform: rotate(360deg); }
 }
 
-/* === RESPONSIVE === */
-@media (max-width: 1200px) {
+/* ============================================
+   RESPONSIVE BREAKPOINTS
+   ============================================ */
+
+/* === LARGE DESKTOP: 1920px+ === */
+@media (min-width: 1920px) {
+  .userorders-container {
+    padding: 20px;
+  }
+
+  .userorders-title {
+    font-size: 1rem;
+  }
+
   .userorders-table-header,
   .userorders-table-row {
-    grid-template-columns: repeat(9, minmax(100px, 1fr));
-    overflow-x: auto;
+    padding: 10px 20px;
+    grid-template-columns: 140px 100px 80px 80px 100px 100px 120px 100px 120px;
+  }
+
+  .userorders-table-row {
+    font-size: 0.813rem;
+  }
+
+  .userorders-pair {
+    font-size: 0.875rem;
+  }
+
+  .userorders-list {
+    min-height: 320px;
+    max-height: 320px;
   }
 }
 
-@media (max-width: 768px) {
+/* === LARGE LAPTOP: 1280-1440px === */
+@media (max-width: 1440px) {
   .userorders-container {
-    padding: var(--spacing-md);
+    padding: 14px;
   }
 
+  .userorders-title {
+    font-size: 0.875rem;
+  }
+
+  .userorders-table-header,
+  .userorders-table-row {
+    padding: 7px 14px;
+    grid-template-columns: 120px 85px 70px 70px 85px 85px 100px 85px 100px;
+  }
+
+  .userorders-table-row {
+    font-size: 0.688rem;
+  }
+
+  .userorders-pair {
+    font-size: 0.75rem;
+  }
+
+  .userorders-list {
+    min-height: 260px;
+    max-height: 260px;
+  }
+}
+
+/* === STANDARD LAPTOP: 1024-1280px === */
+@media (max-width: 1280px) {
+  .userorders-container {
+    padding: 12px;
+    font-size: 95%;
+  }
+
+  .userorders-title {
+    font-size: 0.813rem;
+  }
+
+  .userorders-table-header,
+  .userorders-table-row {
+    padding: 6px 12px;
+    grid-template-columns: 110px 80px 65px 65px 80px 80px 95px 80px 95px;
+  }
+
+  .userorders-table-row {
+    font-size: 0.688rem;
+  }
+
+  .userorders-pair {
+    font-size: 0.688rem;
+  }
+
+  .userorders-side {
+    padding: 3px 6px;
+    font-size: 0.625rem;
+  }
+
+  .userorders-status-badge {
+    padding: 3px 6px;
+    font-size: 0.625rem;
+  }
+
+  .userorders-cancel-btn {
+    padding: 3px 8px;
+    font-size: 0.625rem;
+  }
+
+  .userorders-list {
+    min-height: 240px;
+    max-height: 240px;
+  }
+}
+
+/* === TABLET: 768-1024px === */
+@media (max-width: 1024px) {
   .userorders-table {
     display: block;
     overflow-x: auto;
@@ -292,18 +414,26 @@
   .userorders-table-row {
     min-width: 900px;
   }
+
+  .userorders-list {
+    min-height: 280px;
+    max-height: 280px;
+  }
 }
 
-/* === SCROLLBAR === */
-.userorders-filters::-webkit-scrollbar {
-  height: 4px;
-}
+/* === MOBILE: <768px === */
+@media (max-width: 768px) {
+  .userorders-container {
+    padding: 12px;
+  }
 
-.userorders-filters::-webkit-scrollbar-track {
-  background: transparent;
-}
+  .userorders-table-header,
+  .userorders-table-row {
+    min-width: 850px;
+  }
 
-.userorders-filters::-webkit-scrollbar-thumb {
-  background: var(--border-primary);
-  border-radius: var(--radius-sm);
+  .userorders-list {
+    min-height: 240px;
+    max-height: 240px;
+  }
 }
