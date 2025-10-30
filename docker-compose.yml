@@ -46,7 +46,7 @@ services:
     # ALLOWED_ORIGINS: "http://localhost:3000,https://exchange-backend-3.onrender.com"
     # CORS_ORIGIN removed: handle CORS at proxy or hosting level if needed
     ports:
-      - "3001:3001"
+      - "0.0.0.0:3001:3001" #Antes: "3001:3001"
       - "9229:9229"  # Puerto para debugging
     volumes:
       - ./backend:/app

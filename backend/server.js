@@ -25,18 +25,23 @@ const allowedOrigins = rawAllowed
   .map(s => s.trim())
   .filter(Boolean);
 
-// En desarrollo, permitir localhost
-if (process.env.NODE_ENV === 'development') {
-  if (!allowedOrigins.includes('http://localhost:3000')) {
-    allowedOrigins.push('http://localhost:3000');
-  }
+// ⭐ MODIFICADO: En desarrollo, permitir TODO (para mobile)
+if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV !== 'production') {
+  allowedOrigins.push('*'); // Permite cualquier origen en desarrollo
+  console.log('🔓 CORS: Modo desarrollo - Aceptando todos los orígenes');
 }
 
 console.log('CORS allowed origins:', allowedOrigins.length ? allowedOrigins.join(',') : '[none]');
 
-// CORS ANTES de helmet
+// ⭐ CORS SIMPLIFICADO para desarrollo mobile
 app.use(cors({
   origin: function(origin, callback) {
+    // En desarrollo, permitir todo
+    if (process.env.NODE_ENV !== 'production') {
+      return callback(null, true);
+    }
+    
+    // En producción, validar
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes('*')) return callback(null, true);
     if (allowedOrigins.indexOf(origin) !== -1) return callback(null, true);
@@ -75,6 +80,12 @@ app.use(passport.initialize());
 app.use(passport.session());
 configurePassport();
 
+// ⭐ LOG de requests (útil para debug mobile)
+app.use((req, res, next) => {
+  console.log(`📱 ${req.method} ${req.path} - Origin: ${req.headers.origin || 'none'}`);
+  next();
+});
+
 // Rutas
 app.use('/api', apiRoutes);
 
@@ -106,7 +117,7 @@ app.use('*', (req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-// Inicializar servidor
+// ⭐ MODIFICADO: Escuchar en 0.0.0.0 para aceptar conexiones de red local
 async function startServer() {
   try {
     await sequelize.authenticate();
@@ -117,10 +128,14 @@ async function startServer() {
       console.log('✅ Database synchronized');
     }
     
-    app.listen(PORT, () => {
+    // ⭐ CLAVE: Escuchar en 0.0.0.0 en lugar de localhost
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log(`🌍 Frontend URL: ${process.env.FRONTEND_URL || 'not set'}`);
+      console.log(`📱 Mobile access: Use your PC IP + :${PORT}`);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     });
 
     const JobManager = require('./jobs');
