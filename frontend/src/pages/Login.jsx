@@ -1,4 +1,4 @@
-// src/pages/Login.jsx
+// src/pages/Login.jsx (front web)
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLoginFlow } from '../hooks/useLoginFlow';

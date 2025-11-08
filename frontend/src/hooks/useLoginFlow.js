@@ -1,4 +1,4 @@
-// src/hooks/useLoginFlow.js - CORREGIDO PARA 2FA 
+// src/hooks/useLoginFlow.js - CORREGIDO PARA 2FA (front web)
 import { useState } from 'react';
 import { useMutation } from 'react-query';
 import { useNavigate, useLocation } from 'react-router-dom';

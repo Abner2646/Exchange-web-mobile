@@ -1,75 +1,77 @@
-// src/hooks/useBalances.js (front web) 
-import { useState } from 'react';
-import { useQuery } from 'react-query';
-import { toast } from 'react-hot-toast';
-import { useAuth } from '../context/AuthContext'; // ⭐ AGREGADO
+// mobile/hooks/useBalances.js
+import { useState, useEffect } from 'react'; // ⭐ Agregar useEffect
+import { useQuery } from '@tanstack/react-query';
+import { Alert } from 'react-native';
+import { useAuth } from '../contexts/AuthContext';
 import balanceService from '../services/balanceService';
 import cryptoService from '../services/cryptoService';
 
 export const useBalances = () => {
-  const { user } = useAuth(); // ⭐ AGREGADO
+  const { user } = useAuth();
   const [hideSmallBalances, setHideSmallBalances] = useState(false);
   const [activeTab, setActiveTab] = useState('moneda');
 
-  // Query para obtener balances del usuario
+  // ⭐ LOG: Verificar si hay usuario
+  console.log('[useBalances] Usuario:', user ? `${user.email} (ID: ${user.id})` : 'NO USER');
+
   const {
     data: balances = [],
     isLoading: loadingBalances,
     error: balancesError,
     refetch: refetchBalances,
-  } = useQuery(
-    'myBalances',
-    () => balanceService.getMyBalances(),
-    {
-      enabled: !!user, // ⭐ AGREGADO - Solo ejecutar si hay usuario
-      staleTime: 30000, // 30 segundos
-      cacheTime: 300000, // 5 minutos
-      onError: (error) => {
-        console.error('Error al cargar balances:', error);
-        toast.error('Error al cargar balances');
-      },
-    }
-  );
+  } = useQuery({
+    queryKey: ['myBalances'],
+    queryFn: () => balanceService.getMyBalances(),
+    enabled: !!user,
+    staleTime: 30000,
+    gcTime: 300000,
+    retry: 1,
+  });
 
-  // Query para obtener criptomonedas relacionadas a los balances
+  // ⭐ LOG: Cuando cambian los balances
+  useEffect(() => {
+    if (!loadingBalances) {
+      console.log('=== BALANCES HOOK ===');
+      console.log('Balances:', balances);
+      console.log('Cantidad:', balances?.length);
+      console.log('Error:', balancesError?.message);
+      console.log('====================');
+    }
+  }, [balances, loadingBalances, balancesError]);
+
+  // ⭐ SINTAXIS V5: Query con dependencias dinámicas
   const {
     data: criptomonedas = [],
     isLoading: loadingCryptos,
-  } = useQuery(
-    ['cryptosForBalances', balances],
-    async () => {
+  } = useQuery({
+    queryKey: ['cryptosForBalances', balances],
+    queryFn: async () => {
       if (balances.length === 0) return [];
 
-      // Extraer IDs únicos de criptomonedas que el usuario tiene
       const cryptoIds = [...new Set(balances.map(b => b.criptomonedaId))];
       
       if (cryptoIds.length === 0) return [];
 
-      // Obtener solo las criptomonedas que tiene el usuario
       const cryptoData = await cryptoService.getCryptosByIds(cryptoIds);
       
       return cryptoData;
     },
-    {
-      enabled: !!user && balances.length > 0, // ⭐ MODIFICADO - Agregar verificación de usuario
-      staleTime: 60000, // 1 minuto
-    }
-  );
+    enabled: !!user && balances.length > 0,
+    staleTime: 60000,
+  });
 
-  // Query para obtener precios de las criptomonedas
+  // ⭐ SINTAXIS V5: Query con múltiples dependencias
   const {
     data: prices = {},
     isLoading: loadingPrices,
-  } = useQuery(
-    ['pricesForBalances', criptomonedas],
-    async () => {
+  } = useQuery({
+    queryKey: ['pricesForBalances', criptomonedas],
+    queryFn: async () => {
       if (criptomonedas.length === 0) return {};
 
-      // Siempre incluir BTC para el cálculo del balance total
       const cryptosToFetch = [...criptomonedas];
       const hasBTC = criptomonedas.some(c => c.symbol === 'BTC');
 
-      // Si no tiene BTC en su balance, agregarlo para obtener su precio
       if (!hasBTC) {
         const btcData = await cryptoService.getCryptoBySymbol('BTC');
         if (btcData) {
@@ -77,16 +79,13 @@ export const useBalances = () => {
         }
       }
 
-      // Obtener precios en paralelo
       const pricesMap = await cryptoService.getPricesForCryptos(cryptosToFetch, 'USDT');
       
       return pricesMap;
     },
-    {
-      enabled: !!user && criptomonedas.length > 0, // ⭐ MODIFICADO - Agregar verificación de usuario
-      staleTime: 30000, // 30 segundos
-    }
-  );
+    enabled: !!user && criptomonedas.length > 0,
+    staleTime: 30000,
+  });
 
   // Cálculo de totales en USDT y BTC
   const totals = balanceService.calculateTotals(balances, criptomonedas, prices);
@@ -94,7 +93,7 @@ export const useBalances = () => {
   // Enriquecimiento de balances con información completa
   const enrichedBalances = balanceService.enrichBalances(balances, criptomonedas, prices);
 
-  // Balances para mostrar en BalancePage (con filtro de pequeños balances)
+  // Balances para mostrar (con filtro de pequeños balances)
   const displayBalances = hideSmallBalances
     ? balanceService.filterSmallBalances(enrichedBalances, 1)
     : enrichedBalances;
@@ -128,7 +127,7 @@ export const useBalances = () => {
     isLoading,
     error: balancesError,
     
-    // Filtros y tabs para BalancePage
+    // Filtros y tabs
     activeTab,
     setActiveTab,
     hideSmallBalances,
@@ -138,3 +137,5 @@ export const useBalances = () => {
     refetch: refetchBalances,
   };
 };
+
+export default useBalances;

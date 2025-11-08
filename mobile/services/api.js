@@ -1,7 +1,8 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = 'https://amelie-uncinctured-dirtily.ngrok-free.dev/api'; //Creo que la saco de acá: ngrok http --domain=mi-app.ngrok.app 3001
+const API_URL = 'https://amelie-uncinctured-dirtily.ngrok-free.dev/api'; //La saco de acá: ngrok http 3001
+//
 
 const api = axios.create({
   baseURL: API_URL,

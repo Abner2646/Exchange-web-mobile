@@ -162,7 +162,7 @@
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
-  min-width: 200px;
+  min-width: 210px;
   z-index: 1000;
   overflow: hidden;
 }

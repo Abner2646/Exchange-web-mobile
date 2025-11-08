@@ -51,7 +51,7 @@ function App() {
         <AuthProvider>
           <BrowserRouter>
             <ScrollToTop />
-            <Toaster position="top-right" />
+            {/*<Toaster position="top-right" />*/}
             <Routes>
               <Route path="/" element={<Layout />}>
                 {/* ========== RUTAS PÚBLICAS ========== */}

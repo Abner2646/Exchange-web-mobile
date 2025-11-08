@@ -1,3 +1,4 @@
+// mobile/app/login.js
 import React, { useState } from 'react';
 import {
   View,
@@ -6,25 +7,28 @@ import {
   Platform,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
+  Pressable,
   StyleSheet,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useAuth } from '../contexts/AuthContext';
 import { useLoginFlow } from '../hooks/useLoginFlow';
 import { useTheme } from '../contexts/ThemeContext';
 import { spacing, fontSize, borderRadius } from '../constants/theme';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
 
 export default function Login() {
   const { theme } = useTheme();
+  const router = useRouter();
 
-  // Estado del formulario
   const [emailOrUsername, setEmailOrUsername] = useState('');
   const [password, setPassword] = useState('');
   const [codigo2FA, setCodigo2FA] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
-  // Hooks
   const { loginWithGoogle } = useAuth();
   const {
     requires2FA,
@@ -37,23 +41,32 @@ export default function Login() {
     isResending,
   } = useLoginFlow();
 
-  // Handlers
-  const handleGoogleLogin = () => {
-    loginWithGoogle();
+  const loading = isLoggingIn || isVerifying || isResending;
+
+  const handleGoogleLogin = async () => {
+    if (loading) return;
+    try {
+      await loginWithGoogle();
+    } catch (error) {
+      console.error('Error en login con Google:', error);
+    }
   };
 
   const handleSubmit = () => {
     if (!requires2FA) {
-      // Paso 1: Login con credenciales
-      loginWithCredentials({ emailOrUsername, password });
+      if (!emailOrUsername.trim()) return;
+      if (!password || password.length < 6) return;
+      loginWithCredentials({ emailOrUsername: emailOrUsername.trim(), password });
     } else {
-      // Paso 2: Verificar código 2FA
+      if (codigo2FA.length !== 6) return;
       verify2FA(codigo2FA);
     }
   };
 
   const handleResend2FA = () => {
-    resend2FA();
+    if (!loading) {
+      resend2FA();
+    }
   };
 
   const handleResetToLogin = () => {
@@ -61,8 +74,17 @@ export default function Login() {
     setCodigo2FA('');
   };
 
-  // Estado de carga combinado
-  const loading = isLoggingIn || isVerifying || isResending;
+  const handleForgotPassword = () => {
+    router.push('/forgot-password');
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
+  const isFormValid = !requires2FA
+    ? emailOrUsername.trim().length >= 3 && password.length >= 6
+    : codigo2FA.length === 6;
 
   return (
     <KeyboardAvoidingView
@@ -72,152 +94,211 @@ export default function Login() {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.card, { backgroundColor: theme.backgroundCard }]}>
-          {/* Título */}
-          <Text style={[styles.title, { color: theme.textPrimary }]}>
-            {requires2FA ? 'Verificación en dos pasos' : 'Iniciar Sesión'}
+        <View style={styles.logoContainer}>
+          <Text style={[styles.appName, { color: theme.info }]}>
+            BitFlow
           </Text>
-
-          {/* Descripción */}
-          <Text style={[styles.description, { color: theme.textSecondary }]}>
-            {requires2FA
-              ? 'Ingresa el código de verificación enviado a tu email'
-              : 'Accede a tu cuenta de trading'}
+          <Text style={[styles.tagline, { color: theme.textSecondary }]}>
+            Tu exchange de confianza
           </Text>
+        </View>
 
-          {/* Botón de Google - solo en login inicial */}
+        <Card style={styles.card}>
+          <View style={styles.header}>
+            <Text style={[styles.title, { color: theme.textPrimary }]}>
+              {requires2FA ? 'Verificación 2FA' : 'Iniciar Sesión'}
+            </Text>
+            <Text style={[styles.description, { color: theme.textSecondary }]}>
+              {requires2FA
+                ? 'Ingresa el código de 6 dígitos enviado a tu email'
+                : 'Accede a tu cuenta de trading'}
+            </Text>
+          </View>
+
           {!requires2FA && (
             <>
-              <TouchableOpacity
-                style={[
+              <Pressable
+                style={({ pressed }) => [
                   styles.googleButton,
-                  { 
+                  {
                     backgroundColor: theme.backgroundElevated,
                     borderColor: theme.border,
                   },
+                  loading && styles.disabledButton,
+                  pressed && !loading && styles.pressedButton,
                 ]}
                 onPress={handleGoogleLogin}
                 disabled={loading}
               >
+                <Ionicons name="logo-google" size={20} color="#DB4437" />
                 <Text style={[styles.googleButtonText, { color: theme.textPrimary }]}>
-                  🔐 Continuar con Google
+                  Continuar con Google
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
 
-              {/* Separador */}
               <View style={styles.divider}>
                 <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
-                <Text style={[styles.dividerText, { color: theme.textMuted }]}>o</Text>
+                <Text style={[styles.dividerText, { color: theme.textMuted }]}>
+                  o continúa con email
+                </Text>
                 <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
               </View>
             </>
           )}
 
-          {/* Formulario */}
           <View style={styles.form}>
             {!requires2FA ? (
-              // Campos de login inicial
               <>
                 <View style={styles.formGroup}>
                   <Text style={[styles.label, { color: theme.textPrimary }]}>
-                    Email o Usuario *
+                    Email o Usuario
                   </Text>
                   <Input
-                    placeholder="Ingresa tu email o usuario"
+                    placeholder="ejemplo@email.com"
                     value={emailOrUsername}
                     onChangeText={setEmailOrUsername}
                     autoCapitalize="none"
                     keyboardType="email-address"
                     editable={!loading}
+                    autoComplete="email"
+                    textContentType="emailAddress"
                   />
                 </View>
 
                 <View style={styles.formGroup}>
                   <Text style={[styles.label, { color: theme.textPrimary }]}>
-                    Contraseña *
+                    Contraseña
                   </Text>
-                  <Input
-                    placeholder="Ingresa tu contraseña"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                    editable={!loading}
-                  />
-                  <TouchableOpacity style={styles.forgotPassword}>
-                    <Text style={[styles.forgotPasswordText, { color: theme.success }]}>
-                      ¿Olvidaste tu contraseña?
-                    </Text>
-                  </TouchableOpacity>
+                  <View style={styles.inputWrapper}>
+                    <Input
+                      placeholder="Ingresa tu contraseña"
+                      value={password}
+                      onChangeText={setPassword}
+                      secureTextEntry={!showPassword}
+                      editable={!loading}
+                      style={styles.inputWithIcon}
+                      autoComplete="password"
+                      textContentType="password"
+                    />
+                    <TouchableOpacity
+                      style={styles.inputIcon}
+                      onPress={togglePasswordVisibility}
+                      disabled={loading}
+                    >
+                      <Ionicons
+                        name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+                        size={20}
+                        color={theme.textMuted}
+                      />
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.forgotPasswordWrapper}>
+                    <TouchableOpacity
+                      style={styles.forgotPasswordButton}
+                      onPress={handleForgotPassword}
+                      disabled={loading}
+                    >
+                      <Text
+                        style={[
+                          styles.forgotPasswordText,
+                          { color: theme.info },
+                        ]}
+                      >
+                        ¿Olvidaste tu contraseña?
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </>
             ) : (
-              // Campo de código 2FA
               <View style={styles.formGroup}>
                 <Text style={[styles.label, { color: theme.textPrimary }]}>
-                  Código de verificación *
+                  Código de verificación
                 </Text>
                 <Input
-                  placeholder="Ingresa el código de 6 dígitos"
+                  placeholder="000000"
                   value={codigo2FA}
-                  onChangeText={(text) =>
-                    setCodigo2FA(text.replace(/\D/g, '').slice(0, 6))
-                  }
+                  onChangeText={(value) => {
+                    const numericValue = value.replace(/\D/g, '').slice(0, 6);
+                    setCodigo2FA(numericValue);
+                  }}
                   keyboardType="number-pad"
                   maxLength={6}
                   autoFocus
                   editable={!loading}
+                  style={styles.codeInput}
                 />
+
                 <View style={styles.resendContainer}>
-                  <TouchableOpacity onPress={handleResend2FA} disabled={loading}>
+                  <Text style={[styles.resendHint, { color: theme.textMuted }]}>
+                    ¿No recibiste el código?
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.resendButton}
+                    onPress={handleResend2FA}
+                    disabled={loading}
+                  >
                     <Text
                       style={[
                         styles.resendText,
-                        { color: loading ? theme.textMuted : theme.success },
+                        { color: loading ? theme.textMuted : theme.info },
                       ]}
                     >
-                      Reenviar código
+                      {isResending ? 'Reenviando...' : 'Reenviar código'}
                     </Text>
                   </TouchableOpacity>
                 </View>
               </View>
             )}
 
-            {/* Botón Submit */}
             <Button
-              variant="success"
+              variant="primary"
               onPress={handleSubmit}
               loading={loading}
-              disabled={loading}
+              disabled={!isFormValid || loading}
+              style={styles.submitButton}
             >
               {requires2FA ? 'Verificar código' : 'Iniciar Sesión'}
             </Button>
 
-            {/* Botón volver (solo en 2FA) */}
             {requires2FA && (
               <TouchableOpacity
                 style={styles.backButton}
                 onPress={handleResetToLogin}
+                disabled={loading}
               >
-                <Text style={[styles.backButtonText, { color: theme.textMuted }]}>
-                  ← Volver al login
+                <Ionicons
+                  name="arrow-back-outline"
+                  size={16}
+                  color={theme.textMuted}
+                />
+                <Text
+                  style={[styles.backButtonText, { color: theme.textMuted }]}
+                >
+                  Volver al inicio de sesión
                 </Text>
               </TouchableOpacity>
             )}
           </View>
+        </Card>
 
-          {/* Footer - solo en login inicial */}
-          {!requires2FA && (
-            <View style={styles.footer}>
-              <Text style={[styles.footerText, { color: theme.textSecondary }]}>
-                ¿No tienes una cuenta?{' '}
-                <Text style={{ color: theme.success, fontWeight: '600' }}>
-                  Regístrate
-                </Text>
+        
+        {!requires2FA && (
+          <View style={styles.footer}>
+            <Text style={[styles.footerText, { color: theme.textSecondary }]}>
+              ¿No tienes una cuenta?{' '}
+              <Text 
+                style={[styles.registerLink, { color: theme.info }]}
+                onPress={() => router.push('/register')}
+              >
+                Regístrate
               </Text>
-            </View>
-          )}
-        </View>
+            </Text>
+          </View>
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -229,35 +310,55 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xxl,
+    paddingBottom: spacing.xxl,
     justifyContent: 'center',
-    padding: spacing.lg,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: spacing.xl,
+  },
+  appName: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    letterSpacing: -1,
+    marginBottom: spacing.xs,
+  },
+  tagline: {
+    fontSize: fontSize.sm,
+    letterSpacing: 0.5,
   },
   card: {
-    borderRadius: borderRadius.lg,
-    padding: spacing.xxl,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    maxWidth: 440,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  header: {
+    marginBottom: spacing.lg,
   },
   title: {
     fontSize: fontSize.xxxl,
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: spacing.sm,
+    letterSpacing: -0.5,
   },
   description: {
-    fontSize: fontSize.base,
+    fontSize: fontSize.sm,
     textAlign: 'center',
-    marginBottom: spacing.xl,
+    lineHeight: 20,
   },
   googleButton: {
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-    borderWidth: 2,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.lg,
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    gap: spacing.sm,
+    minHeight: 48,
   },
   googleButtonText: {
     fontSize: fontSize.base,
@@ -266,58 +367,102 @@ const styles = StyleSheet.create({
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: spacing.xl,
+    marginVertical: spacing.lg,
+    gap: spacing.sm,
   },
   dividerLine: {
     flex: 1,
     height: 1,
   },
   dividerText: {
-    paddingHorizontal: spacing.md,
-    fontSize: fontSize.sm,
-    fontWeight: '500',
+    fontSize: fontSize.xs,
+    paddingHorizontal: spacing.sm,
   },
   form: {
-    marginTop: spacing.lg,
+    gap: spacing.md,
   },
   formGroup: {
-    marginBottom: spacing.lg,
+    gap: spacing.xs,
   },
   label: {
     fontSize: fontSize.sm,
     fontWeight: '600',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
-  forgotPassword: {
-    marginTop: spacing.sm,
-    alignSelf: 'flex-end',
+  inputWrapper: {
+    position: 'relative',
+  },
+  inputWithIcon: {
+    paddingRight: 44,
+  },
+  inputIcon: {
+    position: 'absolute',
+    right: spacing.md,
+    top: '50%',
+    transform: [{ translateY: -10 }],
+    padding: spacing.xs,
+  },
+  forgotPasswordWrapper: {
+    marginTop: spacing.xs,
+    alignItems: 'flex-end',
+  },
+  forgotPasswordButton: {
+    padding: spacing.xs,
   },
   forgotPasswordText: {
-    fontSize: fontSize.sm,
-    fontWeight: '500',
+    fontSize: fontSize.xs,
+    fontWeight: '600',
+  },
+  codeInput: {
+    fontSize: fontSize.xl,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    letterSpacing: 8,
   },
   resendContainer: {
     marginTop: spacing.md,
     alignItems: 'center',
+    gap: spacing.xs,
+  },
+  resendHint: {
+    fontSize: fontSize.xs,
+  },
+  resendButton: {
+    padding: spacing.xs,
   },
   resendText: {
     fontSize: fontSize.sm,
+    fontWeight: '600',
     textDecorationLine: 'underline',
   },
+  submitButton: {
+    marginTop: spacing.sm,
+  },
   backButton: {
-    marginTop: spacing.lg,
-    padding: spacing.md,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.sm,
+    gap: spacing.xs,
   },
   backButtonText: {
     fontSize: fontSize.sm,
+    fontWeight: '500',
   },
   footer: {
     marginTop: spacing.lg,
-    paddingTop: spacing.lg,
     alignItems: 'center',
   },
   footerText: {
     fontSize: fontSize.sm,
+  },
+  registerLink: {
+    fontWeight: '700',
+  },
+  disabledButton: {
+    opacity: 0.5,
+  },
+  pressedButton: {
+    opacity: 0.7,
   },
 });

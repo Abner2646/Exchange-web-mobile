@@ -1,3 +1,4 @@
+// mobile/components/ui/Button.js
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -6,7 +7,7 @@ import { spacing, borderRadius, fontSize } from '../../constants/theme';
 export default function Button({
   children,
   onPress,
-  variant = 'primary', // primary, success, danger, outline
+  variant = 'primary',
   disabled = false,
   loading = false,
   style,
@@ -16,14 +17,16 @@ export default function Button({
   const getButtonColor = () => {
     if (disabled) return theme.textMuted;
     switch (variant) {
+      case 'primary':
+        return theme.info; // ✅ Azul de marca
       case 'success':
-        return theme.success;
+        return theme.success; // Verde
       case 'danger':
-        return theme.danger;
+        return theme.danger; // Rojo
       case 'outline':
         return 'transparent';
       default:
-        return theme.success;
+        return theme.info; // ✅ Por defecto azul
     }
   };
 
