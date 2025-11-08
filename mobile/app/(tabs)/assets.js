@@ -88,6 +88,24 @@ export default function AssetsScreen() {
                   maximumFractionDigits: 2 
                 })}
               </Text>
+              {/* Variación 24h - Mostrar siempre si existe */}
+              {item.priceChange24h !== undefined && (
+                <View style={styles.changeRow}>
+                  <Ionicons 
+                    name={item.priceChange24h >= 0 ? 'trending-up' : 'trending-down'} 
+                    size={12} 
+                    color={item.priceChange24h >= 0 ? theme.buy : theme.sell} 
+                  />
+                  <Text 
+                    style={[
+                      styles.changeText, 
+                      { color: item.priceChange24h >= 0 ? theme.buy : theme.sell }
+                    ]}
+                  >
+                    {item.priceChange24h >= 0 ? '+' : ''}{item.priceChange24h.toFixed(2)}%
+                  </Text>
+                </View>
+              )}
             </View>
 
             {/* Icono de navegación */}
@@ -442,6 +460,16 @@ const styles = StyleSheet.create({
   },
   balanceValue: {
     fontSize: fontSize.sm,
+    marginBottom: 2,
+  },
+  changeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  changeText: {
+    fontSize: fontSize.xs,
+    fontWeight: '600',
   },
   priceRow: {
     flexDirection: 'row',

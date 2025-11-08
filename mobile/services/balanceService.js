@@ -3,14 +3,26 @@ import api from './api';
 import { ENDPOINTS } from '../api/endpoints';
 
 class BalanceService {
+  /**
+   * Obtener balances del usuario autenticado
+   * @returns {Promise<Array>} Lista de balances 
+   */
   async getMyBalances() {
     const response = await api.get(ENDPOINTS.MY_BALANCES);
     
+    // Normalizar respuesta
     if (Array.isArray(response.data)) return response.data;
     if (response.data?.data) return response.data.data;
     return [];
   }
 
+  /**
+   * Calcular totales en USDT y BTC
+   * @param {Array} balances - Lista de balances
+   * @param {Array} cryptos - Lista de criptomonedas
+   * @param {Object} prices - Mapa de precios {symbol: price}
+   * @returns {Object} Totales calculados
+   */
   calculateTotals(balances, cryptos, prices) {
     if (!balances || balances.length === 0) {
       return { totalUSDT: 0, totalBTC: 0, btcPriceError: false };
@@ -33,7 +45,15 @@ class BalanceService {
     return { totalUSDT, totalBTC, btcPriceError: false };
   }
 
-  enrichBalances(balances, cryptos, prices) {
+  /**
+   * Enriquecer balances con información de crypto, precio y valor
+   * @param {Array} balances - Lista de balances
+   * @param {Array} cryptos - Lista de criptomonedas
+   * @param {Object} prices - Mapa de precios
+   * @param {Object} marketData - Mapa de datos de mercado (opcional)
+   * @returns {Array} Balances enriquecidos
+   */
+  enrichBalances(balances, cryptos, prices, marketData = {}) {
     return balances
       .map(balance => {
         const crypto = cryptos.find(c => c.id === balance.criptomonedaId);
@@ -43,32 +63,52 @@ class BalanceService {
         const balanceAmount = parseFloat(balance.balanceDisponible);
         const valueInUSDT = balanceAmount * price;
 
+        // Obtener datos de mercado (variación 24h)
+        const market = marketData[crypto.symbol] || {};
+        const priceChange24h = market.priceChange24h || 0;
+
         return {
           ...balance,
           crypto,
           price,
           valueInUSDT,
-          balanceAmount
+          balanceAmount,
+          priceChange24h, // ⭐ NUEVO: Variación porcentual en 24h
         };
       })
       .filter(b => b !== null);
   }
 
+  /**
+   * Filtrar balances pequeños
+   * @param {Array} enrichedBalances - Balances enriquecidos
+   * @param {Number} minValue - Valor mínimo en USDT (default: 1)
+   * @returns {Array} Balances filtrados
+   */
   filterSmallBalances(enrichedBalances, minValue = 1) {
     return enrichedBalances.filter(b => b.valueInUSDT >= minValue);
   }
 
+  /**
+   * Obtener top activos del portfolio con porcentajes
+   * @param {Array} enrichedBalances - Balances enriquecidos
+   * @param {Number} limit - Número de activos a retornar (default: 5)
+   * @returns {Array} Top activos con formato para UI
+   */
   getTopAssets(enrichedBalances, limit = 5) {
     if (!enrichedBalances || enrichedBalances.length === 0) {
       return [];
     }
 
+    // Filtrar activos con valor y ordenar por valor descendente
     const validAssets = enrichedBalances
       .filter(balance => balance.valueInUSDT > 0)
       .sort((a, b) => b.valueInUSDT - a.valueInUSDT);
 
+    // Calcular total para porcentajes
     const total = validAssets.reduce((sum, asset) => sum + asset.valueInUSDT, 0);
 
+    // Tomar top N y calcular porcentajes
     return validAssets.slice(0, limit).map(asset => ({
       symbol: asset.crypto.symbol,
       value: asset.valueInUSDT,

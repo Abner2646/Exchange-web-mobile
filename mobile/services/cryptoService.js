@@ -63,6 +63,21 @@ class CryptoService {
     await Promise.all(pricePromises);
     return pricesMap;
   }
+
+  /**
+   * Obtener datos de mercado de CoinGecko (incluye variaciones 24h)
+   * @param {Number} limit - Número de criptomonedas a obtener (default: 250)
+   * @returns {Promise<Array>} Array de datos de mercado
+   */
+  async getMarketData(limit = 250) {
+    try {
+      const response = await api.get(ENDPOINTS.COINGECKO_MARKETS(1, limit));
+      return response.data || [];
+    } catch (error) {
+      console.warn('Error obteniendo datos de mercado de CoinGecko:', error.message);
+      return [];
+    }
+  }
 }
 
 export default new CryptoService();
