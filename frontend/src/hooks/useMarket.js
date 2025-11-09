@@ -1,4 +1,4 @@
-// src/hooks/useMarket.js  
+// src/hooks/useMarket.js (web)
 import { useState } from 'react';
 import { useQuery } from 'react-query';
 import marketService from '../services/marketService';

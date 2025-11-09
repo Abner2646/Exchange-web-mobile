@@ -1,4 +1,4 @@
-// src/hooks/useBalances.js (front web) 
+// src/hooks/useBalances.js (web)  
 import { useState } from 'react';
 import { useQuery } from 'react-query';
 import { toast } from 'react-hot-toast';

@@ -1,4 +1,4 @@
-// src/components/features/MarketTable.jsx 
+// src/components/features/MarketTable.jsx (web)
 import { ChevronLeftIcon, ChevronRightIcon, StarIcon as StarOutline } from "@heroicons/react/24/outline";
 import { StarIcon as StarSolid } from "@heroicons/react/24/solid";
 import useWatchlist from "../../hooks/useWatchlist";

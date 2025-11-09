@@ -1,4 +1,4 @@
-// src/components/features/BalanceCard.jsx   
+// src/components/features/BalanceCard.jsx (web)
 import { useEffect, useRef, useState } from 'react';
 import SkeletonLoader from '../common/SkeletonLoader';
 import EmptyPortfolioMessage from './EmptyPortfolioMessage'; // ⭐ NUEVO

@@ -1,6 +1,6 @@
 "use client"
 
-// src/components/features/HeroSection.jsx
+// src/components/features/HeroSection.jsx (web)
 import TopGainersCard from "./TopGainersCard"
 import "../../styles/HomePage.css"
 

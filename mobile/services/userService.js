@@ -1,12 +1,12 @@
-// src/services/userService.js (web)
-import apiClient from '../api/client';
+// mobile/services/userService.js
+import api from './api';
 import { ENDPOINTS } from '../api/endpoints';
 
 class UserService {
   // Buscar usuarios por email o username
   async searchUsers(query, limit = 1) {
     try {
-      const response = await apiClient.get(ENDPOINTS.USER_SEARCH, {
+      const response = await api.get(ENDPOINTS.USER_SEARCH, {
         params: { q: query, limit },
       });
 
@@ -32,7 +32,7 @@ class UserService {
   // Obtener perfil público de usuario
   async getUserProfile(usuarioId) {
     try {
-      const response = await apiClient.get(ENDPOINTS.P2P_USER_PUBLIC_PROFILE(usuarioId));
+      const response = await api.get(ENDPOINTS.P2P_USER_PUBLIC_PROFILE(usuarioId));
       console.log(`👤 Perfil de usuario ${usuarioId} obtenido`);
       return response.data;
     } catch (error) {
@@ -44,7 +44,7 @@ class UserService {
   // Obtener mi perfil completo
   async getMyProfile() {
     try {
-      const response = await apiClient.get(ENDPOINTS.USER_PROFILE);
+      const response = await api.get(ENDPOINTS.USER_PROFILE);
       console.log('👤 Mi perfil obtenido:', response.data);
       return response.data;
     } catch (error) {
@@ -56,7 +56,7 @@ class UserService {
   // Cambiar contraseña
   async changePassword(currentPassword, newPassword) {
     try {
-      const response = await apiClient.post(ENDPOINTS.USER_CHANGE_PASSWORD, {
+      const response = await api.post(ENDPOINTS.USER_CHANGE_PASSWORD, {
         currentPassword,
         newPassword,
       });
@@ -71,7 +71,7 @@ class UserService {
   // Toggle 2FA
   async toggle2FA(enable) {
     try {
-      const response = await apiClient.patch(ENDPOINTS.USER_2FA_TOGGLE, {
+      const response = await api.patch(ENDPOINTS.USER_2FA_TOGGLE, {
         enable,
       });
       console.log(`✅ 2FA ${enable ? 'activado' : 'desactivado'} exitosamente`);

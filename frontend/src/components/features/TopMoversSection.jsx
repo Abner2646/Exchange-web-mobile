@@ -1,4 +1,4 @@
-// src/components/features/TopMoversSection.jsx 
+// src/components/features/TopMoversSection.jsx (web)
 import { useState } from 'react';
 import { ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/24/solid';
 import SkeletonLoader from '../common/SkeletonLoader';

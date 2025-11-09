@@ -1,4 +1,4 @@
-// src/pages/ConfiguracionPerfil.jsx
+// src/pages/ConfiguracionPerfil.jsx (web)
 import { useState, useRef, useEffect } from 'react';
 import { useProfile } from '../hooks/useProfile';
 import LoadingSpinner from '../components/common/LoadingSpinner';

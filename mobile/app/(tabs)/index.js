@@ -1,131 +1,119 @@
 // mobile/app/(tabs)/index.js
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  ActivityIndicator,
-  TouchableOpacity,
-  RefreshControl,
-} from 'react-native';
-import { useRouter } from 'expo-router';
+import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
-import { spacing, fontSize } from '../../constants/theme';
+import { useAuth } from '../../contexts/AuthContext';
 import { useBalances } from '../../hooks/useBalances';
 import { useMarket } from '../../hooks/useMarket';
-import { useNotifications } from '../../hooks/useNotifications';
-import BalanceHero from '../../components/home/BalanceHero';
-import TopAssetsList from '../../components/home/TopAssetsList';
-import TopGainersList from '../../components/home/TopGainersList';
+import { spacing, fontSize } from '../../constants/theme';
+import BalanceCard from '../../components/home/BalanceCard';
+import TopAssets from '../../components/home/TopAssets';
+import TopMoversSection from '../../components/home/TopMoversSection';
+import MarketList from '../../components/home/MarketList';
+import NotificationBell from '../../components/notifications/NotificationBell'; // ⭐ NUEVO
 
-export default function Home() {
+export default function HomeScreen() {
   const { theme } = useTheme();
-  const router = useRouter();
+  const { user } = useAuth();
 
-  // Hooks de datos
   const { portfolio, topAssets, isLoading: loadingBalances, refetch: refetchBalances } = useBalances();
-  const { topGainers24h, isLoading: loadingMarket, refresh: refreshMarket } = useMarket();
-  const { unreadCount } = useNotifications();
-
-  const isLoading = loadingBalances || loadingMarket;
-
-  const handleRefresh = async () => {
-    await Promise.all([
-      refetchBalances(),
-      refreshMarket(),
-    ]);
-  };
-
-  const handleNavigate = (path) => {
-    router.push(path);
-  };
-
-  const handleCryptoClick = (symbol) => {
-    router.push(`/swap?from=${symbol}&to=USDT`);
-  };
-
-  const handleViewMarket = () => {
-    // Cuando tengas una pantalla de mercado, navegar ahí
-    // Por ahora, navegar a swap
-    router.push('/swap');
-  };
   
+  const {
+    marketData,
+    topGainers24h,
+    topLosers24h,
+    topGainers7d,
+    topLosers7d,
+    isLoading: loadingMarket,
+    marketDataError,
+    currentPage,
+    totalPages,
+    nextPage,
+    previousPage,
+    refresh: refreshMarket,
+  } = useMarket();
 
-console.log('=== HOME DEBUG ===');
-console.log('Portfolio:', portfolio);
-console.log('Top Assets:', topAssets);
-console.log('Loading Balances:', loadingBalances);
-console.log('Loading Market:', loadingMarket);
-console.log('Top Gainers:', topGainers24h);
-console.log('==================');
+  const [refreshing, setRefreshing] = React.useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      if (user) {
+        await refetchBalances();
+      }
+      await refreshMarket();
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Header con notificaciones */}
-      <View style={[styles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
-        <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>
-          Inicio
-        </Text>
-        <TouchableOpacity
-          style={styles.notificationButton}
-          onPress={() => handleNavigate('/notificaciones')}
-        >
-          <Text style={[styles.notificationIcon, { color: theme.textPrimary }]}>🔔</Text>
-          {unreadCount > 0 && (
-            <View style={[styles.badge, { backgroundColor: theme.danger }]}>
-              <Text style={styles.badgeText}>
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      {/* Contenido principal */}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
-            refreshing={isLoading}
-            onRefresh={handleRefresh}
-            tintColor={theme.success}
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.brandPrimary}
+            colors={[theme.brandPrimary]}
           />
         }
       >
-        {isLoading && !portfolio.totalUSDT ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={theme.success} />
-            <Text style={[styles.loadingText, { color: theme.textMuted }]}>
-              Cargando...
+        {/* Header con notificaciones */}
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <Text style={[styles.greeting, { color: theme.textPrimary }]}>
+              {user ? `Hola, ${user.username}` : 'Bienvenido'}
+            </Text>
+            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+              {user ? 'Tu dashboard de criptomonedas' : 'Exchange de criptomonedas'}
             </Text>
           </View>
-        ) : (
+          
+          {/* ⭐ NUEVO: Campana de notificaciones */}
+          {user && (
+            <View style={styles.headerRight}>
+              <NotificationBell />
+            </View>
+          )}
+        </View>
+
+        {/* Usuario Autenticado */}
+        {user && (
           <>
-            {/* Balance Hero */}
-            <BalanceHero
+            <BalanceCard
               totalUSDT={portfolio.totalUSDT}
               totalBTC={portfolio.totalBTC}
               btcPriceError={portfolio.btcPriceError}
-              onNavigate={handleNavigate}
+              isLoading={loadingBalances}
             />
 
-            {/* Top Assets */}
-            <TopAssetsList
-              assets={topAssets}
-              onNavigate={handleNavigate}
-            />
+            <TopAssets assets={topAssets} isLoading={loadingBalances} />
 
-            {/* Top Gainers */}
-            <TopGainersList
-              gainers={topGainers24h}
-              onCryptoClick={handleCryptoClick}
-              onViewMarket={handleViewMarket}
+            <TopMoversSection
+              gainers24h={topGainers24h}
+              losers24h={topLosers24h}
+              gainers7d={topGainers7d}
+              losers7d={topLosers7d}
+              isLoading={loadingMarket}
+              error={marketDataError}
+              onRetry={refreshMarket}
             />
           </>
         )}
+
+        <MarketList
+          data={marketData}
+          isLoading={loadingMarket}
+          error={marketDataError}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onNextPage={nextPage}
+          onPreviousPage={previousPage}
+          onRetry={refreshMarket}
+        />
       </ScrollView>
     </View>
   );
@@ -135,56 +123,31 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.md,
-    borderBottomWidth: 1,
-  },
-  headerTitle: {
-    fontSize: fontSize.xxl,
-    fontWeight: 'bold',
-  },
-  notificationButton: {
-    position: 'relative',
-    padding: spacing.xs,
-  },
-  notificationIcon: {
-    fontSize: fontSize.xl,
-  },
-  badge: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 4,
-  },
-  badgeText: {
-    color: '#ffffff',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
   scrollView: {
     flex: 1,
   },
   content: {
     padding: spacing.md,
+    gap: spacing.lg,
   },
-  loadingContainer: {
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: spacing.sm,
+  },
+  headerLeft: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: spacing.xxl,
   },
-  loadingText: {
-    marginTop: spacing.md,
-    fontSize: fontSize.base,
+  headerRight: {
+    marginTop: spacing.xs,
+  },
+  greeting: {
+    fontSize: fontSize.xxxl,
+    fontWeight: 'bold',
+  },
+  subtitle: {
+    fontSize: fontSize.md,
+    marginTop: spacing.xs,
   },
 });

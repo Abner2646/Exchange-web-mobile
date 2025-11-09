@@ -1,5 +1,6 @@
 // mobile/services/marketService.js
-import axios from 'axios';
+import { ENDPOINTS } from '../api/endpoints';
+import api from './api';
 
 // Lista de stablecoins a filtrar
 const STABLECOINS = [
@@ -11,12 +12,13 @@ class MarketService {
   /**
    * Obtener datos del mercado (CoinGecko)
    * @param {Number} page - Número de página (default: 1)
-   * @param {Number} perPage - Cryptos por página (default: 100, máximo permitido)
+   * @param {Number} perPage - Cryptos por página (default: 100)
    */
   async getMarketData(page = 1, perPage = 100) {
     try {
-      const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=${perPage}&page=${page}&sparkline=false&price_change_percentage=24h,7d`;
-      const response = await axios.get(url);
+      const response = await api.get(
+        ENDPOINTS.COINGECKO_MARKETS(page, perPage)
+      );
       console.log(`MarketService.getMarketData: ${response.data.length} cryptos cargadas`);
       return response.data;
     } catch (error) {
@@ -26,8 +28,7 @@ class MarketService {
   }
 
   /**
-   * Obtener todas las cryptos con 1 SOLA llamada
-   * Simplificado para usar el máximo permitido por CoinGecko (100)
+   * Obtener todas las cryptos con 1 SOLA llamada (top 100)
    */
   async getAllMarketData() {
     try {
@@ -48,7 +49,7 @@ class MarketService {
    * @param {String} timeframe - '24h' o '7d'
    * @param {Number} minChange - Cambio mínimo porcentual (default: 0.5)
    */
-  getTopGainers(marketData, limit = 5, timeframe = '24h', minChange = 0.05) {
+  getTopGainers(marketData, limit = 5, timeframe = '24h', minChange = 0.5) {
     if (!marketData || marketData.length === 0) return [];
     
     const priceChangeKey = timeframe === '7d' 

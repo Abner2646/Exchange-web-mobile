@@ -1,15 +1,15 @@
-// src/hooks/useSwap.js (web)
+// mobile/hooks/useSwap.js
 import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { toast } from 'react-hot-toast';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Alert } from 'react-native';
+import { useAuth } from '../contexts/AuthContext';
 import swapService from '../services/swapService';
 import cryptoService from '../services/cryptoService';
-import { useCryptos } from './useCrypto';
 import { useBalances } from './useBalances';
-import { validateSwapForm } from '../utils/validators';
 
 export const useSwap = () => {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   // Estados locales del swap
   const [fromCrypto, setFromCrypto] = useState(null);
@@ -20,18 +20,19 @@ export const useSwap = () => {
   const [isPairValid, setIsPairValid] = useState(true);
   const [priceLoading, setPriceLoading] = useState(false);
 
-  // Reutilizar hooks existentes con React Query
-  const { cryptos, isLoading: cryptosLoading } = useCryptos();
-  const { balances, refetch: refetchBalances, isLoading: balancesLoading } = useBalances();
-
-  console.log('[useSwap] State:', {
-    fromCrypto: fromCrypto?.symbol,
-    toCrypto: toCrypto?.symbol,
-    fromAmount,
-    toAmount,
-    exchangeRate,
-    isPairValid,
+  // Query para obtener criptomonedas activas
+  const {
+    data: cryptos = [],
+    isLoading: cryptosLoading,
+  } = useQuery({
+    queryKey: ['activeCryptos'],
+    queryFn: () => cryptoService.getActiveCryptos(),
+    staleTime: 300000, // 5 minutos
+    gcTime: 600000, // 10 minutos
   });
+
+  // Hook de balances
+  const { balances, refetch: refetchBalances, isLoading: balancesLoading } = useBalances();
 
   // Pre-seleccionar USDT y BTC al cargar
   useEffect(() => {
@@ -139,22 +140,15 @@ export const useSwap = () => {
     return () => clearTimeout(timeoutId);
   }, [fromCrypto, toCrypto, fromAmount]);
 
-  // Mutation para ejecutar swap
-  const executeSwapMutation = useMutation(
-    async () => {
+  // Mutation para ejecutar swap (TanStack Query v5)
+  const executeSwapMutation = useMutation({
+    mutationFn: async () => {
       console.log('[useSwap] Executing swap mutation');
 
-      // Validar formulario
-      const validation = validateSwapForm({
-        fromCrypto,
-        toCrypto,
-        fromAmount,
-        balance: getBalance(fromCrypto.symbol),
-      });
-
-      if (!validation.isValid) {
-        const firstError = Object.values(validation.errors)[0];
-        throw new Error(firstError);
+      // Validar balance
+      const balance = getBalance(fromCrypto.symbol);
+      if (parseFloat(fromAmount) > balance) {
+        throw new Error('Balance insuficiente');
       }
 
       if (!isPairValid) {
@@ -173,31 +167,29 @@ export const useSwap = () => {
 
       return result;
     },
-    {
-      onSuccess: () => {
-        console.log('[useSwap] Swap executed successfully');
-        
-        // Invalidar queries de balances
-        queryClient.invalidateQueries('myBalances');
-        
-        // Refetch balances
-        refetchBalances();
+    onSuccess: () => {
+      console.log('[useSwap] Swap executed successfully');
+      
+      // Invalidar queries de balances
+      queryClient.invalidateQueries({ queryKey: ['myBalances'] });
+      
+      // Refetch balances
+      refetchBalances();
 
-        // Limpiar formulario
-        setFromAmount('');
-        setToAmount('');
-        setExchangeRate(null);
+      // Limpiar formulario
+      setFromAmount('');
+      setToAmount('');
+      setExchangeRate(null);
 
-        toast.success('¡Intercambio realizado exitosamente!');
-      },
-      onError: (error) => {
-        console.error('[useSwap] Error executing swap:', error);
-        const errorMessage =
-          error.response?.data?.error || error.message || 'Error al ejecutar el intercambio';
-        toast.error(errorMessage);
-      },
-    }
-  );
+      Alert.alert('Éxito', '¡Intercambio realizado exitosamente!');
+    },
+    onError: (error) => {
+      console.error('[useSwap] Error executing swap:', error);
+      const errorMessage =
+        error.response?.data?.error || error.message || 'Error al ejecutar el intercambio';
+      Alert.alert('Error', errorMessage);
+    },
+  });
 
   // Handlers
   const handleFromCryptoChange = (crypto) => {
@@ -282,7 +274,7 @@ export const useSwap = () => {
     // Estados de carga
     isLoading,
     priceLoading,
-    isExecuting: executeSwapMutation.isLoading,
+    isExecuting: executeSwapMutation.isPending, // ⭐ v5 usa isPending
 
     // Funciones
     getBalance,

@@ -1,4 +1,4 @@
-// src/components/features/TopAssets.jsx 
+// src/components/features/TopAssets.jsx (web)
 import SkeletonLoader from '../common/SkeletonLoader';
 
 const TopAssets = ({ assets, onNavigate, isLoading }) => {

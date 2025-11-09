@@ -1,7 +1,7 @@
-// src/hooks/useProfile.js (web)
+// mobile/hooks/useProfile.js
 import { useState, useEffect } from 'react';
 import userService from '../services/userService';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 
 export const useProfile = () => {
   const { user, updateUser } = useAuth();

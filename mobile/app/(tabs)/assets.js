@@ -1,18 +1,20 @@
 // mobile/app/(tabs)/assets.js
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  FlatList,
   ActivityIndicator,
   TouchableOpacity,
   Alert,
   Image,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { FlashList } from '@shopify/flash-list';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../contexts/ThemeContext';
 import { spacing, fontSize, borderRadius } from '../../constants/theme';
 import { useBalances } from '../../hooks/useBalances';
@@ -22,6 +24,8 @@ import Button from '../../components/ui/Button';
 export default function AssetsScreen() {
   const { theme } = useTheme();
   const router = useRouter();
+  const [sortBy, setSortBy] = useState('value'); // 'value', 'change', 'name'
+  const [viewMode, setViewMode] = useState('expanded'); // 'expanded', 'compact'
 
   const {
     enrichedBalances,
@@ -31,29 +35,110 @@ export default function AssetsScreen() {
     hideSmallBalances,
     setHideSmallBalances,
     refetch,
+    marketDataError,
   } = useBalances();
+
+  // Ordenar balances según criterio seleccionado
+  const sortedBalances = useMemo(() => {
+    const copy = [...enrichedBalances];
+    if (sortBy === 'value') return copy.sort((a, b) => b.valueInUSDT - a.valueInUSDT);
+    if (sortBy === 'change') return copy.sort((a, b) => (b.priceChange24h || 0) - (a.priceChange24h || 0));
+    if (sortBy === 'name') return copy.sort((a, b) => a.crypto.symbol.localeCompare(b.crypto.symbol));
+    return copy;
+  }, [enrichedBalances, sortBy]);
 
   // Renderizar item de balance
   const renderBalanceItem = ({ item }) => {
+    const handlePress = () => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      router.push({
+        pathname: '/crypto-detail',
+        params: { 
+          cryptoId: item.crypto.id,
+          symbol: item.crypto.symbol,
+        }
+      });
+    };
+
+    if (viewMode === 'compact') {
+      // Vista compacta
+      return (
+        <TouchableOpacity 
+          activeOpacity={0.7}
+          onPress={handlePress}
+        >
+          <Card style={styles.balanceCardCompact}>
+            <View style={styles.balanceRowCompact}>
+              {/* Logo */}
+              <View style={styles.cryptoIconContainerCompact}>
+                {item.crypto.iconUrl ? (
+                  <Image
+                    source={{ 
+                      uri: item.crypto.iconUrl.replace('/svg/color/', '/32/color/').replace('.svg', '.png')
+                    }}
+                    style={styles.cryptoImageCompact}
+                    resizeMode="contain"
+                  />
+                ) : (
+                  <MaterialCommunityIcons
+                    name="currency-usd"
+                    size={24}
+                    color={theme.brandPrimary}
+                  />
+                )}
+              </View>
+
+              {/* Símbolo */}
+              <Text style={[styles.cryptoSymbolCompact, { color: theme.textPrimary }]}>
+                {item.crypto.symbol}
+              </Text>
+
+              {/* Spacer */}
+              <View style={{ flex: 1 }} />
+
+              {/* Variación 24h */}
+              {item.priceChange24h !== undefined && (
+                <View style={[
+                  styles.changeBadgeSmall, 
+                  { backgroundColor: item.priceChange24h >= 0 ? theme.buyBg : theme.sellBg }
+                ]}>
+                  <Text style={[styles.changeBadgeTextSmall, { 
+                    color: item.priceChange24h >= 0 ? theme.buy : theme.sell 
+                  }]}>
+                    {item.priceChange24h >= 0 ? '+' : ''}{item.priceChange24h.toFixed(2)}%
+                  </Text>
+                </View>
+              )}
+
+              {/* Valor */}
+              <Text style={[styles.balanceValueCompact, { color: theme.textPrimary }]}>
+                ${item.valueInUSDT.toLocaleString('en-US', { 
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0 
+                })}
+              </Text>
+
+              <Ionicons name="chevron-forward" size={16} color={theme.textMuted} />
+            </View>
+          </Card>
+        </TouchableOpacity>
+      );
+    }
+
+    // Vista expandida
     return (
       <TouchableOpacity 
         activeOpacity={0.7}
-        onPress={() => {
-          // Navegar a pantalla de detalle (a implementar)
-          Alert.alert(
-            item.crypto.nombre,
-            `Próximamente: Vista de detalle de ${item.crypto.symbol}`
-          );
-        }}
+        onPress={handlePress}
       >
         <Card style={styles.balanceCard}>
           <View style={styles.balanceRow}>
-            {/* Logo real de crypto */}
+            {/* Logo */}
             <View style={styles.cryptoIconContainer}>
               {item.crypto.iconUrl ? (
                 <Image
                   source={{ 
-                    uri: item.crypto.iconUrl.replace('/svg/color/', '/128/color/').replace('.svg', '.png')
+                    uri: item.crypto.iconUrl.replace('/svg/color/', '/32/color/').replace('.svg', '.png')
                   }}
                   style={styles.cryptoImage}
                   resizeMode="contain"
@@ -79,6 +164,24 @@ export default function AssetsScreen() {
 
             {/* Balance y valor */}
             <View style={styles.balanceValues}>
+              {/* Badge de variación 24h */}
+              {item.priceChange24h !== undefined && (
+                <View style={[
+                  styles.changeBadge, 
+                  { backgroundColor: item.priceChange24h >= 0 ? theme.buyBg : theme.sellBg }
+                ]}>
+                  <Ionicons 
+                    name={item.priceChange24h >= 0 ? 'trending-up' : 'trending-down'} 
+                    size={10} 
+                    color={item.priceChange24h >= 0 ? theme.buy : theme.sell} 
+                  />
+                  <Text style={[styles.changeBadgeText, { 
+                    color: item.priceChange24h >= 0 ? theme.buy : theme.sell 
+                  }]}>
+                    {item.priceChange24h >= 0 ? '+' : ''}{item.priceChange24h.toFixed(2)}%
+                  </Text>
+                </View>
+              )}
               <Text style={[styles.balanceAmount, { color: theme.textPrimary }]}>
                 {parseFloat(item.balanceAmount).toFixed(8)} {item.crypto.symbol}
               </Text>
@@ -88,24 +191,6 @@ export default function AssetsScreen() {
                   maximumFractionDigits: 2 
                 })}
               </Text>
-              {/* Variación 24h - Mostrar siempre si existe */}
-              {item.priceChange24h !== undefined && (
-                <View style={styles.changeRow}>
-                  <Ionicons 
-                    name={item.priceChange24h >= 0 ? 'trending-up' : 'trending-down'} 
-                    size={12} 
-                    color={item.priceChange24h >= 0 ? theme.buy : theme.sell} 
-                  />
-                  <Text 
-                    style={[
-                      styles.changeText, 
-                      { color: item.priceChange24h >= 0 ? theme.buy : theme.sell }
-                    ]}
-                  >
-                    {item.priceChange24h >= 0 ? '+' : ''}{item.priceChange24h.toFixed(2)}%
-                  </Text>
-                </View>
-              )}
             </View>
 
             {/* Icono de navegación */}
@@ -146,6 +231,33 @@ export default function AssetsScreen() {
     </View>
   );
 
+  // Skeleton loader
+  const renderSkeletonItem = () => (
+    <Card style={styles.balanceCard}>
+      <View style={styles.balanceRow}>
+        <View style={[styles.skeleton, styles.skeletonIcon, { backgroundColor: theme.backgroundSecondary }]} />
+        <View style={styles.balanceInfo}>
+          <View style={[styles.skeleton, styles.skeletonText, { backgroundColor: theme.backgroundSecondary }]} />
+          <View style={[styles.skeleton, styles.skeletonTextSmall, { backgroundColor: theme.backgroundSecondary }]} />
+        </View>
+        <View style={styles.balanceValues}>
+          <View style={[styles.skeleton, styles.skeletonText, { backgroundColor: theme.backgroundSecondary }]} />
+          <View style={[styles.skeleton, styles.skeletonTextSmall, { backgroundColor: theme.backgroundSecondary }]} />
+        </View>
+      </View>
+    </Card>
+  );
+
+  const renderSkeletonLoader = () => (
+    <View style={styles.skeletonContainer}>
+      {[1, 2, 3, 4].map((_, index) => (
+        <View key={index} style={{ marginBottom: spacing.sm }}>
+          {renderSkeletonItem()}
+        </View>
+      ))}
+    </View>
+  );
+
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Header fijo */}
@@ -153,18 +265,50 @@ export default function AssetsScreen() {
         <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>
           Mis Activos
         </Text>
-        <TouchableOpacity onPress={refetch}>
-          <Ionicons name="refresh" size={24} color={theme.brandPrimary} />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          {/* Toggle vista compacta/expandida */}
+          <TouchableOpacity 
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setViewMode(viewMode === 'expanded' ? 'compact' : 'expanded');
+            }}
+            style={styles.headerButton}
+          >
+            <Ionicons 
+              name={viewMode === 'expanded' ? 'list' : 'grid'} 
+              size={24} 
+              color={theme.brandPrimary} 
+            />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              refetch();
+            }}
+            style={styles.headerButton}
+          >
+            <Ionicons name="refresh" size={24} color={theme.brandPrimary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      <ScrollView style={styles.scrollView}>
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={theme.brandPrimary} />
-            <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
-              Cargando activos...
-            </Text>
+      <ScrollView 
+        style={styles.scrollView}
+        refreshControl={
+          <RefreshControl
+            refreshing={isLoading}
+            onRefresh={refetch}
+            tintColor={theme.brandPrimary}
+          />
+        }
+      >
+        {isLoading && sortedBalances.length === 0 ? (
+          // Skeleton loader
+          <View>
+            <Card elevated style={styles.totalCard}>
+              <View style={[styles.skeleton, styles.skeletonTotal, { backgroundColor: theme.backgroundSecondary }]} />
+            </Card>
+            {renderSkeletonLoader()}
           </View>
         ) : (
           <>
@@ -191,11 +335,24 @@ export default function AssetsScreen() {
               </View>
             </Card>
 
+            {/* Advertencia si falló la carga de datos de mercado */}
+            {marketDataError && (
+              <Card style={[styles.warningCard, { backgroundColor: theme.warningBg }]}>
+                <View style={styles.warningContent}>
+                  <Ionicons name="warning" size={20} color={theme.warning} />
+                  <Text style={[styles.warningText, { color: theme.warning }]}>
+                    No se pudieron cargar las variaciones de precio. Los porcentajes mostrados pueden no estar actualizados.
+                  </Text>
+                </View>
+              </Card>
+            )}
+
             {/* Botón de Depositar */}
             <View style={styles.depositButtonContainer}>
               <Button 
                 variant="primary" 
                 onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                   Alert.alert(
                     'Depositar',
                     'Próximamente: Funcionalidad de depósito'
@@ -215,6 +372,7 @@ export default function AssetsScreen() {
                 <Button 
                   variant="outline" 
                   onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     Alert.alert(
                       'Transferir',
                       'Próximamente: Funcionalidad de transferencia'
@@ -233,6 +391,7 @@ export default function AssetsScreen() {
                 <Button 
                   variant="outline" 
                   onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     Alert.alert(
                       'Retirar',
                       'Próximamente: Funcionalidad de retiro'
@@ -249,11 +408,75 @@ export default function AssetsScreen() {
               </View>
             </View>
 
-            {/* Toggle para ocultar balances pequeños */}
-            <View style={styles.filterContainer}>
+            {/* Controles de filtrado y ordenamiento */}
+            <View style={styles.controlsContainer}>
+              {/* Ordenamiento */}
+              <View style={styles.sortContainer}>
+                <Text style={[styles.controlLabel, { color: theme.textSecondary }]}>
+                  Ordenar:
+                </Text>
+                <View style={styles.sortButtons}>
+                  <TouchableOpacity
+                    style={[
+                      styles.sortButton,
+                      sortBy === 'value' && { backgroundColor: theme.brandPrimary }
+                    ]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setSortBy('value');
+                    }}
+                  >
+                    <Text style={[
+                      styles.sortButtonText,
+                      { color: sortBy === 'value' ? '#ffffff' : theme.textSecondary }
+                    ]}>
+                      Valor
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.sortButton,
+                      sortBy === 'change' && { backgroundColor: theme.brandPrimary }
+                    ]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setSortBy('change');
+                    }}
+                  >
+                    <Text style={[
+                      styles.sortButtonText,
+                      { color: sortBy === 'change' ? '#ffffff' : theme.textSecondary }
+                    ]}>
+                      Cambio
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.sortButton,
+                      sortBy === 'name' && { backgroundColor: theme.brandPrimary }
+                    ]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setSortBy('name');
+                    }}
+                  >
+                    <Text style={[
+                      styles.sortButtonText,
+                      { color: sortBy === 'name' ? '#ffffff' : theme.textSecondary }
+                    ]}>
+                      Nombre
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Toggle para ocultar balances pequeños */}
               <TouchableOpacity
                 style={styles.filterButton}
-                onPress={() => setHideSmallBalances(!hideSmallBalances)}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setHideSmallBalances(!hideSmallBalances);
+                }}
                 activeOpacity={0.7}
               >
                 <Ionicons 
@@ -275,17 +498,19 @@ export default function AssetsScreen() {
             {/* Lista de balances */}
             <View style={styles.listContainer}>
               <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>
-                Criptomonedas ({enrichedBalances.length})
+                Criptomonedas ({sortedBalances.length})
               </Text>
 
-              {enrichedBalances.length > 0 ? (
-                <FlatList
-                  data={enrichedBalances}
-                  renderItem={renderBalanceItem}
-                  keyExtractor={(item) => item.criptomonedaId.toString()}
-                  scrollEnabled={false}
-                  ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
-                />
+              {sortedBalances.length > 0 ? (
+                <View style={styles.flashListContainer}>
+                  <FlashList
+                    data={sortedBalances}
+                    renderItem={renderBalanceItem}
+                    keyExtractor={(item) => item.criptomonedaId.toString()}
+                    estimatedItemSize={viewMode === 'compact' ? 64 : 120}
+                    ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
+                  />
+                </View>
               ) : (
                 renderEmptyState()
               )}
@@ -313,18 +538,15 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xxxl,
     fontWeight: 'bold',
   },
+  headerActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  headerButton: {
+    padding: spacing.xs,
+  },
   scrollView: {
     flex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.xxl,
-  },
-  loadingText: {
-    fontSize: fontSize.base,
-    marginTop: spacing.md,
   },
 
   // Total Card
@@ -352,6 +574,23 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
   },
 
+  // Warning Card
+  warningCard: {
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+  },
+  warningContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+  },
+  warningText: {
+    fontSize: fontSize.xs,
+    flex: 1,
+    lineHeight: 18,
+  },
+
   // Deposit Button
   depositButtonContainer: {
     paddingHorizontal: spacing.md,
@@ -369,7 +608,7 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
 
-  // Actions Row (Transferir y Retirar)
+  // Actions Row
   actionsRow: {
     flexDirection: 'row',
     paddingHorizontal: spacing.md,
@@ -390,10 +629,36 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Filter Container
-  filterContainer: {
+  // Controls (Sort & Filter)
+  controlsContainer: {
     paddingHorizontal: spacing.md,
     marginBottom: spacing.md,
+    gap: spacing.md,
+  },
+  sortContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  controlLabel: {
+    fontSize: fontSize.sm,
+    fontWeight: '500',
+  },
+  sortButtons: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    flex: 1,
+  },
+  sortButton: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.sm,
+    flex: 1,
+    alignItems: 'center',
+  },
+  sortButtonText: {
+    fontSize: fontSize.xs,
+    fontWeight: '600',
   },
   filterButton: {
     flexDirection: 'row',
@@ -416,8 +681,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: spacing.md,
   },
+  flashListContainer: {
+    minHeight: 400,
+  },
 
-  // Balance Card
+  // Balance Card - Expanded
   balanceCard: {
     padding: spacing.md,
   },
@@ -441,13 +709,30 @@ const styles = StyleSheet.create({
   balanceInfo: {
     flex: 1,
   },
+  cryptoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginBottom: 2,
+  },
   cryptoSymbol: {
     fontSize: fontSize.md,
     fontWeight: 'bold',
-    marginBottom: 2,
   },
   cryptoName: {
     fontSize: fontSize.sm,
+  },
+  changeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
+  },
+  changeBadgeText: {
+    fontSize: fontSize.xs,
+    fontWeight: '700',
   },
   balanceValues: {
     alignItems: 'flex-end',
@@ -462,15 +747,6 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     marginBottom: 2,
   },
-  changeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  changeText: {
-    fontSize: fontSize.xs,
-    fontWeight: '600',
-  },
   priceRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -484,6 +760,77 @@ const styles = StyleSheet.create({
   },
   priceValue: {
     fontSize: fontSize.xs,
+  },
+
+  // Balance Card - Compact
+  balanceCardCompact: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  balanceRowCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  cryptoIconContainerCompact: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cryptoImageCompact: {
+    width: 28,
+    height: 28,
+  },
+  cryptoSymbolCompact: {
+    fontSize: fontSize.base,
+    fontWeight: '600',
+    minWidth: 50,
+  },
+  changeBadgeSmall: {
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
+    marginRight: spacing.sm,
+  },
+  changeBadgeTextSmall: {
+    fontSize: fontSize.xs,
+    fontWeight: '600',
+  },
+  balanceValueCompact: {
+    fontSize: fontSize.base,
+    fontWeight: '600',
+    marginRight: spacing.xs,
+  },
+
+  // Skeleton Loader
+  skeletonContainer: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+  },
+  skeleton: {
+    borderRadius: borderRadius.sm,
+    opacity: 0.3,
+  },
+  skeletonTotal: {
+    height: 60,
+    width: '60%',
+    alignSelf: 'center',
+  },
+  skeletonIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: borderRadius.md,
+    marginRight: spacing.md,
+  },
+  skeletonText: {
+    height: 16,
+    width: '70%',
+    marginBottom: 6,
+  },
+  skeletonTextSmall: {
+    height: 14,
+    width: '50%',
   },
 
   // Empty State

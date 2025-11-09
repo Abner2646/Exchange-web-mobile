@@ -1,4 +1,4 @@
-// src/services/marketService.js
+// src/services/marketService.js (web)
 import axios from 'axios';
 import { ENDPOINTS } from '../api/endpoints';
 

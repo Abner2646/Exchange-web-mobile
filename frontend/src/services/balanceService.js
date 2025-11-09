@@ -1,4 +1,4 @@
-// src/services/balanceService.js 
+// src/services/balanceService.js (web)
 import apiClient from '../api/client';
 import { ENDPOINTS } from '../api/endpoints';
 
