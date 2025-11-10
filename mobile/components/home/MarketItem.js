@@ -1,13 +1,40 @@
 // mobile/components/home/MarketItem.js
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useWatchlist } from '../../hooks/useWatchlist';
 import { spacing, fontSize, borderRadius } from '../../constants/theme';
 
 export default function MarketItem({ coin, onPress }) {
   const { theme } = useTheme();
+  const { isInWatchlist, toggleWatchlist } = useWatchlist();
 
-  const isPositive = coin.price_change_percentage_24h >= 0;
+  // ✅ Validación segura de valores
+  const priceChange = coin.price_change_percentage_24h ?? 0;
+  const currentPrice = coin.current_price ?? 0;
+  const isPositive = priceChange >= 0;
+  const isFavorite = isInWatchlist(coin.id);
+
+  const handleToggleFavorite = (e) => {
+    e.stopPropagation();
+    toggleWatchlist(coin.id);
+  };
+
+  // ✅ Función helper para formatear el cambio
+  const formatChange = (change) => {
+    if (change === null || change === undefined) return '0.00';
+    return Math.abs(change).toFixed(2);
+  };
+
+  // ✅ Función helper para formatear precio
+  const formatPrice = (price) => {
+    if (!price && price !== 0) return '0.00';
+    return price.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
 
   return (
     <TouchableOpacity
@@ -15,15 +42,32 @@ export default function MarketItem({ coin, onPress }) {
       onPress={onPress}
       activeOpacity={0.7}
     >
+      {/* Estrella de Favorito */}
+      <TouchableOpacity
+        style={styles.favoriteButton}
+        onPress={handleToggleFavorite}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <Ionicons
+          name={isFavorite ? 'star' : 'star-outline'}
+          size={20}
+          color={isFavorite ? '#FFD700' : theme.textMuted}
+        />
+      </TouchableOpacity>
+
       {/* Icono + Nombre */}
       <View style={styles.coinInfo}>
-        <Image source={{ uri: coin.image }} style={styles.coinIcon} />
+        <Image 
+          source={{ uri: coin.image }} 
+          style={styles.coinIcon}
+          defaultSource={require('../../assets/images/placeholder-coin.png')}
+        />
         <View>
           <Text style={[styles.coinSymbol, { color: theme.textPrimary }]}>
-            {coin.symbol.toUpperCase()}
+            {coin.symbol?.toUpperCase() || 'N/A'}
           </Text>
           <Text style={[styles.coinName, { color: theme.textSecondary }]} numberOfLines={1}>
-            {coin.name}
+            {coin.name || 'Unknown'}
           </Text>
         </View>
       </View>
@@ -31,10 +75,7 @@ export default function MarketItem({ coin, onPress }) {
       {/* Precio + Cambio */}
       <View style={styles.priceInfo}>
         <Text style={[styles.price, { color: theme.textPrimary }]}>
-          ${coin.current_price.toLocaleString('en-US', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })}
+          ${formatPrice(currentPrice)}
         </Text>
         <Text
           style={[
@@ -42,8 +83,8 @@ export default function MarketItem({ coin, onPress }) {
             { color: isPositive ? theme.buy : theme.sell }
           ]}
         >
-          {isPositive ? '+' : ''}
-          {coin.price_change_percentage_24h.toFixed(2)}%
+          {isPositive ? '+' : '-'}
+          {formatChange(priceChange)}%
         </Text>
       </View>
     </TouchableOpacity>
@@ -53,11 +94,14 @@ export default function MarketItem({ coin, onPress }) {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     borderRadius: borderRadius.md,
+  },
+  favoriteButton: {
+    padding: spacing.xs,
+    marginRight: spacing.xs,
   },
   coinInfo: {
     flexDirection: 'row',

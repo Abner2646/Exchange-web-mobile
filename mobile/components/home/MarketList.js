@@ -1,29 +1,78 @@
 // mobile/components/home/MarketList.js
-import React from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  FlatList, 
+  ActivityIndicator,
+  TouchableOpacity,
+  LayoutAnimation,
+  Platform,
+  UIManager,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useWatchlist } from '../../hooks/useWatchlist';
 import { spacing, fontSize, borderRadius } from '../../constants/theme';
 import Card from '../ui/Card';
 import MarketItem from './MarketItem';
+import { MarketItemSkeleton } from '../common/SkeletonLoader';
+
+// ⭐ Habilitar LayoutAnimation en Android
+if (Platform.OS === 'android') {
+  if (UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+  }
+}
 
 export default function MarketList({
-  data = [],
+  allMarketData = [],
   isLoading,
   error,
-  currentPage,
-  totalPages,
-  onNextPage,
-  onPreviousPage,
   onRetry,
 }) {
   const { theme } = useTheme();
   const router = useRouter();
+  const { watchlist } = useWatchlist();
+  const [displayCount, setDisplayCount] = useState(20);
 
   const handleCryptoClick = (symbol) => {
     router.push(`/swap?from=${symbol}&to=USDT`);
   };
+
+  // Ordenar poniendo favoritos primero
+  const sortedMarketData = useMemo(() => {
+    return [...allMarketData].sort((a, b) => {
+      const aIsFavorite = watchlist.includes(a.id);
+      const bIsFavorite = watchlist.includes(b.id);
+      
+      if (aIsFavorite === bIsFavorite) return 0;
+      if (aIsFavorite && !bIsFavorite) return -1;
+      return 1;
+    });
+  }, [allMarketData, watchlist]);
+
+  // ⭐ Animar cuando watchlist cambia
+  useEffect(() => {
+    LayoutAnimation.configureNext(
+      LayoutAnimation.create(
+        300, // duración en ms
+        LayoutAnimation.Types.easeInEaseOut,
+        LayoutAnimation.Properties.opacity
+      )
+    );
+  }, [watchlist]);
+
+  const handleLoadMore = useCallback(() => {
+    if (displayCount < sortedMarketData.length) {
+      setDisplayCount(prev => Math.min(prev + 20, sortedMarketData.length));
+    }
+  }, [displayCount, sortedMarketData.length]);
+
+  const displayedData = sortedMarketData.slice(0, displayCount);
+  const hasMore = displayCount < sortedMarketData.length;
 
   if (error) {
     return (
@@ -49,15 +98,15 @@ export default function MarketList({
     );
   }
 
-  if (isLoading && data.length === 0) {
+  if (isLoading && displayedData.length === 0) {
     return (
       <Card elevated style={styles.card}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.brandPrimary} />
-          <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
-            Cargando mercados...
-          </Text>
-        </View>
+        <Text style={[styles.title, { color: theme.textPrimary }]}>
+          Mercados Populares
+        </Text>
+        {[1, 2, 3, 4, 5].map((i) => (
+          <MarketItemSkeleton key={i} />
+        ))}
       </Card>
     );
   }
@@ -69,7 +118,7 @@ export default function MarketList({
       </Text>
 
       <FlatList
-        data={data}
+        data={displayedData}
         renderItem={({ item }) => (
           <MarketItem coin={item} onPress={() => handleCryptoClick(item.symbol.toUpperCase())} />
         )}
@@ -78,54 +127,22 @@ export default function MarketList({
         ItemSeparatorComponent={() => (
           <View style={[styles.separator, { backgroundColor: theme.border }]} />
         )}
+        ListFooterComponent={() => {
+          if (!hasMore) return null;
+          
+          return (
+            <View style={styles.footerContainer}>
+              <TouchableOpacity
+                style={[styles.loadMoreButton, { backgroundColor: theme.brandPrimary }]}
+                onPress={handleLoadMore}
+              >
+                <Text style={styles.loadMoreText}>Cargar más</Text>
+                <Ionicons name="chevron-down" size={16} color="#ffffff" />
+              </TouchableOpacity>
+            </View>
+          );
+        }}
       />
-
-      {/* Paginación Compacta - Opción A */}
-      <View style={styles.pagination}>
-        <TouchableOpacity
-          style={[
-            styles.paginationButton,
-            { 
-              backgroundColor: currentPage === 1 
-                ? theme.backgroundSecondary 
-                : theme.brandPrimary,
-              borderColor: theme.border
-            }
-          ]}
-          onPress={onPreviousPage}
-          disabled={currentPage === 1}
-        >
-          <Ionicons 
-            name="chevron-back" 
-            size={20} 
-            color={currentPage === 1 ? theme.textMuted : '#ffffff'} 
-          />
-        </TouchableOpacity>
-
-        <Text style={[styles.paginationInfo, { color: theme.textPrimary }]}>
-          {currentPage}/{totalPages}
-        </Text>
-
-        <TouchableOpacity
-          style={[
-            styles.paginationButton,
-            { 
-              backgroundColor: currentPage === totalPages 
-                ? theme.backgroundSecondary 
-                : theme.brandPrimary,
-              borderColor: theme.border
-            }
-          ]}
-          onPress={onNextPage}
-          disabled={currentPage === totalPages}
-        >
-          <Ionicons 
-            name="chevron-forward" 
-            size={20} 
-            color={currentPage === totalPages ? theme.textMuted : '#ffffff'} 
-          />
-        </TouchableOpacity>
-      </View>
     </Card>
   );
 }
@@ -138,14 +155,6 @@ const styles = StyleSheet.create({
     fontSize: fontSize.lg,
     fontWeight: 'bold',
     marginBottom: spacing.md,
-  },
-  loadingContainer: {
-    paddingVertical: spacing.xxl,
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  loadingText: {
-    fontSize: fontSize.sm,
   },
   errorContainer: {
     paddingVertical: spacing.xxl,
@@ -175,25 +184,21 @@ const styles = StyleSheet.create({
     height: 1,
     marginVertical: spacing.xs,
   },
-  pagination: {
+  footerContainer: {
+    alignItems: 'center',
+    marginTop: spacing.md,
+  },
+  loadMoreButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: spacing.lg,
-    gap: spacing.lg,
-  },
-  paginationButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xl,
     borderRadius: borderRadius.md,
-    borderWidth: 1,
   },
-  paginationInfo: {
-    fontSize: fontSize.md,
-    fontWeight: '700',
-    minWidth: 50,
-    textAlign: 'center',
+  loadMoreText: {
+    color: '#ffffff',
+    fontSize: fontSize.sm,
+    fontWeight: '600',
   },
 });

@@ -10,7 +10,6 @@ class BalanceService {
   async getMyBalances() {
     const response = await api.get(ENDPOINTS.MY_BALANCES);
     
-    // Normalizar respuesta
     if (Array.isArray(response.data)) return response.data;
     if (response.data?.data) return response.data.data;
     return [];
@@ -18,10 +17,6 @@ class BalanceService {
 
   /**
    * Calcular totales en USDT y BTC
-   * @param {Array} balances - Lista de balances
-   * @param {Array} cryptos - Lista de criptomonedas
-   * @param {Object} prices - Mapa de precios {symbol: price}
-   * @returns {Object} Totales calculados
    */
   calculateTotals(balances, cryptos, prices) {
     if (!balances || balances.length === 0) {
@@ -47,11 +42,6 @@ class BalanceService {
 
   /**
    * Enriquecer balances con información de crypto, precio y valor
-   * @param {Array} balances - Lista de balances
-   * @param {Array} cryptos - Lista de criptomonedas
-   * @param {Object} prices - Mapa de precios
-   * @param {Object} marketData - Mapa de datos de mercado (opcional)
-   * @returns {Array} Balances enriquecidos
    */
   enrichBalances(balances, cryptos, prices, marketData = {}) {
     return balances
@@ -63,7 +53,6 @@ class BalanceService {
         const balanceAmount = parseFloat(balance.balanceDisponible);
         const valueInUSDT = balanceAmount * price;
 
-        // Obtener datos de mercado (variación 24h)
         const market = marketData[crypto.symbol] || {};
         const priceChange24h = market.priceChange24h || 0;
 
@@ -73,7 +62,7 @@ class BalanceService {
           price,
           valueInUSDT,
           balanceAmount,
-          priceChange24h, // ⭐ NUEVO: Variación porcentual en 24h
+          priceChange24h,
         };
       })
       .filter(b => b !== null);
@@ -81,40 +70,41 @@ class BalanceService {
 
   /**
    * Filtrar balances pequeños
-   * @param {Array} enrichedBalances - Balances enriquecidos
-   * @param {Number} minValue - Valor mínimo en USDT (default: 1)
-   * @returns {Array} Balances filtrados
    */
   filterSmallBalances(enrichedBalances, minValue = 1) {
     return enrichedBalances.filter(b => b.valueInUSDT >= minValue);
   }
 
   /**
-   * Obtener top activos del portfolio con porcentajes
+   * Obtener top activos del portfolio con porcentajes y variación 24h
    * @param {Array} enrichedBalances - Balances enriquecidos
-   * @param {Number} limit - Número de activos a retornar (default: 5)
+   * @param {Number} limit - Número de activos a retornar
+   * @param {Object} marketData - Datos del mercado (opcional) ⭐ NUEVO
    * @returns {Array} Top activos con formato para UI
    */
-  getTopAssets(enrichedBalances, limit = 5) {
+  getTopAssets(enrichedBalances, limit = 5, marketData = {}) {
     if (!enrichedBalances || enrichedBalances.length === 0) {
       return [];
     }
 
-    // Filtrar activos con valor y ordenar por valor descendente
     const validAssets = enrichedBalances
       .filter(balance => balance.valueInUSDT > 0)
       .sort((a, b) => b.valueInUSDT - a.valueInUSDT);
 
-    // Calcular total para porcentajes
     const total = validAssets.reduce((sum, asset) => sum + asset.valueInUSDT, 0);
 
-    // Tomar top N y calcular porcentajes
-    return validAssets.slice(0, limit).map(asset => ({
-      symbol: asset.crypto.symbol,
-      value: asset.valueInUSDT,
-      balance: asset.balanceAmount,
-      percentage: total > 0 ? ((asset.valueInUSDT / total) * 100).toFixed(1) : '0.0',
-    }));
+    return validAssets.slice(0, limit).map(asset => {
+      // Buscar datos de mercado para obtener priceChange24h ⭐ NUEVO
+      const market = marketData[asset.crypto.symbol] || {};
+      
+      return {
+        symbol: asset.crypto.symbol,
+        value: asset.valueInUSDT,
+        balance: asset.balanceAmount,
+        percentage: total > 0 ? ((asset.valueInUSDT / total) * 100).toFixed(1) : '0.0',
+        priceChange24h: market.price_change_percentage_24h || 0, // ⭐ NUEVO
+      };
+    });
   }
 }
 

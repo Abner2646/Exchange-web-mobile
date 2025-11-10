@@ -10,28 +10,32 @@ import BalanceCard from '../../components/home/BalanceCard';
 import TopAssets from '../../components/home/TopAssets';
 import TopMoversSection from '../../components/home/TopMoversSection';
 import MarketList from '../../components/home/MarketList';
-import NotificationBell from '../../components/notifications/NotificationBell'; // ⭐ NUEVO
+import NotificationBell from '../../components/notifications/NotificationBell';
+import { BalanceCardSkeleton } from '../../components/common/SkeletonLoader';
 
 export default function HomeScreen() {
   const { theme } = useTheme();
   const { user } = useAuth();
 
-  const { portfolio, topAssets, isLoading: loadingBalances, refetch: refetchBalances } = useBalances();
-  
+  // ⭐ Primero cargar market data
   const {
-    marketData,
+    allMarketData,
     topGainers24h,
     topLosers24h,
     topGainers7d,
     topLosers7d,
     isLoading: loadingMarket,
     marketDataError,
-    currentPage,
-    totalPages,
-    nextPage,
-    previousPage,
     refresh: refreshMarket,
   } = useMarket();
+
+  // ⭐ Pasar allMarketData a useBalances
+  const { 
+    portfolio, 
+    topAssets, 
+    isLoading: loadingBalances, 
+    refetch: refetchBalances 
+  } = useBalances(allMarketData);
 
   const [refreshing, setRefreshing] = React.useState(false);
 
@@ -58,6 +62,8 @@ export default function HomeScreen() {
             onRefresh={onRefresh}
             tintColor={theme.brandPrimary}
             colors={[theme.brandPrimary]}
+            title="Actualizando..."
+            titleColor={theme.textSecondary}
           />
         }
       >
@@ -72,7 +78,6 @@ export default function HomeScreen() {
             </Text>
           </View>
           
-          {/* ⭐ NUEVO: Campana de notificaciones */}
           {user && (
             <View style={styles.headerRight}>
               <NotificationBell />
@@ -83,12 +88,16 @@ export default function HomeScreen() {
         {/* Usuario Autenticado */}
         {user && (
           <>
-            <BalanceCard
-              totalUSDT={portfolio.totalUSDT}
-              totalBTC={portfolio.totalBTC}
-              btcPriceError={portfolio.btcPriceError}
-              isLoading={loadingBalances}
-            />
+            {loadingBalances ? (
+              <BalanceCardSkeleton />
+            ) : (
+              <BalanceCard
+                totalUSDT={portfolio.totalUSDT}
+                totalBTC={portfolio.totalBTC}
+                btcPriceError={portfolio.btcPriceError}
+                isLoading={false}
+              />
+            )}
 
             <TopAssets assets={topAssets} isLoading={loadingBalances} />
 
@@ -104,14 +113,11 @@ export default function HomeScreen() {
           </>
         )}
 
+        {/* MarketList con Infinite Scroll */}
         <MarketList
-          data={marketData}
+          allMarketData={allMarketData}
           isLoading={loadingMarket}
           error={marketDataError}
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onNextPage={nextPage}
-          onPreviousPage={previousPage}
           onRetry={refreshMarket}
         />
       </ScrollView>

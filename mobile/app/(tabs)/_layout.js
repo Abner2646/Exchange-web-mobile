@@ -1,3 +1,4 @@
+// mobile/app/(tabs)/_layout.js
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -36,6 +37,15 @@ export default function TabLayout() {
             title: 'Assets',
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="wallet" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="trading"
+          options={{
+            title: 'Trading',
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="trending-up" size={size} color={color} />
             ),
           }}
         />

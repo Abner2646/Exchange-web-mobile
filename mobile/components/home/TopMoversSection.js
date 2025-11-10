@@ -1,11 +1,25 @@
 // mobile/components/home/TopMoversSection.js
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Image } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  ScrollView, 
+  ActivityIndicator, 
+  Image, 
+  Animated,
+  Dimensions,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useTheme } from '../../contexts/ThemeContext';
 import { spacing, fontSize, borderRadius } from '../../constants/theme';
 import Card from '../ui/Card';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+// ⭐ Calcular ancho disponible considerando padding de Card (spacing.lg * 2 = 64px total)
+const COLUMN_WIDTH = SCREEN_WIDTH - (spacing.md * 2) - (spacing.lg * 2);
 
 export default function TopMoversSection({
   gainers24h = [],
@@ -19,6 +33,8 @@ export default function TopMoversSection({
   const { theme } = useTheme();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('24h');
+  
+  const fadeAnim = useRef(new Animated.Value(1)).current;
 
   const gainers = activeTab === '24h' ? gainers24h : gainers7d;
   const losers = activeTab === '24h' ? losers24h : losers7d;
@@ -27,6 +43,24 @@ export default function TopMoversSection({
 
   const handleCryptoClick = (symbol) => {
     router.push(`/swap?from=${symbol}&to=USDT`);
+  };
+
+  const handleTabChange = (tab) => {
+    if (tab === activeTab) return;
+    
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 150,
+      useNativeDriver: true,
+    }).start(() => {
+      setActiveTab(tab);
+      
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }).start();
+    });
   };
 
   if (error) {
@@ -93,7 +127,7 @@ export default function TopMoversSection({
               borderColor: theme.border,
             }
           ]}
-          onPress={() => setActiveTab('24h')}
+          onPress={() => handleTabChange('24h')}
         >
           <Text
             style={[
@@ -116,7 +150,7 @@ export default function TopMoversSection({
               borderColor: theme.border,
             }
           ]}
-          onPress={() => setActiveTab('7d')}
+          onPress={() => handleTabChange('7d')}
         >
           <Text
             style={[
@@ -129,11 +163,19 @@ export default function TopMoversSection({
         </TouchableOpacity>
       </View>
 
-      {/* Contenido */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View style={styles.moversContainer}>
+      {/* Contenido con animación y snapping */}
+      <Animated.View style={{ opacity: fadeAnim }}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          pagingEnabled={true}
+          decelerationRate="fast"
+          snapToInterval={COLUMN_WIDTH} // ⭐ Usar constante
+          snapToAlignment="center" // ⭐ Cambiar a center para mejor centrado
+          contentContainerStyle={styles.scrollContent} // ⭐ NUEVO
+        >
           {/* Ganadores */}
-          <View style={styles.moverColumn}>
+          <View style={[styles.moverColumn, { width: COLUMN_WIDTH }]}>
             <View style={[styles.moverHeader, { backgroundColor: theme.buyBg }]}>
               <Ionicons name="trending-up" size={20} color={theme.buy} />
               <Text style={[styles.moverHeaderText, { color: theme.buy }]}>
@@ -165,7 +207,7 @@ export default function TopMoversSection({
           </View>
 
           {/* Perdedores */}
-          <View style={styles.moverColumn}>
+          <View style={[styles.moverColumn, { width: COLUMN_WIDTH }]}>
             <View style={[styles.moverHeader, { backgroundColor: theme.sellBg }]}>
               <Ionicons name="trending-down" size={20} color={theme.sell} />
               <Text style={[styles.moverHeaderText, { color: theme.sell }]}>
@@ -195,8 +237,8 @@ export default function TopMoversSection({
               ))}
             </View>
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </Animated.View>
     </Card>
   );
 }
@@ -263,12 +305,11 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     fontWeight: '600',
   },
-  moversContainer: {
-    flexDirection: 'row',
-    gap: spacing.md,
+  scrollContent: {
+    // ⭐ NUEVO - Sin padding interno
   },
   moverColumn: {
-    width: 280,
+    // Ancho se aplica inline con COLUMN_WIDTH
   },
   moverHeader: {
     flexDirection: 'row',
