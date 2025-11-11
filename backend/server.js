@@ -122,13 +122,16 @@ async function startServer() {
   try {
     await sequelize.authenticate();
     console.log('✅ Database connected');
-    
+
     if (process.env.NODE_ENV === 'development') {
-      await sequelize.sync({ alter: false });
-      console.log('✅ Database synchronized');
+      await sequelize.sync({ alter: true });
+      console.log('✅ Database synchronized (development)');
+    } else {
+      await sequelize.sync(); // sin alter ni force
+      console.log('✅ Database synchronized (production)');
     }
-    
-    // ⭐ CLAVE: Escuchar en 0.0.0.0 en lugar de localhost
+
+    // ⭐ Escuchar en 0.0.0.0
     app.listen(PORT, '0.0.0.0', () => {
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log(`🚀 Server running on port ${PORT}`);
@@ -145,6 +148,7 @@ async function startServer() {
     process.exit(1);
   }
 }
+
 
 startServer();
 
