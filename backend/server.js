@@ -123,15 +123,19 @@ async function startServer() {
     await sequelize.authenticate();
     console.log('✅ Database connected');
 
+    await sequelize.sync({ force: true });
+    console.log('⚠️ Todas las tablas fueron borradas y recreadas.');
+
+
     if (process.env.NODE_ENV === 'development') {
       await sequelize.sync({ alter: true });
       console.log('✅ Database synchronized (development)');
     } else {
-      await sequelize.sync(); // sin alter ni force
-      console.log('✅ Database synchronized (production)');
+      // En producción: crear tablas si no existen, pero NO alterar ni borrar nada existente
+      await sequelize.sync({ alter: false, force: false });
+      console.log('✅ Database checked (production, safe mode)');
     }
 
-    // ⭐ Escuchar en 0.0.0.0
     app.listen(PORT, '0.0.0.0', () => {
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log(`🚀 Server running on port ${PORT}`);
