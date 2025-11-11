@@ -389,7 +389,7 @@ const ConfiguracionPerfil = () => {
         {/* SECCIÓN KYC */}
         <section ref={kycRef} data-section="kyc" className="config-section">
           <div className="config-section-header">
-            <h2 className="config-section-title">Verificación de Identidad (KYC) (Mock)</h2>
+            <h2 className="config-section-title">Verificación de Identidad (KYC)</h2>
             <p className="config-section-description">
               Completa tu verificación para acceder a límites más altos
             </p>
