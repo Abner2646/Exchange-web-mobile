@@ -1,4 +1,4 @@
-// src/services/tradingService.js
+// src/services/tradingService.js (web)
 import apiClient from '../api/client';
 import { TRADING_ENDPOINTS } from '../api/endpoints'; // ✅ Importar TRADING_ENDPOINTS
 

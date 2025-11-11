@@ -1,4 +1,4 @@
-// src/components/features/TradeHistory.jsx
+// src/components/features/TradeHistory.jsx (web)
 import { useMemo } from 'react';
 import '../../styles/TradeHistory.css';
 

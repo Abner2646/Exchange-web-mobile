@@ -1,4 +1,4 @@
-// mobile/contexts/ThemeContext.js
+// mobile/contexts/ThemeContext.js (mobile)
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { themes } from '../constants/theme';

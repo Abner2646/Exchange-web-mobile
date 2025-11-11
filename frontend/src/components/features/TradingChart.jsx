@@ -1,4 +1,4 @@
-// src/components/features/TradingChart.jsx
+// src/components/features/TradingChart.jsx (web)
 import { useEffect, useRef, useState, useCallback } from 'react';
 import * as LightweightCharts from 'lightweight-charts';
 import { useTheme } from '../../context/ThemeContext';

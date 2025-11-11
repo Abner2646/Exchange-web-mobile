@@ -1,3 +1,4 @@
+// hooks/useDeposits.js (web)
 import { useState, useEffect } from 'react';
 import { useQuery } from 'react-query';
 import depositService from '../services/depositService';

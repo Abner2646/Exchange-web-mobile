@@ -1,4 +1,4 @@
-// src/components/features/OrderBook.jsx
+// src/components/features/OrderBook.jsx (web)
 import { useMemo } from 'react';
 import '../../styles/OrderBook.css';
 

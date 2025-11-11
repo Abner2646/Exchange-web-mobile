@@ -1,4 +1,4 @@
-// src/components/features/TradingPairSelector.jsx
+// src/components/features/TradingPairSelector.jsx (web)
 import { useState, useMemo } from 'react';
 import '../../styles/TradingPairSelector.css';
 

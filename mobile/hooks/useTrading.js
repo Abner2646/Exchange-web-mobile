@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Alert } from 'react-native';
 import tradingService from '../services/tradingService';
 import api from '../services/api';
+import { TRADING_ENDPOINTS } from '../api/endpoints';
 
 /**
  * Custom hook para manejar operaciones de trading spot
@@ -43,7 +44,7 @@ const useTrading = (initialPairSymbol = 'BTC/USDT') => {
       setErrors(prev => ({ ...prev, pairs: null }));
       
       console.log('🔄 === CARGANDO PARES DE TRADING ===');
-      console.log('📍 URL completa:', `${api.defaults.baseURL}/trading/pairs/active`);
+      console.log('📍 URL completa:', `${api.defaults.baseURL}${TRADING_ENDPOINTS.PAIRS_ACTIVE}`);
       
       const response = await tradingService.getActivePairs();
       
@@ -173,7 +174,14 @@ const useTrading = (initialPairSymbol = 'BTC/USDT') => {
   // ==================== CHART DATA ====================
 
   const loadChartData = useCallback(async (interval = '1h', filters = {}) => {
-    if (!activePair) return;
+    if (!activePair) {
+      console.log('⚠️ No hay activePair, no se puede cargar chart data');
+      return;
+    }
+
+    console.log('📈 === CARGANDO CHART DATA ===');
+    console.log('  Par:', activePair.symbol);
+    console.log('  Intervalo:', interval);
 
     try {
       setLoading(prev => ({ ...prev, chart: true }));
@@ -185,15 +193,22 @@ const useTrading = (initialPairSymbol = 'BTC/USDT') => {
         filters
       );
       
+      console.log('📦 Response de chart:', response ? 'Datos recibidos' : 'null');
+      
       let chartDataRaw = [];
       
       if (response && response.success && Array.isArray(response.candles)) {
         chartDataRaw = response.candles;
+        console.log('✅ Formato: { success, candles }');
       } else if (response && Array.isArray(response.data)) {
         chartDataRaw = response.data;
+        console.log('✅ Formato: { data }');
       } else if (Array.isArray(response)) {
         chartDataRaw = response;
+        console.log('✅ Formato: Array directo');
       }
+      
+      console.log('📊 Chart data raw:', chartDataRaw.length, 'items');
       
       const formattedData = chartDataRaw.map(candle => ({
         time: Math.floor((candle.time || candle.openTime) / 1000),
@@ -204,14 +219,18 @@ const useTrading = (initialPairSymbol = 'BTC/USDT') => {
         volume: parseFloat(candle.volume || 0),
       }));
       
+      console.log('✅ Chart data formateado:', formattedData.length, 'items');
       setChartData(formattedData);
       
     } catch (error) {
-      console.error('Error loading chart data:', error);
+      console.error('❌ Error loading chart data:', error.message);
+      console.error('❌ Status:', error.response?.status);
+      console.error('❌ Response:', error.response?.data);
       setErrors(prev => ({ ...prev, chart: error.message }));
       setChartData([]);
       
       // Fallback a Binance
+      console.log('🔄 Intentando fallback a Binance...');
       try {
         const binanceResponse = await tradingService.getBinanceChartData(
           activePair.id,

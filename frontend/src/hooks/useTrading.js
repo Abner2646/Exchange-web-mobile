@@ -1,4 +1,4 @@
-// src/hooks/useTrading.js
+// src/hooks/useTrading.js (web)
 import { useState, useEffect, useCallback, useRef } from 'react';
 import tradingService from '../services/tradingService';
 

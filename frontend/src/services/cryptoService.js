@@ -1,4 +1,4 @@
-// services/cryptoService.js (web) 
+// services/cryptoService.js (web)  
 
 import apiClient from '../api/client';
 import { ENDPOINTS } from '../api/endpoints';

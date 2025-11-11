@@ -1,4 +1,4 @@
-// mobile/services/cryptoService.js
+// mobile/services/cryptoService.js (mobile)
 import api from './api';
 import { ENDPOINTS } from '../api/endpoints';
 

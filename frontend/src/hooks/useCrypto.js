@@ -1,4 +1,4 @@
-// src/hooks/useCryptos.js
+// src/hooks/useCryptos.js (web)
 import { useQuery } from 'react-query';
 import cryptoService from '../services/cryptoService';
 

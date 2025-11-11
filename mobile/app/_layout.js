@@ -1,4 +1,4 @@
-// mobile/app/_layout.js
+// mobile/app/_layout.js (layout)
 import { Stack } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from '../contexts/ThemeContext';

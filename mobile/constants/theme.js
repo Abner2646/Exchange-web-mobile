@@ -1,4 +1,4 @@
-// mobile/constants/theme.js
+// mobile/constants/theme.js (mobile)
 
 // ============================================
 // TEMA CLARO (basado en Coinbase)

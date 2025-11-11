@@ -1,4 +1,4 @@
-// src/components/features/UserOrders.jsx
+// src/components/features/UserOrders.jsx (web)
 import { useState } from 'react';
 import '../../styles/UserOrders.css';
 

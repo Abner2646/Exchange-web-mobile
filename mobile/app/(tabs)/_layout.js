@@ -1,4 +1,4 @@
-// mobile/app/(tabs)/_layout.js
+// app/(tabs)/_layout.js - VERSIÓN CORREGIDA
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -18,7 +18,7 @@ export default function TabLayout() {
             borderTopColor: theme.border,
             borderTopWidth: 1,
           },
-          tabBarActiveTintColor: theme.info, // ✅ Azul principal
+          tabBarActiveTintColor: theme.info,
           tabBarInactiveTintColor: theme.textMuted,
         }}
       >
@@ -58,6 +58,16 @@ export default function TabLayout() {
             ),
           }}
         />
+        {/* ✅ AGREGAR DEPOSITS AL LAYOUT */}
+        <Tabs.Screen
+          name="deposits"
+          options={{
+            title: 'Deposits',
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="download" size={size} color={color} />
+            ),
+          }}
+        />
         <Tabs.Screen
           name="profile"
           options={{
@@ -77,3 +87,4 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 });
+

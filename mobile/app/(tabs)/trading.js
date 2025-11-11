@@ -1,23 +1,24 @@
 // mobile/app/(tabs)/trading.js
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+// ✅ VERSIÓN SIMPLIFICADA CON DEBUG
+
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
-import { spacing, fontSize, borderRadius } from '../../constants/theme';
+import { spacing, fontSize } from '../../constants/theme';
 import useTrading from '../../hooks/useTrading';
 
 // Componentes
 import TradingHeader from '../../components/trading/TradingHeader';
-import SimpleTradingChart from '../../components/trading/SimpleTradingChart';
+import TradingChart from '../../components/trading/TradingChart';
 import OrderForm from '../../components/trading/OrderForm';
 import CompactOrderBook from '../../components/trading/CompactOrderBook';
 import TradesList from '../../components/trading/TradesList';
 import OrdersList from '../../components/trading/OrdersList';
 import MarketsList from '../../components/trading/MarketsList';
 
-export default function Trading() {
+export default function TradingScreen() {
   const { theme } = useTheme();
-  const [selectedTab, setSelectedTab] = useState('chart');
+  const [activeTab, setActiveTab] = useState('chart');
   const [selectedInterval, setSelectedInterval] = useState('1h');
 
   const {
@@ -28,103 +29,162 @@ export default function Trading() {
     recentTrades,
     activeOrders,
     tradingBalance,
-    tickers,
     loading,
-    errors,
     selectPair,
     loadChartData,
     createOrder,
     cancelOrder,
-    startRealTimeUpdates,
-    stopRealTimeUpdates,
   } = useTrading('BTC/USDT');
 
-  // Iniciar actualizaciones en tiempo real
-  useEffect(() => {
-    startRealTimeUpdates();
-    return () => stopRealTimeUpdates();
-  }, [startRealTimeUpdates, stopRealTimeUpdates]);
-
-  // Manejar cambio de intervalo del gráfico
   const handleIntervalChange = (interval) => {
+    console.log('⏱️ Cambiando intervalo a:', interval);
     setSelectedInterval(interval);
-    loadChartData(interval);
+    if (activePair) {
+      loadChartData(interval);
+    }
   };
 
-  // Manejar selección de par
-  const handleSelectPair = (pair) => {
+  const handlePairSelect = (pair) => {
+    console.log('🎯 Seleccionando par:', pair.symbol);
     selectPair(pair);
-    setSelectedTab('chart');
+    setActiveTab('chart');
   };
 
-  // Manejar creación de orden
-  const handleCreateOrder = async (orderData) => {
-    const result = await createOrder(orderData);
-    
-    if (result.success) {
-      Alert.alert(
-        'Éxito',
-        `Orden ${orderData.side === 'buy' ? 'de compra' : 'de venta'} creada exitosamente`
-      );
-    } else {
-      Alert.alert(
-        'Error',
-        result.error || 'Error al crear la orden'
-      );
-    }
-  };
+  // Debug logs
+  console.log('📱 === TRADING SCREEN RENDER ===');
+  console.log('  activeTab:', activeTab);
+  console.log('  activePair:', activePair?.symbol || 'null');
+  console.log('  chartData:', chartData?.length || 0, 'items');
+  console.log('  loading.chart:', loading.chart);
 
-  // Manejar cancelación de orden
-  const handleCancelOrder = async (orderId) => {
-    const result = await cancelOrder(orderId);
-    
-    if (result.success) {
-      Alert.alert('Éxito', 'Orden cancelada exitosamente');
-    } else {
-      Alert.alert('Error', result.error || 'Error al cancelar la orden');
-    }
-  };
+  if (!activePair) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+        <View style={styles.centered}>
+          <Text style={[styles.text, { color: theme.textPrimary }]}>
+            Cargando pares de trading...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
-  const tabs = [
-    { key: 'chart', label: 'Gráfico', icon: 'bar-chart' },
-    { key: 'trading', label: 'Trading', icon: 'swap-horizontal' },
-    { key: 'orders', label: 'Órdenes', icon: 'list' },
-    { key: 'markets', label: 'Mercados', icon: 'apps' },
-  ];
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      {/* Header con precio */}
+      <TradingHeader
+        pair={activePair}
+        onPairPress={() => setActiveTab('markets')}
+      />
 
-  const renderTabContent = () => {
-    switch (selectedTab) {
-      case 'chart':
-        return (
-          <ScrollView 
-            style={styles.tabContent}
-            showsVerticalScrollIndicator={false}
+      {/* Tabs de navegación */}
+      <View style={[styles.tabsContainer, { backgroundColor: theme.backgroundSecondary }]}>
+        <TouchableOpacity
+          style={styles.tabButton}
+          onPress={() => {
+            console.log('📊 Cambiando a tab: chart');
+            setActiveTab('chart');
+          }}
+        >
+          <Text 
+            style={[
+              styles.tabText, 
+              { 
+                color: activeTab === 'chart' ? theme.brandPrimary : theme.textSecondary,
+                fontWeight: activeTab === 'chart' ? '700' : '400'
+              }
+            ]}
           >
-            <SimpleTradingChart
-              pair={activePair}
+            Gráfico
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.tabButton}
+          onPress={() => setActiveTab('trading')}
+        >
+          <Text 
+            style={[
+              styles.tabText, 
+              { 
+                color: activeTab === 'trading' ? theme.brandPrimary : theme.textSecondary,
+                fontWeight: activeTab === 'trading' ? '700' : '400'
+              }
+            ]}
+          >
+            Trading
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.tabButton}
+          onPress={() => setActiveTab('orders')}
+        >
+          <Text 
+            style={[
+              styles.tabText, 
+              { 
+                color: activeTab === 'orders' ? theme.brandPrimary : theme.textSecondary,
+                fontWeight: activeTab === 'orders' ? '700' : '400'
+              }
+            ]}
+          >
+            Órdenes
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.tabButton}
+          onPress={() => setActiveTab('markets')}
+        >
+          <Text 
+            style={[
+              styles.tabText, 
+              { 
+                color: activeTab === 'markets' ? theme.brandPrimary : theme.textSecondary,
+                fontWeight: activeTab === 'markets' ? '700' : '400'
+              }
+            ]}
+          >
+            Mercados
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Contenido según tab activo */}
+      <View style={styles.contentContainer}>
+        {activeTab === 'chart' && (
+          <ScrollView 
+            style={styles.scrollContent} 
+            showsVerticalScrollIndicator={false}
+            bounces={true}
+          >
+            <Text style={[styles.debugText, { color: theme.textMuted }]}>
+              📊 Tab CHART activo - Datos: {chartData?.length || 0}
+            </Text>
+            
+            <TradingChart
               data={chartData}
+              pair={activePair}
               selectedInterval={selectedInterval}
               onIntervalChange={handleIntervalChange}
               loading={loading.chart}
             />
+
             <TradesList
               trades={recentTrades}
               pair={activePair}
               loading={loading.trades}
             />
           </ScrollView>
-        );
+        )}
 
-      case 'trading':
-        return (
-          <ScrollView 
-            style={styles.tabContent}
-            showsVerticalScrollIndicator={false}
-          >
+        {activeTab === 'trading' && (
+          <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
             <OrderForm
               pair={activePair}
               balance={tradingBalance}
-              onSubmit={handleCreateOrder}
+              onSubmit={createOrder}
               loading={loading.orders}
             />
             <CompactOrderBook
@@ -133,84 +193,25 @@ export default function Trading() {
               loading={loading.orderBook}
             />
           </ScrollView>
-        );
+        )}
 
-      case 'orders':
-        return (
-          <View style={styles.tabContent}>
-            <OrdersList
-              orders={activeOrders}
-              onCancel={handleCancelOrder}
-              loading={loading.orders}
-            />
-          </View>
-        );
+        {activeTab === 'orders' && (
+          <OrdersList
+            orders={activeOrders}
+            onCancelOrder={cancelOrder}
+            loading={loading.orders}
+          />
+        )}
 
-      case 'markets':
-        return (
-          <View style={styles.tabContent}>
-            <MarketsList
-              pairs={tradingPairs}
-              activePair={activePair}
-              onSelectPair={handleSelectPair}
-              tickers={tickers}
-            />
-          </View>
-        );
-
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Header */}
-      <TradingHeader
-        pair={activePair}
-        onPairPress={() => setSelectedTab('markets')}
-      />
-
-      {/* Tabs */}
-      <View style={[styles.tabsContainer, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tabsContent}
-        >
-          {tabs.map(tab => (
-            <TouchableOpacity
-              key={tab.key}
-              style={[
-                styles.tab,
-                selectedTab === tab.key && [
-                  styles.tabActive,
-                  { borderBottomColor: theme.brandPrimary }
-                ],
-              ]}
-              onPress={() => setSelectedTab(tab.key)}
-            >
-              <Ionicons 
-                name={tab.icon} 
-                size={20} 
-                color={selectedTab === tab.key ? theme.brandPrimary : theme.textSecondary} 
-              />
-              <Text 
-                style={[
-                  styles.tabLabel,
-                  { color: selectedTab === tab.key ? theme.brandPrimary : theme.textSecondary }
-                ]}
-              >
-                {tab.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        {activeTab === 'markets' && (
+          <MarketsList
+            pairs={tradingPairs}
+            onSelectPair={handlePairSelect}
+            loading={loading.pairs}
+          />
+        )}
       </View>
-
-      {/* Tab content */}
-      {renderTabContent()}
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -218,29 +219,39 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  tabsContainer: {
-    borderBottomWidth: 1,
-  },
-  tabsContent: {
-    paddingHorizontal: spacing.md,
-  },
-  tab: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    gap: spacing.xs,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  tabActive: {
-    borderBottomWidth: 2,
-  },
-  tabLabel: {
-    fontSize: fontSize.base,
-    fontWeight: '600',
-  },
-  tabContent: {
+  centered: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  text: {
+    fontSize: fontSize.base,
+  },
+  tabsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  tabButton: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  tabText: {
+    fontSize: fontSize.sm,
+  },
+  contentContainer: {
+    flex: 1,
+  },
+  scrollContent: {
+    flex: 1,
+  },
+  debugText: {
+    fontSize: fontSize.xs,
+    padding: spacing.sm,
+    textAlign: 'center',
+    fontFamily: 'monospace',
   },
 });
