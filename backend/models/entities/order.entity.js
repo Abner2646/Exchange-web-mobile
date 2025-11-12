@@ -1,4 +1,5 @@
 // models/entities/order.entity.js
+/*
 const { DataTypes, Model } = require('sequelize');
 
 class Order extends Model {}
@@ -169,6 +170,201 @@ function initOrder(sequelize) {
       allowNull: true,
       field: 'executed_at',
       comment: 'Fecha de ejecución completa'
+    }
+  }, {
+    sequelize,
+    modelName: 'Order',
+    tableName: 'orders',
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
+    indexes: [
+      { fields: ['user_id'] },
+      { fields: ['trading_pair_id'] },
+      { fields: ['status'] },
+      { fields: ['side'] },
+      { fields: ['trading_type'] },
+      { fields: ['order_type'] },
+      { fields: ['created_at'] },
+      { fields: ['user_id', 'status'] },
+      { fields: ['trading_pair_id', 'status'] },
+      { fields: ['trading_pair_id', 'status', 'side'] },
+      { fields: ['trading_pair_id', 'status', 'side', 'price'] }
+    ]
+  });
+
+  return Order;
+}
+
+module.exports = initOrder;
+*/
+
+// models/entities/order.entity.js
+const { DataTypes, Model } = require('sequelize');
+
+class Order extends Model {}
+
+function initOrder(sequelize) {
+  Order.init({
+    id: {
+      type: DataTypes.UUID,
+      primaryKey: true,
+      defaultValue: DataTypes.UUIDV4
+    },
+    userId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      field: 'user_id'
+    },
+    tradingPairId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      field: 'trading_pair_id'
+    },
+
+    // Tipo de orden
+    orderType: {
+      type: DataTypes.ENUM({
+        values: ['market', 'limit', 'stop_limit', 'stop_market'],
+        name: 'enum_order_type'
+      }),
+      allowNull: false,
+      field: 'order_type',
+      comment: 'market=a mercado, limit=precio específico, stop=condicional'
+    },
+
+    // Tipo de trading
+    tradingType: {
+      type: DataTypes.ENUM({
+        values: ['spot', 'margin_cross', 'margin_isolated', 'futures'],
+        name: 'enum_trading_type'
+      }),
+      defaultValue: 'spot',
+      field: 'trading_type'
+    },
+
+    // Compra o venta
+    side: {
+      type: DataTypes.ENUM({
+        values: ['buy', 'sell'],
+        name: 'enum_side'
+      }),
+      allowNull: false,
+      comment: 'buy=compra, sell=venta'
+    },
+
+    quantity: {
+      type: DataTypes.DECIMAL(28, 18),
+      allowNull: false
+    },
+    quantityFilled: {
+      type: DataTypes.DECIMAL(28, 18),
+      defaultValue: 0,
+      field: 'quantity_filled'
+    },
+    quantityRemaining: {
+      type: DataTypes.DECIMAL(28, 18),
+      allowNull: false,
+      field: 'quantity_remaining'
+    },
+
+    price: {
+      type: DataTypes.DECIMAL(28, 18),
+      allowNull: true
+    },
+    stopPrice: {
+      type: DataTypes.DECIMAL(28, 18),
+      allowNull: true,
+      field: 'stop_price'
+    },
+    averagePrice: {
+      type: DataTypes.DECIMAL(28, 18),
+      defaultValue: 0,
+      field: 'average_price'
+    },
+
+    status: {
+      type: DataTypes.ENUM({
+        values: [
+          'pending',
+          'open',
+          'partially_filled',
+          'filled',
+          'cancelled',
+          'expired',
+          'rejected'
+        ],
+        name: 'enum_status'
+      }),
+      defaultValue: 'pending'
+    },
+
+    timeInForce: {
+      type: DataTypes.ENUM({
+        values: ['GTC', 'IOC', 'FOK'],
+        name: 'enum_time_in_force'
+      }),
+      defaultValue: 'GTC',
+      field: 'time_in_force'
+    },
+
+    feePercent: {
+      type: DataTypes.DECIMAL(5, 4),
+      allowNull: false,
+      field: 'fee_percent'
+    },
+    feeAmount: {
+      type: DataTypes.DECIMAL(28, 18),
+      defaultValue: 0,
+      field: 'fee_amount'
+    },
+    feeCurrency: {
+      type: DataTypes.STRING(10),
+      allowNull: true,
+      field: 'fee_currency'
+    },
+
+    makerOrTaker: {
+      type: DataTypes.ENUM({
+        values: ['maker', 'taker'],
+        name: 'enum_maker_taker'
+      }),
+      allowNull: true,
+      field: 'maker_or_taker'
+    },
+
+    leverage: {
+      type: DataTypes.INTEGER,
+      defaultValue: 1
+    },
+    marginMode: {
+      type: DataTypes.ENUM({
+        values: ['cross', 'isolated'],
+        name: 'enum_margin_mode'
+      }),
+      allowNull: true,
+      field: 'margin_mode'
+    },
+
+    clientOrderId: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      field: 'client_order_id'
+    },
+    expiresAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'expires_at'
+    },
+    cancelledReason: {
+      type: DataTypes.STRING(500),
+      allowNull: true,
+      field: 'cancelled_reason'
+    },
+    executedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'executed_at'
     }
   }, {
     sequelize,
