@@ -123,25 +123,14 @@ async function startServer() {
     await sequelize.authenticate();
     console.log('✅ Database connected');
 
+    // ⚠️ TEMPORAL: Una sola vez para recrear ENUMs
     await sequelize.sync({ force: true });
-    console.log('⚠️ Todas las tablas fueron borradas y recreadas.');
-
-
-    if (process.env.NODE_ENV === 'development') {
-      await sequelize.sync({ alter: true });
-      console.log('✅ Database synchronized (development)');
-    } else {
-      // En producción: crear tablas si no existen, pero NO alterar ni borrar nada existente
-      await sequelize.sync({ alter: false, force: false });
-      console.log('✅ Database checked (production, safe mode)');
-    }
+    console.log('⚠️ Database reset (recreating ENUMs)');
 
     app.listen(PORT, '0.0.0.0', () => {
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🌍 Frontend URL: ${process.env.FRONTEND_URL || 'not set'}`);
-      console.log(`📱 Mobile access: Use your PC IP + :${PORT}`);
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     });
 
@@ -152,6 +141,15 @@ async function startServer() {
     process.exit(1);
   }
 }
+
+//Cuando haya que mantener la bbdd volvemos a:
+/*
+if (process.env.NODE_ENV === 'development') {
+  await sequelize.sync({ force: true });
+} else {
+  await sequelize.sync({ alter: false, force: false });
+}
+*/
 
 
 startServer();
