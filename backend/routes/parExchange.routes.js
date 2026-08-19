@@ -32,12 +32,6 @@ router.post('/', isSuperAdmin, parExchangeController.createParExchange); // Bien
 */
 
 
-// Actualizar par por ID - SIN MIDDLEWARE
-//router.put('/:id', parExchangeController.updateParExchange);
-
-// Eliminar par por ID - SIN MIDDLEWARE
-//router.delete('/:id', parExchangeController.deleteParExchange); // Bien
-
 // Buscar pares por término
 router.get('/search/query', parExchangeController.searchParesExchange);
 
@@ -64,39 +58,5 @@ router.get('/monitoring/high-commission', parExchangeController.getHighCommissio
 
 // Obtener pares con precios desactualizados - SIN MIDDLEWARE
 router.get('/monitoring/outdated-prices', isSuperAdmin, parExchangeController.getOutdatedPricePairs);
-/*
-// Actualizar estado del par - SIN MIDDLEWARE
-router.patch('/:id/status', parExchangeController.updateParStatus);
-
-// Alternar estado del par - SIN MIDDLEWARE
-router.patch('/:id/toggle', parExchangeController.toggleParStatus);
-
-// Actualizar precio del par - SIN MIDDLEWARE
-router.patch('/:id/price', parExchangeController.updateParPrice);
-
-// Actualizar comisión del par - SIN MIDDLEWARE
-router.patch('/:id/commission', parExchangeController.updateParCommission);
-
-// Actualización masiva de precios - SIN MIDDLEWARE
-router.post('/prices/bulk-update', parExchangeController.bulkUpdatePrices);
-
-// Calcular intercambio para un par
-router.post('/:id/calculate', parExchangeController.calculateExchange);
-
-// Obtener libro de órdenes simulado
-router.get('/:id/orderbook', parExchangeController.getOrderBook);
-
-// Dashboard de exchange - SIN MIDDLEWARE
-router.get('/dashboard/overview', parExchangeController.getExchangeDashboard);
-
-// Métricas del mercado
-router.get('/dashboard/market-metrics', parExchangeController.getMarketMetrics);
-
-// Obtener estadísticas de pares - SIN MIDDLEWARE
-router.get('/admin/stats', parExchangeController.getParExchangeStats);
-
-// Exportar pares a CSV - SIN MIDDLEWARE
-router.get('/admin/export', parExchangeController.exportPares);
-*/
 
 module.exports = router;
