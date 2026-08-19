@@ -79,12 +79,18 @@ const PriceCandle = priceCandleModel(sequelize);
 // ================================
 
 // Usuario puede tener muchos balances
-Usuario.hasMany(BalanceUsuario, { foreignKey: 'usuarioId', as: 'balances' });
-BalanceUsuario.belongsTo(Usuario, { foreignKey: 'usuarioId', as: 'usuario' });
+// Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #9): la columna real en
+// balances_users es user_id (userId en el modelo), no usuarioId — con
+// 'usuarioId' Sequelize crea una columna fantasma nunca poblada y
+// Usuario.include('balances') devolvía siempre un array vacío en silencio.
+Usuario.hasMany(BalanceUsuario, { foreignKey: 'userId', as: 'balances' });
+BalanceUsuario.belongsTo(Usuario, { foreignKey: 'userId', as: 'usuario' });
 
 // Usuario puede tener muchas direcciones de depósito
-Usuario.hasMany(DireccionDeposito, { foreignKey: 'usuarioId', as: 'direccionesDeposito' });
-DireccionDeposito.belongsTo(Usuario, { foreignKey: 'userId', as: 'usuario' }); //Antes: (Usuario, { foreignKey: 'usuarioId', as: 'usuario' })
+// Mismo bug (Críticos #9), y encima asimétrico: el belongsTo ya se había
+// corregido a userId pero el hasMany inverso se había quedado en usuarioId.
+Usuario.hasMany(DireccionDeposito, { foreignKey: 'userId', as: 'direccionesDeposito' });
+DireccionDeposito.belongsTo(Usuario, { foreignKey: 'userId', as: 'usuario' });
 
 // Usuario puede crear muchas ofertas P2P
 Usuario.hasMany(OfertaP2P, { foreignKey: 'usuarioId', as: 'ofertas' });
@@ -112,8 +118,10 @@ Usuario.hasMany(Valoracion, { foreignKey: 'usuarioEvaluadoId', as: 'valoraciones
 Valoracion.belongsTo(Usuario, { foreignKey: 'usuarioEvaluadoId', as: 'evaluado' });
 
 // Usuario puede hacer transacciones blockchain
-Usuario.hasMany(TransaccionBlockchain, { foreignKey: 'usuarioId', as: 'transaccionesBlockchain' });
-TransaccionBlockchain.belongsTo(Usuario, { foreignKey: 'usuarioId', as: 'usuario' });
+// Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #9): mismo bug que arriba —
+// la columna real en transacciones_blockchain es user_id, no usuarioId.
+Usuario.hasMany(TransaccionBlockchain, { foreignKey: 'userId', as: 'transaccionesBlockchain' });
+TransaccionBlockchain.belongsTo(Usuario, { foreignKey: 'userId', as: 'usuario' });
 
 // Admin puede aprobar transacciones blockchain
 Usuario.hasMany(TransaccionBlockchain, { foreignKey: 'aprobadoPor', as: 'transaccionesAprobadas' });
