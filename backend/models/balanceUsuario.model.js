@@ -5,21 +5,21 @@ const initBalanceUser = require('./entities/balanceUsuario.entity');
 const { Op } = require('sequelize');
 
 function createBalanceUserModel(sequelize) {
-  const BalanceUser = initBalanceUser(sequelize);
+  const BalanceUsuario = initBalanceUser(sequelize);
 
   // Métodos de consulta básicos
-  BalanceUser.getById = async (id) => {
+  BalanceUsuario.getById = async (id) => {
     try {
-      const balance = await BalanceUser.findByPk(id);
+      const balance = await BalanceUsuario.findByPk(id);
       return balance;
     } catch (error) {
       throw new Error(`Error al obtener balance por ID: ${error.message}`);
     }
   };
 
-  BalanceUser.getByUserId = async (userId) => {
+  BalanceUsuario.getByUserId = async (userId) => {
     try {
-      const balances = await BalanceUser.findAll({
+      const balances = await BalanceUsuario.findAll({
         where: { userId }
       });
       return balances;
@@ -28,9 +28,9 @@ function createBalanceUserModel(sequelize) {
     }
   };
 
-  BalanceUser.getByUserAndCrypto = async (userId, criptomonedaId) => {
+  BalanceUsuario.getByUserAndCrypto = async (userId, criptomonedaId) => {
     try {
-      const balance = await BalanceUser.findOne({
+      const balance = await BalanceUsuario.findOne({
         where: { 
           userId,
           criptomonedaId 
@@ -42,7 +42,7 @@ function createBalanceUserModel(sequelize) {
     }
   };
 
-  BalanceUser.getAll = async (filters = {}) => {
+  BalanceUsuario.getAll = async (filters = {}) => {
     try {
       const where = {};
       
@@ -52,7 +52,7 @@ function createBalanceUserModel(sequelize) {
         where.balanceDisponible = { [Op.gte]: filters.minBalance };
       }
 
-      const balances = await BalanceUser.findAll({
+      const balances = await BalanceUsuario.findAll({
         where,
         limit: filters.limit || 50,
         offset: filters.offset || 0
@@ -65,9 +65,9 @@ function createBalanceUserModel(sequelize) {
   };
 
   // Métodos de balance
-  BalanceUser.getTotalBalance = async (userId, criptomonedaId) => {
+  BalanceUsuario.getTotalBalance = async (userId, criptomonedaId) => {
     try {
-      const balance = await BalanceUser.findOne({
+      const balance = await BalanceUsuario.findOne({
         where: { userId, criptomonedaId }
       });
       
@@ -85,9 +85,9 @@ function createBalanceUserModel(sequelize) {
     }
   };
 
-  BalanceUser.updateBalance = async (userId, criptomonedaId, amount, type = 'disponible', transaction = null) => {
+  BalanceUsuario.updateBalance = async (userId, criptomonedaId, amount, type = 'disponible', transaction = null) => {
     try {
-      const [balance] = await BalanceUser.findOrCreate({
+      const [balance] = await BalanceUsuario.findOrCreate({
         where: { userId, criptomonedaId },
         defaults: {
           userId,
@@ -119,9 +119,9 @@ function createBalanceUserModel(sequelize) {
   };
 
   // 🆕 MÉTODO PARA OBTENER BALANCE EN TRANSACCIÓN
-  BalanceUser.getByUserAndCrypto = async (userId, criptomonedaId, options = {}) => {
+  BalanceUsuario.getByUserAndCrypto = async (userId, criptomonedaId, options = {}) => {
     try {
-      const balance = await BalanceUser.findOne({
+      const balance = await BalanceUsuario.findOne({
         where: { userId, criptomonedaId },
         ...options
       });
@@ -131,9 +131,9 @@ function createBalanceUserModel(sequelize) {
     }
   };
 
-  BalanceUser.blockBalance = async (userId, criptomonedaId, amount) => {
+  BalanceUsuario.blockBalance = async (userId, criptomonedaId, amount) => {
     try {
-      const balance = await BalanceUser.findOne({
+      const balance = await BalanceUsuario.findOne({
         where: { userId, criptomonedaId }
       });
 
@@ -158,9 +158,9 @@ function createBalanceUserModel(sequelize) {
     }
   };
 
-  BalanceUser.unblockBalance = async (userId, criptomonedaId, amount) => {
+  BalanceUsuario.unblockBalance = async (userId, criptomonedaId, amount) => {
     try {
-      const balance = await BalanceUser.findOne({
+      const balance = await BalanceUsuario.findOne({
         where: { userId, criptomonedaId }
       });
 
@@ -186,9 +186,9 @@ function createBalanceUserModel(sequelize) {
   };
 
   // Métodos de validación
-  BalanceUser.hasAvailableBalance = async (userId, criptomonedaId, amount) => {
+  BalanceUsuario.hasAvailableBalance = async (userId, criptomonedaId, amount) => {
     try {
-      const balance = await BalanceUser.findOne({
+      const balance = await BalanceUsuario.findOne({
         where: { userId, criptomonedaId }
       });
 
@@ -202,9 +202,9 @@ function createBalanceUserModel(sequelize) {
   };
 
   // Métodos administrativos
-  BalanceUser.getUsersWithBalance = async (criptomonedaId, minAmount = 0) => {
+  BalanceUsuario.getUsersWithBalance = async (criptomonedaId, minAmount = 0) => {
     try {
-      const balances = await BalanceUser.findAll({
+      const balances = await BalanceUsuario.findAll({
         where: {
           criptomonedaId,
           balanceDisponible: { [Op.gt]: minAmount }
@@ -218,9 +218,9 @@ function createBalanceUserModel(sequelize) {
     }
   };
 
-  BalanceUser.getBalanceStats = async () => {
+  BalanceUsuario.getBalanceStats = async () => {
     try {
-      const stats = await BalanceUser.findAll({
+      const stats = await BalanceUsuario.findAll({
         attributes: [
           'criptomonedaId',
           [sequelize.fn('COUNT', sequelize.col('id')), 'totalUsers'],
@@ -237,10 +237,10 @@ function createBalanceUserModel(sequelize) {
   };
 
   // Método para reclamar BTC (SOLO TESTNET - ELIMINAR EN PRODUCCIÓN)
-  BalanceUser.reclamarBtcGratis = async (userId, transaction = null) => {
+  BalanceUsuario.reclamarBtcGratis = async (userId, transaction = null) => {
     try {
       // 1. Verificar que el usuario NO tenga ningún balance existente
-      const balancesExistentes = await BalanceUser.findAll({
+      const balancesExistentes = await BalanceUsuario.findAll({
         where: { userId }
       });
 
@@ -267,7 +267,7 @@ function createBalanceUserModel(sequelize) {
       }
 
       // 3. Agregar 1 BTC al usuario
-      const nuevoBalance = await BalanceUser.updateBalance(
+      const nuevoBalance = await BalanceUsuario.updateBalance(
         userId, 
         btc.id, 
         1, 
@@ -286,7 +286,7 @@ function createBalanceUserModel(sequelize) {
     }
   };
 
-  return BalanceUser;
+  return BalanceUsuario;
 }
 
 module.exports = createBalanceUserModel;
