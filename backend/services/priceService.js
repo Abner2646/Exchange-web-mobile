@@ -10,6 +10,7 @@ class PriceService {
     this.coinbaseBaseURL = 'https://api.coinbase.com/v2';
     this.krakenBaseURL = 'https://api.kraken.com/0/public';
     this.cryptocompareBaseURL = 'https://min-api.cryptocompare.com/data';
+    this.coingeckoBaseURL = 'https://api.coingecko.com/api/v3';
     
     this.isUpdating = false;
     this.updateInterval = null;
@@ -55,6 +56,40 @@ class PriceService {
       'AVAX': 'AVAX',
       'ATOM': 'ATOM'
     }
+  };
+
+  // Fix 2026-08-19 (AUDITORIA_BACKEND.md Altos #1): getPriceFromCoinGecko ya
+  // usaba PriceService.COINGECKO_MAP y this.coingeckoBaseURL, pero ninguno
+  // de los dos estaba definido en ningún lado — TypeError garantizado en
+  // cada llamada, silenciado por el catch de getPrice() que cae a Binance.
+  // Para cualquier cripto que solo exista en CoinGecko (la razón de tener
+  // este fallback) el precio fallaba por completo sin que nadie lo notara.
+  static COINGECKO_MAP = {
+    'BTC': 'bitcoin',
+    'ETH': 'ethereum',
+    'BNB': 'binancecoin',
+    'USDT': 'tether',
+    'USDC': 'usd-coin',
+    'DAI': 'dai',
+    'LINK': 'chainlink',
+    'UNI': 'uniswap',
+    'WBTC': 'wrapped-bitcoin',
+    'AAVE': 'aave',
+    'MKR': 'maker',
+    'SHIB': 'shiba-inu',
+    'PEPE': 'pepe',
+    'MATIC': 'matic-network',
+    'ARB': 'arbitrum',
+    'OP': 'optimism',
+    'SOL': 'solana',
+    'ADA': 'cardano',
+    'XRP': 'ripple',
+    'DOGE': 'dogecoin',
+    'DOT': 'polkadot',
+    'LTC': 'litecoin',
+    'BCH': 'bitcoin-cash',
+    'AVAX': 'avalanche-2',
+    'ATOM': 'cosmos'
   };
 
   // Iniciar actualización automática de precios
