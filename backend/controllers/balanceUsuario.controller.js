@@ -87,8 +87,19 @@ const updateBalance = async (req, res) => {
 
 const reclamarBtc = async (req, res) => {
   try {
+    // Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #12): el propio autor
+    // había marcado esta ruta "ELIMINAR EN DEPLOY REAL" pero nunca se
+    // borró y seguía viva sin ninguna protección de entorno. Es un faucet
+    // de testnet legítimo para que se pueda probar el exchange sin
+    // depositar de verdad — el problema no era que exista, era que no
+    // tenía freno. Ahora se desactiva solo en producción, en vez de
+    // depender de que alguien se acuerde de borrar la ruta a mano.
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(404).json({ success: false, error: 'No encontrado' });
+    }
+
     const userId = req.user.id; // Del token JWT
-    
+
     const resultado = await BalanceUsuario.reclamarBtcGratis(userId);
     
     res.json({

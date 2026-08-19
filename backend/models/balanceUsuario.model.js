@@ -250,9 +250,13 @@ function createBalanceUserModel(sequelize) {
         return total > 0;
       });
 
-      /*if (tieneSaldo) {
+      // Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #12): este chequeo
+      // estaba comentado — cualquier usuario podía llamar este endpoint
+      // repetidas veces y acumular BTC sin límite, sin siquiera necesitar
+      // scriptear nada. Reactivado: el regalo es de una sola vez.
+      if (tieneSaldo) {
         throw new Error('Ya tienes saldo en tu cuenta. El regalo de BTC es solo para usuarios nuevos.');
-      }*/
+      }
 
       // 2. Buscar el BTC en la base de datos
       const Criptomoneda = sequelize.models.Criptomoneda;
