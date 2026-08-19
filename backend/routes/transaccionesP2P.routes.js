@@ -28,8 +28,9 @@ router.get('/history/:otroUsuarioId', authenticateToken, requireEmailVerified, t
 
 // --------------------- RUTAS DE ACCIONES DE TRANSACCIÓN --------------------- //
 
-// Bloquear criptomonedas (vendedor confirma que tiene los fondos)
-router.patch('/:id/lock-cryptos', authenticateToken, requireEmailVerified, transaccionP2PController.lockCryptos); // <---------
+// Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #11): lock-cryptos llamaba a
+// un método inexistente del modelo — el bloqueo de fondos ya pasa dentro de
+// createTransaction, no es un paso aparte. Ruta eliminada.
 
 // Confirmar pago (comprador confirma que realizó el pago)
 router.patch('/:id/confirm-payment', authenticateToken, requireEmailVerified, transaccionP2PController.confirmPayment); // <---------
@@ -51,8 +52,10 @@ router.get('/:id', authenticateToken, requireEmailVerified, transaccionP2PContro
 // Crear nueva transacción (aceptar oferta)
 router.post('/', authenticateToken, requireEmailVerified, transaccionP2PController.createTransaccion); // <-----
 
-// Actualizar estado de transacción (genérico)
-router.patch('/:id/status', authenticateToken, requireEmailVerified, transaccionP2PController.updateTransaccionStatus);
+// Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #11): /status llamaba a un
+// método inexistente del modelo y era redundante con las transiciones
+// específicas de arriba (confirm-payment/complete/cancel), que sí funcionan
+// y sí validan la transición real. Ruta eliminada.
 
 // --------------------- RUTAS POR CONTEXTO --------------------- //
 
