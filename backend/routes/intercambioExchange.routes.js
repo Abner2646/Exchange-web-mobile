@@ -85,7 +85,11 @@ Query params:
 // ================================
 // RUTAS ADMINISTRATIVAS
 // ================================
-//router.use(isAdmin);
+// Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #7): este gate estaba
+// comentado, así que cualquier usuario autenticado con email verificado
+// podía listar los intercambios de todos los usuarios y cambiar el estado
+// de un intercambio ajeno vía PUT /:id/status.
+router.use(isAdmin);
 
 router.get('/', intercambioController.getIntercambios);
 /*
