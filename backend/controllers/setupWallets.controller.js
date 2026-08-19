@@ -604,7 +604,17 @@ const executeCompleteSetup = async (req, res) => {
           red: config.red,
           symbol: config.symbol,
           xpub: walletData.xpub,
-          derivationPath: config.derivationPath,
+          // Fix 2026-08-19 (AUDITORIA_BACKEND.md Altos #8): antes se
+          // guardaba config.derivationPath (el de CRIPTOMONEDAS_BASICAS,
+          // ej. BIP84 para BTC) en vez de walletData.derivationPath (el
+          // que getBTCWalletFromEnv/getETHWalletFromEnv/generateBNBWallet
+          // realmente usaron para derivar fingerprint/publicKey más
+          // abajo). Para BTC específicamente esto guardaba BIP84 aunque la
+          // derivación real era BIP44 — cualquier verificación posterior
+          // contra ese metadato quedaba inconsistente con la derivación
+          // real. walletData.derivationPath siempre refleja lo que
+          // realmente se usó, para las tres criptos.
+          derivationPath: walletData.derivationPath,
           fingerprint: walletData.fingerprint,
           publicKey: walletData.publicKey,
           direccionPublica: walletData.address,
@@ -834,5 +844,8 @@ const resetCompleteSetup = async (req, res) => {
 module.exports = {
   executeCompleteSetup,
   checkSetupStatus,
-  resetCompleteSetup
+  resetCompleteSetup,
+  // Exportado para poder testear la derivación (xpub/paths) de forma
+  // aislada. Ver tests/btcDerivationPath.test.js.
+  WalletSetupGenerator
 };
