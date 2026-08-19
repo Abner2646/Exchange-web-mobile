@@ -8,7 +8,11 @@ class OrderMatchingJob {
   constructor() {
     this.interval = null;
     this.isRunning = false;
-    this.matchFrequency = 10000; // 100ms = 10 veces por segundo
+    // Fix 2026-08-19 (AUDITORIA_BACKEND.md Altos #2): el valor no
+    // coincidía con lo que decía el propio comentario — 10000ms son 10
+    // segundos, no 100ms. El matching corría 100 veces más lento que lo
+    // documentado/intencionado.
+    this.matchFrequency = 100; // 100ms = 10 veces por segundo
     this.errorCount = 0;
     this.maxErrors = 50;
     this.stats = {
