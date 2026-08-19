@@ -131,10 +131,27 @@ function createBalanceUserModel(sequelize) {
     }
   };
 
-  BalanceUsuario.blockBalance = async (userId, criptomonedaId, amount) => {
+  // Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #5): antes esto era
+  // findOne() + save() sin transacción ni lock — dos requests casi
+  // simultáneas podían leer el mismo balance, las dos pasar la validación,
+  // y las dos escribir (TOCTOU clásico, permitía bloquear más de lo
+  // disponible). Ahora el read+check+write pasa por un único SELECT ... FOR
+  // UPDATE: la segunda llamada concurrente espera a que la primera
+  // transacción termine y recién ahí lee el balance ya actualizado, en vez
+  // de correr en paralelo sobre el mismo dato viejo.
+  //
+  // `transaction` es opcional: si el caller ya tiene una abierta se suma a
+  // ella (mismo patrón que WalletMaestra.updateBalance); si no, abre y
+  // gestiona la suya.
+  BalanceUsuario.blockBalance = async (userId, criptomonedaId, amount, transaction = null) => {
+    const ownTransaction = !transaction;
+    const t = transaction || await sequelize.transaction();
+
     try {
       const balance = await BalanceUsuario.findOne({
-        where: { userId, criptomonedaId }
+        where: { userId, criptomonedaId },
+        transaction: t,
+        lock: t.LOCK.UPDATE
       });
 
       if (!balance) {
@@ -150,18 +167,26 @@ function createBalanceUserModel(sequelize) {
 
       balance.balanceDisponible = availableBalance - amountToBlock;
       balance.balanceBloqueado = parseFloat(balance.balanceBloqueado) + amountToBlock;
-      
-      await balance.save();
+
+      await balance.save({ transaction: t });
+
+      if (ownTransaction) await t.commit();
       return balance;
     } catch (error) {
+      if (ownTransaction) await t.rollback();
       throw new Error(`Error al bloquear balance: ${error.message}`);
     }
   };
 
-  BalanceUsuario.unblockBalance = async (userId, criptomonedaId, amount) => {
+  BalanceUsuario.unblockBalance = async (userId, criptomonedaId, amount, transaction = null) => {
+    const ownTransaction = !transaction;
+    const t = transaction || await sequelize.transaction();
+
     try {
       const balance = await BalanceUsuario.findOne({
-        where: { userId, criptomonedaId }
+        where: { userId, criptomonedaId },
+        transaction: t,
+        lock: t.LOCK.UPDATE
       });
 
       if (!balance) {
@@ -177,10 +202,13 @@ function createBalanceUserModel(sequelize) {
 
       balance.balanceBloqueado = blockedBalance - amountToUnblock;
       balance.balanceDisponible = parseFloat(balance.balanceDisponible) + amountToUnblock;
-      
-      await balance.save();
+
+      await balance.save({ transaction: t });
+
+      if (ownTransaction) await t.commit();
       return balance;
     } catch (error) {
+      if (ownTransaction) await t.rollback();
       throw new Error(`Error al desbloquear balance: ${error.message}`);
     }
   };
