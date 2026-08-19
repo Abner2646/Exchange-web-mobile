@@ -675,28 +675,6 @@ class BscService {
     }
   }
 
-  async getBalance(address, contractAddress = null) {
-    try {
-      if (contractAddress) {
-        const contract = new ethers.Contract(
-          contractAddress, 
-          [
-            'function balanceOf(address) view returns (uint256)', 
-            'function decimals() view returns (uint8)'
-          ], 
-          this.provider
-        );
-        const balance = await contract.balanceOf(address);
-        const decimales = await contract.decimals();
-        return ethers.formatUnits(balance, decimales);
-      } else {
-        const balance = await this.provider.getBalance(address);
-        return ethers.formatEther(balance);
-      }
-    } catch (error) {
-      throw new Error(`Error obteniendo balance BSC: ${error.message}`);
-    }
-  }
 }
 
 module.exports = BscService;
