@@ -17,19 +17,19 @@ const transaccionBlockchainSchema = require('../schemas/transaccionBlockchain.sc
 router.use(authenticateToken, requireEmailVerified);
 
 // GET /api/transactions/my - Obtener mis transacciones
-router.get('/my', /*rateLimitMiddleware.general,*/ transaccionBlockchainController.getMyTransactions);
+router.get('/my', rateLimitMiddleware.general, transaccionBlockchainController.getMyTransactions);
 
 // GET /api/transactions/:id - Obtener transacción específica
 //router.get('/:id', /*validationMiddleware.validateUUID('id'),*/ transaccionBlockchainController.getTransaction);
 
 // POST /api/transactions/withdraw - Crear retiro
-router.post('/withdraw', /*rateLimitMiddleware.withdrawal,*/ joiValidate(transaccionBlockchainSchema.createWithdrawal), transaccionBlockchainController.createWithdrawal);
+router.post('/withdraw', rateLimitMiddleware.withdrawal, joiValidate(transaccionBlockchainSchema.createWithdrawal), transaccionBlockchainController.createWithdrawal);
 
 // GET /api/transactions/balances - Obtener mis balances
 //router.get('/balances', /*rateLimitMiddleware.general,*/ transaccionBlockchainController.getMyBalances);
 
 // GET /api/transactions/deposit-address/:criptomonedaId - Obtener dirección de depósito
-router.get('/deposit-address/:criptomonedaId', /*validationMiddleware.validateUUID('criptomonedaId'), rateLimitMiddleware.general,*/ transaccionBlockchainController.getDepositAddress); //Bien (En realidad está duplicada la ruta con una de "direccionDeposito")
+router.get('/deposit-address/:criptomonedaId', /*validationMiddleware.validateUUID('criptomonedaId'),*/ rateLimitMiddleware.general, transaccionBlockchainController.getDepositAddress); //Bien (En realidad está duplicada la ruta con una de "direccionDeposito")
 
 // GET /api/transactions/tx/:hash - Buscar por hash
 //router.get('/tx/:hash', /*validationMiddleware.validateTxHash,*/ transaccionBlockchainController.getTransactionByHash);
