@@ -2,11 +2,11 @@
 const { WalletMaestra, Criptomoneda, sequelize } = require('../models');
 const bip39 = require('bip39');
 const bitcoin = require('bitcoinjs-lib');
-const crypto = require('crypto');
 const ecc = require('tiny-secp256k1');
 const ECPair = require('ecpair').ECPairFactory(ecc);
 const { BIP32Factory } = require('bip32');
 const bip32 = BIP32Factory(ecc);
+const { ethers } = require('ethers');
 
 // =================== CONFIGURACIÓN DE CRIPTOMONEDAS BÁSICAS ===================
 const CRIPTOMONEDAS_BASICAS = [
@@ -274,20 +274,27 @@ class WalletSetupGenerator {
       const root = bip32.fromSeed(seed);
       const account = root.derivePath("m/44'/60'/0'");
       
-      // Generar address BSC/Ethereum compatible
+      // Address real de BNB_PRIVATE_KEY (Keccak-256 sobre la clave pública,
+      // que es como se derivan direcciones en cualquier chain EVM). Antes esto
+      // era doble SHA-256 — ni el algoritmo de Bitcoin ni el de Ethereum —
+      // así que la dirección devuelta no correspondía a la clave privada real.
       const cleanPrivateKey = privateKey.replace('0x', '');
-      const privateKeyBuffer = Buffer.from(cleanPrivateKey, 'hex');
-      
-      const publicKey = ecc.pointFromScalar(privateKeyBuffer, false);
-      const hash1 = crypto.createHash('sha256').update(publicKey.slice(1)).digest();
-      const hash2 = crypto.createHash('sha256').update(hash1).digest();
-      const address = '0x' + hash2.slice(-20).toString('hex');
-      
-      // Generar XPUB para BSC
-      const combined = Buffer.concat([account.publicKey, Buffer.from(cleanPrivateKey, 'hex')]);
-      const hash = crypto.createHash('sha256').update(combined).digest('hex');
-      const xpub = 'bpub' + hash.substring(0, 76);
-      
+      const address = new ethers.Wallet(cleanPrivateKey).address;
+
+      // XPUB real (serialización BIP32 estándar de la cuenta derivada del
+      // mnemonic), no un hash con un prefijo inventado. Ver AUDITORIA_BACKEND.md
+      // Críticos #3: el xpub anterior no era un formato BIP32 válido, así que
+      // no servía para derivar direcciones de depósito reales.
+      const xpub = account.neutered().toBase58();
+
+      // Nota (deuda pendiente, no resuelta en este cambio): este mnemonic se
+      // genera nuevo en cada llamada y no tiene relación con BNB_PRIVATE_KEY
+      // (la clave que realmente firma retiros). Para que las direcciones de
+      // depósito generadas a partir de este xpub sean utilizables, el mnemonic
+      // devuelto acá tiene que persistirse de forma segura la primera vez que
+      // se llama a este método — hoy solo viaja en la respuesta HTTP. Ver
+      // AUDITORIA_BACKEND.md Críticos #2/#3 para el resto de este hallazgo.
+
       return {
         mnemonic,
         privateKey,
@@ -305,46 +312,44 @@ class WalletSetupGenerator {
   
   static getETHWalletFromEnv() {
     try {
-      const requiredVars = ['ETH_PRIVATE_KEY', 'ETH_ADDRESS', 'ETH_MNEMONIC', 'ETH_XPUB'];
-      const missing = requiredVars.filter(varName => 
+      const requiredVars = ['ETH_PRIVATE_KEY', 'ETH_ADDRESS', 'ETH_MNEMONIC'];
+      const missing = requiredVars.filter(varName =>
         !process.env[varName] || process.env[varName].trim() === ''
       );
-      
+
       if (missing.length > 0) {
         throw new Error(`Variables de entorno faltantes para ETH: ${missing.join(', ')}`);
       }
-      
+
       const mnemonic = process.env.ETH_MNEMONIC.trim();
       const privateKey = process.env.ETH_PRIVATE_KEY.trim();
       const address = process.env.ETH_ADDRESS.trim();
-      let xpub = process.env.ETH_XPUB.trim();
-      
+
       // Validaciones
       if (!bip39.validateMnemonic(mnemonic)) {
         throw new Error('ETH_MNEMONIC inválido');
       }
-      
+
       if (!address.startsWith('0x') || address.length !== 42) {
         throw new Error('ETH_ADDRESS inválida');
       }
-      
+
       const cleanPrivateKey = privateKey.startsWith('0x') ? privateKey.substring(2) : privateKey;
       if (cleanPrivateKey.length !== 64) {
         throw new Error('ETH_PRIVATE_KEY debe tener 64 caracteres hex');
       }
-      
-      // Corregir XPUB si es formato Bitcoin
-      if (xpub.startsWith('xpub') || xpub.startsWith('ypub') || xpub.startsWith('zpub')) {
-        const input = `${address}${cleanPrivateKey}ETH${Date.now()}`;
-        const hash = crypto.createHash('sha256').update(input).digest('hex');
-        xpub = 'epub' + hash.substring(0, 76);
-      }
-      
-      // Generar fingerprint desde mnemonic
+
+      // Generar fingerprint y xpub desde el mnemonic (fuente de verdad única).
+      // Antes: se leía ETH_XPUB de una variable de entorno aparte, y si venía
+      // con formato Bitcoin (xpub/ypub/zpub) se "corregía" con un hash SHA-256
+      // con prefijo inventado 'epub' — no era un xpub BIP32 válido, y aunque lo
+      // fuera, nada garantizaba que viniera de este mismo mnemonic. Ver
+      // AUDITORIA_BACKEND.md Críticos #1/#3.
       const seed = bip39.mnemonicToSeedSync(mnemonic);
       const root = bip32.fromSeed(seed);
       const account = root.derivePath("m/44'/60'/0'");
-      
+      const xpub = account.neutered().toBase58();
+
       return {
         mnemonic,
         privateKey,
@@ -354,7 +359,7 @@ class WalletSetupGenerator {
         publicKey: account.publicKey.toString('hex'),
         derivationPath: "m/44'/60'/0'"
       };
-      
+
     } catch (error) {
       throw new Error(`Error obteniendo datos ETH del .env: ${error.message}`);
     }
@@ -465,7 +470,9 @@ const validateEnvVars = () => {
   }
   
   // Validar ETH
-  const ethRequiredVars = ['ETH_PRIVATE_KEY', 'ETH_ADDRESS', 'ETH_MNEMONIC', 'ETH_XPUB'];
+  // ETH_XPUB ya no es requerida: el xpub se deriva directamente de ETH_MNEMONIC
+  // (ver getETHWalletFromEnv) en vez de leerse de una variable aparte.
+  const ethRequiredVars = ['ETH_PRIVATE_KEY', 'ETH_ADDRESS', 'ETH_MNEMONIC'];
   const ethMissing = ethRequiredVars.filter(varName => !process.env[varName]);
   if (ethMissing.length > 0) {
     errors.push(`Variables ETH faltantes: ${ethMissing.join(', ')}`);
@@ -845,7 +852,8 @@ module.exports = {
   executeCompleteSetup,
   checkSetupStatus,
   resetCompleteSetup,
-  // Exportado para poder testear la derivación (xpub/paths) de forma
-  // aislada. Ver tests/btcDerivationPath.test.js.
+  // Exportado para poder testear la derivación HD (xpub/paths/address) de
+  // forma aislada, sin pasar por todo el flujo de setup.
+  // Ver tests/btcDerivationPath.test.js y tests/hdAddressGeneration.test.js.
   WalletSetupGenerator
 };

@@ -3,6 +3,7 @@ require('dotenv').config();
 const initDireccionDeposito = require('./entities/direccionDeposito.entity');
 const { Op, Transaction } = require('sequelize');
 const crypto = require('crypto');
+const { ethers } = require('ethers');
 
 // Importaciones correctas para las librerías Bitcoin
 let bitcoin, BIP32Factory;
@@ -811,27 +812,37 @@ function createDireccionDepositoModel(sequelize) {
   DireccionDeposito._generateEthereumAddress = (xpub, derivationPath, index, userId = null) => {
     try {
       console.log(`Generando dirección Ethereum/BSC con índice ${index} para usuario ${userId}`);
-      
-      // **CAMBIO CLAVE**: Incluir userId en la generación
-      const input = `${xpub}_${derivationPath}_${index}_${userId || 'default'}`;
-      const hash = crypto.createHash('sha256').update(input).digest('hex');
-      
-      // Generar dirección única por usuario
-      const address = '0x' + hash.substring(0, 40);
-      const publicKey = '04' + hash.substring(40, 104);
-      
-      // Validar formato
-      if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
-        throw new Error(`Dirección generada con formato inválido: ${address}`);
+
+      if (!BIP32Factory) {
+        throw new Error('Librería BIP32 no disponible');
       }
-      
+
+      // Derivación HD real: el mismo mecanismo BIP32 que ya se usa para Bitcoin
+      // (misma curva secp256k1), aplicado sobre el xpub de la cuenta ETH/BSC.
+      // Ver AUDITORIA_BACKEND.md Críticos #1: antes esto era un hash SHA-256
+      // disfrazado de dirección, sin clave privada real detrás.
+      const node = BIP32Factory.fromBase58(xpub);
+      const child = node.derive(index);
+
+      if (!child || !child.publicKey) {
+        throw new Error('No se pudo derivar clave pública del nodo hijo');
+      }
+
+      const publicKeyHex = Buffer.isBuffer(child.publicKey)
+        ? child.publicKey.toString('hex')
+        : Buffer.from(child.publicKey).toString('hex');
+
+      // computeAddress aplica Keccak-256 sobre la clave pública descomprimida,
+      // que es como se derivan las direcciones en cualquier chain EVM (ETH/BSC).
+      const address = ethers.computeAddress('0x' + publicKeyHex);
+
       console.log(`Dirección Ethereum/BSC única generada para usuario ${userId}: ${address}`);
-      
+
       return {
-        address: address,
-        publicKey: publicKey, 
+        address,
+        publicKey: publicKeyHex,
         derivationIndex: index,
-        userId: userId // **NUEVO**: Incluir userId en respuesta
+        userId
       };
     } catch (error) {
       throw new Error(`Error en generación Ethereum/BSC para usuario ${userId}: ${error.message}`);
