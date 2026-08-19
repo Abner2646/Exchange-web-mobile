@@ -1,4 +1,5 @@
-const { Valoracion } = require('../models/index.js');
+const { Valoracion, sequelize } = require('../models/index.js');
+const { Op } = require('sequelize');
 
 // Listar valoraciones con filtros
 const getValoraciones = async (req, res) => {
@@ -249,17 +250,22 @@ const createMultipleRatings = async (req, res) => {
 };
 
 // Obtener top usuarios mejor valorados
+// Fix 2026-08-19 (AUDITORIA_BACKEND.md Código muerto #4, extendido a
+// Altos #11): esta función usaba `sequelize` y `Op` sin importarlos —
+// ReferenceError garantizado si se llamaba. También pedía columnas que
+// Usuario no tiene: 'nombre' (el campo real es 'username') y
+// 'reputacion' (el campo real es 'reputacionPromedio').
 const getTopRatedUsers = async (req, res) => {
   try {
     const { limit = 10, minRatings = 5 } = req.query;
 
     const { Usuario } = require('../models/index.js');
-    
+
     const topUsers = await Usuario.findAll({
       attributes: [
-        'id', 
-        'nombre', 
-        'reputacion',
+        'id',
+        'username',
+        'reputacionPromedio',
         [sequelize.fn('COUNT', sequelize.col('valoracionesRecibidas.id')), 'totalValoraciones']
       ],
       include: [
@@ -275,7 +281,7 @@ const getTopRatedUsers = async (req, res) => {
         parseInt(minRatings)
       ),
       order: [
-        ['reputacion', 'DESC'],
+        ['reputacionPromedio', 'DESC'],
         [sequelize.fn('COUNT', sequelize.col('valoracionesRecibidas.id')), 'DESC']
       ],
       limit: parseInt(limit),
@@ -289,6 +295,9 @@ const getTopRatedUsers = async (req, res) => {
 };
 
 // Obtener resumen de valoraciones entre dos usuarios
+// Fix 2026-08-19 (AUDITORIA_BACKEND.md Código muerto #4, extendido a
+// Altos #11): usaba Op sin importarlo, y pedía 'nombre' de Usuario (el
+// campo real es 'username').
 const getUsersRatingSummary = async (req, res) => {
   try {
     const { usuario1Id, usuario2Id } = req.params;
@@ -307,7 +316,7 @@ const getUsersRatingSummary = async (req, res) => {
         },
         {
           association: 'evaluador',
-          attributes: ['id', 'nombre']
+          attributes: ['id', 'username']
         }
       ],
       order: [['created_at', 'DESC']]

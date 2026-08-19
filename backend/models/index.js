@@ -280,11 +280,19 @@ OfertaMetodoPago.belongsTo(MetodoPago, { foreignKey: 'metodoPagoId', as: 'metodo
 MetodoPago.hasMany(TransaccionP2P, { foreignKey: 'metodoPagoId', as: 'transacciones' });
 TransaccionP2P.belongsTo(MetodoPago, { foreignKey: 'metodoPagoId', as: 'metodoPago' });
 
-/*
+// Fix 2026-08-19 (AUDITORIA_BACKEND.md Altos #11): estas dos líneas
+// habían quedado atrapadas dentro del mismo bloque comentado que las
+// asociaciones de Reclamo (que sí es código muerto) — pero Valoracion no
+// lo es, está activo. Sin esto, cualquier función de valoracion.model.js
+// que usa `association: 'transaccion'` (getById, getAll, y varias más)
+// tiraba "Association with alias 'transaccion' does not exist on
+// Valoracion". No estaba en la auditoría original; apareció al escribir
+// el test de integración de este mismo fix.
 // Transacción P2P puede tener muchas valoraciones
 TransaccionP2P.hasMany(Valoracion, { foreignKey: 'transaccionP2PId', as: 'valoraciones' });
 Valoracion.belongsTo(TransaccionP2P, { foreignKey: 'transaccionP2PId', as: 'transaccion' });
 
+/*
 // Transacción P2P puede tener reclamos
 TransaccionP2P.hasMany(Reclamo, { foreignKey: 'transaccionP2PId', as: 'reclamos' });
 Reclamo.belongsTo(TransaccionP2P, { foreignKey: 'transaccionP2PId', as: 'transaccionP2P' });

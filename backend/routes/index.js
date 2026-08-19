@@ -23,7 +23,7 @@ const transaccionP2PRoutes = require('./transaccionesP2P.routes.js')
 const transferencia = require('./transferencia.routes.js')
 const tradingRoutes = require('./trading.routes');
 const usuarioRoutes = require('./usuario.routes.js')
-//const valoracionRoutes = require('./valoraciones.routes.js')
+const valoracionRoutes = require('./valoraciones.routes.js')
 const walletMaestraRoutes = require('./walletMaestra.routes.js')
 
 // Derive routes
@@ -48,7 +48,13 @@ router.use('/transaccionP2P', transaccionP2PRoutes)
 router.use('/transferencia', transferencia)
 router.use('/trading', tradingRoutes);
 router.use('/usuario', usuarioRoutes)
-//router.use('/valoracion', valoracionRoutes)
+// Fix 2026-08-19 (AUDITORIA_BACKEND.md Altos #11): estaba comentada pese a
+// que el modelo/controller ya estaban completos y activos en
+// models/index.js — reactivada. También se corrigieron bugs reales que
+// hubieran roto varios endpoints al usarse (Op/sequelize sin importar en
+// el controller, y 'nombre'/'reputacion' en vez de 'username'/
+// 'reputacionPromedio' en las queries del modelo).
+router.use('/valoracion', valoracionRoutes)
 router.use('/walletMaestra', walletMaestraRoutes)
 
 // Test route
