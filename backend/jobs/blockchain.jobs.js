@@ -10,6 +10,10 @@ class BlockchainJobManager {
     this.intervals = {
       depositScan: parseInt(process.env.DEPOSIT_SCAN_INTERVAL_MS) || 60000, // 1 minuto
       confirmationUpdate: parseInt(process.env.CONFIRMATION_UPDATE_INTERVAL_MS) || 30000, // 30 segundos
+      // Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #8): este intervalo ya
+      // estaba en .env.template (WITHDRAWAL_PROCESS_INTERVAL_MS) pero nunca
+      // se usaba en ningún lado — no existía el job que lo consumiera.
+      withdrawalProcess: parseInt(process.env.WITHDRAWAL_PROCESS_INTERVAL_MS) || 120000, // 2 minutos
     };
     
     // Contadores para estadísticas
@@ -547,6 +551,59 @@ class BlockchainJobManager {
     }
   }
   
+  // Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #8): createWithdrawal
+  // bloquea el balance del usuario apenas se crea el retiro, pero hasta
+  // ahora ningún job ni ruta llamaba a processPendingWithdrawals() — que sí
+  // está bien implementada en cada servicio de red — así que todo retiro
+  // quedaba con fondos bloqueados para siempre, sin nada que lo complete ni
+  // lo libere. Mismo patrón que runConfirmationUpdateJob: iterar por red,
+  // dejar que cada service resuelva sus propios retiros pendientes.
+  async runWithdrawalProcessJob() {
+    const startTime = Date.now();
+
+    try {
+      console.log('💸 [WITHDRAWAL_PROCESS] Iniciando procesamiento de retiros pendientes...');
+
+      if (this.stats.lastDiagnostic?.overallHealth === 'critical') {
+        console.log('❌ [WITHDRAWAL_PROCESS] Sistema en estado crítico, abortando procesamiento');
+        return { success: false, error: 'Sistema en estado crítico', duration: Date.now() - startTime };
+      }
+
+      const networks = ['ethereum', 'bsc', 'bitcoin'];
+      const results = [];
+
+      for (const network of networks) {
+        try {
+          const service = BlockchainServiceManager.getService(network);
+          if (!service) {
+            console.warn(`⚠️ [WITHDRAWAL_PROCESS] Servicio no disponible para ${network}`);
+            continue;
+          }
+
+          const processed = await service.processPendingWithdrawals();
+          results.push({ network, success: true, processed: processed.length });
+
+          if (processed.length > 0) {
+            console.log(`✅ [WITHDRAWAL_PROCESS] ${network}: ${processed.length} retiros procesados`);
+          }
+        } catch (error) {
+          console.error(`❌ [WITHDRAWAL_PROCESS] Error en ${network}:`, error.message);
+          results.push({ network, success: false, error: error.message, processed: 0 });
+        }
+      }
+
+      const duration = Date.now() - startTime;
+      const totalProcessed = results.reduce((sum, r) => sum + (r.processed || 0), 0);
+      console.log(`✅ [WITHDRAWAL_PROCESS] Completado en ${duration}ms. Total procesados: ${totalProcessed}`);
+
+      return { success: true, totalProcessed, results, duration, timestamp: new Date() };
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      console.error(`❌ [WITHDRAWAL_PROCESS] Error general después de ${duration}ms:`, error.message);
+      return { success: false, error: error.message, duration, timestamp: new Date() };
+    }
+  }
+
   async getPendingTransactionsByNetwork() {
     try {
       const pendingTxs = await TransaccionBlockchain.findAll({
@@ -600,6 +657,11 @@ class BlockchainJobManager {
       await this.runConfirmationUpdateJob();
     }, this.intervals.confirmationUpdate));
 
+    // Job de retiros: antes no existía, ver runWithdrawalProcessJob
+    this.jobs.set('withdrawalProcess', setInterval(async () => {
+      await this.runWithdrawalProcessJob();
+    }, this.intervals.withdrawalProcess));
+
     // Job de diagnóstico periódico (cada 10 minutos)
     this.jobs.set('systemDiagnostic', setInterval(async () => {
       await this.runSystemDiagnostic();
@@ -649,6 +711,8 @@ class BlockchainJobManager {
         return await this.runDepositScanJob();
       case 'confirmationUpdate':
         return await this.runConfirmationUpdateJob();
+      case 'withdrawalProcess':
+        return await this.runWithdrawalProcessJob();
       case 'systemDiagnostic':
         return await this.runSystemDiagnostic();
       default:

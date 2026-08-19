@@ -1,6 +1,13 @@
 // controllers/transaccionBlockchain.controller.js
 const { TransaccionBlockchain, Usuario, Criptomoneda, BalanceUsuario, DireccionDeposito } = require('../models');
 const BlockchainServiceManager = require('../services/blockchain');
+// Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #8): estos endpoints
+// llamaban a scanAllNetworksForDeposits/processAllPendingWithdrawals/
+// updateAllConfirmations en BlockchainServiceManager, que nunca existieron
+// ahí — la lógica real vive en BlockchainJobManager (jobs/blockchain.jobs.js),
+// que es lo mismo que corre el scheduler. Estos endpoints ahora disparan
+// esos mismos jobs a demanda, en vez de apuntar a métodos inexistentes.
+const BlockchainJobManager = require('../jobs/blockchain.jobs');
 
 class TransaccionBlockchainController {
   // =================== ENDPOINTS PARA USUARIOS ===================
@@ -463,7 +470,7 @@ class TransaccionBlockchainController {
         });
       }
 
-      const results = await BlockchainServiceManager.scanAllNetworksForDeposits();
+      const results = await BlockchainJobManager.runDepositScanJob();
 
       res.json({
         success: true,
@@ -490,7 +497,7 @@ class TransaccionBlockchainController {
         });
       }
 
-      const results = await BlockchainServiceManager.processAllPendingWithdrawals();
+      const results = await BlockchainJobManager.runWithdrawalProcessJob();
 
       res.json({
         success: true,
@@ -517,7 +524,7 @@ class TransaccionBlockchainController {
         });
       }
 
-      const results = await BlockchainServiceManager.updateAllConfirmations();
+      const results = await BlockchainJobManager.runConfirmationUpdateJob();
 
       res.json({
         success: true,

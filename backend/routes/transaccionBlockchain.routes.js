@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const transaccionBlockchainController = require('../controllers/transaccionBlockchain.controller');
-const {authenticateToken, requireEmailVerified} = require('../middleware/authMiddleware');
+const {authenticateToken, requireEmailVerified, requireRole} = require('../middleware/authMiddleware');
 // Antes apuntaba por error a rateLimit.middleware (mismo módulo que
 // rateLimitMiddleware) — validateUUID nunca existió ahí, solo en
 // validation.middleware.js. Ver AUDITORIA_BACKEND.md Altos #11.
@@ -53,14 +53,18 @@ router.get('/deposit-address/:criptomonedaId', /*validationMiddleware.validateUU
 
 // =================== RUTAS DE SISTEMA ===================
 
+// Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #8): estas 3 rutas estaban
+// comentadas — ahora sí llaman a algo real (BlockchainJobManager, ver el
+// controller), así que tiene sentido exponerlas para disparar los jobs a
+// demanda en vez de esperar al próximo intervalo.
 // POST /api/system/scan-deposits - Escanear depósitos manualmente
-//router.post('/system/scan-deposits',  /*authMiddleware.requireRole(['admin', 'super_admin']), rateLimitMiddleware.system,*/ transaccionBlockchainController.scanDeposits);
+router.post('/system/scan-deposits', requireRole(['admin', 'super_admin']), rateLimitMiddleware.system, transaccionBlockchainController.scanDeposits);
 
 // POST /api/system/process-withdrawals - Procesar retiros manualmente
-//router.post('/system/process-withdrawals',  /*authMiddleware.requireRole(['admin', 'super_admin']), rateLimitMiddleware.system,*/ transaccionBlockchainController.processWithdrawals);
+router.post('/system/process-withdrawals', requireRole(['admin', 'super_admin']), rateLimitMiddleware.system, transaccionBlockchainController.processWithdrawals);
 
 // POST /api/system/update-confirmations - Actualizar confirmaciones
-//router.post('/system/update-confirmations',  /*authMiddleware.requireRole(['admin', 'super_admin']), rateLimitMiddleware.system,*/ transaccionBlockchainController.updateConfirmations);
+router.post('/system/update-confirmations', requireRole(['admin', 'super_admin']), rateLimitMiddleware.system, transaccionBlockchainController.updateConfirmations);
 
 // GET /api/system/blockchain-status - Estado de servicios
 //router.get('/system/blockchain-status',  /*authMiddleware.requireRole(['admin', 'super_admin']), rateLimitMiddleware.system,*/ transaccionBlockchainController.getBlockchainStatus);
