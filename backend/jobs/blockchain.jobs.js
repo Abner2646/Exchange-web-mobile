@@ -786,15 +786,22 @@ class BlockchainJobManager {
     try {
       console.log('🧹 Iniciando limpieza de transacciones problemáticas...');
       
-      const BalanceCheckCleanup = require('../scripts/cleanup-balance-checks');
+      // Fix 2026-08-19 (AUDITORIA_BACKEND.md Altos #6): este require
+      // apuntaba a 'cleanup-balance-checks', un archivo que no existe — el
+      // script real se llama cleanup-stuck-transactions.js (renombrado en
+      // algún momento sin actualizar esta referencia). Como este método
+      // nunca se invoca desde ningún otro lugar, el bug estaba latente en
+      // vez de romper algo en producción — pero si alguien lo conectaba
+      // tal cual, MODULE_NOT_FOUND garantizado.
+      const BalanceCheckCleanup = require('../scripts/cleanup-stuck-transactions');
       const cleanup = new BalanceCheckCleanup();
-      
+
       const results = await cleanup.findProblematicTransactions();
-      
+
       if (results.total > 0) {
         console.log(`🧹 Encontradas ${results.total} transacciones problemáticas`);
         console.log('🧹 Ejecute el script de limpieza manualmente para corregirlas:');
-        console.log('🧹 node scripts/cleanup-balance-checks.js --dry-run');
+        console.log('🧹 node scripts/cleanup-stuck-transactions.js --dry-run');
       } else {
         console.log('✅ No se encontraron transacciones problemáticas');
       }

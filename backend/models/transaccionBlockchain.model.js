@@ -749,49 +749,19 @@ function createTransaccionBlockchainModel(sequelize) {
     }
   };
 
-  TransaccionBlockchain.cleanupBalanceCheckTransactions = async () => {
-    try {
-      console.log('🧹 Limpiando transacciones de balance check stuck...');
-      
-      // Encontrar todas las transacciones de balance check pendientes
-      const stuckTxs = await TransaccionBlockchain.findAll({
-        where: {
-          estado: ['pendiente', 'procesando'],
-          txHash: {
-            [Op.or]: [
-              { [Op.like]: 'bsc_balance_%' },
-              { [Op.like]: 'eth_balance_%' },
-              { [Op.like]: 'balance_%' }
-            ]
-          }
-        }
-      });
-      
-      console.log(`🧹 Encontradas ${stuckTxs.length} transacciones de balance check stuck`);
-      
-      let cleaned = 0;
-      for (const tx of stuckTxs) {
-        try {
-          await TransaccionBlockchain.updateConfirmations(
-            tx.id,
-            tx.confirmacionesRequeridas || 6, // Confirmar completamente
-            tx.txHash
-          );
-          cleaned++;
-          console.log(`✅ Auto-confirmada: ${tx.txHash}`);
-        } catch (error) {
-          console.error(`Error limpiando ${tx.txHash}: ${error.message}`);
-        }
-      }
-      
-      console.log(`🧹 Limpieza completada: ${cleaned}/${stuckTxs.length} transacciones procesadas`);
-      return { total: stuckTxs.length, cleaned };
-      
-    } catch (error) {
-      console.error('Error en limpieza de balance checks:', error.message);
-      throw error;
-    }
-  };
+  // Fix 2026-08-19 (AUDITORIA_BACKEND.md Altos #7): existía acá una
+  // cleanupBalanceCheckTransactions() que buscaba el mismo patrón de
+  // txHash ('*_balance_%') que scripts/cleanup-stuck-transactions.js, pero
+  // en vez de limpiarlas las forzaba a "confirmadas" vía
+  // updateConfirmations() — lo que dispara _acreditarDeposito() y acredita
+  // saldo REAL por transacciones que son solo placeholders de chequeo de
+  // balance. Dos implementaciones del mismo nombre haciendo lo opuesto:
+  // una borra, la otra acredita saldo falso. Nunca se llamaba desde
+  // ningún lado (confirmado por grep), así que no rompía nada hoy — pero
+  // era una trampa para quien decidiera "arreglar" el require roto del
+  // job de blockchain (Altos #6) usando este método del modelo en vez del
+  // script real. Eliminada; scripts/cleanup-stuck-transactions.js es la
+  // única implementación que queda, y es la correcta.
 
   return TransaccionBlockchain;
 }
