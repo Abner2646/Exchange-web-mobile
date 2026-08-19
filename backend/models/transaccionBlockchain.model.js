@@ -1,12 +1,10 @@
 // models/transaccionBlockchain.model.js
 require('dotenv').config();
 const initTransaccionBlockchain = require('./entities/transaccionBlockchain.entity');
-const initBalanceUsuario = require('./entities/balanceUsuario.entity');
 const { Op } = require('sequelize');
 
 function createTransaccionBlockchainModel(sequelize) {
   const TransaccionBlockchain = initTransaccionBlockchain(sequelize);
-  const BalanceUsuario = initBalanceUsuario(sequelize);
 
   // =================== MÉTODOS DE CONSULTA BÁSICOS ===================
   
@@ -263,6 +261,17 @@ function createTransaccionBlockchainModel(sequelize) {
   };
 
   TransaccionBlockchain._acreditarDeposito = async (transaccion, transaction) => {
+    // Fix 2026-08-19 (AUDITORIA_BACKEND.md Altos #10): antes este archivo
+    // re-inicializaba la entidad BalanceUsuario cruda a nivel de módulo
+    // (initBalanceUsuario(sequelize)) en vez de importar el modelo que
+    // models/index.js ya inicializó y ya asoció — funcionaba porque es la
+    // misma clase JS (require cachea el módulo), pero era frágil ante
+    // cualquier cambio de orden de carga. Este require es lazy (adentro de
+    // la función, no a nivel de módulo) a propósito: a nivel de módulo
+    // sería circular (transaccionBlockchain.model.js se está cargando
+    // *desde* models/index.js), pero para cuando esta función corre de
+    // verdad (un request real) models/index.js ya terminó de inicializar.
+    const { BalanceUsuario } = require('./index');
     try {
       console.log(`🔧 DEBUG - Acreditando depósito:`, {
         transaccionId: transaccion.id,
@@ -351,8 +360,11 @@ function createTransaccionBlockchainModel(sequelize) {
   // =================== MÉTODOS PARA RETIROS ===================
 
   TransaccionBlockchain.createWithdrawal = async (data) => {
+    // Ver el comentario de _acreditarDeposito sobre por qué este require
+    // es lazy (Altos #10).
+    const { BalanceUsuario } = require('./index');
     const transaction = await sequelize.transaction();
-    
+
     try {
       // Validar datos requeridos
       if (!data.userId || !data.criptomonedaId || !data.cantidad || !data.direccionDestino) {
@@ -447,8 +459,10 @@ function createTransaccionBlockchainModel(sequelize) {
   };
 
   TransaccionBlockchain.completeWithdrawal = async (id) => {
+    // Ver el comentario de _acreditarDeposito (Altos #10).
+    const { BalanceUsuario } = require('./index');
     const transaction = await sequelize.transaction();
-    
+
     try {
       const retiro = await TransaccionBlockchain.findByPk(id, { transaction });
       
@@ -495,8 +509,10 @@ function createTransaccionBlockchainModel(sequelize) {
   };
 
   TransaccionBlockchain.failWithdrawal = async (id, razon) => {
+    // Ver el comentario de _acreditarDeposito (Altos #10).
+    const { BalanceUsuario } = require('./index');
     const transaction = await sequelize.transaction();
-    
+
     try {
       const retiro = await TransaccionBlockchain.findByPk(id, { transaction });
       
@@ -686,6 +702,8 @@ function createTransaccionBlockchainModel(sequelize) {
   // =================== MÉTODOS DE VALIDACIÓN ===================
 
   TransaccionBlockchain.validateWithdrawal = async (userId, criptomonedaId, cantidad, direccionDestino) => {
+    // Ver el comentario de _acreditarDeposito (Altos #10).
+    const { BalanceUsuario } = require('./index');
     try {
       // Validar usuario activo
       const usuario = await sequelize.models.Usuario.findByPk(userId);
