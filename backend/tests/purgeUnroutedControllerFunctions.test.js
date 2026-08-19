@@ -56,6 +56,14 @@ describe('walletMaestra.controller.js ya no exporta las 19 funciones sin ruta (C
   });
 });
 
+describe('WalletMaestra.consolidateFunds (model) ya no existe (huérfano tras borrar su único caller)', () => {
+  test('el modelo ya no expone consolidateFunds', () => {
+    const fs = require('fs');
+    const source = fs.readFileSync(require.resolve('../models/walletMaestra.model.js'), 'utf8');
+    expect(source).not.toMatch(/WalletMaestra\.consolidateFunds\s*=/);
+  });
+});
+
 describe('direccionDeposito.controller.js ya no exporta cleanupTestAddresses (Código muerto #9)', () => {
   const controller = require('../controllers/direccionDeposito.controller.js');
 
