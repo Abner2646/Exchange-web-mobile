@@ -1,11 +1,21 @@
-# Mis archivos
+# Notas y documentación interna del proyecto (no públicas)
+# Nota: los patterns sin "/" matchean el nombre de archivo en cualquier carpeta.
 misNotas.md
+ROADMAP.md
+AUDITORIA_BACKEND.md
+CONTRIBUTING.md
+API_test.md
 prompts.md
-MEMORIA_CHAT.md
-Prompt_IA_Temas.md
-Refactorization.md
 checklist-seguridad.md
+Prompt_SISTEMA_DE_TRADING_SPOT.md
+MEMORIA_CHAT.md
+MEMORIA_CHAT2.md
+Prompt_IA_Temas.md
+Prompt_IA_Temas2.md
+Refactorizacion-estilos.md
+Refactorization.md
 MOBILE_ARCHITECTURE.md
+MOBILE_ARCHITECTURE2.md
 
 # Dependencies
 node_modules/
