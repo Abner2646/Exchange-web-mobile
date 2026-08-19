@@ -292,7 +292,12 @@ class TradingController {
       }
 
       // Verificar que pertenezca al usuario (o sea admin)
-      if (order.userId !== userId && !req.user.isAdmin) {
+      // Fix 2026-08-19 (AUDITORIA_BACKEND.md Altos #4): req.user.isAdmin
+      // nunca existe (authMiddleware setea req.user.rol) — la condición
+      // "o sos admin" nunca se cumplía, ningún admin podía ver órdenes
+      // ajenas pese a que el código aparentaba permitirlo.
+      const isAdmin = ['admin', 'super_admin'].includes(req.user.rol);
+      if (order.userId !== userId && !isAdmin) {
         return res.status(403).json({ 
           success: false,
           error: 'No tienes permiso para ver esta orden' 
