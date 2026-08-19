@@ -308,12 +308,18 @@ function createWalletMaestraModel(sequelize) {
 
   // =================== MÉTODOS DE BALANCE Y TRANSACCIONES ===================
 
-  WalletMaestra.updateBalance = async (id, nuevoBalance) => {
-    const transaction = await sequelize.transaction();
-    
+  // `transaction` es opcional: si el caller ya tiene una abierta (ej.
+  // createOrder) hay que sumarse a ella, no abrir una propia — antes esta
+  // función siempre abría y commiteaba la suya, así que un addToBalance()
+  // llamado desde dentro de otra transacción quedaba confirmado en la DB
+  // aunque esa transacción externa después hiciera rollback.
+  WalletMaestra.updateBalance = async (id, nuevoBalance, transaction = null) => {
+    const ownTransaction = !transaction;
+    const t = transaction || await sequelize.transaction();
+
     try {
-      const wallet = await WalletMaestra.findByPk(id, { transaction });
-      
+      const wallet = await WalletMaestra.findByPk(id, { transaction: t });
+
       if (!wallet) {
         throw new Error('Wallet maestra no encontrada');
       }
@@ -331,54 +337,61 @@ function createWalletMaestraModel(sequelize) {
             balanceChange: parseFloat(nuevoBalance) - balanceAnterior
           }
         },
-        { 
+        {
           where: { id },
-          transaction
+          transaction: t
         }
       );
-      
-      await transaction.commit();
-      
-      return await WalletMaestra.getById(id);
+
+      if (ownTransaction) {
+        await t.commit();
+        return await WalletMaestra.getById(id);
+      }
+
+      // Dentro de una transacción compartida todavía sin commitear: devolver
+      // el estado en memoria en vez de releerlo (una lectura aparte podría no
+      // ver el cambio todavía, según el nivel de aislamiento).
+      wallet.balanceTotal = nuevoBalance;
+      return wallet;
     } catch (error) {
-      await transaction.rollback();
+      if (ownTransaction) await t.rollback();
       throw new Error(`Error al actualizar balance: ${error.message}`);
     }
   };
 
-  WalletMaestra.addToBalance = async (id, cantidad) => {
+  WalletMaestra.addToBalance = async (id, cantidad, transaction = null) => {
     try {
-      const wallet = await WalletMaestra.findByPk(id);
+      const wallet = await WalletMaestra.findByPk(id, { transaction });
       if (!wallet) {
         throw new Error('Wallet maestra no encontrada');
       }
 
       const nuevoBalance = parseFloat(wallet.balanceTotal) + parseFloat(cantidad);
-      
+
       if (nuevoBalance < 0) {
         throw new Error('El balance resultante no puede ser negativo');
       }
 
-      return await WalletMaestra.updateBalance(id, nuevoBalance);
+      return await WalletMaestra.updateBalance(id, nuevoBalance, transaction);
     } catch (error) {
       throw new Error(`Error al sumar al balance: ${error.message}`);
     }
   };
 
-  WalletMaestra.subtractFromBalance = async (id, cantidad) => {
+  WalletMaestra.subtractFromBalance = async (id, cantidad, transaction = null) => {
     try {
-      const wallet = await WalletMaestra.findByPk(id);
+      const wallet = await WalletMaestra.findByPk(id, { transaction });
       if (!wallet) {
         throw new Error('Wallet maestra no encontrada');
       }
 
       const nuevoBalance = parseFloat(wallet.balanceTotal) - parseFloat(cantidad);
-      
+
       if (nuevoBalance < 0) {
         throw new Error('Balance insuficiente para realizar la operación');
       }
 
-      return await WalletMaestra.updateBalance(id, nuevoBalance);
+      return await WalletMaestra.updateBalance(id, nuevoBalance, transaction);
     } catch (error) {
       throw new Error(`Error al restar del balance: ${error.message}`);
     }
