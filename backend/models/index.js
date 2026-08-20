@@ -8,19 +8,14 @@ const dbConfig = config[env];
 // Import models
 const balanceUsuarioModel = require('./balanceUsuario.model');
 const createBlockchainStateModel = require('./blockchainState.model');
-//const categoriaReclamoModel = require('./categoriaReclamo.model');
 const criptomonedaModel = require('./criptomoneda.model.js');
 const direccionDepositoModel = require('./direccionDeposito.model');
 const intercambioExchangeModel = require('./intercambioExchange.model');
-//const logAdminModel = require('./logAdmin.model');
-//const logTransaccionModel = require('./logTransaccion.model');
-//const mensajeReclamoModel = require('./mensajeReclamo.model');
 const metodoPagoModel = require('./metodoPago.model');
 const notificacionesModel = require('./notificaciones.model');
 const ofertaMetodoPagoModel = require('./ofertaMetodoPago.model');
 const ofertaP2PModel = require('./ofertaP2P.model');
 const parExchangeModel = require('./parExchange.model');
-//const reclamoModel = require('./reclamo.model');
 const transaccionBlockchainModel = require('./transaccionBlockchain.model');
 const transaccionP2PModel = require('./transaccionesP2P.model');
 const transferenciaModel = require('./transferencia.model.js')
@@ -55,19 +50,14 @@ const sequelize = new Sequelize(
 //Initialize models
 const BalanceUsuario = balanceUsuarioModel(sequelize);
 const BlockchainState = createBlockchainStateModel(sequelize);
-//const CategoriaReclamo = categoriaReclamoModel(sequelize);
 const Criptomoneda = criptomonedaModel(sequelize);
 const DireccionDeposito = direccionDepositoModel(sequelize);
 const IntercambioExchange = intercambioExchangeModel(sequelize);
-//const LogAdmin = logAdminModel(sequelize);
-//const LogTransaccion = logTransaccionModel(sequelize);
-//const MensajeReclamo = mensajeReclamoModel(sequelize);
 const MetodoPago = metodoPagoModel(sequelize);
 const Notificaciones = notificacionesModel(sequelize);
 const OfertaMetodoPago = ofertaMetodoPagoModel(sequelize);
 const OfertaP2P = ofertaP2PModel(sequelize);  
 const ParExchange = parExchangeModel(sequelize);
-//const Reclamo = reclamoModel(sequelize);
 const TransaccionBlockchain = transaccionBlockchainModel(sequelize);
 const TransaccionP2P = transaccionP2PModel(sequelize);
 const Transferencia = transferenciaModel(sequelize);
@@ -141,31 +131,10 @@ Trade.belongsTo(Usuario, { foreignKey: 'buyerId', as: 'buyer' });
 Usuario.hasMany(Trade, { foreignKey: 'sellerId', as: 'sellTrades' });
 Trade.belongsTo(Usuario, { foreignKey: 'sellerId', as: 'seller' });
 
-/*
-// Usuario puede crear reclamos
-Usuario.hasMany(Reclamo, { foreignKey: 'usuarioId', as: 'reclamos' });
-Reclamo.belongsTo(Usuario, { foreignKey: 'usuarioId', as: 'usuario' });
-
-// Admin puede ser asignado a reclamos
-Usuario.hasMany(Reclamo, { foreignKey: 'adminAsignadoId', as: 'reclamosAsignados' });
-Reclamo.belongsTo(Usuario, { foreignKey: 'adminAsignadoId', as: 'adminAsignado' });
-
-// Usuario puede escribir mensajes en reclamos
-Usuario.hasMany(MensajeReclamo, { foreignKey: 'autorId', as: 'mensajesReclamos' });
-MensajeReclamo.belongsTo(Usuario, { foreignKey: 'autorId', as: 'autor' });
-
-// Admin puede generar logs de administración
-Usuario.hasMany(LogAdmin, { foreignKey: 'adminId', as: 'logsAdmin' });
-LogAdmin.belongsTo(Usuario, { foreignKey: 'adminId', as: 'admin' });
-
-// Usuario puede generar logs de transacciones
-Usuario.hasMany(LogTransaccion, { foreignKey: 'usuarioId', as: 'logsTransacciones' });
-LogTransaccion.belongsTo(Usuario, { foreignKey: 'usuarioId', as: 'usuario' });
-/*
 // ================================
 // RELACIONES DE CRIPTOMONEDAS
 // ================================
-*/
+
 // Criptomoneda puede tener una wallet maestra
 Criptomoneda.hasOne(WalletMaestra, { foreignKey: 'criptomonedaId', as: 'walletMaestra' });
 WalletMaestra.belongsTo(Criptomoneda, { foreignKey: 'criptomonedaId', as: 'criptomoneda' });
@@ -292,24 +261,6 @@ TransaccionP2P.belongsTo(MetodoPago, { foreignKey: 'metodoPagoId', as: 'metodoPa
 TransaccionP2P.hasMany(Valoracion, { foreignKey: 'transaccionP2PId', as: 'valoraciones' });
 Valoracion.belongsTo(TransaccionP2P, { foreignKey: 'transaccionP2PId', as: 'transaccion' });
 
-/*
-// Transacción P2P puede tener reclamos
-TransaccionP2P.hasMany(Reclamo, { foreignKey: 'transaccionP2PId', as: 'reclamos' });
-Reclamo.belongsTo(TransaccionP2P, { foreignKey: 'transaccionP2PId', as: 'transaccionP2P' });
-
-// ================================
-// RELACIONES DE RECLAMOS
-// ================================
-
-// Categoría de reclamo puede tener muchos reclamos
-CategoriaReclamo.hasMany(Reclamo, { foreignKey: 'categoriaId', as: 'reclamos' });
-Reclamo.belongsTo(CategoriaReclamo, { foreignKey: 'categoriaId', as: 'categoria' });
-
-// Reclamo puede tener muchos mensajes
-Reclamo.hasMany(MensajeReclamo, { foreignKey: 'reclamoId', as: 'mensajes' });
-MensajeReclamo.belongsTo(Reclamo, { foreignKey: 'reclamoId', as: 'reclamo' });
-*/
-
 
 // ================================
 // RELACIONES DE TRANSFERENCIAS
@@ -334,19 +285,14 @@ module.exports = {
   Sequelize,
   BalanceUsuario,
   BlockchainState,
-  //CategoriaReclamo,
   Criptomoneda,
   DireccionDeposito,
   IntercambioExchange,
-  //LogAdmin,
-  //LogTransaccion,
-  //MensajeReclamo,
   MetodoPago,
   Notificaciones,
   OfertaMetodoPago,
   OfertaP2P,
   ParExchange,
-  //Reclamo,
   TransaccionBlockchain,
   TransaccionP2P,
   Transferencia,
