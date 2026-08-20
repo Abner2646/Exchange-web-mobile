@@ -24,6 +24,9 @@ const getParExchangeById = async (req, res) => {
     if (!result) return res.status(404).json({ error: 'Par de exchange no encontrado' });
 
     // ACTUALIZACIÓN EN TIEMPO REAL SIEMPRE
+    // updatePrice acepta cualquier string que no sea 'never'; 'force' no tiene
+    // semántica especial propia, se comporta igual que cualquier otro valor
+    // (incluyendo el default). Solo 'never' desactiva la actualización en vivo.
     if (result.activo && result.fuentePrecio !== 'manual' && updatePrice !== 'never') {
       console.log(`Actualizando precio en tiempo real para ${result.criptoBase.symbol}/${result.criptoQuote.symbol}...`);
       
@@ -352,7 +355,9 @@ const getParBySymbols = async (req, res) => {
       });
     }
 
-    // ACTUALIZACIÓN EN TIEMPO REAL SIEMPRE
+    // updatePrice acepta cualquier string que no sea 'never'; 'force' no tiene
+    // semántica especial propia, se comporta igual que cualquier otro valor
+    // (incluyendo el default). Solo 'never' desactiva la actualización en vivo.
     if (par.activo && par.fuentePrecio !== 'manual' && updatePrice !== 'never') {
       console.log(`Actualizando precio en tiempo real para ${baseSymbol}/${quoteSymbol}...`);
       

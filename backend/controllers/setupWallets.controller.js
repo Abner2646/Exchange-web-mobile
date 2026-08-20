@@ -693,8 +693,7 @@ const executeCompleteSetup = async (req, res) => {
         })),
         timestamp: new Date(),
         version: '4.1'
-      },
-      warning: 'Datos privados loggeados en servidor - guardar y limpiar logs inmediatamente'
+      }
     });
     
   } catch (error) {

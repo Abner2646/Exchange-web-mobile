@@ -478,7 +478,7 @@ class TradesController {
       // Obtener últimos trades
       const recentTrades = await Trade.getByUser(userId, { limit: 10 });
 
-      // Calcular PnL (simplificado - solo fees por ahora)
+      // No hay cálculo de PnL implementado todavía — esto es solo el total de fees pagadas
       const totalFees = stats.totalFees;
 
       res.json({

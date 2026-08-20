@@ -1,12 +1,5 @@
 // routes/transaccionP2P.routes.js
 
-/*
-⚠️ Importante: Aquí debes implementar:
-
-Bloqueo de balance del vendedor
-Validaciones de cantidad (min/max de la oferta)
-Máquina de estados (validar transiciones permitidas)
-*/
 const { Router } = require('express');
 const router = Router();
 
