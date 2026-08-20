@@ -3,8 +3,13 @@ const express = require('express');
 const router = express.Router();
 const transaccionBlockchainController = require('../controllers/transaccionBlockchain.controller');
 const {authenticateToken, requireEmailVerified} = require('../middleware/authMiddleware');
-const validationMiddleware = require('../middleware/rateLimit.middleware');
+// Antes apuntaba por error a rateLimit.middleware (mismo módulo que
+// rateLimitMiddleware) — validateUUID nunca existió ahí, solo en
+// validation.middleware.js. Ver AUDITORIA_BACKEND.md Altos #11.
+const validationMiddleware = require('../middleware/validation.middleware');
 const rateLimitMiddleware = require('../middleware/rateLimit.middleware');
+const { joiValidate } = require('../middleware/joiValidate.middleware');
+const transaccionBlockchainSchema = require('../schemas/transaccionBlockchain.schema');
 
 // =================== RUTAS PÚBLICAS (con auth) ===================
 
@@ -18,7 +23,7 @@ router.get('/my', /*rateLimitMiddleware.general,*/ transaccionBlockchainControll
 //router.get('/:id', /*validationMiddleware.validateUUID('id'),*/ transaccionBlockchainController.getTransaction);
 
 // POST /api/transactions/withdraw - Crear retiro
-router.post('/withdraw', /*rateLimitMiddleware.withdrawal, validationMiddleware.validateWithdrawal,*/ transaccionBlockchainController.createWithdrawal);
+router.post('/withdraw', /*rateLimitMiddleware.withdrawal,*/ joiValidate(transaccionBlockchainSchema.createWithdrawal), transaccionBlockchainController.createWithdrawal);
 
 // GET /api/transactions/balances - Obtener mis balances
 //router.get('/balances', /*rateLimitMiddleware.general,*/ transaccionBlockchainController.getMyBalances);

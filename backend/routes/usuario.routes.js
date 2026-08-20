@@ -21,6 +21,10 @@ const {
   changePasswordLimiter
 } = require('../middleware/rateLimiters');
 
+// Validación
+const { joiValidate } = require('../middleware/joiValidate.middleware');
+const { LoginSchema } = require('../schemas/login.schema');
+
 // Controlador
 const usuarioController = require('../controllers/usuario.controller.js');
 
@@ -43,8 +47,9 @@ router.post('/register',
  * Login paso 1 (credenciales, puede requerir 2FA)
  * Rate Limit: 5 intentos/15min por email
  */
-router.post('/login', 
+router.post('/login',
   /*loginLimiter,*/
+  joiValidate(LoginSchema.login),
   usuarioController.loginStep1
 );
 

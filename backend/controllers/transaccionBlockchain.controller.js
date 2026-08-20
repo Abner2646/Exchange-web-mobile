@@ -1,7 +1,6 @@
 // controllers/transaccionBlockchain.controller.js
 const { TransaccionBlockchain, Usuario, Criptomoneda, BalanceUsuario, DireccionDeposito } = require('../models');
 const BlockchainServiceManager = require('../services/blockchain');
-const { validationResult } = require('express-validator');
 
 class TransaccionBlockchainController {
   // =================== ENDPOINTS PARA USUARIOS ===================
@@ -77,16 +76,6 @@ class TransaccionBlockchainController {
   // POST /api/transactions/withdraw - Crear retiro
   async createWithdrawal(req, res) {
     try {
-      // Validar datos de entrada
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          success: false,
-          message: 'Datos de entrada inválidos',
-          errors: errors.array()
-        });
-      }
-
       const userId = req.user.id;
       const { criptomonedaId, cantidad, direccionDestino } = req.body;
 
