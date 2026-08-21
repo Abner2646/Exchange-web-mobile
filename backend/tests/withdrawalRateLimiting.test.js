@@ -52,6 +52,15 @@ function tokenFor(userId) {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET);
 }
 
+// Payload válido para el schema createWithdrawal (Joi corre después del rate
+// limiter en la ruta): sin esto Joi devuelve 400 antes de llegar al controller
+// mockeado, y el test no puede verificar el 200 previo al 429.
+const validWithdrawal = {
+  criptomonedaId: '11111111-1111-4111-8111-111111111111',
+  cantidad: 0.5,
+  direccionDestino: 'abcdefghij1234567890abcd',
+};
+
 describe('POST /transaccionBlockchain/withdraw rate limiting (withdrawal: 10/15min)', () => {
   const app = buildApp();
   const auth = `Bearer ${tokenFor(mockUser.id)}`;
@@ -65,7 +74,7 @@ describe('POST /transaccionBlockchain/withdraw rate limiting (withdrawal: 10/15m
       const res = await request(app)
         .post('/transaccionBlockchain/withdraw')
         .set('Authorization', auth)
-        .send({});
+        .send(validWithdrawal);
       expect(res.status).toBe(200);
     }
 

@@ -50,13 +50,13 @@ describe('POST /usuario/login rate limiting (loginLimiter: 5/15min por email)', 
     for (let i = 0; i < 5; i++) {
       const res = await request(app)
         .post('/usuario/login')
-        .send({ email: 'brute-force-target@example.com', password: 'x' });
+        .send({ emailOrUsername: 'brute-force-target@example.com', password: 'x' });
       expect(res.status).toBe(200);
     }
 
     const sixth = await request(app)
       .post('/usuario/login')
-      .send({ email: 'brute-force-target@example.com', password: 'x' });
+      .send({ emailOrUsername: 'brute-force-target@example.com', password: 'x' });
     expect(sixth.status).toBe(429);
   });
 });
