@@ -7,6 +7,9 @@ class BlockchainJobManager {
   constructor() {
     this.jobs = new Map();
     this.isRunning = false;
+    // Guard de reentrancia del procesamiento de retiros (anti doble-gasto).
+    // Distinto de isRunning, que marca el ciclo de vida del scheduler.
+    this.withdrawalProcessing = false;
     this.intervals = {
       depositScan: parseInt(process.env.DEPOSIT_SCAN_INTERVAL_MS) || 60000, // 1 minuto
       confirmationUpdate: parseInt(process.env.CONFIRMATION_UPDATE_INTERVAL_MS) || 30000, // 30 segundos
@@ -561,6 +564,20 @@ class BlockchainJobManager {
   async runWithdrawalProcessJob() {
     const startTime = Date.now();
 
+    // Guard de reentrancia (anti doble-gasto). Este método corre tanto por el
+    // setInterval del scheduler como por el endpoint manual
+    // /system/process-withdrawals, ambos sobre este mismo singleton. Sin este
+    // freno, dos corridas solapadas seleccionan las mismas filas 'pendiente' y
+    // transmiten el retiro on-chain dos veces (doble salida de la wallet maestra
+    // — ver ROADMAP.md Fase 1, ítem #0). Nota: cubre un solo proceso; con varias
+    // instancias (Fase 5/6) hace falta además un lock distribuido o un claim
+    // atómico por fila antes del broadcast.
+    if (this.withdrawalProcessing) {
+      console.log('⏭️ [WITHDRAWAL_PROCESS] Ya hay un procesamiento en curso, se saltea esta corrida');
+      return { success: true, skipped: true, reason: 'already running', duration: 0, timestamp: new Date() };
+    }
+    this.withdrawalProcessing = true;
+
     try {
       console.log('💸 [WITHDRAWAL_PROCESS] Iniciando procesamiento de retiros pendientes...');
 
@@ -601,6 +618,8 @@ class BlockchainJobManager {
       const duration = Date.now() - startTime;
       console.error(`❌ [WITHDRAWAL_PROCESS] Error general después de ${duration}ms:`, error.message);
       return { success: false, error: error.message, duration, timestamp: new Date() };
+    } finally {
+      this.withdrawalProcessing = false;
     }
   }
 
