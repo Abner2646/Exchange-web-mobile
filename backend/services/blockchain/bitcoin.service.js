@@ -676,17 +676,6 @@ class BitcoinService {
     }
   }
 
-  async getBalance(address) {
-    try {
-      const url = `${this.baseUrl}/addrs/${address}/balance${this.apiToken}`;
-      const response = await fetch(url);
-      const data = await response.json();
-      
-      return (data.balance / 100000000).toString();
-    } catch (error) {
-      throw new Error(`Error obteniendo balance BTC: ${error.message}`);
-    }
-  }
 }
 
 module.exports = BitcoinService;

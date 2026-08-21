@@ -341,30 +341,6 @@ const getNextDerivationIndex = async (req, res) => {
   }
 };
 
-// MÉTODO TEMPORAL: Limpiar direcciones de prueba duplicadas
-const cleanupTestAddresses = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    
-    // Eliminar direcciones que empiecen con "0x054f0F4a3a358856571BA4B6245bC626738effAB"
-    const deleted = await sequelize.models.DireccionDeposito.destroy({
-      where: {
-        userId: userId,
-        direccion: {
-          [Op.like]: '0x054f0F4a3a358856571BA4B6245bC626738effAB%'
-        }
-      }
-    });
-
-    res.json({ 
-      message: `${deleted} direcciones de prueba eliminadas`,
-      deletedCount: deleted
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
 module.exports = {
   getDireccionesDeposito,
   getDireccionDepositoById,
@@ -382,6 +358,5 @@ module.exports = {
   getDireccionByAddress,
   getDireccionesByWallet,
   validateForDeposit,
-  getNextDerivationIndex,
-  cleanupTestAddresses
+  getNextDerivationIndex
 };

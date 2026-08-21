@@ -5,7 +5,15 @@ const { sequelize } = require('../../models');
 class BalanceManagerService {
 
   /**
-   * Bloquea balance para una orden de trading
+   * Bloquea balance para una orden de trading.
+   *
+   * Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #5): `transaction` recibía
+   * el parámetro pero nunca lo reenviaba a hasAvailableBalance/blockBalance
+   * — era decorativo, la operación no era atómica. La validación de acá
+   * abajo (hasAvailableBalance) sigue siendo solo un chequeo rápido para dar
+   * un error temprano y amigable; la protección real contra condiciones de
+   * carrera vive ahora en BalanceUser.blockBalance (SELECT ... FOR UPDATE),
+   * a la que si se le pasa `transaction` se le suma.
    */
   async lockBalanceForOrder(data, transaction = null) {
     const { userId, tradingPair, side, quantity, price } = data;
@@ -55,11 +63,12 @@ class BalanceManagerService {
         };
       }
 
-      // Bloquear el balance
+      // Bloquear el balance (atómico: ver BalanceUser.blockBalance)
       await BalanceUsuario.blockBalance(
         userId,
         assetToLock,
-        amountToLock
+        amountToLock,
+        transaction
       );
 
       return {
@@ -108,11 +117,12 @@ class BalanceManagerService {
         amountToUnlock = parseFloat(order.quantityRemaining);
       }
 
-      // Desbloquear el balance
+      // Desbloquear el balance (atómico: ver BalanceUser.unblockBalance)
       await BalanceUsuario.unblockBalance(
         order.userId,
         assetToUnlock,
-        amountToUnlock
+        amountToUnlock,
+        transaction
       );
 
       return {

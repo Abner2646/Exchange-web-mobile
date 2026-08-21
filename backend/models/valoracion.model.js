@@ -96,11 +96,11 @@ function createValoracionModel(sequelize) {
         },
         {
           association: 'evaluador',
-          attributes: ['id', 'nombre']
+          attributes: ['id', 'username']
         },
         {
           association: 'evaluado',
-          attributes: ['id', 'nombre', 'reputacion']
+          attributes: ['id', 'username', 'reputacionPromedio']
         }
       ]
     });
@@ -152,11 +152,11 @@ function createValoracionModel(sequelize) {
         },
         {
           association: 'evaluador',
-          attributes: ['id', 'nombre']
+          attributes: ['id', 'username']
         },
         {
           association: 'evaluado',
-          attributes: ['id', 'nombre']
+          attributes: ['id', 'username']
         }
       ],
       order: [[orderBy, orderDirection]],
@@ -196,7 +196,7 @@ function createValoracionModel(sequelize) {
         },
         {
           association: tipo === 'recibidas' ? 'evaluador' : 'evaluado',
-          attributes: ['id', 'nombre']
+          attributes: ['id', 'username']
         }
       ],
       order: [['created_at', 'DESC']],
@@ -263,11 +263,11 @@ function createValoracionModel(sequelize) {
         },
         {
           association: 'comprador',
-          attributes: ['id', 'nombre']
+          attributes: ['id', 'username']
         },
         {
           association: 'vendedor',
-          attributes: ['id', 'nombre']
+          attributes: ['id', 'username']
         },
         {
           association: 'criptomoneda',
@@ -323,11 +323,11 @@ function createValoracionModel(sequelize) {
       include: [
         {
           association: 'evaluador',
-          attributes: ['id', 'nombre']
+          attributes: ['id', 'username']
         },
         {
           association: 'evaluado',
-          attributes: ['id', 'nombre']
+          attributes: ['id', 'username']
         }
       ],
       order: [['created_at', 'DESC']]

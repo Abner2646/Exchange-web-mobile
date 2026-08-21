@@ -5,7 +5,7 @@ class TransaccionBlockchainSchema {
   // Schema para crear retiro
   createWithdrawal = Joi.object({
     criptomonedaId: Joi.string()
-      .uuid({ version: 4 })
+      .uuid({ version: 'uuidv4' })
       .required()
       .messages({
         'string.empty': 'criptomonedaId es requerido',
@@ -58,7 +58,7 @@ class TransaccionBlockchainSchema {
       .optional(),
     
     criptomonedaId: Joi.string()
-      .uuid({ version: 4 })
+      .uuid({ version: 'uuidv4' })
       .optional(),
     
     fechaDesde: Joi.date()

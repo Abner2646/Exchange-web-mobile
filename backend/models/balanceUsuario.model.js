@@ -5,21 +5,21 @@ const initBalanceUser = require('./entities/balanceUsuario.entity');
 const { Op } = require('sequelize');
 
 function createBalanceUserModel(sequelize) {
-  const BalanceUser = initBalanceUser(sequelize);
+  const BalanceUsuario = initBalanceUser(sequelize);
 
   // Métodos de consulta básicos
-  BalanceUser.getById = async (id) => {
+  BalanceUsuario.getById = async (id) => {
     try {
-      const balance = await BalanceUser.findByPk(id);
+      const balance = await BalanceUsuario.findByPk(id);
       return balance;
     } catch (error) {
       throw new Error(`Error al obtener balance por ID: ${error.message}`);
     }
   };
 
-  BalanceUser.getByUserId = async (userId) => {
+  BalanceUsuario.getByUserId = async (userId) => {
     try {
-      const balances = await BalanceUser.findAll({
+      const balances = await BalanceUsuario.findAll({
         where: { userId }
       });
       return balances;
@@ -28,9 +28,9 @@ function createBalanceUserModel(sequelize) {
     }
   };
 
-  BalanceUser.getByUserAndCrypto = async (userId, criptomonedaId) => {
+  BalanceUsuario.getByUserAndCrypto = async (userId, criptomonedaId) => {
     try {
-      const balance = await BalanceUser.findOne({
+      const balance = await BalanceUsuario.findOne({
         where: { 
           userId,
           criptomonedaId 
@@ -42,7 +42,7 @@ function createBalanceUserModel(sequelize) {
     }
   };
 
-  BalanceUser.getAll = async (filters = {}) => {
+  BalanceUsuario.getAll = async (filters = {}) => {
     try {
       const where = {};
       
@@ -52,7 +52,7 @@ function createBalanceUserModel(sequelize) {
         where.balanceDisponible = { [Op.gte]: filters.minBalance };
       }
 
-      const balances = await BalanceUser.findAll({
+      const balances = await BalanceUsuario.findAll({
         where,
         limit: filters.limit || 50,
         offset: filters.offset || 0
@@ -65,9 +65,9 @@ function createBalanceUserModel(sequelize) {
   };
 
   // Métodos de balance
-  BalanceUser.getTotalBalance = async (userId, criptomonedaId) => {
+  BalanceUsuario.getTotalBalance = async (userId, criptomonedaId) => {
     try {
-      const balance = await BalanceUser.findOne({
+      const balance = await BalanceUsuario.findOne({
         where: { userId, criptomonedaId }
       });
       
@@ -85,9 +85,9 @@ function createBalanceUserModel(sequelize) {
     }
   };
 
-  BalanceUser.updateBalance = async (userId, criptomonedaId, amount, type = 'disponible', transaction = null) => {
+  BalanceUsuario.updateBalance = async (userId, criptomonedaId, amount, type = 'disponible', transaction = null) => {
     try {
-      const [balance] = await BalanceUser.findOrCreate({
+      const [balance] = await BalanceUsuario.findOrCreate({
         where: { userId, criptomonedaId },
         defaults: {
           userId,
@@ -119,9 +119,9 @@ function createBalanceUserModel(sequelize) {
   };
 
   // 🆕 MÉTODO PARA OBTENER BALANCE EN TRANSACCIÓN
-  BalanceUser.getByUserAndCrypto = async (userId, criptomonedaId, options = {}) => {
+  BalanceUsuario.getByUserAndCrypto = async (userId, criptomonedaId, options = {}) => {
     try {
-      const balance = await BalanceUser.findOne({
+      const balance = await BalanceUsuario.findOne({
         where: { userId, criptomonedaId },
         ...options
       });
@@ -131,10 +131,27 @@ function createBalanceUserModel(sequelize) {
     }
   };
 
-  BalanceUser.blockBalance = async (userId, criptomonedaId, amount) => {
+  // Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #5): antes esto era
+  // findOne() + save() sin transacción ni lock — dos requests casi
+  // simultáneas podían leer el mismo balance, las dos pasar la validación,
+  // y las dos escribir (TOCTOU clásico, permitía bloquear más de lo
+  // disponible). Ahora el read+check+write pasa por un único SELECT ... FOR
+  // UPDATE: la segunda llamada concurrente espera a que la primera
+  // transacción termine y recién ahí lee el balance ya actualizado, en vez
+  // de correr en paralelo sobre el mismo dato viejo.
+  //
+  // `transaction` es opcional: si el caller ya tiene una abierta se suma a
+  // ella (mismo patrón que WalletMaestra.updateBalance); si no, abre y
+  // gestiona la suya.
+  BalanceUsuario.blockBalance = async (userId, criptomonedaId, amount, transaction = null) => {
+    const ownTransaction = !transaction;
+    const t = transaction || await sequelize.transaction();
+
     try {
-      const balance = await BalanceUser.findOne({
-        where: { userId, criptomonedaId }
+      const balance = await BalanceUsuario.findOne({
+        where: { userId, criptomonedaId },
+        transaction: t,
+        lock: t.LOCK.UPDATE
       });
 
       if (!balance) {
@@ -150,18 +167,26 @@ function createBalanceUserModel(sequelize) {
 
       balance.balanceDisponible = availableBalance - amountToBlock;
       balance.balanceBloqueado = parseFloat(balance.balanceBloqueado) + amountToBlock;
-      
-      await balance.save();
+
+      await balance.save({ transaction: t });
+
+      if (ownTransaction) await t.commit();
       return balance;
     } catch (error) {
+      if (ownTransaction) await t.rollback();
       throw new Error(`Error al bloquear balance: ${error.message}`);
     }
   };
 
-  BalanceUser.unblockBalance = async (userId, criptomonedaId, amount) => {
+  BalanceUsuario.unblockBalance = async (userId, criptomonedaId, amount, transaction = null) => {
+    const ownTransaction = !transaction;
+    const t = transaction || await sequelize.transaction();
+
     try {
-      const balance = await BalanceUser.findOne({
-        where: { userId, criptomonedaId }
+      const balance = await BalanceUsuario.findOne({
+        where: { userId, criptomonedaId },
+        transaction: t,
+        lock: t.LOCK.UPDATE
       });
 
       if (!balance) {
@@ -177,18 +202,21 @@ function createBalanceUserModel(sequelize) {
 
       balance.balanceBloqueado = blockedBalance - amountToUnblock;
       balance.balanceDisponible = parseFloat(balance.balanceDisponible) + amountToUnblock;
-      
-      await balance.save();
+
+      await balance.save({ transaction: t });
+
+      if (ownTransaction) await t.commit();
       return balance;
     } catch (error) {
+      if (ownTransaction) await t.rollback();
       throw new Error(`Error al desbloquear balance: ${error.message}`);
     }
   };
 
   // Métodos de validación
-  BalanceUser.hasAvailableBalance = async (userId, criptomonedaId, amount) => {
+  BalanceUsuario.hasAvailableBalance = async (userId, criptomonedaId, amount) => {
     try {
-      const balance = await BalanceUser.findOne({
+      const balance = await BalanceUsuario.findOne({
         where: { userId, criptomonedaId }
       });
 
@@ -202,9 +230,9 @@ function createBalanceUserModel(sequelize) {
   };
 
   // Métodos administrativos
-  BalanceUser.getUsersWithBalance = async (criptomonedaId, minAmount = 0) => {
+  BalanceUsuario.getUsersWithBalance = async (criptomonedaId, minAmount = 0) => {
     try {
-      const balances = await BalanceUser.findAll({
+      const balances = await BalanceUsuario.findAll({
         where: {
           criptomonedaId,
           balanceDisponible: { [Op.gt]: minAmount }
@@ -218,9 +246,9 @@ function createBalanceUserModel(sequelize) {
     }
   };
 
-  BalanceUser.getBalanceStats = async () => {
+  BalanceUsuario.getBalanceStats = async () => {
     try {
-      const stats = await BalanceUser.findAll({
+      const stats = await BalanceUsuario.findAll({
         attributes: [
           'criptomonedaId',
           [sequelize.fn('COUNT', sequelize.col('id')), 'totalUsers'],
@@ -237,10 +265,10 @@ function createBalanceUserModel(sequelize) {
   };
 
   // Método para reclamar BTC (SOLO TESTNET - ELIMINAR EN PRODUCCIÓN)
-  BalanceUser.reclamarBtcGratis = async (userId, transaction = null) => {
+  BalanceUsuario.reclamarBtcGratis = async (userId, transaction = null) => {
     try {
       // 1. Verificar que el usuario NO tenga ningún balance existente
-      const balancesExistentes = await BalanceUser.findAll({
+      const balancesExistentes = await BalanceUsuario.findAll({
         where: { userId }
       });
 
@@ -250,9 +278,13 @@ function createBalanceUserModel(sequelize) {
         return total > 0;
       });
 
-      /*if (tieneSaldo) {
+      // Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #12): este chequeo
+      // estaba comentado — cualquier usuario podía llamar este endpoint
+      // repetidas veces y acumular BTC sin límite, sin siquiera necesitar
+      // scriptear nada. Reactivado: el regalo es de una sola vez.
+      if (tieneSaldo) {
         throw new Error('Ya tienes saldo en tu cuenta. El regalo de BTC es solo para usuarios nuevos.');
-      }*/
+      }
 
       // 2. Buscar el BTC en la base de datos
       const Criptomoneda = sequelize.models.Criptomoneda;
@@ -263,7 +295,7 @@ function createBalanceUserModel(sequelize) {
       }
 
       // 3. Agregar 1 BTC al usuario
-      const nuevoBalance = await BalanceUser.updateBalance(
+      const nuevoBalance = await BalanceUsuario.updateBalance(
         userId, 
         btc.id, 
         1, 
@@ -282,7 +314,7 @@ function createBalanceUserModel(sequelize) {
     }
   };
 
-  return BalanceUser;
+  return BalanceUsuario;
 }
 
 module.exports = createBalanceUserModel;

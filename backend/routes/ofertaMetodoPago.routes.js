@@ -1,7 +1,3 @@
-/*
-NO necesita rutas propias. Es una tabla intermedia que se maneja automáticamente cuando trabajas con OfertaP2P.
-*/
-
 // routes/ofertaMetodoPago.routes.js
 const { Router } = require('express');
 const router = Router();

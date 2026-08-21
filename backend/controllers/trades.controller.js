@@ -440,7 +440,10 @@ class TradesController {
       }
 
       // Verificar que el usuario sea parte del trade (o sea admin)
-      if (trade.buyerId !== userId && trade.sellerId !== userId && !req.user.isAdmin) {
+      // Fix 2026-08-19 (AUDITORIA_BACKEND.md Altos #4): req.user.isAdmin
+      // nunca existe (authMiddleware setea req.user.rol).
+      const isAdmin = ['admin', 'super_admin'].includes(req.user.rol);
+      if (trade.buyerId !== userId && trade.sellerId !== userId && !isAdmin) {
         return res.status(403).json({
           success: false,
           error: 'No tienes permiso para ver este trade'
@@ -478,7 +481,7 @@ class TradesController {
       // Obtener últimos trades
       const recentTrades = await Trade.getByUser(userId, { limit: 10 });
 
-      // Calcular PnL (simplificado - solo fees por ahora)
+      // No hay cálculo de PnL implementado todavía — esto es solo el total de fees pagadas
       const totalFees = stats.totalFees;
 
       res.json({

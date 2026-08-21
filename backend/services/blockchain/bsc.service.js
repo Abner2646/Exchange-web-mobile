@@ -70,13 +70,15 @@ class BscService {
       });
 
       const lastProcessedBlock = await BlockchainState.getLastProcessedBlock(this.actualNetwork);
-      
-      // 🔧 TEMPORAL: Forzar bloque más bajo para detectar transacciones antiguas
-      const adjustedBlock = Math.max(0, lastProcessedBlock - 10000); // Retroceder 10k bloques
       console.log(`🔍 [BSC] Último bloque procesado: ${lastProcessedBlock}`);
-      console.log(`🔧 [BSC] TEMPORAL: Usando bloque ajustado: ${adjustedBlock} (retrocedido 10k bloques)`);
-      
-      const scanFromBlock = adjustedBlock;
+
+      // Fix 2026-08-19 (AUDITORIA_BACKEND.md Altos #9): esto retrocedía
+      // 10.000 bloques en CADA ciclo de escaneo (cada 60s por defecto),
+      // marcado "TEMPORAL" pero nunca sacado — reconsultaba rangos ya
+      // procesados todo el tiempo, carga redundante contra Etherscan y
+      // más riesgo de rate-limit. ETH usa lastProcessedBlock directo, sin
+      // este ajuste; BSC ahora hace lo mismo.
+      const scanFromBlock = lastProcessedBlock;
 
       const newDeposits = [];
 
@@ -675,28 +677,6 @@ class BscService {
     }
   }
 
-  async getBalance(address, contractAddress = null) {
-    try {
-      if (contractAddress) {
-        const contract = new ethers.Contract(
-          contractAddress, 
-          [
-            'function balanceOf(address) view returns (uint256)', 
-            'function decimals() view returns (uint8)'
-          ], 
-          this.provider
-        );
-        const balance = await contract.balanceOf(address);
-        const decimales = await contract.decimals();
-        return ethers.formatUnits(balance, decimales);
-      } else {
-        const balance = await this.provider.getBalance(address);
-        return ethers.formatEther(balance);
-      }
-    } catch (error) {
-      throw new Error(`Error obteniendo balance BSC: ${error.message}`);
-    }
-  }
 }
 
 module.exports = BscService;

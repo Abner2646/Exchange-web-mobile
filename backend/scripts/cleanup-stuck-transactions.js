@@ -1,4 +1,4 @@
-// scripts/cleanup-balance-checks.js - Eliminar transacciones problemáticas de balance check
+// scripts/cleanup-stuck-transactions.js - Eliminar transacciones problemáticas de balance check
 require('dotenv').config();
 const { TransaccionBlockchain, BalanceUsuario } = require('../models');
 const { Op } = require('sequelize');

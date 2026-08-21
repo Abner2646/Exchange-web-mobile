@@ -18,92 +18,83 @@ const isValidUUID = (uuid) => {
   return uuidRegex.test(uuid);
 };
 
-/*
-// Crear nueva orden
+// Crear nueva orden.
+//
+// Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #4 y #6): esta función
+// llegó a estar hardcodeada para ejecutar siempre "venta" sin importar el
+// `tipo` recibido, con el chequeo de límite diario comentado. Ahora respeta
+// `tipo`, revalida el límite diario, y pasa la transacción de forma
+// consistente a cada escritura (incluida la comisión a la wallet maestra,
+// que antes se confirmaba en su propia transacción aparte — ver el fix de
+// WalletMaestra.updateBalance en este mismo commit).
 const createOrder = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
-    console.log('Iniciando creación de orden')
     const usuarioId = req.user.id;
     const { parId, tipo, cantidadBase } = req.body;
-    
-    // Validar campos requeridos (sin precio)
-    console.log('Validando campos requeridos')
+
     if (!parId || !tipo || !cantidadBase) {
       await transaction.rollback();
       return res.status(400).json({ error: 'parId, tipo y cantidadBase son requeridos' });
     }
-    
-    // Validar UUID
-    console.log('Validadndo UUID========')
+
     if (!isValidUUID(parId)) {
       await transaction.rollback();
       return res.status(400).json({ error: 'parId debe ser un UUID válido' });
     }
-    
-    // Validar tipo
-    console.log('Validadno tipo========')
+
     if (!['compra', 'venta'].includes(tipo)) {
       await transaction.rollback();
       return res.status(400).json({ error: 'tipo debe ser "compra" o "venta"' });
     }
 
-    // Validar cantidadBase
-    console.log('Validadno transacción base========')
     if (typeof cantidadBase !== 'number' || cantidadBase <= 0) {
       await transaction.rollback();
       return res.status(400).json({ error: 'cantidadBase debe ser un número mayor a 0' });
     }
 
-    // Validar decimales
-    console.log('Validando decimales========')
     const baseDecimals = (cantidadBase.toString().split('.')[1] || '').length;
     if (baseDecimals > 8) {
       await transaction.rollback();
       return res.status(400).json({ error: 'cantidadBase no puede tener más de 8 decimales' });
     }
-    
-    // Obtener información del par con precio actual
-    console.log('Validando info del par con precio actual========')
-    const par = await ParExchange.findByPk(parId, { 
+
+    const par = await ParExchange.findByPk(parId, {
       include: [
         { model: Criptomoneda, as: 'criptoBase' },
         { model: Criptomoneda, as: 'criptoQuote' }
       ],
-      transaction 
+      transaction
     });
-    
+
     if (!par || !par.activo) {
       await transaction.rollback();
       return res.status(404).json({ error: 'Par de intercambio no encontrado o inactivo' });
     }
 
-    // Usar el precio actual del par
     const precio = parseFloat(par.precioActual);
     if (!precio || precio <= 0) {
       await transaction.rollback();
       return res.status(400).json({ error: 'El par no tiene un precio válido configurado' });
     }
 
-    // Obtener usuario para verificar límites
     const usuario = await Usuario.findByPk(usuarioId, { transaction });
     if (!usuario || !usuario.activo) {
       await transaction.rollback();
       return res.status(404).json({ error: 'Usuario no encontrado o inactivo' });
     }
-    // Calcular valores con el precio actual
+
     const cantidadQuote = parseFloat((cantidadBase * precio).toFixed(8));
     const comisionPorcentaje = parseFloat(par.comisionPorcentaje || 0.1);
     const comisionMonto = parseFloat((cantidadQuote * (comisionPorcentaje / 100)).toFixed(8));
-    
-    // Verificar límite diario
+
     const dailyVolume = await IntercambioExchange.getDailyVolume(usuarioId, new Date(), transaction);
     const newDailyVolume = dailyVolume + cantidadQuote;
-    
+
     if (newDailyVolume > usuario.limiteDiarioUsd) {
       await transaction.rollback();
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Límite diario excedido',
         dailyVolume,
         limit: usuario.limiteDiarioUsd,
@@ -112,23 +103,22 @@ const createOrder = async (req, res) => {
       });
     }
 
-    // Determinar qué criptomonedas se necesitan
     const criptoBaseId = par.criptoBaseId;
     const criptoQuoteId = par.criptoQuoteId;
-    
-    // Verificar balances según el tipo de operación
+    let netAmount;
+
     if (tipo === 'compra') {
-      // Para comprar: necesito criptomoneda quote + comisión
+      // Comprar: se paga en quote (+ comisión), se recibe base.
       const requiredAmount = cantidadQuote + comisionMonto;
-      
+
       const balanceQuote = await BalanceUsuario.findOne({
         where: { userId: usuarioId, criptomonedaId: criptoQuoteId },
         transaction
       });
-      
+
       if (!balanceQuote || parseFloat(balanceQuote.balanceDisponible) < requiredAmount) {
         await transaction.rollback();
-        return res.status(400).json({ 
+        return res.status(400).json({
           error: 'Saldo insuficiente en moneda quote',
           required: requiredAmount,
           available: balanceQuote ? parseFloat(balanceQuote.balanceDisponible) : 0,
@@ -136,31 +126,20 @@ const createOrder = async (req, res) => {
           currentPrice: precio
         });
       }
-      
-      // Ejecutar la transacción
-      await BalanceUsuario.updateBalance(usuarioId, criptoQuoteId, -requiredAmount, 'disponible');
-      await BalanceUsuario.updateBalance(usuarioId, criptoBaseId, cantidadBase, 'disponible');
-      
-      // Agregar comisión a la wallet maestra (quote)
-      const walletMaestraQuote = await WalletMaestra.findOne({
-        where: { criptomonedaId: criptoQuoteId },
-        transaction
-      });
-      
-      if (walletMaestraQuote) {
-        await WalletMaestra.addToBalance(walletMaestraQuote.id, comisionMonto);
-      }
-      
+
+      await BalanceUsuario.updateBalance(usuarioId, criptoQuoteId, -requiredAmount, 'disponible', transaction);
+      await BalanceUsuario.updateBalance(usuarioId, criptoBaseId, cantidadBase, 'disponible', transaction);
+      netAmount = cantidadBase;
     } else {
-      // Para vender: necesito criptomoneda base
+      // Vender: se paga en base, se recibe quote (- comisión).
       const balanceBase = await BalanceUsuario.findOne({
         where: { userId: usuarioId, criptomonedaId: criptoBaseId },
         transaction
       });
-      
+
       if (!balanceBase || parseFloat(balanceBase.balanceDisponible) < cantidadBase) {
         await transaction.rollback();
-        return res.status(400).json({ 
+        return res.status(400).json({
           error: 'Saldo insuficiente en moneda base',
           required: cantidadBase,
           available: balanceBase ? parseFloat(balanceBase.balanceDisponible) : 0,
@@ -168,32 +147,31 @@ const createOrder = async (req, res) => {
           currentPrice: precio
         });
       }
-      
-      // Ejecutar la transacción
-      await BalanceUsuario.updateBalance(usuarioId, criptoBaseId, -cantidadBase, 'disponible');
-      
-      const netAmount = cantidadQuote - comisionMonto;
-      await BalanceUsuario.updateBalance(usuarioId, criptoQuoteId, netAmount, 'disponible');
-      
-      // Agregar comisión a la wallet maestra (quote)
-      const walletMaestraQuote = await WalletMaestra.findOne({
-        where: { criptomonedaId: criptoQuoteId },
-        transaction
-      });
-      
-      if (walletMaestraQuote) {
-        await WalletMaestra.addToBalance(walletMaestraQuote.id, comisionMonto);
-      }
+
+      await BalanceUsuario.updateBalance(usuarioId, criptoBaseId, -cantidadBase, 'disponible', transaction);
+      netAmount = cantidadQuote - comisionMonto;
+      await BalanceUsuario.updateBalance(usuarioId, criptoQuoteId, netAmount, 'disponible', transaction);
     }
 
-    // Crear el registro del intercambio como completado
+    // La comisión siempre se cobra en la moneda quote, para los dos tipos de operación.
+    const walletMaestraQuote = await WalletMaestra.findOne({
+      where: { criptomonedaId: criptoQuoteId },
+      transaction
+    });
+
+    if (walletMaestraQuote) {
+      await WalletMaestra.addToBalance(walletMaestraQuote.id, comisionMonto, transaction);
+    } else {
+      console.warn(`No se encontró wallet maestra para ${par.criptoQuote.symbol}`);
+    }
+
     const newOrder = await IntercambioExchange.create({
       usuarioId,
       parId,
       tipo,
       cantidadBase,
       cantidadQuote,
-      precio, // Precio obtenido automáticamente del par
+      precio,
       comisionMonto,
       comisionPorcentaje,
       estado: 'completado',
@@ -201,209 +179,14 @@ const createOrder = async (req, res) => {
     }, { transaction });
 
     await transaction.commit();
-    
-    res.status(201).json({ 
-      message: 'Intercambio realizado exitosamente', 
-      data: {
-        ...newOrder.toJSON(),
-        precioUsado: precio,
-        comisionCalculada: comisionMonto
-      }
-    });
-  } catch (error) {
-    await transaction.rollback();
-    console.error('Error creating exchange:', error);
-    res.status(400).json({ error: error.message });
-  }
-};*/
 
-// Crear nueva orden - HARDCODEADO PARA tipo "VENTA" SIEMPRE
-const createOrder = async (req, res) => {
-  const transaction = await sequelize.transaction();
-  
-  try {
-    console.log('Iniciando creación de orden (HARDCODED VENTA)')
-    const usuarioId = req.user.id;
-    const { parId, tipo, cantidadBase } = req.body;
-    
-    // Validar campos requeridos (sin precio)
-    console.log('Validando campos requeridos')
-    if (!parId || !tipo || !cantidadBase) {
-      await transaction.rollback();
-      return res.status(400).json({ error: 'parId, tipo y cantidadBase son requeridos' });
-    }
-    
-    // Validar UUID
-    console.log('Validadndo UUID========')
-    if (!isValidUUID(parId)) {
-      await transaction.rollback();
-      return res.status(400).json({ error: 'parId debe ser un UUID válido' });
-    }
-    
-    // Validar tipo (pero ignorarlo después)
-    console.log('Validadno tipo======== (IGNORADO - SIEMPRE VENTA)')
-    if (!['compra', 'venta'].includes(tipo)) {
-      await transaction.rollback();
-      return res.status(400).json({ error: 'tipo debe ser "compra" o "venta"' });
-    }
-
-    // Validar cantidadBase
-    console.log('Validadno transacción base========')
-    if (typeof cantidadBase !== 'number' || cantidadBase <= 0) {
-      await transaction.rollback();
-      return res.status(400).json({ error: 'cantidadBase debe ser un número mayor a 0' });
-    }
-
-    // Validar decimales
-    console.log('Validando decimales========')
-    const baseDecimals = (cantidadBase.toString().split('.')[1] || '').length;
-    if (baseDecimals > 8) {
-      await transaction.rollback();
-      return res.status(400).json({ error: 'cantidadBase no puede tener más de 8 decimales' });
-    }
-    
-    // Obtener información del par con precio actual
-    console.log('Validando info del par con precio actual========')
-    const par = await ParExchange.findByPk(parId, { 
-      include: [
-        { model: Criptomoneda, as: 'criptoBase' },
-        { model: Criptomoneda, as: 'criptoQuote' }
-      ],
-      transaction 
-    });
-    
-    if (!par || !par.activo) {
-      await transaction.rollback();
-      return res.status(404).json({ error: 'Par de intercambio no encontrado o inactivo' });
-    }
-
-    // Usar el precio actual del par
-    const precio = parseFloat(par.precioActual);
-    if (!precio || precio <= 0) {
-      await transaction.rollback();
-      return res.status(400).json({ error: 'El par no tiene un precio válido configurado' });
-    }
-
-    // Obtener usuario para verificar límites
-    const usuario = await Usuario.findByPk(usuarioId, { transaction });
-    if (!usuario || !usuario.activo) {
-      await transaction.rollback();
-      return res.status(404).json({ error: 'Usuario no encontrado o inactivo' });
-    }
-    
-    // Calcular valores con el precio actual
-    const cantidadQuote = parseFloat((cantidadBase * precio).toFixed(8));
-    const comisionPorcentaje = parseFloat(par.comisionPorcentaje || 0.1);
-    const comisionMonto = parseFloat((cantidadQuote * (comisionPorcentaje / 100)).toFixed(8));
-    
-    console.log(`HARDCODED VENTA - Vendiendo ${cantidadBase} ${par.criptoBase.symbol} por ${cantidadQuote} ${par.criptoQuote.symbol}`);
-    
-    // Verificar límite diario
-    const dailyVolume = await IntercambioExchange.getDailyVolume(usuarioId, new Date(), transaction);
-    const newDailyVolume = dailyVolume + cantidadQuote;
-    
-    /*if (newDailyVolume > usuario.limiteDiarioUsd) {
-      await transaction.rollback();
-      return res.status(400).json({ 
-        error: 'Límite diario excedido',
-        dailyVolume,
-        limit: usuario.limiteDiarioUsd,
-        requestedAmount: cantidadQuote,
-        currentPrice: precio
-      });
-    }*/
-
-    // Determinar qué criptomonedas se necesitan
-    const criptoBaseId = par.criptoBaseId;
-    const criptoQuoteId = par.criptoQuoteId;
-    
-    // 🔥 HARDCODED: SIEMPRE EJECUTAR LÓGICA DE VENTA
-    console.log('========== EJECUTANDO VENTA HARDCODEADA ==========');
-    
-    // Para vender: necesito criptomoneda base
-    const balanceBase = await BalanceUsuario.findOne({
-      where: { userId: usuarioId, criptomonedaId: criptoBaseId },
-      transaction
-    });
-    
-    if (!balanceBase || parseFloat(balanceBase.balanceDisponible) < cantidadBase) {
-      await transaction.rollback();
-      return res.status(400).json({ 
-        error: 'Saldo insuficiente en moneda base',
-        required: cantidadBase,
-        available: balanceBase ? parseFloat(balanceBase.balanceDisponible) : 0,
-        currency: par.criptoBase.symbol,
-        currentPrice: precio
-      });
-    }
-    
-    // Verificar que existe balance quote o crearlo
-    let balanceQuote = await BalanceUsuario.findOne({
-      where: { userId: usuarioId, criptomonedaId: criptoQuoteId },
-      transaction
-    });
-    
-    if (!balanceQuote) {
-      console.log(`Creando balance para ${par.criptoQuote.symbol}`);
-      balanceQuote = await BalanceUsuario.create({
-        userId: usuarioId,
-        criptomonedaId: criptoQuoteId,
-        balanceDisponible: 0,
-        balanceBloqueado: 0
-      }, { transaction });
-    }
-    
-    // Ejecutar la transacción de VENTA
-    console.log(`Restando ${cantidadBase} ${par.criptoBase.symbol}`);
-    await BalanceUsuario.updateBalance(usuarioId, criptoBaseId, -cantidadBase, 'disponible', transaction);
-    
-    const netAmount = cantidadQuote - comisionMonto;
-    console.log(`Sumando ${netAmount} ${par.criptoQuote.symbol} (${cantidadQuote} - ${comisionMonto} comisión)`);
-    await BalanceUsuario.updateBalance(usuarioId, criptoQuoteId, netAmount, 'disponible', transaction);
-    
-    // Agregar comisión a la wallet maestra (quote)
-    const walletMaestraQuote = await WalletMaestra.findOne({
-      where: { criptomonedaId: criptoQuoteId },
-      transaction
-    });
-    
-    if (walletMaestraQuote) {
-      console.log(`Agregando comisión ${comisionMonto} ${par.criptoQuote.symbol} a wallet maestra`);
-      await WalletMaestra.addToBalance(walletMaestraQuote.id, comisionMonto, transaction);
-    } else {
-      console.warn(`⚠️  No se encontró wallet maestra para ${par.criptoQuote.symbol}`);
-    }
-
-    // Crear el registro del intercambio como completado
-    // 🔥 NOTA: Guardamos "venta" en la BD independientemente del parámetro recibido
-    const newOrder = await IntercambioExchange.create({
-      usuarioId,
-      parId,
-      tipo: 'venta', // ← HARDCODED: siempre guardar como venta
-      cantidadBase,
-      cantidadQuote,
-      precio, // Precio obtenido automáticamente del par
-      comisionMonto,
-      comisionPorcentaje,
-      estado: 'completado',
-      completedAt: new Date()
-    }, { transaction });
-
-    await transaction.commit();
-    
-    console.log('========== VENTA COMPLETADA EXITOSAMENTE ==========');
-    
-    res.status(201).json({ 
-      message: 'Intercambio realizado exitosamente (VENTA)', 
+    res.status(201).json({
+      message: 'Intercambio realizado exitosamente',
       data: {
         ...newOrder.toJSON(),
         precioUsado: precio,
         comisionCalculada: comisionMonto,
-        // Debug info
-        operacionReal: 'VENTA',
-        vendiste: `${cantidadBase} ${par.criptoBase.symbol}`,
-        recibiste: `${netAmount} ${par.criptoQuote.symbol}`,
-        comisionPagada: `${comisionMonto} ${par.criptoQuote.symbol}`
+        netAmount
       }
     });
   } catch (error) {
@@ -578,7 +361,7 @@ const calculateExchange = async (req, res) => {
 // Verificar límite de transacción
 const checkTransactionLimit = async (req, res) => {
   try {
-    const usuarioId = req.usuario.id;
+    const usuarioId = req.user.id;
     const { cantidadQuote } = req.body;
     
     if (!cantidadQuote || typeof cantidadQuote !== 'number' || cantidadQuote <= 0) {
@@ -593,18 +376,19 @@ const checkTransactionLimit = async (req, res) => {
     }
     
     const remainingLimit = usuario.limiteDiarioUsd - dailyVolume;
-    
-    /*if (remainingLimit < cantidadQuote) {
-      return res.status(400).json({ 
+
+    if (remainingLimit < cantidadQuote) {
+      return res.status(400).json({
+        canTransact: false,
         error: 'Límite diario excedido',
         dailyVolume,
         limit: usuario.limiteDiarioUsd,
         remainingLimit,
         requestedAmount: cantidadQuote
       });
-    }*/
-    
-    res.json({ 
+    }
+
+    res.json({
       canTransact: true,
       dailyVolume,
       limit: usuario.limiteDiarioUsd,
@@ -619,7 +403,7 @@ const checkTransactionLimit = async (req, res) => {
 // Obtener mis balances
 const getMyBalances = async (req, res) => {
   try {
-    const usuarioId = req.usuario.id;
+    const usuarioId = req.user.id;
     
     const balances = await BalanceUsuario.findAll({
       where: { userId: usuarioId },
@@ -705,7 +489,7 @@ const getIntercambioById = async (req, res) => {
 // Obtener mis intercambios
 const getMyIntercambios = async (req, res) => {
   try {
-    const usuarioId = req.usuario.id;
+    const usuarioId = req.user.id;
     const filters = { ...req.query };
     
     if (filters.tipo && !['compra', 'venta'].includes(filters.tipo)) {
@@ -895,7 +679,7 @@ const getLastPrice = async (req, res) => {
 // Obtener volumen diario del usuario
 const getMyDailyVolume = async (req, res) => {
   try {
-    const usuarioId = req.usuario.id;
+    const usuarioId = req.user.id;
     const { date } = req.query;
     
     if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
@@ -922,7 +706,7 @@ const getMyDailyVolume = async (req, res) => {
 // Obtener resumen del trading del usuario
 const getMyTradingSummary = async (req, res) => {
   try {
-    const usuarioId = req.usuario.id;
+    const usuarioId = req.user.id;
     const { period } = req.query;
     
     if (period && !['day', 'week', 'month', 'year'].includes(period)) {

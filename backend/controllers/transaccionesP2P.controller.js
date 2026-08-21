@@ -1,4 +1,9 @@
-const { TransaccionP2P } = require('../models/index.js');
+const { Op } = require('sequelize');
+// Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #10): Op, Criptomoneda y
+// Usuario se usaban en getMyTransacciones y getTransactionHistory sin estar
+// importados acá — ReferenceError garantizado en las dos rutas activas
+// GET /me/transacciones y GET /history/:otroUsuarioId.
+const { TransaccionP2P, Criptomoneda, Usuario } = require('../models/index.js');
 
 // Listar transacciones con filtros
 const getTransacciones = async (req, res) => {
@@ -90,38 +95,17 @@ const createTransaccion = async (req, res) => {
   }
 };
 
-// Actualizar estado de transacción
-const updateTransaccionStatus = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { estado } = req.body;
-    const usuarioId = req.user.id;
-
-    const updated = await TransaccionP2P.updateStatus(id, estado, usuarioId);
-    res.json({ 
-      message: 'Estado actualizado exitosamente', 
-      data: updated 
-    });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-};
-
-// Bloquear criptomonedas (vendedor)
-const lockCryptos = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const usuarioId = req.user.id;
-
-    const updated = await TransaccionP2P.lockCryptos(id, usuarioId);
-    res.json({ 
-      message: 'Criptomonedas bloqueadas exitosamente', 
-      data: updated 
-    });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-};
+// Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #11): updateTransaccionStatus
+// y lockCryptos llamaban a TransaccionP2P.updateStatus/.lockCryptos, que no
+// existen en el modelo — TypeError garantizado en cualquiera de las dos
+// rutas. No eran un simple typo para arreglar: el bloqueo de fondos ya pasa
+// dentro de createTransaction (ver el comentario "🔒 BLOQUEAR FONDOS" en
+// transaccionesP2P.model.js), así que lockCryptos como paso aparte no
+// corresponde a la máquina de estados real; y updateTransaccionStatus era
+// una versión genérica y redundante de las transiciones específicas que ya
+// existen y sí funcionan (confirm-payment, complete, cancel — cada una con
+// su propia validación de negocio en el modelo). Se borran ambas funciones
+// y sus rutas en vez de intentar mantenerlas vivas.
 
 // Confirmar pago (comprador)
 const confirmPayment = async (req, res) => {
@@ -377,8 +361,6 @@ module.exports = {
   getTransacciones,
   getTransaccionById,
   createTransaccion,
-  updateTransaccionStatus,
-  lockCryptos,
   confirmPayment,
   completeTransaction,
   cancelTransaction,

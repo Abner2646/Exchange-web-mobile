@@ -8,6 +8,7 @@ const balanceUserController = require('../controllers/balanceUsuario.controller'
 // Middleware
 const { authenticateToken } = require('../middleware/authMiddleware.js');
 const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
+const rateLimitMiddleware = require('../middleware/rateLimit.middleware.js');
 
 // =============== ÚTILES POR AHORA ===============
 // GET /api/balances/my/balances - Obtener mis balances
@@ -17,8 +18,10 @@ router.get('/my/balances', authenticateToken, balanceUserController.getMyBalance
 router.put('/user/:userId/crypto/:criptomonedaId', authenticateToken, isAdmin, balanceUserController.updateBalance); // Bien
 // {"amount": 100}
 
-// PUT /api/reclamarBTC - Actualizar balance ¡¡¡¡ELIMINAR EN DEPLOY REAl!!!
-router.put('/reclamarBTC', authenticateToken, balanceUserController.reclamarBtc); // 
+// PUT /api/reclamarBTC - Faucet de testnet (una sola vez por usuario, ver
+// AUDITORIA_BACKEND.md Críticos #12). Se desactiva sola en producción
+// (controller-level check) y ahora tiene rate limit.
+router.put('/reclamarBTC', authenticateToken, rateLimitMiddleware.general, balanceUserController.reclamarBtc);
 
 // =============== NO TESTEADO ===============
 

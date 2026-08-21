@@ -308,12 +308,18 @@ function createWalletMaestraModel(sequelize) {
 
   // =================== MÉTODOS DE BALANCE Y TRANSACCIONES ===================
 
-  WalletMaestra.updateBalance = async (id, nuevoBalance) => {
-    const transaction = await sequelize.transaction();
-    
+  // `transaction` es opcional: si el caller ya tiene una abierta (ej.
+  // createOrder) hay que sumarse a ella, no abrir una propia — antes esta
+  // función siempre abría y commiteaba la suya, así que un addToBalance()
+  // llamado desde dentro de otra transacción quedaba confirmado en la DB
+  // aunque esa transacción externa después hiciera rollback.
+  WalletMaestra.updateBalance = async (id, nuevoBalance, transaction = null) => {
+    const ownTransaction = !transaction;
+    const t = transaction || await sequelize.transaction();
+
     try {
-      const wallet = await WalletMaestra.findByPk(id, { transaction });
-      
+      const wallet = await WalletMaestra.findByPk(id, { transaction: t });
+
       if (!wallet) {
         throw new Error('Wallet maestra no encontrada');
       }
@@ -331,54 +337,61 @@ function createWalletMaestraModel(sequelize) {
             balanceChange: parseFloat(nuevoBalance) - balanceAnterior
           }
         },
-        { 
+        {
           where: { id },
-          transaction
+          transaction: t
         }
       );
-      
-      await transaction.commit();
-      
-      return await WalletMaestra.getById(id);
+
+      if (ownTransaction) {
+        await t.commit();
+        return await WalletMaestra.getById(id);
+      }
+
+      // Dentro de una transacción compartida todavía sin commitear: devolver
+      // el estado en memoria en vez de releerlo (una lectura aparte podría no
+      // ver el cambio todavía, según el nivel de aislamiento).
+      wallet.balanceTotal = nuevoBalance;
+      return wallet;
     } catch (error) {
-      await transaction.rollback();
+      if (ownTransaction) await t.rollback();
       throw new Error(`Error al actualizar balance: ${error.message}`);
     }
   };
 
-  WalletMaestra.addToBalance = async (id, cantidad) => {
+  WalletMaestra.addToBalance = async (id, cantidad, transaction = null) => {
     try {
-      const wallet = await WalletMaestra.findByPk(id);
+      const wallet = await WalletMaestra.findByPk(id, { transaction });
       if (!wallet) {
         throw new Error('Wallet maestra no encontrada');
       }
 
       const nuevoBalance = parseFloat(wallet.balanceTotal) + parseFloat(cantidad);
-      
+
       if (nuevoBalance < 0) {
         throw new Error('El balance resultante no puede ser negativo');
       }
 
-      return await WalletMaestra.updateBalance(id, nuevoBalance);
+      return await WalletMaestra.updateBalance(id, nuevoBalance, transaction);
     } catch (error) {
       throw new Error(`Error al sumar al balance: ${error.message}`);
     }
   };
 
-  WalletMaestra.subtractFromBalance = async (id, cantidad) => {
+  WalletMaestra.subtractFromBalance = async (id, cantidad, transaction = null) => {
     try {
-      const wallet = await WalletMaestra.findByPk(id);
+      const wallet = await WalletMaestra.findByPk(id, { transaction });
       if (!wallet) {
         throw new Error('Wallet maestra no encontrada');
       }
 
       const nuevoBalance = parseFloat(wallet.balanceTotal) - parseFloat(cantidad);
-      
+
       if (nuevoBalance < 0) {
         throw new Error('Balance insuficiente para realizar la operación');
       }
 
-      return await WalletMaestra.updateBalance(id, nuevoBalance);
+      return await WalletMaestra.updateBalance(id, nuevoBalance, transaction);
     } catch (error) {
       throw new Error(`Error al restar del balance: ${error.message}`);
     }
@@ -922,101 +935,6 @@ function createWalletMaestraModel(sequelize) {
       return { valid: true, message: 'XPUB válido para la red' };
     } catch (error) {
       return { valid: false, message: `Error validando XPUB: ${error.message}` };
-    }
-  };
-
-  // =================== MÉTODOS DE CONSOLIDACIÓN Y TREASURY ===================
-
-  WalletMaestra.consolidateFunds = async (fromWalletId, toWalletId, amount, reason = 'consolidation') => {
-    const transaction = await sequelize.transaction();
-    
-    try {
-      // Validaciones básicas
-      if (fromWalletId === toWalletId) {
-        throw new Error('Las wallets origen y destino deben ser diferentes');
-      }
-
-      const fromWallet = await WalletMaestra.findByPk(fromWalletId, { 
-        include: [
-          {
-            model: sequelize.models.Criptomoneda,
-            as: 'criptomoneda'
-          }
-        ],
-        transaction 
-      });
-      const toWallet = await WalletMaestra.findByPk(toWalletId, { 
-        include: [
-          {
-            model: sequelize.models.Criptomoneda,
-            as: 'criptomoneda'
-          }
-        ],
-        transaction 
-      });
-      
-      if (!fromWallet || !toWallet) {
-        throw new Error('Una o ambas wallets no fueron encontradas');
-      }
-
-      if (!fromWallet.activa || !toWallet.activa) {
-        throw new Error('Ambas wallets deben estar activas');
-      }
-
-      if (fromWallet.criptomonedaId !== toWallet.criptomonedaId) {
-        throw new Error('Las wallets deben ser de la misma criptomoneda');
-      }
-
-      const parsedAmount = parseFloat(amount);
-      if (parsedAmount <= 0) {
-        throw new Error('El monto debe ser mayor a 0');
-      }
-
-      if (parseFloat(fromWallet.balanceTotal) < parsedAmount) {
-        throw new Error('Balance insuficiente en wallet origen');
-      }
-
-      // Realizar transferencia
-      await WalletMaestra.subtractFromBalance(fromWalletId, parsedAmount);
-      await WalletMaestra.addToBalance(toWalletId, parsedAmount);
-
-      // Registrar la operación en metadata
-      const operationId = crypto.randomUUID();
-      const now = new Date();
-
-      await WalletMaestra.update({
-        metadata: sequelize.literal(`
-          metadata || '{"consolidations": [{"id": "${operationId}", "type": "outgoing", "amount": ${parsedAmount}, "to": "${toWalletId}", "reason": "${reason}", "date": "${now.toISOString()}"}]}'::jsonb
-        `)
-      }, { where: { id: fromWalletId }, transaction });
-
-      await WalletMaestra.update({
-        metadata: sequelize.literal(`
-          metadata || '{"consolidations": [{"id": "${operationId}", "type": "incoming", "amount": ${parsedAmount}, "from": "${fromWalletId}", "reason": "${reason}", "date": "${now.toISOString()}"}]}'::jsonb
-        `)
-      }, { where: { id: toWalletId }, transaction });
-
-      await transaction.commit();
-
-      return {
-        operationId,
-        message: 'Consolidación completada exitosamente',
-        amount: parsedAmount,
-        fromWallet: {
-          id: fromWalletId,
-          symbol: fromWallet.symbol,
-          newBalance: parseFloat(fromWallet.balanceTotal) - parsedAmount
-        },
-        toWallet: {
-          id: toWalletId,
-          symbol: toWallet.symbol,
-          newBalance: parseFloat(toWallet.balanceTotal) + parsedAmount
-        },
-        timestamp: now
-      };
-    } catch (error) {
-      await transaction.rollback();
-      throw new Error(`Error en consolidación de fondos: ${error.message}`);
     }
   };
 

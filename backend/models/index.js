@@ -8,19 +8,14 @@ const dbConfig = config[env];
 // Import models
 const balanceUsuarioModel = require('./balanceUsuario.model');
 const createBlockchainStateModel = require('./blockchainState.model');
-//const categoriaReclamoModel = require('./categoriaReclamo.model');
 const criptomonedaModel = require('./criptomoneda.model.js');
 const direccionDepositoModel = require('./direccionDeposito.model');
 const intercambioExchangeModel = require('./intercambioExchange.model');
-//const logAdminModel = require('./logAdmin.model');
-//const logTransaccionModel = require('./logTransaccion.model');
-//const mensajeReclamoModel = require('./mensajeReclamo.model');
 const metodoPagoModel = require('./metodoPago.model');
 const notificacionesModel = require('./notificaciones.model');
 const ofertaMetodoPagoModel = require('./ofertaMetodoPago.model');
 const ofertaP2PModel = require('./ofertaP2P.model');
 const parExchangeModel = require('./parExchange.model');
-//const reclamoModel = require('./reclamo.model');
 const transaccionBlockchainModel = require('./transaccionBlockchain.model');
 const transaccionP2PModel = require('./transaccionesP2P.model');
 const transferenciaModel = require('./transferencia.model.js')
@@ -55,19 +50,14 @@ const sequelize = new Sequelize(
 //Initialize models
 const BalanceUsuario = balanceUsuarioModel(sequelize);
 const BlockchainState = createBlockchainStateModel(sequelize);
-//const CategoriaReclamo = categoriaReclamoModel(sequelize);
 const Criptomoneda = criptomonedaModel(sequelize);
 const DireccionDeposito = direccionDepositoModel(sequelize);
 const IntercambioExchange = intercambioExchangeModel(sequelize);
-//const LogAdmin = logAdminModel(sequelize);
-//const LogTransaccion = logTransaccionModel(sequelize);
-//const MensajeReclamo = mensajeReclamoModel(sequelize);
 const MetodoPago = metodoPagoModel(sequelize);
 const Notificaciones = notificacionesModel(sequelize);
 const OfertaMetodoPago = ofertaMetodoPagoModel(sequelize);
 const OfertaP2P = ofertaP2PModel(sequelize);  
 const ParExchange = parExchangeModel(sequelize);
-//const Reclamo = reclamoModel(sequelize);
 const TransaccionBlockchain = transaccionBlockchainModel(sequelize);
 const TransaccionP2P = transaccionP2PModel(sequelize);
 const Transferencia = transferenciaModel(sequelize);
@@ -89,12 +79,18 @@ const PriceCandle = priceCandleModel(sequelize);
 // ================================
 
 // Usuario puede tener muchos balances
-Usuario.hasMany(BalanceUsuario, { foreignKey: 'usuarioId', as: 'balances' });
-BalanceUsuario.belongsTo(Usuario, { foreignKey: 'usuarioId', as: 'usuario' });
+// Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #9): la columna real en
+// balances_users es user_id (userId en el modelo), no usuarioId — con
+// 'usuarioId' Sequelize crea una columna fantasma nunca poblada y
+// Usuario.include('balances') devolvía siempre un array vacío en silencio.
+Usuario.hasMany(BalanceUsuario, { foreignKey: 'userId', as: 'balances' });
+BalanceUsuario.belongsTo(Usuario, { foreignKey: 'userId', as: 'usuario' });
 
 // Usuario puede tener muchas direcciones de depósito
-Usuario.hasMany(DireccionDeposito, { foreignKey: 'usuarioId', as: 'direccionesDeposito' });
-DireccionDeposito.belongsTo(Usuario, { foreignKey: 'userId', as: 'usuario' }); //Antes: (Usuario, { foreignKey: 'usuarioId', as: 'usuario' })
+// Mismo bug (Críticos #9), y encima asimétrico: el belongsTo ya se había
+// corregido a userId pero el hasMany inverso se había quedado en usuarioId.
+Usuario.hasMany(DireccionDeposito, { foreignKey: 'userId', as: 'direccionesDeposito' });
+DireccionDeposito.belongsTo(Usuario, { foreignKey: 'userId', as: 'usuario' });
 
 // Usuario puede crear muchas ofertas P2P
 Usuario.hasMany(OfertaP2P, { foreignKey: 'usuarioId', as: 'ofertas' });
@@ -122,8 +118,10 @@ Usuario.hasMany(Valoracion, { foreignKey: 'usuarioEvaluadoId', as: 'valoraciones
 Valoracion.belongsTo(Usuario, { foreignKey: 'usuarioEvaluadoId', as: 'evaluado' });
 
 // Usuario puede hacer transacciones blockchain
-Usuario.hasMany(TransaccionBlockchain, { foreignKey: 'usuarioId', as: 'transaccionesBlockchain' });
-TransaccionBlockchain.belongsTo(Usuario, { foreignKey: 'usuarioId', as: 'usuario' });
+// Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #9): mismo bug que arriba —
+// la columna real en transacciones_blockchain es user_id, no usuarioId.
+Usuario.hasMany(TransaccionBlockchain, { foreignKey: 'userId', as: 'transaccionesBlockchain' });
+TransaccionBlockchain.belongsTo(Usuario, { foreignKey: 'userId', as: 'usuario' });
 
 // Admin puede aprobar transacciones blockchain
 Usuario.hasMany(TransaccionBlockchain, { foreignKey: 'aprobadoPor', as: 'transaccionesAprobadas' });
@@ -141,31 +139,10 @@ Trade.belongsTo(Usuario, { foreignKey: 'buyerId', as: 'buyer' });
 Usuario.hasMany(Trade, { foreignKey: 'sellerId', as: 'sellTrades' });
 Trade.belongsTo(Usuario, { foreignKey: 'sellerId', as: 'seller' });
 
-/*
-// Usuario puede crear reclamos
-Usuario.hasMany(Reclamo, { foreignKey: 'usuarioId', as: 'reclamos' });
-Reclamo.belongsTo(Usuario, { foreignKey: 'usuarioId', as: 'usuario' });
-
-// Admin puede ser asignado a reclamos
-Usuario.hasMany(Reclamo, { foreignKey: 'adminAsignadoId', as: 'reclamosAsignados' });
-Reclamo.belongsTo(Usuario, { foreignKey: 'adminAsignadoId', as: 'adminAsignado' });
-
-// Usuario puede escribir mensajes en reclamos
-Usuario.hasMany(MensajeReclamo, { foreignKey: 'autorId', as: 'mensajesReclamos' });
-MensajeReclamo.belongsTo(Usuario, { foreignKey: 'autorId', as: 'autor' });
-
-// Admin puede generar logs de administración
-Usuario.hasMany(LogAdmin, { foreignKey: 'adminId', as: 'logsAdmin' });
-LogAdmin.belongsTo(Usuario, { foreignKey: 'adminId', as: 'admin' });
-
-// Usuario puede generar logs de transacciones
-Usuario.hasMany(LogTransaccion, { foreignKey: 'usuarioId', as: 'logsTransacciones' });
-LogTransaccion.belongsTo(Usuario, { foreignKey: 'usuarioId', as: 'usuario' });
-/*
 // ================================
 // RELACIONES DE CRIPTOMONEDAS
 // ================================
-*/
+
 // Criptomoneda puede tener una wallet maestra
 Criptomoneda.hasOne(WalletMaestra, { foreignKey: 'criptomonedaId', as: 'walletMaestra' });
 WalletMaestra.belongsTo(Criptomoneda, { foreignKey: 'criptomonedaId', as: 'criptomoneda' });
@@ -280,27 +257,17 @@ OfertaMetodoPago.belongsTo(MetodoPago, { foreignKey: 'metodoPagoId', as: 'metodo
 MetodoPago.hasMany(TransaccionP2P, { foreignKey: 'metodoPagoId', as: 'transacciones' });
 TransaccionP2P.belongsTo(MetodoPago, { foreignKey: 'metodoPagoId', as: 'metodoPago' });
 
-/*
+// Fix 2026-08-19 (AUDITORIA_BACKEND.md Altos #11): estas dos líneas
+// habían quedado atrapadas dentro del mismo bloque comentado que las
+// asociaciones de Reclamo (que sí es código muerto) — pero Valoracion no
+// lo es, está activo. Sin esto, cualquier función de valoracion.model.js
+// que usa `association: 'transaccion'` (getById, getAll, y varias más)
+// tiraba "Association with alias 'transaccion' does not exist on
+// Valoracion". No estaba en la auditoría original; apareció al escribir
+// el test de integración de este mismo fix.
 // Transacción P2P puede tener muchas valoraciones
 TransaccionP2P.hasMany(Valoracion, { foreignKey: 'transaccionP2PId', as: 'valoraciones' });
 Valoracion.belongsTo(TransaccionP2P, { foreignKey: 'transaccionP2PId', as: 'transaccion' });
-
-// Transacción P2P puede tener reclamos
-TransaccionP2P.hasMany(Reclamo, { foreignKey: 'transaccionP2PId', as: 'reclamos' });
-Reclamo.belongsTo(TransaccionP2P, { foreignKey: 'transaccionP2PId', as: 'transaccionP2P' });
-
-// ================================
-// RELACIONES DE RECLAMOS
-// ================================
-
-// Categoría de reclamo puede tener muchos reclamos
-CategoriaReclamo.hasMany(Reclamo, { foreignKey: 'categoriaId', as: 'reclamos' });
-Reclamo.belongsTo(CategoriaReclamo, { foreignKey: 'categoriaId', as: 'categoria' });
-
-// Reclamo puede tener muchos mensajes
-Reclamo.hasMany(MensajeReclamo, { foreignKey: 'reclamoId', as: 'mensajes' });
-MensajeReclamo.belongsTo(Reclamo, { foreignKey: 'reclamoId', as: 'reclamo' });
-*/
 
 
 // ================================
@@ -326,19 +293,14 @@ module.exports = {
   Sequelize,
   BalanceUsuario,
   BlockchainState,
-  //CategoriaReclamo,
   Criptomoneda,
   DireccionDeposito,
   IntercambioExchange,
-  //LogAdmin,
-  //LogTransaccion,
-  //MensajeReclamo,
   MetodoPago,
   Notificaciones,
   OfertaMetodoPago,
   OfertaP2P,
   ParExchange,
-  //Reclamo,
   TransaccionBlockchain,
   TransaccionP2P,
   Transferencia,

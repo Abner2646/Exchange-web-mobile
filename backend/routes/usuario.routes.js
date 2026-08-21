@@ -21,6 +21,10 @@ const {
   changePasswordLimiter
 } = require('../middleware/rateLimiters');
 
+// Validación
+const { joiValidate } = require('../middleware/joiValidate.middleware');
+const { LoginSchema } = require('../schemas/login.schema');
+
 // Controlador
 const usuarioController = require('../controllers/usuario.controller.js');
 
@@ -34,7 +38,7 @@ const usuarioController = require('../controllers/usuario.controller.js');
  * Rate Limit: 3 intentos/hora por IP
  */
 router.post('/register', 
-  /*registerLimiter,*/
+  registerLimiter,
   usuarioController.registerUsuario
 );
 
@@ -43,8 +47,9 @@ router.post('/register',
  * Login paso 1 (credenciales, puede requerir 2FA)
  * Rate Limit: 5 intentos/15min por email
  */
-router.post('/login', 
-  /*loginLimiter,*/
+router.post('/login',
+  loginLimiter,
+  joiValidate(LoginSchema.login),
   usuarioController.loginStep1
 );
 
@@ -54,7 +59,7 @@ router.post('/login',
  * Rate Limit: 10 intentos/15min por IP
  */
 router.post('/login/google', 
-  /*googleLoginLimiter,*/
+  googleLoginLimiter,
   usuarioController.loginWithGoogle
 );
 
@@ -78,7 +83,7 @@ router.post('/logout',
  */
 router.post('/verify-email', 
   authenticateToken,
-  /*verifyEmailCodeLimiter,*/
+  verifyEmailCodeLimiter,
   usuarioController.verifyEmail
 );
 
@@ -89,7 +94,7 @@ router.post('/verify-email',
  */
 router.post('/resend-verification-email', 
   authenticateToken,
-  /*resendVerificationEmailLimiter,*/
+  resendVerificationEmailLimiter,
   usuarioController.resendVerificationEmail
 );
 
@@ -113,7 +118,7 @@ router.post('/forgot-password',
  * Rate Limit: 5 intentos/10min por email
  */
 router.post('/verify-reset-code', 
-  /*verifyResetCodeLimiter,*/
+  verifyResetCodeLimiter,
   usuarioController.verifyResetCode
 );
 
@@ -123,7 +128,7 @@ router.post('/verify-reset-code',
  * Rate Limit: 3 intentos/15min por email
  */
 router.post('/reset-password', 
-  /*resetPasswordLimiter,*/
+  resetPasswordLimiter,
   usuarioController.resetPassword
 );
 
@@ -137,7 +142,7 @@ router.post('/reset-password',
  * Rate Limit: 5 intentos/5min por email
  */
 router.post('/verify-2fa', 
-  /*verify2FALimiter,*/
+  verify2FALimiter,
   usuarioController.verify2FA
 );
 
@@ -147,7 +152,7 @@ router.post('/verify-2fa',
  * Rate Limit: 5 intentos/10min por email
  */
 router.post('/resend-2fa', 
-  /*resend2FALimiter,*/
+  resend2FALimiter,
   usuarioController.resend2FACode
 );
 

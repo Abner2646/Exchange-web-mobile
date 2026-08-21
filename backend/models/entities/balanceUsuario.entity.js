@@ -6,10 +6,10 @@
 
 const { DataTypes, Model } = require('sequelize');
 
-class BalanceUser extends Model {}
+class BalanceUsuario extends Model {}
 
 function initBalanceUser(sequelize) {
-  BalanceUser.init({
+  BalanceUsuario.init({
     id: {
       type: DataTypes.UUID,
       primaryKey: true,
@@ -37,7 +37,7 @@ function initBalanceUser(sequelize) {
     }
   }, {
     sequelize,
-    modelName: 'BalanceUser',
+    modelName: 'BalanceUsuario',
     tableName: 'balances_users',
     timestamps: true,
     createdAt: false,
@@ -50,7 +50,7 @@ function initBalanceUser(sequelize) {
     ]
   });
 
-  return BalanceUser;
+  return BalanceUsuario;
 }
 
 module.exports = initBalanceUser;
