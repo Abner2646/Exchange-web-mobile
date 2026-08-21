@@ -144,3 +144,5 @@ project/
     └── setup-directories.sh   # Initialization script
 
 ```
+
+<!-- push test: 2026-08-21T07:05:57Z -->
