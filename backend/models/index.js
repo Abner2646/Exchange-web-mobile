@@ -28,6 +28,7 @@ const tradingPairModel = require('./tradingPair.model.js');
 const orderModel = require('./order.model');
 const tradeModel = require('./trade.model');
 const priceCandleModel = require('./priceCandle.model');
+const idempotencyKeyModel = require('./idempotencyKey.model');
 
 
 
@@ -70,6 +71,7 @@ const TradingPair = tradingPairModel(sequelize);
 const Order = orderModel(sequelize);
 const Trade = tradeModel(sequelize);
 const PriceCandle = priceCandleModel(sequelize);
+const IdempotencyKey = idempotencyKeyModel(sequelize);
 
 
 
@@ -311,5 +313,6 @@ module.exports = {
   TradingPair,
   Order,
   Trade,
-  PriceCandle
+  PriceCandle,
+  IdempotencyKey
 };
