@@ -606,7 +606,7 @@ function createParExchangeModel(sequelize) {
       }
 
       const updated = await ParExchange.updatePar(id, {
-        precioActual: parseFloat(nuevoPrecio),
+        precioActual: String(nuevoPrecio),
         ultimaActualizacion: new Date()
       });
       return updated;
@@ -622,7 +622,7 @@ function createParExchangeModel(sequelize) {
       }
 
       const updated = await ParExchange.updatePar(id, {
-        comisionPorcentaje: parseFloat(nuevaComision)
+        comisionPorcentaje: String(nuevaComision)
       });
       return updated;
     } catch (error) {
@@ -728,16 +728,16 @@ function createParExchangeModel(sequelize) {
           
           if (par && par.activo) {
             const updateData = {
-              precioActual: parseFloat(price),
+              precioActual: String(price),
               ultimaActualizacion: new Date()
             };
 
             if (volume !== undefined) {
-              updateData.volumen24h = parseFloat(volume);
+              updateData.volumen24h = String(volume);
             }
 
             if (change !== undefined) {
-              updateData.cambiosPorcentaje24h = parseFloat(change);
+              updateData.cambiosPorcentaje24h = String(change);
             }
 
             const updated = await ParExchange.updatePar(par.id, updateData);

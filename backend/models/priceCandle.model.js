@@ -1,6 +1,7 @@
 // models/priceCandle.model.js
 const initPriceCandle = require('./entities/priceCandle.entity');
 const { Op } = require('sequelize');
+const money = require('../utils/money');
 
 function createPriceCandleModel(sequelize) {
   const PriceCandle = initPriceCandle(sequelize);
@@ -112,11 +113,11 @@ function createPriceCandleModel(sequelize) {
       if (!created) {
         // Actualizar vela existente
         await candle.update({
-          high: Math.max(parseFloat(candle.high), parseFloat(high)),
-          low: Math.min(parseFloat(candle.low), parseFloat(low)),
+          high: money.compare(String(candle.high), String(high)) >= 0 ? String(candle.high) : String(high),
+          low: money.compare(String(candle.low), String(low)) <= 0 ? String(candle.low) : String(low),
           close,
-          volume: parseFloat(candle.volume) + parseFloat(volume || 0),
-          quoteVolume: parseFloat(candle.quoteVolume) + parseFloat(quoteVolume || 0),
+          volume: money.add(String(candle.volume), String(volume || 0)),
+          quoteVolume: money.add(String(candle.quoteVolume), String(quoteVolume || 0)),
           trades: parseInt(candle.trades) + parseInt(trades || 0)
         }, { transaction });
       }
@@ -201,13 +202,13 @@ function createPriceCandleModel(sequelize) {
       }
 
       // Calcular OHLCV
-      const prices = trades.map(t => parseFloat(t.price));
+      const prices = trades.map(t => String(t.price));
       const open = prices[0];
       const close = prices[prices.length - 1];
-      const high = Math.max(...prices);
-      const low = Math.min(...prices);
-      const volume = trades.reduce((sum, t) => sum + parseFloat(t.quantity), 0);
-      const quoteVolume = trades.reduce((sum, t) => sum + parseFloat(t.totalValue), 0);
+      const high = prices.reduce((m, p) => (money.compare(p, m) > 0 ? p : m));
+      const low = prices.reduce((m, p) => (money.compare(p, m) < 0 ? p : m));
+      const volume = trades.reduce((sum, t) => money.add(sum, String(t.quantity)), '0');
+      const quoteVolume = trades.reduce((sum, t) => money.add(sum, String(t.totalValue)), '0');
 
       // Crear o actualizar la vela
       const candle = await PriceCandle.createOrUpdateCandle({

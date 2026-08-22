@@ -1,4 +1,5 @@
 const { DataTypes, Model, Op } = require('sequelize');
+const money = require('../utils/money');
 
 class OfertaP2P extends Model {
   // Desactivar ofertas expiradas (más de 12 horas)
@@ -132,10 +133,10 @@ class OfertaP2P extends Model {
         throw new Error('No tienes balance en esta criptomoneda');
       }
 
-      const balanceDisponible = parseFloat(balance.balanceDisponible);
-      const cantidadMaxima = parseFloat(cantidadMax);
+      const balanceDisponible = String(balance.balanceDisponible);
+      const cantidadMaxima = String(cantidadMax);
 
-      if (balanceDisponible < cantidadMaxima) {
+      if (money.compare(balanceDisponible, cantidadMaxima) < 0) {
         throw new Error(
           `Fondos insuficientes. Tienes ${balanceDisponible} disponible pero la oferta requiere ${cantidadMaxima}`
         );
@@ -451,9 +452,9 @@ class OfertaP2P extends Model {
       return { canAccept: false, reason: 'La oferta no tiene métodos de pago disponibles' };
     }
 
-    const cantidadNum = parseFloat(cantidad);
-    
-    if (cantidadNum < oferta.cantidadMin) {
+    const cantidadNum = String(cantidad);
+
+    if (money.compare(cantidadNum, String(oferta.cantidadMin)) < 0) {
       return { 
         canAccept: false, 
         reason: `Cantidad menor al mínimo (${oferta.cantidadMin})` 
