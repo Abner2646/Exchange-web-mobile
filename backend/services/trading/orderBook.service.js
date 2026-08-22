@@ -2,6 +2,7 @@
 const { Order, Trade, TradingPair, sequelize } = require('../../models');
 const { Op } = require('sequelize');
 const tradeExecutor = require('./tradeExecutor.service');
+const money = require('../../utils/money');
 
 class OrderBookService {
 
@@ -110,15 +111,15 @@ async matchOrder(orderId) {
 
     // 7. Ejecutar matches
     const trades = [];
-    let remainingQuantity = parseFloat(order.quantityRemaining);
+    let remainingQuantity = String(order.quantityRemaining);
 
     for (const matchOrder of matchingOrders) {
-      if (remainingQuantity <= 0) break;
+      if (money.compare(remainingQuantity, '0') <= 0) break;
 
-      const matchQuantity = Math.min(
-        remainingQuantity,
-        parseFloat(matchOrder.quantityRemaining)
-      );
+      const matchRemaining = String(matchOrder.quantityRemaining);
+      const matchQuantity = money.compare(remainingQuantity, matchRemaining) <= 0
+        ? remainingQuantity
+        : matchRemaining;
 
       // Cargar tradingPair para la orden de match
       if (!matchOrder.tradingPair) {
@@ -137,7 +138,7 @@ async matchOrder(orderId) {
 
       if (trade) {
         trades.push(trade);
-        remainingQuantity -= matchQuantity;
+        remainingQuantity = money.subtract(remainingQuantity, matchQuantity);
         console.log(`✅ Trade ejecutado: ID ${trade.id.substring(0, 8)}...`);
       }
     }
@@ -162,7 +163,7 @@ async matchOrder(orderId) {
       matched: true,
       trades,
       order: updatedOrder,
-      totalMatched: parseFloat(order.quantity) - remainingQuantity
+      totalMatched: money.subtract(String(order.quantity), remainingQuantity)
     };
 
   } catch (error) {
@@ -228,9 +229,9 @@ async findMatchingOrders(order, transaction) {
     const isSellerMaker = order1.side === 'sell' && order1.createdAt < order2.createdAt;
 
     if (isBuyerMaker || (order1.side === 'buy' && order2.createdAt < order1.createdAt)) {
-      return parseFloat(order1.price);
+      return String(order1.price);
     } else {
-      return parseFloat(order2.price);
+      return String(order2.price);
     }
   }
 
@@ -254,7 +255,7 @@ async findMatchingOrders(order, transaction) {
         transaction
       });
 
-      return bestOrder ? parseFloat(bestOrder.price) : null;
+      return bestOrder ? String(bestOrder.price) : null;
 
     } catch (error) {
       console.error('Error obteniendo mejor precio:', error);
@@ -344,18 +345,21 @@ async findMatchingOrders(order, transaction) {
       const buyStats = buyOrders[0] || { count: 0, totalQuantity: 0, maxPrice: 0 };
       const sellStats = sellOrders[0] || { count: 0, totalQuantity: 0, minPrice: 0 };
 
+      const buyMaxPrice = String(buyStats.maxPrice || 0);
+      const sellMinPrice = String(sellStats.minPrice || 0);
+
       return {
         bids: {
           orders: parseInt(buyStats.count) || 0,
-          totalQuantity: parseFloat(buyStats.totalQuantity) || 0,
-          bestPrice: parseFloat(buyStats.maxPrice) || 0
+          totalQuantity: String(buyStats.totalQuantity || 0),
+          bestPrice: buyMaxPrice
         },
         asks: {
           orders: parseInt(sellStats.count) || 0,
-          totalQuantity: parseFloat(sellStats.totalQuantity) || 0,
-          bestPrice: parseFloat(sellStats.minPrice) || 0
+          totalQuantity: String(sellStats.totalQuantity || 0),
+          bestPrice: sellMinPrice
         },
-        spread: (parseFloat(sellStats.minPrice) || 0) - (parseFloat(buyStats.maxPrice) || 0),
+        spread: money.subtract(sellMinPrice, buyMaxPrice),
         timestamp: new Date()
       };
 
@@ -391,10 +395,12 @@ async findMatchingOrders(order, transaction) {
         })
       ]);
 
-      const bidPrice = bestBid ? parseFloat(bestBid.price) : 0;
-      const askPrice = bestAsk ? parseFloat(bestAsk.price) : 0;
-      const spread = askPrice - bidPrice;
-      const spreadPercent = bidPrice > 0 ? (spread / bidPrice) * 100 : 0;
+      const bidPrice = bestBid ? String(bestBid.price) : '0';
+      const askPrice = bestAsk ? String(bestAsk.price) : '0';
+      const spread = money.subtract(askPrice, bidPrice);
+      const spreadPercent = money.compare(bidPrice, '0') > 0
+        ? money.multiply(money.divide(spread, bidPrice), '100')
+        : '0';
 
       return {
         bid: bidPrice,
