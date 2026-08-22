@@ -461,10 +461,10 @@ class OfertaP2P extends Model {
       };
     }
 
-    if (cantidadNum > oferta.cantidadMax) {
-      return { 
-        canAccept: false, 
-        reason: `Cantidad mayor al máximo (${oferta.cantidadMax})` 
+    if (money.compare(cantidadNum, String(oferta.cantidadMax)) > 0) {
+      return {
+        canAccept: false,
+        reason: `Cantidad mayor al máximo (${oferta.cantidadMax})`
       };
     }
 
