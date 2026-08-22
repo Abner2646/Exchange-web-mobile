@@ -2,6 +2,7 @@
 require('dotenv').config();
 const initTransaccionBlockchain = require('./entities/transaccionBlockchain.entity');
 const { Op } = require('sequelize');
+const money = require('../utils/money');
 
 function createTransaccionBlockchainModel(sequelize) {
   const TransaccionBlockchain = initTransaccionBlockchain(sequelize);
@@ -302,11 +303,11 @@ function createTransaccionBlockchainModel(sequelize) {
         balanceBloqueado: balance.balanceBloqueado
       });
 
-      const nuevoBalance = parseFloat(balance.balanceDisponible) + parseFloat(transaccion.cantidad);
-      
+      const nuevoBalance = money.add(String(balance.balanceDisponible), String(transaccion.cantidad));
+
       console.log(`🔧 DEBUG - Nuevo balance calculado:`, {
-        balanceAnterior: parseFloat(balance.balanceDisponible),
-        cantidadDepositada: parseFloat(transaccion.cantidad),
+        balanceAnterior: balance.balanceDisponible,
+        cantidadDepositada: transaccion.cantidad,
         nuevoBalance: nuevoBalance
       });
 
@@ -380,13 +381,13 @@ function createTransaccionBlockchainModel(sequelize) {
         transaction
       });
 
-      if (!balance || parseFloat(balance.balanceDisponible) < parseFloat(data.cantidad)) {
+      if (!balance || money.compare(String(balance.balanceDisponible), String(data.cantidad)) < 0) {
         throw new Error('Balance insuficiente para retiro. (Mensaje desde el model)');
       }
 
       // Bloquear balance
-      const nuevoBalanceDisponible = parseFloat(balance.balanceDisponible) - parseFloat(data.cantidad);
-      const nuevoBalanceBloqueado = parseFloat(balance.balanceBloqueado) + parseFloat(data.cantidad);
+      const nuevoBalanceDisponible = money.subtract(String(balance.balanceDisponible), String(data.cantidad));
+      const nuevoBalanceBloqueado = money.add(String(balance.balanceBloqueado), String(data.cantidad));
 
       await BalanceUsuario.update(
         { 
@@ -480,10 +481,10 @@ function createTransaccionBlockchainModel(sequelize) {
       });
 
       if (balance) {
-        const nuevoBalanceBloqueado = parseFloat(balance.balanceBloqueado) - parseFloat(retiro.cantidad);
-        
+        const nuevoBalanceBloqueado = money.subtract(String(balance.balanceBloqueado), String(retiro.cantidad));
+
         await BalanceUsuario.update(
-          { balanceBloqueado: Math.max(0, nuevoBalanceBloqueado) },
+          { balanceBloqueado: money.compare(nuevoBalanceBloqueado, '0') < 0 ? '0' : nuevoBalanceBloqueado },
           { 
             where: { id: balance.id },
             transaction
@@ -530,13 +531,13 @@ function createTransaccionBlockchainModel(sequelize) {
       });
 
       if (balance) {
-        const nuevoBalanceDisponible = parseFloat(balance.balanceDisponible) + parseFloat(retiro.cantidad);
-        const nuevoBalanceBloqueado = parseFloat(balance.balanceBloqueado) - parseFloat(retiro.cantidad);
-        
+        const nuevoBalanceDisponible = money.add(String(balance.balanceDisponible), String(retiro.cantidad));
+        const nuevoBalanceBloqueado = money.subtract(String(balance.balanceBloqueado), String(retiro.cantidad));
+
         await BalanceUsuario.update(
-          { 
+          {
             balanceDisponible: nuevoBalanceDisponible,
-            balanceBloqueado: Math.max(0, nuevoBalanceBloqueado)
+            balanceBloqueado: money.compare(nuevoBalanceBloqueado, '0') < 0 ? '0' : nuevoBalanceBloqueado
           },
           { 
             where: { id: balance.id },
