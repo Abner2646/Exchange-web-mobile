@@ -3,6 +3,7 @@ const priceUpdaterJob = require('./priceUpdater.job');
 const orderMatchingJob = require('./orderMatching.job');
 const candleGeneratorJob = require('./candleGenerator.job');
 const blockchainJobs = require('./blockchain.jobs'); // Tu job existente
+const idempotencyCleanupJob = require('./idempotencyCleanup.job');
 
 class JobManager {
   
@@ -11,7 +12,8 @@ class JobManager {
       priceUpdater: priceUpdaterJob,
       orderMatching: orderMatchingJob,
       candleGenerator: candleGeneratorJob,
-      blockchain: blockchainJobs
+      blockchain: blockchainJobs,
+      idempotencyCleanup: idempotencyCleanupJob
     };
   }
 
@@ -47,6 +49,12 @@ class JobManager {
       } catch (error) {
         console.error('❌ Error iniciando Blockchain Jobs:', error.message);
       }
+    }
+
+    try {
+      this.jobs.idempotencyCleanup.start();
+    } catch (error) {
+      console.error('❌ Error iniciando Idempotency Cleanup:', error.message);
     }
 
     console.log('\n✅ ===== TODOS LOS JOBS INICIADOS ===== ✅\n');
