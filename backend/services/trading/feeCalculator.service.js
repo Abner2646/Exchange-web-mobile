@@ -1,5 +1,15 @@
 // services/trading/feeCalculator.service.js
 const { TradingPair } = require('../../models');
+const money = require('../../utils/money');
+
+// fee = amount * (feePercent / 100), exacto y como string canónico. Los montos
+// se normalizan con String() en el borde por si algún caller todavía pasa un
+// Number — el contrato de "montos como string" en la API es trabajo de la Fase
+// 7.3. De acá para adentro, toda la aritmética pasa por money.js (decimal.js),
+// nunca por el float binario.
+function feeOf(amount, feePercent) {
+  return money.divide(money.multiply(String(amount), String(feePercent)), '100');
+}
 
 class FeeCalculatorService {
 
@@ -7,41 +17,32 @@ class FeeCalculatorService {
    * Calcula el fee para una orden
    */
   async calculateOrderFee(orderData) {
-    const { tradingPairId, side, quantity, price, orderType } = orderData;
+    const { tradingPairId, side, quantity, price } = orderData;
 
     try {
       const tradingPair = await TradingPair.findByPk(tradingPairId);
-      
+
       if (!tradingPair) {
         throw new Error('Trading pair no encontrado');
       }
 
-      // Para órdenes nuevas, asumimos taker fee (más conservador)
-      // El fee real se determinará cuando se ejecute (maker vs taker)
-      const feePercent = parseFloat(tradingPair.takerFeePercent);
+      // Para órdenes nuevas, asumimos taker fee (más conservador).
+      // El fee real se determinará cuando se ejecute (maker vs taker).
+      const feePercent = String(tradingPair.takerFeePercent);
 
-      let feeAmount = 0;
-      let feeCurrency = '';
+      let feeAmount;
+      let feeCurrency;
 
       if (side === 'buy') {
-        // Comprando: fee se cobra en BASE ASSET (lo que compras)
-        // Ejemplo: Compras BTC, fee en BTC
-        const effectivePrice = price || parseFloat(tradingPair.lastPrice);
-        const totalValue = parseFloat(quantity) * effectivePrice;
-        
-        // Fee se calcula sobre la cantidad comprada
-        feeAmount = parseFloat(quantity) * (feePercent / 100);
-        feeCurrency = tradingPair.symbol.split('/')[0]; // Base asset
-
+        // Comprando: fee se cobra en BASE ASSET, sobre la cantidad comprada.
+        feeAmount = feeOf(quantity, feePercent);
+        feeCurrency = tradingPair.symbol.split('/')[0];
       } else {
-        // Vendiendo: fee se cobra en QUOTE ASSET (lo que recibes)
-        // Ejemplo: Vendes BTC por USDT, fee en USDT
-        const effectivePrice = price || parseFloat(tradingPair.lastPrice);
-        const totalValue = parseFloat(quantity) * effectivePrice;
-        
-        // Fee se calcula sobre el valor total en quote
-        feeAmount = totalValue * (feePercent / 100);
-        feeCurrency = tradingPair.symbol.split('/')[1]; // Quote asset
+        // Vendiendo: fee se cobra en QUOTE ASSET, sobre el valor total.
+        const effectivePrice = price || tradingPair.lastPrice;
+        const totalValue = money.multiply(String(quantity), String(effectivePrice));
+        feeAmount = feeOf(totalValue, feePercent);
+        feeCurrency = tradingPair.symbol.split('/')[1];
       }
 
       return {
@@ -64,22 +65,19 @@ class FeeCalculatorService {
     const { tradingPair, quantity, price, side } = tradeData;
 
     try {
-      // Determinar si es maker o taker
-      const feePercent = isMaker ? 
-        parseFloat(tradingPair.makerFeePercent) : 
-        parseFloat(tradingPair.takerFeePercent);
+      const feePercent = String(isMaker ? tradingPair.makerFeePercent : tradingPair.takerFeePercent);
 
-      let feeAmount = 0;
-      let feeCurrency = '';
+      let feeAmount;
+      let feeCurrency;
 
       if (side === 'buy') {
         // Fee en base asset (lo que compras)
-        feeAmount = parseFloat(quantity) * (feePercent / 100);
+        feeAmount = feeOf(quantity, feePercent);
         feeCurrency = tradingPair.symbol.split('/')[0];
       } else {
         // Fee en quote asset (lo que recibes)
-        const totalValue = parseFloat(quantity) * parseFloat(price);
-        feeAmount = totalValue * (feePercent / 100);
+        const totalValue = money.multiply(String(quantity), String(price));
+        feeAmount = feeOf(totalValue, feePercent);
         feeCurrency = tradingPair.symbol.split('/')[1];
       }
 
@@ -103,21 +101,15 @@ class FeeCalculatorService {
     const { tradingPair, quantity, price } = tradeData;
 
     try {
-      // Determinar fees
-      const buyerFeePercent = buyerIsMaker ? 
-        parseFloat(tradingPair.makerFeePercent) : 
-        parseFloat(tradingPair.takerFeePercent);
+      const buyerFeePercent = String(buyerIsMaker ? tradingPair.makerFeePercent : tradingPair.takerFeePercent);
+      const sellerFeePercent = String(!buyerIsMaker ? tradingPair.makerFeePercent : tradingPair.takerFeePercent);
 
-      const sellerFeePercent = !buyerIsMaker ? 
-        parseFloat(tradingPair.makerFeePercent) : 
-        parseFloat(tradingPair.takerFeePercent);
+      // Fee del comprador (en base asset - lo que compra)
+      const buyerFee = feeOf(quantity, buyerFeePercent);
 
-      // Calcular fee del comprador (en base asset - lo que compra)
-      const buyerFee = parseFloat(quantity) * (buyerFeePercent / 100);
-
-      // Calcular fee del vendedor (en quote asset - lo que recibe)
-      const totalValue = parseFloat(quantity) * parseFloat(price);
-      const sellerFee = totalValue * (sellerFeePercent / 100);
+      // Fee del vendedor (en quote asset - lo que recibe)
+      const totalValue = money.multiply(String(quantity), String(price));
+      const sellerFee = feeOf(totalValue, sellerFeePercent);
 
       return {
         buyer: {
@@ -148,37 +140,36 @@ class FeeCalculatorService {
 
     try {
       const tradingPair = await TradingPair.findByPk(tradingPairId);
-      
+
       if (!tradingPair) {
         throw new Error('Trading pair no encontrado');
       }
 
-      const effectivePrice = price || parseFloat(tradingPair.lastPrice);
-      let requiredAmount = 0;
-      let assetNeeded = '';
+      let requiredAmount;
+      let assetNeeded;
+      let withoutFee;
 
       if (side === 'buy') {
-        // Comprando: necesitamos QUOTE ASSET
+        // Comprando: necesitamos QUOTE ASSET (valor + fee)
         assetNeeded = tradingPair.quoteAssetId;
-        const totalValue = parseFloat(quantity) * effectivePrice;
-        
-        // Agregar fee (en este caso, el fee extra que pagará en base asset
-        // pero necesitamos más quote para comprarlo)
-        const feePercent = parseFloat(tradingPair.takerFeePercent);
-        const feeInQuote = totalValue * (feePercent / 100);
-        
-        requiredAmount = totalValue + feeInQuote;
+        const effectivePrice = price || tradingPair.lastPrice;
+        const totalValue = money.multiply(String(quantity), String(effectivePrice));
+        const feeInQuote = feeOf(totalValue, tradingPair.takerFeePercent);
+
+        requiredAmount = money.add(totalValue, feeInQuote);
+        withoutFee = totalValue;
 
       } else {
         // Vendiendo: necesitamos BASE ASSET
         assetNeeded = tradingPair.baseAssetId;
-        requiredAmount = parseFloat(quantity);
+        requiredAmount = String(quantity);
+        withoutFee = String(quantity);
       }
 
       return {
         assetNeeded,
         requiredAmount,
-        withoutFee: side === 'buy' ? parseFloat(quantity) * effectivePrice : parseFloat(quantity)
+        withoutFee
       };
 
     } catch (error) {
@@ -213,15 +204,15 @@ class FeeCalculatorService {
   async getTradingPairFees(tradingPairId) {
     try {
       const tradingPair = await TradingPair.findByPk(tradingPairId);
-      
+
       if (!tradingPair) {
         throw new Error('Trading pair no encontrado');
       }
 
       return {
         symbol: tradingPair.symbol,
-        makerFeePercent: parseFloat(tradingPair.makerFeePercent),
-        takerFeePercent: parseFloat(tradingPair.takerFeePercent),
+        makerFeePercent: String(tradingPair.makerFeePercent),
+        takerFeePercent: String(tradingPair.takerFeePercent),
         makerFeeDescription: `${tradingPair.makerFeePercent}% - Pones liquidez (limit orders que se quedan en el book)`,
         takerFeeDescription: `${tradingPair.takerFeePercent}% - Tomas liquidez (ejecutas contra órdenes existentes)`
       };
