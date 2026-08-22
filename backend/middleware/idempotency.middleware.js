@@ -40,7 +40,7 @@ function runClaimed(req, res, next, where) {
 
   res.on('finish', () => {
     persistResult(where, res.statusCode, capturedBody).catch((e) => {
-      console.error('idempotency: failed to persist result:', e.message);
+      console.error('idempotency: failed to persist result:', e);
     });
   });
 

@@ -120,3 +120,31 @@ test('5xx response releases the key (destroy), does not store completed', async 
   expect(IdempotencyKey.destroy).toHaveBeenCalledWith({ where: { userId: 'user-1', idempotencyKey: 'k1' } });
   expect(IdempotencyKey.update).not.toHaveBeenCalled();
 });
+
+test('non-unique DB error on create routes to next(err)', async () => {
+  const { req, res } = mockReqRes({ key: 'k1' });
+  const dbErr = new Error('connection lost');
+  IdempotencyKey.create.mockRejectedValue(dbErr);
+  const next = jest.fn();
+  await idempotency(req, res, next);
+  expect(next).toHaveBeenCalledWith(dbErr);
+});
+
+test('stale in-progress (>90s) is reclaimed and runs the controller', async () => {
+  const { req, res } = mockReqRes({ key: 'k1' });
+  IdempotencyKey.create.mockRejectedValue(uniqueError());
+  IdempotencyKey.findOne.mockResolvedValue({
+    id: 'row-1',
+    requestHash: require('../utils/requestFingerprint').fingerprint('POST', '/trading/orders', { side: 'buy', quantity: '1' }),
+    status: 'in_progress',
+    updatedAt: new Date(Date.now() - 91 * 1000)
+  });
+  IdempotencyKey.update.mockResolvedValue([1]);
+  const next = jest.fn(() => res.status(201).json({ ok: true }));
+  await idempotency(req, res, next);
+  expect(IdempotencyKey.update).toHaveBeenCalledWith(
+    { requestHash: expect.any(String) },
+    { where: { id: 'row-1', status: 'in_progress' } }
+  );
+  expect(next).toHaveBeenCalled();
+});
