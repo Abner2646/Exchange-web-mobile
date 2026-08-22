@@ -81,6 +81,30 @@ describe('money.round — half-even (banker\'s rounding)', () => {
   });
 });
 
+describe('money.compare — comparación exacta (-1 / 0 / 1)', () => {
+  test('a < b devuelve -1; a > b devuelve 1', () => {
+    expect(money.compare('0.1', '0.2')).toBe(-1);
+    expect(money.compare('0.2', '0.1')).toBe(1);
+  });
+
+  test('iguales devuelve 0 (incluso a nivel satoshi)', () => {
+    expect(money.compare('0.00000001', '0.00000001')).toBe(0);
+  });
+
+  test('compara sin error de coma: (0.1+0.2) === 0.3', () => {
+    // Con Number, 0.1 + 0.2 = 0.30000000000000004 > 0.3 daría 1 (falso positivo).
+    expect(money.compare(money.add('0.1', '0.2'), '0.3')).toBe(0);
+  });
+
+  test('detecta saldo negativo: compare(resultado, "0") < 0', () => {
+    expect(money.compare(money.subtract('0.1', '0.3'), '0')).toBe(-1);
+  });
+
+  test('respeta la guarda anti-float en el borde', () => {
+    expect(() => money.compare(0.1, '0.2')).toThrow(/string/i);
+  });
+});
+
 describe('money — guarda anti-float (bloquea Number no-entero en el borde)', () => {
   test('rechaza un Number no-entero (ej. resultado de un parseFloat previo)', () => {
     expect(() => money.add(0.1, '0.2')).toThrow(/string/i);
