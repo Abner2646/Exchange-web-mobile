@@ -10,6 +10,7 @@ const validationMiddleware = require('../middleware/validation.middleware');
 const rateLimitMiddleware = require('../middleware/rateLimit.middleware');
 const { joiValidate } = require('../middleware/joiValidate.middleware');
 const transaccionBlockchainSchema = require('../schemas/transaccionBlockchain.schema');
+const idempotency = require('../middleware/idempotency.middleware');
 
 // =================== RUTAS PÚBLICAS (con auth) ===================
 
@@ -23,7 +24,7 @@ router.get('/my', rateLimitMiddleware.general, transaccionBlockchainController.g
 //router.get('/:id', /*validationMiddleware.validateUUID('id'),*/ transaccionBlockchainController.getTransaction);
 
 // POST /api/transactions/withdraw - Crear retiro
-router.post('/withdraw', rateLimitMiddleware.withdrawal, joiValidate(transaccionBlockchainSchema.createWithdrawal), transaccionBlockchainController.createWithdrawal);
+router.post('/withdraw', rateLimitMiddleware.withdrawal, joiValidate(transaccionBlockchainSchema.createWithdrawal), idempotency, transaccionBlockchainController.createWithdrawal);
 
 // GET /api/transactions/balances - Obtener mis balances
 //router.get('/balances', /*rateLimitMiddleware.general,*/ transaccionBlockchainController.getMyBalances);

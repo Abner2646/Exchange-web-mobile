@@ -8,6 +8,7 @@ const { authenticateToken, requireEmailVerified } = require('../middleware/authM
 const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
 const { body, param, query } = require('express-validator');
 const { validate } = require('../middleware/validation.middleware');
+const idempotency = require('../middleware/idempotency.middleware');
 
 // Rate limiting
 const tradingRateLimit = require('express-rate-limit')({
@@ -33,6 +34,7 @@ router.post('/orders', // Bien
     body('timeInForce').optional().isIn(['GTC', 'IOC', 'FOK']).withMessage('Time in force inválido')
   ],
   validate,
+  idempotency,
   tradingController.createOrder
 );
 /*

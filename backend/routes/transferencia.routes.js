@@ -5,11 +5,12 @@ const transferenciaController = require('../controllers/transferencia.controller
 // Middleware
 const { authenticateToken, requireEmailVerified } = require('../middleware/authMiddleware.js');
 const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
+const idempotency = require('../middleware/idempotency.middleware');
 
 // =============== RUTAS DE USUARIO AUTENTICADO ===============
 
 // POST /api/transfers - Crear nueva transferencia
-router.post('/', authenticateToken, requireEmailVerified, transferenciaController.createTransferencia);
+router.post('/', authenticateToken, requireEmailVerified, idempotency, transferenciaController.createTransferencia);
 /*
 {
   "usuarioDestinatarioId": "uuid-del-usuario-destinatario",
