@@ -2,6 +2,7 @@
 
 const initIntercambioExchange = require('./entities/intercambioExchange.entity');
 const { Op } = require('sequelize');
+const { startOfUtcDay, endOfUtcDay } = require('../utils/time');
 
 function createIntercambioExchangeModel(sequelize) {
   const IntercambioExchange = initIntercambioExchange(sequelize);
@@ -301,12 +302,12 @@ function createIntercambioExchangeModel(sequelize) {
 
   IntercambioExchange.getDailyVolume = async (usuarioId, date = new Date(), transaction = null) => {
     try {
-      const startOfDay = new Date(date);
-      startOfDay.setHours(0, 0, 0, 0);
-      
-      const endOfDay = new Date(date);
-      endOfDay.setHours(23, 59, 59, 999);
-      
+      // Ventana del día en UTC: created_at se guarda en UTC, así que el borde
+      // del "día" del límite diario debe ser el día UTC, no el día local del
+      // server (setHours desalinearía la ventana según la TZ del proceso).
+      const startOfDay = startOfUtcDay(date);
+      const endOfDay = endOfUtcDay(date);
+
       const volumen = await IntercambioExchange.sum('cantidadQuote', {
         where: {
           usuarioId,
