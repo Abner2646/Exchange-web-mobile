@@ -3,6 +3,7 @@ require('dotenv').config();
 
 const initBalanceUser = require('./entities/balanceUsuario.entity');
 const { Op } = require('sequelize');
+const money = require('../utils/money');
 
 function createBalanceUserModel(sequelize) {
   const BalanceUsuario = initBalanceUser(sequelize);
@@ -71,14 +72,15 @@ function createBalanceUserModel(sequelize) {
         where: { userId, criptomonedaId }
       });
       
-      if (!balance) return { disponible: 0, bloqueado: 0, total: 0 };
-      
-      const total = parseFloat(balance.balanceDisponible) + parseFloat(balance.balanceBloqueado);
-      
+      if (!balance) return { disponible: '0', bloqueado: '0', total: '0' };
+
+      const disponible = String(balance.balanceDisponible);
+      const bloqueado = String(balance.balanceBloqueado);
+
       return {
-        disponible: parseFloat(balance.balanceDisponible),
-        bloqueado: parseFloat(balance.balanceBloqueado),
-        total
+        disponible,
+        bloqueado,
+        total: money.add(disponible, bloqueado)
       };
     } catch (error) {
       throw new Error(`Error al calcular balance total: ${error.message}`);
@@ -99,10 +101,10 @@ function createBalanceUserModel(sequelize) {
       });
 
       const field = type === 'disponible' ? 'balanceDisponible' : 'balanceBloqueado';
-      const currentBalance = parseFloat(balance[field]) || 0;
-      const newBalance = currentBalance + parseFloat(amount);
+      const currentBalance = String(balance[field] ?? 0);
+      const newBalance = money.add(currentBalance, String(amount));
 
-      if (newBalance < 0) {
+      if (money.compare(newBalance, '0') < 0) {
         throw new Error(
           `Balance insuficiente. ${type === 'disponible' ? 'Disponible' : 'Bloqueado'}: ${currentBalance}, ` +
           `Operación: ${amount}, Resultado: ${newBalance}`
@@ -158,15 +160,15 @@ function createBalanceUserModel(sequelize) {
         throw new Error('Balance no encontrado');
       }
 
-      const availableBalance = parseFloat(balance.balanceDisponible);
-      const amountToBlock = parseFloat(amount);
+      const availableBalance = String(balance.balanceDisponible);
+      const amountToBlock = String(amount);
 
-      if (availableBalance < amountToBlock) {
+      if (money.compare(availableBalance, amountToBlock) < 0) {
         throw new Error('Balance disponible insuficiente para bloquear');
       }
 
-      balance.balanceDisponible = availableBalance - amountToBlock;
-      balance.balanceBloqueado = parseFloat(balance.balanceBloqueado) + amountToBlock;
+      balance.balanceDisponible = money.subtract(availableBalance, amountToBlock);
+      balance.balanceBloqueado = money.add(String(balance.balanceBloqueado), amountToBlock);
 
       await balance.save({ transaction: t });
 
@@ -193,15 +195,15 @@ function createBalanceUserModel(sequelize) {
         throw new Error('Balance no encontrado');
       }
 
-      const blockedBalance = parseFloat(balance.balanceBloqueado);
-      const amountToUnblock = parseFloat(amount);
+      const blockedBalance = String(balance.balanceBloqueado);
+      const amountToUnblock = String(amount);
 
-      if (blockedBalance < amountToUnblock) {
+      if (money.compare(blockedBalance, amountToUnblock) < 0) {
         throw new Error('Balance bloqueado insuficiente para desbloquear');
       }
 
-      balance.balanceBloqueado = blockedBalance - amountToUnblock;
-      balance.balanceDisponible = parseFloat(balance.balanceDisponible) + amountToUnblock;
+      balance.balanceBloqueado = money.subtract(blockedBalance, amountToUnblock);
+      balance.balanceDisponible = money.add(String(balance.balanceDisponible), amountToUnblock);
 
       await balance.save({ transaction: t });
 
@@ -222,8 +224,7 @@ function createBalanceUserModel(sequelize) {
 
       if (!balance) return false;
 
-      const availableBalance = parseFloat(balance.balanceDisponible);
-      return availableBalance >= parseFloat(amount);
+      return money.compare(String(balance.balanceDisponible), String(amount)) >= 0;
     } catch (error) {
       throw new Error(`Error al verificar balance disponible: ${error.message}`);
     }
@@ -274,8 +275,8 @@ function createBalanceUserModel(sequelize) {
 
       // Si tiene algún balance con saldo > 0, no puede reclamar
       const tieneSaldo = balancesExistentes.some(balance => {
-        const total = parseFloat(balance.balanceDisponible) + parseFloat(balance.balanceBloqueado);
-        return total > 0;
+        const total = money.add(String(balance.balanceDisponible), String(balance.balanceBloqueado));
+        return money.compare(total, '0') > 0;
       });
 
       // Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #12): este chequeo

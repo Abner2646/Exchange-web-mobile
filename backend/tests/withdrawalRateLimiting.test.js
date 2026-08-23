@@ -29,6 +29,8 @@ jest.mock('../models', () => ({
   Criptomoneda: {},
   BalanceUsuario: {},
   DireccionDeposito: {},
+  // Required by idempotency.middleware (now wired into /withdraw)
+  IdempotencyKey: { create: jest.fn().mockResolvedValue({}), findOne: jest.fn(), update: jest.fn(), destroy: jest.fn() },
 }));
 
 jest.mock('../controllers/transaccionBlockchain.controller', () => {
@@ -74,6 +76,7 @@ describe('POST /transaccionBlockchain/withdraw rate limiting (withdrawal: 10/15m
       const res = await request(app)
         .post('/transaccionBlockchain/withdraw')
         .set('Authorization', auth)
+        .set('Idempotency-Key', `rate-limit-test-key-${i}`)
         .send(validWithdrawal);
       expect(res.status).toBe(200);
     }

@@ -15,6 +15,8 @@ jest.mock('../models', () => ({
   Usuario: { findByPk: jest.fn() },
   sequelize: {},
   TransaccionBlockchain: {}, Criptomoneda: {}, BalanceUsuario: {}, DireccionDeposito: {},
+  // Required by idempotency.middleware (now wired into /withdraw)
+  IdempotencyKey: { create: jest.fn().mockResolvedValue({}), findOne: jest.fn(), update: jest.fn(), destroy: jest.fn() },
 }));
 jest.mock('../controllers/usuario.controller.js', () => {
   const ok = (req, res) => res.json({ success: true, body: req.body });
@@ -107,6 +109,7 @@ describe('POST /transaccionBlockchain/withdraw valida el body con Joi antes del 
     const res = await request(app)
       .post('/transaccionBlockchain/withdraw')
       .set('Authorization', auth())
+      .set('Idempotency-Key', 'joi-wiring-test-key-1')
       .send(validBody);
     expect(res.status).toBe(200);
   });

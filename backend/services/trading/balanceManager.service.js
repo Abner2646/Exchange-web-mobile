@@ -1,6 +1,15 @@
 // services/trading/balanceManager.service.js
 const { BalanceUsuario, TradingPair } = require('../../models');
 const { sequelize } = require('../../models');
+const money = require('../../utils/money');
+
+// fee = amount * (feePercent / 100), exacto y como string canónico (mismo
+// criterio que feeCalculator). Los inputs se normalizan con String() en el
+// borde por si algún caller todavía pasa un Number; de acá para adentro toda la
+// aritmética pasa por money.js (decimal.js), nunca por el float binario.
+function feeOf(amount, feePercent) {
+  return money.divide(money.multiply(String(amount), String(feePercent)), '100');
+}
 
 class BalanceManagerService {
 
@@ -25,28 +34,26 @@ class BalanceManagerService {
       if (side === 'buy') {
         // COMPRA: necesitamos bloquear QUOTE ASSET (ej: USDT para comprar BTC)
         assetToLock = tradingPair.quoteAssetId;
-        
+
         // Si es market order, price será null - usar lastPrice
-        const effectivePrice = price || parseFloat(tradingPair.lastPrice);
-        
-        if (!effectivePrice || effectivePrice <= 0) {
+        const rawPrice = price || tradingPair.lastPrice;
+
+        if (!rawPrice || money.compare(String(rawPrice), '0') <= 0) {
           return {
             success: false,
             error: 'No se puede determinar el precio para la orden'
           };
         }
 
-        // Calcular total necesario (cantidad * precio)
-        amountToLock = parseFloat(quantity) * effectivePrice;
-        
-        // Agregar el fee estimado (taker fee porque es más alto)
-        const feeAmount = amountToLock * (parseFloat(tradingPair.takerFeePercent) / 100);
-        amountToLock += feeAmount;
+        // Calcular total necesario (cantidad * precio) + fee estimado (taker,
+        // porque es el más alto)
+        const baseAmount = money.multiply(String(quantity), String(rawPrice));
+        amountToLock = money.add(baseAmount, feeOf(baseAmount, tradingPair.takerFeePercent));
 
       } else {
         // VENTA: necesitamos bloquear BASE ASSET (ej: BTC para vender)
         assetToLock = tradingPair.baseAssetId;
-        amountToLock = parseFloat(quantity);
+        amountToLock = String(quantity);
       }
 
       // Verificar que el usuario tenga balance suficiente
@@ -102,19 +109,16 @@ class BalanceManagerService {
       if (order.side === 'buy') {
         // Era una compra - desbloqueamos QUOTE ASSET
         assetToUnlock = tradingPair.quoteAssetId;
-        
-        // Calcular cuánto estaba bloqueado para la cantidad restante
-        const effectivePrice = parseFloat(order.price) || parseFloat(tradingPair.lastPrice);
-        amountToUnlock = parseFloat(order.quantityRemaining) * effectivePrice;
-        
-        // Agregar fee
-        const feeAmount = amountToUnlock * (parseFloat(order.feePercent) / 100);
-        amountToUnlock += feeAmount;
+
+        // Calcular cuánto estaba bloqueado para la cantidad restante (+ fee)
+        const rawPrice = order.price || tradingPair.lastPrice;
+        const baseAmount = money.multiply(String(order.quantityRemaining), String(rawPrice));
+        amountToUnlock = money.add(baseAmount, feeOf(baseAmount, order.feePercent));
 
       } else {
         // Era una venta - desbloqueamos BASE ASSET
         assetToUnlock = tradingPair.baseAssetId;
-        amountToUnlock = parseFloat(order.quantityRemaining);
+        amountToUnlock = String(order.quantityRemaining);
       }
 
       // Desbloquear el balance (atómico: ver BalanceUser.unblockBalance)
@@ -146,17 +150,17 @@ class BalanceManagerService {
 
       // COMPRADOR
       // 1. Reduce balance bloqueado de QUOTE ASSET (USDT)
-      const buyerQuoteAmount = parseFloat(trade.quantity) * parseFloat(trade.price);
+      const buyerQuoteAmount = money.multiply(String(trade.quantity), String(trade.price));
       await BalanceUsuario.updateBalance(
         trade.buyerId,
         tradingPair.quoteAssetId,
-        -buyerQuoteAmount,
+        money.multiply(buyerQuoteAmount, '-1'),
         'bloqueado',
         transaction
       );
 
       // 2. Aumenta balance disponible de BASE ASSET (BTC) - descontando fee
-      const buyerBaseAmount = parseFloat(trade.quantity) - parseFloat(trade.buyerFee);
+      const buyerBaseAmount = money.subtract(String(trade.quantity), String(trade.buyerFee));
       await BalanceUsuario.updateBalance(
         trade.buyerId,
         tradingPair.baseAssetId,
@@ -170,13 +174,13 @@ class BalanceManagerService {
       await BalanceUsuario.updateBalance(
         trade.sellerId,
         tradingPair.baseAssetId,
-        -parseFloat(trade.quantity),
+        money.multiply(String(trade.quantity), '-1'),
         'bloqueado',
         transaction
       );
 
       // 2. Aumenta balance disponible de QUOTE ASSET (USDT) - descontando fee
-      const sellerQuoteAmount = buyerQuoteAmount - parseFloat(trade.sellerFee);
+      const sellerQuoteAmount = money.subtract(buyerQuoteAmount, String(trade.sellerFee));
       await BalanceUsuario.updateBalance(
         trade.sellerId,
         tradingPair.quoteAssetId,
@@ -213,15 +217,12 @@ class BalanceManagerService {
 
       if (side === 'buy') {
         assetNeeded = tradingPair.quoteAssetId;
-        const effectivePrice = price || parseFloat(tradingPair.lastPrice);
-        amountNeeded = parseFloat(quantity) * effectivePrice;
-        
-        // Agregar fee
-        const feeAmount = amountNeeded * (parseFloat(tradingPair.takerFeePercent) / 100);
-        amountNeeded += feeAmount;
+        const rawPrice = price || tradingPair.lastPrice;
+        const baseAmount = money.multiply(String(quantity), String(rawPrice));
+        amountNeeded = money.add(baseAmount, feeOf(baseAmount, tradingPair.takerFeePercent));
       } else {
         assetNeeded = tradingPair.baseAssetId;
-        amountNeeded = parseFloat(quantity);
+        amountNeeded = String(quantity);
       }
 
       const balance = await BalanceUsuario.getByUserAndCrypto(userId, assetNeeded);
@@ -231,12 +232,12 @@ class BalanceManagerService {
           sufficient: false,
           error: 'No tienes balance en esta criptomoneda',
           required: amountNeeded,
-          available: 0
+          available: '0'
         };
       }
 
-      const available = parseFloat(balance.balanceDisponible);
-      const sufficient = available >= amountNeeded;
+      const available = String(balance.balanceDisponible);
+      const sufficient = money.compare(available, amountNeeded) >= 0;
 
       return {
         sufficient,
@@ -263,16 +264,19 @@ class BalanceManagerService {
 
       if (!balance) {
         return {
-          available: 0,
-          locked: 0,
-          total: 0
+          available: '0',
+          locked: '0',
+          total: '0'
         };
       }
 
+      const available = String(balance.balanceDisponible);
+      const locked = String(balance.balanceBloqueado);
+
       return {
-        available: parseFloat(balance.balanceDisponible),
-        locked: parseFloat(balance.balanceBloqueado),
-        total: parseFloat(balance.balanceDisponible) + parseFloat(balance.balanceBloqueado)
+        available,
+        locked,
+        total: money.add(available, locked)
       };
     } catch (error) {
       console.error('Error obteniendo balance de trading:', error);
@@ -287,12 +291,16 @@ class BalanceManagerService {
     try {
       const balances = await BalanceUsuario.getByUserId(userId);
 
-      return balances.map(balance => ({
-        criptomonedaId: balance.criptomonedaId,
-        available: parseFloat(balance.balanceDisponible),
-        locked: parseFloat(balance.balanceBloqueado),
-        total: parseFloat(balance.balanceDisponible) + parseFloat(balance.balanceBloqueado)
-      }));
+      return balances.map(balance => {
+        const available = String(balance.balanceDisponible);
+        const locked = String(balance.balanceBloqueado);
+        return {
+          criptomonedaId: balance.criptomonedaId,
+          available,
+          locked,
+          total: money.add(available, locked)
+        };
+      });
     } catch (error) {
       console.error('Error obteniendo todos los balances:', error);
       throw error;

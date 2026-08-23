@@ -113,16 +113,20 @@ class PriceUpdaterService {
 
       const data = response.data;
 
+      // Binance devuelve los precios como strings decimales exactos. Se guardan
+      // tal cual (String() es no-op si ya vienen string) para no perder dígitos
+      // por el float binario: lastPrice alimenta TradingPair.lastPrice, que es el
+      // input del trading engine (aritmética exacta con money.js).
       const priceData = {
-        lastPrice: parseFloat(data.lastPrice),
-        priceChange: parseFloat(data.priceChange),
-        priceChangePercent: parseFloat(data.priceChangePercent),
-        highPrice: parseFloat(data.highPrice),
-        lowPrice: parseFloat(data.lowPrice),
-        volume: parseFloat(data.volume),
-        quoteVolume: parseFloat(data.quoteVolume),
-        openPrice: parseFloat(data.openPrice),
-        closePrice: parseFloat(data.lastPrice),
+        lastPrice: String(data.lastPrice),
+        priceChange: String(data.priceChange),
+        priceChangePercent: String(data.priceChangePercent),
+        highPrice: String(data.highPrice),
+        lowPrice: String(data.lowPrice),
+        volume: String(data.volume),
+        quoteVolume: String(data.quoteVolume),
+        openPrice: String(data.openPrice),
+        closePrice: String(data.lastPrice),
         trades: parseInt(data.count)
       };
 
@@ -163,7 +167,7 @@ class PriceUpdaterService {
       const binanceSymbol = `${tradingPair.baseAsset.symbol}${tradingPair.quoteAsset.symbol}`;
       const priceData = await this.fetchBinancePrice(binanceSymbol);
 
-      return priceData ? priceData.lastPrice : parseFloat(tradingPair.lastPrice);
+      return priceData ? priceData.lastPrice : String(tradingPair.lastPrice);
 
     } catch (error) {
       console.error('Error obteniendo precio actual:', error);
@@ -186,11 +190,11 @@ class PriceUpdaterService {
 
       return response.data.map(data => ({
         symbol: data.symbol,
-        lastPrice: parseFloat(data.lastPrice),
-        priceChangePercent: parseFloat(data.priceChangePercent),
-        volume: parseFloat(data.volume),
-        high: parseFloat(data.highPrice),
-        low: parseFloat(data.lowPrice)
+        lastPrice: String(data.lastPrice),
+        priceChangePercent: String(data.priceChangePercent),
+        volume: String(data.volume),
+        high: String(data.highPrice),
+        low: String(data.lowPrice)
       }));
 
     } catch (error) {

@@ -2,6 +2,7 @@
 
 const initTransaccionP2P = require('./entities/transaccionP2P.entity');
 const { Op } = require('sequelize');
+const money = require('../utils/money');
 
 function createTransaccionP2PModel(sequelize) {
   const TransaccionP2P = initTransaccionP2P(sequelize);
@@ -46,11 +47,11 @@ TransaccionP2P.createTransaction = async (data) => {
       throw new Error('La oferta no está activa. No se pueden realizar transacciones con ofertas desactivadas.');
     }
 
-    const cantidadNum = parseFloat(cantidad);
-    const cantidadMin = parseFloat(oferta.cantidadMin);
-    const cantidadMax = parseFloat(oferta.cantidadMax);
+    const cantidadNum = String(cantidad);
+    const cantidadMin = String(oferta.cantidadMin);
+    const cantidadMax = String(oferta.cantidadMax);
 
-    if (cantidadNum < cantidadMin || cantidadNum > cantidadMax) {
+    if (money.compare(cantidadNum, cantidadMin) < 0 || money.compare(cantidadNum, cantidadMax) > 0) {
       throw new Error(
         `La cantidad ${cantidadNum} está fuera del rango permitido. ` +
         `Mínimo: ${cantidadMin}, Máximo: ${cantidadMax}`
@@ -67,9 +68,9 @@ TransaccionP2P.createTransaction = async (data) => {
       );
     }
 
-    const balanceDisponible = parseFloat(balance.balanceDisponible);
+    const balanceDisponible = String(balance.balanceDisponible);
 
-    if (balanceDisponible < cantidadNum) {
+    if (money.compare(balanceDisponible, cantidadNum) < 0) {
       throw new Error(
         `Fondos insuficientes del vendedor. ` +
         `Disponible: ${balanceDisponible} ${oferta.criptomoneda?.symbol || ''}, ` +
@@ -79,22 +80,22 @@ TransaccionP2P.createTransaction = async (data) => {
 
     // 🔒 BLOQUEAR FONDOS
     await BalanceUsuario.updateBalance(
-      vendedorId, 
-      criptomonedaId, 
-      -cantidadNum, 
+      vendedorId,
+      criptomonedaId,
+      money.multiply(cantidadNum, '-1'),
       'disponible',
       transaction
     );
-    
+
     await BalanceUsuario.updateBalance(
-      vendedorId, 
-      criptomonedaId, 
-      cantidadNum, 
+      vendedorId,
+      criptomonedaId,
+      cantidadNum,
       'bloqueado',
       transaction
     );
 
-    const montoFiat = cantidadNum * parseFloat(precioUnitario);
+    const montoFiat = money.multiply(cantidadNum, String(precioUnitario));
 
     const nuevaTransaccion = await TransaccionP2P.create({
       ofertaId,
@@ -166,7 +167,7 @@ TransaccionP2P.completeTransaction = async (id, usuarioId) => {
     }
 
     const { BalanceUsuario } = require('./index');
-    const cantidad = parseFloat(transaccion.cantidad);
+    const cantidad = String(transaccion.cantidad);
 
     // 💸 TRANSFERIR FONDOS
     await BalanceUsuario.updateBalance(
@@ -197,7 +198,7 @@ TransaccionP2P.completeTransaction = async (id, usuarioId) => {
       id: transaccion.id,
       cantidad,
       criptomoneda: transaccion.criptomoneda,
-      montoFiat: parseFloat(transaccion.montoFiat),
+      montoFiat: String(transaccion.montoFiat),
       monedaFiat: transaccion.monedaFiat
     };
 
@@ -250,14 +251,14 @@ TransaccionP2P.cancelTransaction = async (id, usuarioId) => {
     }
 
     const { BalanceUsuario } = require('./index');
-    const cantidad = parseFloat(transaccion.cantidad);
+    const cantidad = String(transaccion.cantidad);
 
     // 🔓 DESBLOQUEAR FONDOS
     if (transaccion.estado === 'iniciada' || transaccion.estado === 'pago_confirmado') {
       await BalanceUsuario.updateBalance(
         transaccion.vendedorId,
         transaccion.criptomonedaId,
-        -cantidad,
+        money.multiply(cantidad, '-1'),
         'bloqueado',
         transaction
       );
@@ -282,7 +283,7 @@ TransaccionP2P.cancelTransaction = async (id, usuarioId) => {
       id: transaccion.id,
       cantidad,
       criptomoneda: transaccion.criptomoneda,
-      montoFiat: parseFloat(transaccion.montoFiat),
+      montoFiat: String(transaccion.montoFiat),
       monedaFiat: transaccion.monedaFiat
     };
 
@@ -341,9 +342,9 @@ TransaccionP2P.cancelTransaction = async (id, usuarioId) => {
       
       const transaccionConDatos = {
         id: transaccion.id,
-        cantidad: parseFloat(transaccion.cantidad),
+        cantidad: String(transaccion.cantidad),
         criptomoneda: transaccion.criptomoneda,
-        montoFiat: parseFloat(transaccion.montoFiat),
+        montoFiat: String(transaccion.montoFiat),
         monedaFiat: transaccion.monedaFiat
       };
 

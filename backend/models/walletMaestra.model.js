@@ -2,6 +2,7 @@
 const initWalletMaestra = require('./entities/walletMaestra.entity');
 const { Op, Transaction } = require('sequelize');
 const crypto = require('crypto');
+const money = require('../utils/money');
 
 function createWalletMaestraModel(sequelize) {
   const WalletMaestra = initWalletMaestra(sequelize);
@@ -324,17 +325,17 @@ function createWalletMaestraModel(sequelize) {
         throw new Error('Wallet maestra no encontrada');
       }
 
-      const balanceAnterior = parseFloat(wallet.balanceTotal);
-      
+      const balanceAnterior = String(wallet.balanceTotal);
+
       await WalletMaestra.update(
-        { 
+        {
           balanceTotal: nuevoBalance,
           lastSyncAt: new Date(),
           metadata: {
             ...wallet.metadata,
             lastBalanceUpdate: new Date(),
             previousBalance: balanceAnterior,
-            balanceChange: parseFloat(nuevoBalance) - balanceAnterior
+            balanceChange: money.subtract(String(nuevoBalance), balanceAnterior)
           }
         },
         {
@@ -366,9 +367,9 @@ function createWalletMaestraModel(sequelize) {
         throw new Error('Wallet maestra no encontrada');
       }
 
-      const nuevoBalance = parseFloat(wallet.balanceTotal) + parseFloat(cantidad);
+      const nuevoBalance = money.add(String(wallet.balanceTotal), String(cantidad));
 
-      if (nuevoBalance < 0) {
+      if (money.compare(nuevoBalance, '0') < 0) {
         throw new Error('El balance resultante no puede ser negativo');
       }
 
@@ -385,9 +386,9 @@ function createWalletMaestraModel(sequelize) {
         throw new Error('Wallet maestra no encontrada');
       }
 
-      const nuevoBalance = parseFloat(wallet.balanceTotal) - parseFloat(cantidad);
+      const nuevoBalance = money.subtract(String(wallet.balanceTotal), String(cantidad));
 
-      if (nuevoBalance < 0) {
+      if (money.compare(nuevoBalance, '0') < 0) {
         throw new Error('Balance insuficiente para realizar la operación');
       }
 
@@ -763,18 +764,23 @@ function createWalletMaestraModel(sequelize) {
         throw new Error('Wallet maestra no encontrada');
       }
 
-      const currentBalance = parseFloat(wallet.balanceTotal);
-      const newBalance = parseFloat(blockchainBalance);
-      const tolerance = 0.00000001; // Tolerancia para diferencias mínimas
-      
-      if (Math.abs(currentBalance - newBalance) > tolerance) {
+      const currentBalance = String(wallet.balanceTotal);
+      const newBalance = String(blockchainBalance);
+      const tolerance = '0.00000001'; // Tolerancia para diferencias mínimas
+
+      const difference = money.subtract(newBalance, currentBalance);
+      const absDifference = money.compare(difference, '0') < 0
+        ? money.multiply(difference, '-1')
+        : difference;
+
+      if (money.compare(absDifference, tolerance) > 0) {
         const updated = await WalletMaestra.updateBalance(id, newBalance);
-        
+
         return {
           synchronized: true,
           previousBalance: currentBalance,
           newBalance: newBalance,
-          difference: newBalance - currentBalance,
+          difference: difference,
           wallet: updated
         };
       }

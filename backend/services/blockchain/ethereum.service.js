@@ -2,6 +2,7 @@
 require('dotenv').config();
 const { ethers } = require('ethers');
 const { TransaccionBlockchain, DireccionDeposito, Criptomoneda, BlockchainState } = require('../../models');
+const money = require('../../utils/money');
 
 class EthereumService {
   constructor() {
@@ -392,15 +393,18 @@ class EthereumService {
   async createDepositFromTransaction(direccion, tx, amount, fee) {
     try {
       console.log(`🔧 [ETH] Creando depósito en DB...`);
-      
+
+      const diff = money.subtract(String(amount), String(fee));
+      const netAmount = money.compare(diff, '0') < 0 ? '0' : diff;
+
       const depositData = {
         userId: direccion.userId,
         criptomonedaId: direccion.criptomonedaId,
-        cantidad: Math.max(0, parseFloat(amount) - parseFloat(fee)),
+        cantidad: netAmount,
         direccionDestino: direccion.direccion,
         direccionOrigen: tx.from,
         txHash: tx.hash,
-        feeBlockchain: parseFloat(fee),
+        feeBlockchain: String(fee),
         confirmaciones: parseInt(tx.confirmations || 0),
         confirmacionesRequeridas: this.requiredConfirmations,
         blockNumber: parseInt(tx.blockNumber || 0),
@@ -473,9 +477,9 @@ class EthereumService {
     try {
       const gasUsed = BigInt(tx.gasUsed || 21000);
       const gasPrice = BigInt(tx.gasPrice || 20000000000);
-      return parseFloat(ethers.formatEther(gasUsed * gasPrice));
+      return ethers.formatEther(gasUsed * gasPrice);
     } catch (error) {
-      return 0.002;
+      return '0.002';
     }
   }
 
@@ -518,7 +522,7 @@ class EthereumService {
     const { cantidad, direccionDestino, criptomoneda } = withdrawal;
 
     const walletBalance = await this.getWalletBalance(criptomoneda);
-    if (walletBalance < parseFloat(cantidad)) {
+    if (money.compare(String(walletBalance), String(cantidad)) < 0) {
       throw new Error(`Balance insuficiente en wallet maestra ETH: ${walletBalance} < ${cantidad}`);
     }
 
@@ -530,8 +534,8 @@ class EthereumService {
 
     try {
       if (criptomoneda.symbol === 'ETH') {
-        estimatedFee = parseFloat(ethers.formatEther(gasPrice * BigInt(21000)));
-        
+        estimatedFee = ethers.formatEther(gasPrice * BigInt(21000));
+
         tx = await this.wallet.sendTransaction({
           to: direccionDestino,
           value: ethers.parseEther(cantidad.toString()),
@@ -548,8 +552,8 @@ class EthereumService {
           this.wallet
         );
 
-        estimatedFee = parseFloat(ethers.formatEther(gasPrice * BigInt(60000)));
-        
+        estimatedFee = ethers.formatEther(gasPrice * BigInt(60000));
+
         const decimales = await contract.decimals();
         const amount = ethers.parseUnits(cantidad.toString(), decimales);
 
@@ -651,10 +655,10 @@ class EthereumService {
       
       const balance = await contract.balanceOf(this.wallet.address);
       const decimales = await contract.decimals();
-      return parseFloat(ethers.formatUnits(balance, decimales));
+      return ethers.formatUnits(balance, decimales);
     } else {
       const balance = await this.provider.getBalance(this.wallet.address);
-      return parseFloat(ethers.formatEther(balance));
+      return ethers.formatEther(balance);
     }
   }
 

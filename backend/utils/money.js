@@ -55,4 +55,12 @@ function round(value, decimalPlaces) {
   return toDecimal(value).toDecimalPlaces(decimalPlaces, Decimal.ROUND_HALF_EVEN).toFixed();
 }
 
-module.exports = { add, subtract, multiply, divide, round };
+// Comparación exacta: devuelve -1 (a < b), 0 (a === b) o 1 (a > b). Reemplaza a
+// los operadores `<`/`>=` sobre montos, que en JS obligan a pasar por Number
+// (float binario) y dan falsos positivos (0.1+0.2 > 0.3). El resultado es un
+// entero chico (-1/0/1), seguro de comparar con 0 en el call site.
+function compare(a, b) {
+  return toDecimal(a).comparedTo(toDecimal(b));
+}
+
+module.exports = { add, subtract, multiply, divide, round, compare };

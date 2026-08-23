@@ -2,6 +2,7 @@
 
 const axios = require('axios');
 const { ParExchange } = require('../models/index.js');
+const money = require('../utils/money');
 
 class PriceService {
   constructor() {
@@ -224,12 +225,13 @@ class PriceService {
             const tickerInverso = tickerMap[simboloInverso];
             
             if (tickerInverso) {
-              // Calcular precio inverso
-              const precioInverso = 1 / parseFloat(tickerInverso.lastPrice);
+              // Calcular precio inverso (Binance da strings exactos; división y
+              // negación con money.js para no arrastrar error de coma)
+              const precioInverso = money.divide('1', String(tickerInverso.lastPrice));
               await this.updatePairPrice(par.id, {
                 precioActual: precioInverso,
-                volumen24h: parseFloat(tickerInverso.quoteVolume),
-                cambiosPorcentaje24h: -parseFloat(tickerInverso.priceChangePercent),
+                volumen24h: String(tickerInverso.quoteVolume),
+                cambiosPorcentaje24h: money.multiply(String(tickerInverso.priceChangePercent), '-1'),
                 fuentePrecio: 'binance'
               });
               results.success++;
@@ -241,13 +243,13 @@ class PriceService {
           }
 
           await this.updatePairPrice(par.id, {
-            precioActual: parseFloat(ticker.lastPrice),
-            precioAnterior: parseFloat(ticker.prevClosePrice),
-            cambiosPorcentaje24h: parseFloat(ticker.priceChangePercent),
-            volumen24h: parseFloat(ticker.quoteVolume),
-            volumenBase24h: parseFloat(ticker.volume),
-            precioMaximo24h: parseFloat(ticker.highPrice),
-            precioMinimo24h: parseFloat(ticker.lowPrice),
+            precioActual: String(ticker.lastPrice),
+            precioAnterior: String(ticker.prevClosePrice),
+            cambiosPorcentaje24h: String(ticker.priceChangePercent),
+            volumen24h: String(ticker.quoteVolume),
+            volumenBase24h: String(ticker.volume),
+            precioMaximo24h: String(ticker.highPrice),
+            precioMinimo24h: String(ticker.lowPrice),
             cantidadOperaciones24h: parseInt(ticker.count),
             fuentePrecio: 'binance'
           });
@@ -372,7 +374,7 @@ class PriceService {
           }
 
           await this.updatePairPrice(par.id, {
-            precioActual: parseFloat(precio),
+            precioActual: String(precio),
             fuentePrecio: 'coinbase'
           });
 
@@ -561,7 +563,7 @@ class PriceService {
         params: { symbol },
         timeout: 5000
       });
-      return parseFloat(response.data.price);
+      return String(response.data.price);
     } catch (error) {
       // Intentar precio inverso
       try {
@@ -570,7 +572,7 @@ class PriceService {
           params: { symbol: inverseSymbol },
           timeout: 5000
         });
-        return 1 / parseFloat(response.data.price);
+        return money.divide('1', String(response.data.price));
       } catch (inverseError) {
         throw error;
       }

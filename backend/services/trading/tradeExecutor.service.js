@@ -2,6 +2,7 @@
 const { Trade, Order } = require('../../models');
 const balanceManager = require('./balanceManager.service');
 const feeCalculator = require('./feeCalculator.service');
+const money = require('../../utils/money');
 
 class TradeExecutorService {
 
@@ -37,7 +38,7 @@ class TradeExecutorService {
         sellerFeePercent: fees.seller.feePercent,
         makerSide: buyerIsMaker ? 'buy' : 'sell',
         tradingType: buyOrder.tradingType || 'spot',
-        totalValue: parseFloat(quantity) * parseFloat(price)
+        totalValue: money.multiply(String(quantity), String(price))
       }, { transaction });
 
       // 4. Actualizar las órdenes
@@ -63,20 +64,25 @@ class TradeExecutorService {
    */
   async updateOrderAfterTrade(order, matchedQuantity, executionPrice, isMaker, transaction) {
     try {
-      const newFilled = parseFloat(order.quantityFilled) + parseFloat(matchedQuantity);
-      const newRemaining = parseFloat(order.quantity) - newFilled;
-      
+      const newFilled = money.add(String(order.quantityFilled), String(matchedQuantity));
+      const newRemaining = money.subtract(String(order.quantity), newFilled);
+
       // Calcular precio promedio ponderado
-      const previousTotal = parseFloat(order.quantityFilled) * parseFloat(order.averagePrice || 0);
-      const newTotal = parseFloat(matchedQuantity) * parseFloat(executionPrice);
-      const newAveragePrice = newFilled > 0 ? (previousTotal + newTotal) / newFilled : 0;
+      const previousTotal = money.multiply(String(order.quantityFilled), String(order.averagePrice || 0));
+      const newTotal = money.multiply(String(matchedQuantity), String(executionPrice));
+      const newAveragePrice = money.compare(newFilled, '0') > 0
+        ? money.divide(money.add(previousTotal, newTotal), newFilled)
+        : '0';
+
+      // Umbral de polvo (1 satoshi): por debajo, colapsar el residual a 0 exacto.
+      const dustCompare = money.compare(newRemaining, '0.00000001');
 
       const updateData = {
         quantityFilled: newFilled,
-        quantityRemaining: newRemaining < 0.00000001 ? 0 : newRemaining, // Evitar decimales residuales
+        quantityRemaining: dustCompare < 0 ? '0' : newRemaining, // Evitar decimales residuales
         averagePrice: newAveragePrice,
         makerOrTaker: isMaker ? 'maker' : 'taker',
-        status: newRemaining <= 0.00000001 ? 'filled' : 'partially_filled'
+        status: dustCompare <= 0 ? 'filled' : 'partially_filled'
       };
 
       if (updateData.status === 'filled') {
@@ -109,19 +115,18 @@ class TradeExecutorService {
       };
 
       // Calcular volumen 24h (sumar al existente)
-      const newVolume = parseFloat(tradingPair.volume24h) + parseFloat(trade.quantity);
-      updateData.volume24h = newVolume;
+      updateData.volume24h = money.add(String(tradingPair.volume24h), String(trade.quantity));
 
       // Actualizar high/low si es necesario
-      const currentPrice = parseFloat(trade.price);
-      const currentHigh = parseFloat(tradingPair.high24h);
-      const currentLow = parseFloat(tradingPair.low24h);
+      const currentPrice = String(trade.price);
+      const currentHigh = String(tradingPair.high24h);
+      const currentLow = String(tradingPair.low24h);
 
-      if (currentPrice > currentHigh || currentHigh === 0) {
+      if (money.compare(currentPrice, currentHigh) > 0 || money.compare(currentHigh, '0') === 0) {
         updateData.high24h = currentPrice;
       }
 
-      if (currentPrice < currentLow || currentLow === 0) {
+      if (money.compare(currentPrice, currentLow) < 0 || money.compare(currentLow, '0') === 0) {
         updateData.low24h = currentPrice;
       }
 
@@ -158,22 +163,22 @@ class TradeExecutorService {
       }
 
       // 4. Verificar cantidad disponible
-      const buyRemaining = parseFloat(buyOrder.quantityRemaining);
-      const sellRemaining = parseFloat(sellOrder.quantityRemaining);
-      const qty = parseFloat(quantity);
+      const buyRemaining = String(buyOrder.quantityRemaining);
+      const sellRemaining = String(sellOrder.quantityRemaining);
+      const qty = String(quantity);
 
-      if (qty > buyRemaining || qty > sellRemaining) {
-        return { 
-          valid: false, 
-          error: 'Cantidad excede lo disponible en las órdenes' 
+      if (money.compare(qty, buyRemaining) > 0 || money.compare(qty, sellRemaining) > 0) {
+        return {
+          valid: false,
+          error: 'Cantidad excede lo disponible en las órdenes'
         };
       }
 
       // 5. Verificar que los precios sean compatibles
-      const buyPrice = parseFloat(buyOrder.price);
-      const sellPrice = parseFloat(sellOrder.price);
+      const buyPrice = String(buyOrder.price);
+      const sellPrice = String(sellOrder.price);
 
-      if (buyPrice < sellPrice) {
+      if (money.compare(buyPrice, sellPrice) < 0) {
         return { 
           valid: false, 
           error: 'Precio de compra menor al precio de venta' 

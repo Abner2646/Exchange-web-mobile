@@ -6,6 +6,7 @@ const { TransaccionBlockchain, DireccionDeposito, Criptomoneda, BlockchainState 
 
 const tinysecp = require('tiny-secp256k1');
 const ECPairFactory = ECPair.ECPairFactory(tinysecp);
+const money = require('../../utils/money');
 
 class BitcoinService {
   constructor() {
@@ -203,7 +204,7 @@ class BitcoinService {
             validDeposits++;
             console.log(`  ✅ TX ${tx.hash} es un depósito válido y nuevo!`);
 
-            const amountBTC = output.value / 100000000;
+            const amountBTC = money.divide(String(output.value), '100000000');
             const confirmations = tx.confirmations || 0;
 
             console.log(`💰 [BTC] Creando depósito:`);
@@ -240,9 +241,19 @@ class BitcoinService {
     }
   }
 
+  // Convierte un monto en BTC (string decimal, hasta 8 decimales por la columna
+  // DECIMAL(28,8)) al entero exacto de satoshis. Antes: Math.floor(parseFloat(
+  // cantidad) * 1e8) — el float binario dejaba 0.29*1e8 en 28999999.999999996 y
+  // el floor lo truncaba a 28999999, transmitiendo 1 satoshi de menos. Con
+  // money.js el producto es exacto; round(,0) no altera un valor ya entero.
+  btcToSatoshis(cantidad) {
+    return Number(money.round(money.multiply(String(cantidad), '100000000'), 0));
+  }
+
   async createBitcoinDeposit(direccion, amount, fee, txid, confirmations, timestamp, blockHeight) {
-    const netAmount = Math.max(0, parseFloat(amount) - parseFloat(fee));
-    
+    const diff = money.subtract(String(amount), String(fee));
+    const netAmount = money.compare(diff, '0') < 0 ? '0' : diff;
+
     const depositData = {
       userId: direccion.userId,
       criptomonedaId: direccion.criptomonedaId,
@@ -250,7 +261,7 @@ class BitcoinService {
       direccionDestino: direccion.direccion,
       direccionOrigen: null,
       txHash: txid,
-      feeBlockchain: parseFloat(fee),
+      feeBlockchain: String(fee),
       confirmaciones: confirmations,
       confirmacionesRequeridas: this.requiredConfirmations
     };
@@ -316,11 +327,11 @@ class BitcoinService {
 
   async processWithdrawal(withdrawal) {
     const { cantidad, direccionDestino } = withdrawal;
-    const amountSatoshis = Math.floor(parseFloat(cantidad) * 100000000);
+    const amountSatoshis = this.btcToSatoshis(cantidad);
 
     // Verificar balance
     const walletBalance = await this.getWalletBalance();
-    if (walletBalance < parseFloat(cantidad)) {
+    if (money.compare(String(walletBalance), String(cantidad)) < 0) {
       throw new Error(`Balance insuficiente en wallet maestra BTC: ${walletBalance} < ${cantidad}`);
     }
 
@@ -342,7 +353,7 @@ class BitcoinService {
     const updated = await TransaccionBlockchain.markWithdrawalAsSent(
       withdrawal.id,
       txid,
-      actualFee / 100000000
+      money.divide(String(actualFee), '100000000')
     );
 
     console.log(`✅ [BTC] Retiro enviado: ${cantidad} BTC - TX: ${txid}`);
@@ -464,20 +475,20 @@ class BitcoinService {
 
   async getWalletBalance() {
     if (!this.walletAddress) {
-      return 0;
+      return '0';
     }
-    
+
     const url = `${this.baseUrl}/addrs/${this.walletAddress}/balance${this.apiToken}`;
-    
+
     try {
       const response = await fetch(url);
       const data = await response.json();
-      
-      const balance = data.final_balance / 100000000;
+
+      const balance = money.divide(String(data.final_balance), '100000000');
       return balance;
     } catch (error) {
       console.error('Error obteniendo balance wallet BTC:', error.message);
-      return 0;
+      return '0';
     }
   }
 
