@@ -299,6 +299,15 @@ function initUsuario(sequelize) {
       }
     ],
     hooks: {
+      // Normaliza email/username (trim + minúsculas) en TODO create/update.
+      // La unicidad de la DB (unique en las columnas) es case-sensitive sobre
+      // los bytes guardados; normalizar acá garantiza que `User@X.com` y
+      // `user@x.com` colisionen, sin depender de que cada caller haga
+      // .toLowerCase() a mano (hay paths que lo saltean, ej. el alta de Google).
+      beforeValidate: (usuario, options) => {
+        if (usuario.email) usuario.email = usuario.email.trim().toLowerCase();
+        if (usuario.username) usuario.username = usuario.username.trim().toLowerCase();
+      },
       beforeCreate: (usuario, options) => {
         if (!usuario.googleId && !usuario.passwordHash) {
           throw new Error('Password is required if you are not a Google user');
