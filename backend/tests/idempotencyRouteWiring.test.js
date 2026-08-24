@@ -68,5 +68,5 @@ test('POST /trading/orders without Idempotency-Key -> 400', async () => {
   });
 
   expect(res.status).toBe(400);
-  expect(res.body.code).toBe('IDEMPOTENCY_KEY_REQUIRED');
+  expect(res.body.error.code).toBe('IDEMPOTENCY_KEY_REQUIRED');
 });
