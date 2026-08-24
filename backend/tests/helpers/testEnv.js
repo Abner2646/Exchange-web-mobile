@@ -12,3 +12,11 @@ process.env.SESSION_SECRET = process.env.SESSION_SECRET || 'test-session-secret'
 process.env.GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || 'test-google-client-id';
 process.env.GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || 'test-google-client-secret';
 process.env.GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || 'http://localhost/auth/google/callback';
+
+// Point Sequelize's `test` config at the disposable docker-compose.test.yml DB.
+// config/database.js `test` uses DB_NAME + '_test' → app_database_test.
+process.env.DB_HOST = process.env.DB_HOST || 'localhost';
+process.env.DB_PORT = process.env.DB_PORT || '55432';
+process.env.DB_NAME = process.env.DB_NAME || 'app_database';
+process.env.DB_USER = process.env.DB_USER || 'app_user';
+process.env.DB_PASSWORD = process.env.DB_PASSWORD || 'app_password';
