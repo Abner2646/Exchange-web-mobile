@@ -7,4 +7,8 @@ module.exports = {
   globalTeardown: '<rootDir>/tests/helpers/globalTeardown.js',
   forceExit: true,
   testTimeout: 20000,
+  // Integration suites share ONE test database and truncate between tests, so
+  // they must run serially — parallel workers would truncate each other's
+  // seeded rows mid-test. This is the standard trade-off for a shared test DB.
+  maxWorkers: 1,
 };
