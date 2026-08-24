@@ -61,7 +61,6 @@ const errorCodes = Object.freeze({
   P2P_TX_OFFER_NOT_FOUND: 'P2P_TX_OFFER_NOT_FOUND',
   P2P_TX_OWN_OFFER: 'P2P_TX_OWN_OFFER',
   P2P_TX_ADMIN_REQUIRED: 'P2P_TX_ADMIN_REQUIRED',
-  P2P_TX_INVALID_STATE: 'P2P_TX_INVALID_STATE',
 });
 
 module.exports = errorCodes;
