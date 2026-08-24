@@ -327,7 +327,26 @@ const cancelarTransferencia = async (req, res) => {
   const { id } = req.params;
   const usuarioId = req.user.id;
 
-  const transferencia = await Transferencia.cancelarTransferencia(id, usuarioId);
+  let transferencia;
+  try {
+    transferencia = await Transferencia.cancelarTransferencia(id, usuarioId);
+  } catch (error) {
+    // The model wraps all business errors into plain Error with a known prefix.
+    // Translate each business case to a typed AppError so the central handler
+    // returns the correct HTTP status instead of a sanitized 500.
+    const msg = error.message || '';
+    if (msg.includes('Transferencia no encontrada')) {
+      throw new AppError(404, errorCodes.TRANSFER_NOT_FOUND, 'Transferencia no encontrada');
+    }
+    if (msg.includes('Solo el remitente puede cancelar')) {
+      throw new AppError(403, errorCodes.TRANSFER_FORBIDDEN, 'No tienes permiso para cancelar esta transferencia');
+    }
+    if (msg.includes('No se puede cancelar una transferencia')) {
+      throw new AppError(400, errorCodes.TRANSFER_INVALID_STATE, 'La transferencia no está en estado pendiente');
+    }
+    // Unknown error — re-throw so the central handler returns a sanitized 500.
+    throw error;
+  }
 
   // Create cancellation notification — failure is non-fatal
   try {
@@ -372,14 +391,20 @@ const reenviarCodigo = async (req, res) => {
   const destinatario = await Usuario.findByPk(transferencia.usuarioDestinatarioId);
   const criptomoneda = await Criptomoneda.getById(transferencia.criptomonedaId);
 
-  await emailService.enviarCodigoTransferencia(
-    remitente.email,
-    codigo,
-    remitente.username,
-    transferencia.cantidad,
-    criptomoneda.symbol,
-    destinatario.username
-  );
+  // Send new code by email — failure is non-fatal; the DB update already
+  // committed a new code and expiry, so return success regardless.
+  try {
+    await emailService.enviarCodigoTransferencia(
+      remitente.email,
+      codigo,
+      remitente.username,
+      transferencia.cantidad,
+      criptomoneda.symbol,
+      destinatario.username
+    );
+  } catch (emailError) {
+    console.error('Error enviando email de reenvío de código:', emailError);
+  }
 
   res.json({
     message: 'Código de verificación reenviado exitosamente',
