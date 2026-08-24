@@ -77,3 +77,39 @@ describe('ETH native withdrawal — processPendingWithdrawals (fake chain)', () 
     expect(fake.sendCalls).toHaveLength(1);
   });
 });
+
+describe('atomic claim before broadcast (anti double-spend)', () => {
+  test('claimForProcessing is atomic: two concurrent claims, exactly one wins', async () => {
+    const user = await f.seedUser();
+    const eth = await seedEth();
+    await f.seedBalance(user, eth, '5');
+    const w = await seedPendingWithdrawal(user, eth, '1');
+
+    const results = await Promise.all([
+      TransaccionBlockchain.claimForProcessing(w.id),
+      TransaccionBlockchain.claimForProcessing(w.id),
+    ]);
+
+    expect(results.filter(Boolean)).toHaveLength(1); // exactly one true
+    const row = await TransaccionBlockchain.findByPk(w.id);
+    expect(row.estado).toBe('procesando');
+  });
+
+  test('two concurrent processPendingWithdrawals broadcast at most once', async () => {
+    const user = await f.seedUser();
+    const eth = await seedEth();
+    await f.seedBalance(user, eth, '5');
+    await seedPendingWithdrawal(user, eth, '1');
+
+    // Shared fake so both instances record into the same sendCalls.
+    const fake = new FakeEvmClient({ nativeBalance: '10' });
+
+    await Promise.all([
+      new EthereumService({ chainClient: fake }).processPendingWithdrawals(),
+      new EthereumService({ chainClient: fake }).processPendingWithdrawals(),
+    ]);
+
+    // The atomic claim serializes: only the winner broadcasts.
+    expect(fake.sendCalls).toHaveLength(1);
+  });
+});

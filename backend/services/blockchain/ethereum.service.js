@@ -524,6 +524,13 @@ class EthereumService {
 
     if (criptomoneda.symbol === 'ETH') {
       // NATIVE — migrated to the chain-client port.
+      // Atomic claim BEFORE broadcasting (anti double-spend). If another
+      // concurrent run already claimed this row, skip — do not broadcast again.
+      const claimed = await TransaccionBlockchain.claimForProcessing(withdrawal.id);
+      if (!claimed) {
+        console.log(`⏭️ [ETH] Retiro ${withdrawal.id} ya reclamado por otra corrida, se saltea`);
+        return null;
+      }
       const walletBalance = await this.chain.getNativeBalance();
       if (money.compare(String(walletBalance), String(cantidad)) < 0) {
         throw new Error(`Balance insuficiente en wallet maestra ETH: ${walletBalance} < ${cantidad}`);
