@@ -32,6 +32,10 @@ router.post('/:id/process', authenticateToken, requireEmailVerified, asyncHandle
 // GET /api/transfers/my - Obtener mis transferencias
 router.get('/my', authenticateToken, requireEmailVerified, asyncHandler(transferenciaController.getMyTransferencias));
 
+// GET /api/transfers/stats - Estadísticas de transferencias (admin)
+// NOTE: must be registered BEFORE /:id to avoid Express matching "stats" as an id param
+router.get('/stats', authenticateToken, isAdmin, asyncHandler(transferenciaController.getTransferenciaStats));
+
 // GET /api/transfers/:id - Obtener transferencia por ID
 router.get('/:id', authenticateToken, requireEmailVerified, asyncHandler(transferenciaController.getTransferenciaById));
 
@@ -54,8 +58,5 @@ router.post('/verify-funds', authenticateToken, requireEmailVerified, asyncHandl
 
 // GET /api/transfers - Obtener todas las transferencias (admin)
 router.get('/', authenticateToken, isAdmin, asyncHandler(transferenciaController.getAllTransferencias));
-
-// GET /api/transfers/stats - Estadísticas de transferencias (admin)
-router.get('/stats', authenticateToken, isAdmin, asyncHandler(transferenciaController.getTransferenciaStats));
 
 module.exports = router;

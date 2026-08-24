@@ -20,21 +20,21 @@ const createTransferencia = async (req, res) => {
     // Basic field validation
     if (!usuarioDestinatarioId || !criptomonedaId || !cantidad) {
       await transaction.rollback();
-      throw new AppError(400, errorCodes.INVALID_ORDER, 'Usuario destinatario, criptomoneda y cantidad son requeridos');
+      throw new AppError(400, errorCodes.TRANSFER_INVALID_INPUT, 'Usuario destinatario, criptomoneda y cantidad son requeridos');
     }
 
     // Verify recipient exists and is active
     const destinatario = await Usuario.findByPk(usuarioDestinatarioId);
     if (!destinatario || !destinatario.activo) {
       await transaction.rollback();
-      throw new AppError(400, errorCodes.NOT_FOUND, 'Usuario destinatario no válido');
+      throw new AppError(400, errorCodes.TRANSFER_RESOURCE_NOT_FOUND, 'Usuario destinatario no válido');
     }
 
     // Verify the crypto exists and is active
     const criptomoneda = await Criptomoneda.findByPk(criptomonedaId);
     if (!criptomoneda || !criptomoneda.activa) {
       await transaction.rollback();
-      throw new AppError(400, errorCodes.NOT_FOUND, 'Criptomoneda no válida');
+      throw new AppError(400, errorCodes.TRANSFER_RESOURCE_NOT_FOUND, 'Criptomoneda no válida');
     }
 
     // Check sender funds
@@ -170,12 +170,12 @@ const procesarTransferencia = async (req, res) => {
 
     if (!remitente || !remitente.activo) {
       await transaction.rollback();
-      throw new AppError(400, errorCodes.NOT_FOUND, 'Usuario remitente no válido');
+      throw new AppError(400, errorCodes.TRANSFER_RESOURCE_NOT_FOUND, 'Usuario remitente no válido');
     }
 
     if (!destinatario || !destinatario.activo) {
       await transaction.rollback();
-      throw new AppError(400, errorCodes.NOT_FOUND, 'Usuario destinatario no válido');
+      throw new AppError(400, errorCodes.TRANSFER_RESOURCE_NOT_FOUND, 'Usuario destinatario no válido');
     }
 
     // Re-check sender balance
@@ -421,7 +421,7 @@ const verificarFondos = async (req, res) => {
   const { criptomonedaId, cantidad } = req.body;
 
   if (!criptomonedaId || !cantidad) {
-    throw new AppError(400, errorCodes.INVALID_ORDER, 'Criptomoneda y cantidad son requeridos');
+    throw new AppError(400, errorCodes.TRANSFER_INVALID_INPUT, 'Criptomoneda y cantidad son requeridos');
   }
 
   const tieneFondos = await BalanceUsuario.hasAvailableBalance(
