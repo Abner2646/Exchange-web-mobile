@@ -8,6 +8,14 @@ class EvmChainClient {
   // Send `amount` (human units, string) of native coin to `toAddress`.
   // Returns { txHash, fee } (fee in human units, string).
   async sendNativeTransfer(toAddress, amount) { throw new Error('EvmChainClient.sendNativeTransfer not implemented'); }
+
+  // Master wallet balance of the ERC20/BEP20 token at `contractAddress`,
+  // human units (using the token's own decimals), as a string.
+  async getTokenBalance(contractAddress) { throw new Error('EvmChainClient.getTokenBalance not implemented'); }
+
+  // Send `amount` (human units, string) of the token at `contractAddress` to
+  // `toAddress`. Returns { txHash, fee } (fee in native human units, string).
+  async sendTokenTransfer(contractAddress, toAddress, amount) { throw new Error('EvmChainClient.sendTokenTransfer not implemented'); }
 }
 
 module.exports = EvmChainClient;

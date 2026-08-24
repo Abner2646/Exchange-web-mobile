@@ -78,6 +78,31 @@ describe('ETH native withdrawal — processPendingWithdrawals (fake chain)', () 
   });
 });
 
+describe('ERC20 token withdrawal — via the chain-client port', () => {
+  async function seedUsdt() {
+    const usdt = await f.seedCripto('USDT');
+    await usdt.update({ red: 'sepolia', direccionContrato: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' });
+    return usdt;
+  }
+
+  test('sends a token withdrawal through sendTokenTransfer and marks it procesando', async () => {
+    const user = await f.seedUser();
+    const usdt = await seedUsdt();
+    await f.seedBalance(user, usdt, '500');
+    const w = await seedPendingWithdrawal(user, usdt, '100');
+
+    const fake = new FakeEvmClient({ tokenBalance: '1000', txHash: '0xtoken0000000000000000000000000000000000000000000000000000000beef', fee: '0.0006' });
+    await new EthereumService({ chainClient: fake }).processPendingWithdrawals();
+
+    const row = await TransaccionBlockchain.findByPk(w.id);
+    expect(row.estado).toBe('procesando');
+    expect(row.txHash).toBe('0xtoken0000000000000000000000000000000000000000000000000000000beef');
+    expect(fake.sendTokenCalls).toHaveLength(1);
+    expect(fake.sendTokenCalls[0].contractAddress).toBe('0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
+    expect(fake.sendTokenCalls[0].toAddress).toBe('0xrecipient0000000000000000000000000000dead');
+  });
+});
+
 describe('atomic claim before broadcast (anti double-spend)', () => {
   test('claimForProcessing is atomic: two concurrent claims, exactly one wins', async () => {
     const user = await f.seedUser();

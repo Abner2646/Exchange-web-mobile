@@ -545,35 +545,15 @@ class EthereumService {
       return updated;
     }
 
-    // TOKEN (ERC20) — unchanged inline ethers; migrated in a follow-up.
-    const walletBalance = await this.getWalletBalance(criptomoneda);
+    // TOKEN (ERC20) — migrated to the chain-client port.
+    const walletBalance = await this.chain.getTokenBalance(criptomoneda.direccionContrato);
     if (money.compare(String(walletBalance), String(cantidad)) < 0) {
       throw new Error(`Balance insuficiente en wallet maestra ETH: ${walletBalance} < ${cantidad}`);
     }
-    const feeData = await this.provider.getFeeData();
-    const gasPrice = feeData.gasPrice || feeData.maxFeePerGas || ethers.parseUnits('20', 'gwei');
-    try {
-      const contract = new ethers.Contract(
-        criptomoneda.direccionContrato,
-        [
-          'function transfer(address to, uint256 amount) returns (bool)',
-          'function decimals() view returns (uint8)'
-        ],
-        this.wallet
-      );
-      const estimatedFee = ethers.formatEther(gasPrice * BigInt(60000));
-      const decimales = await contract.decimals();
-      const amount = ethers.parseUnits(cantidad.toString(), decimales);
-      const tx = await contract.transfer(direccionDestino, amount, {
-        gasLimit: 60000,
-        gasPrice: gasPrice
-      });
-      const updated = await TransaccionBlockchain.markWithdrawalAsSent(withdrawal.id, tx.hash, estimatedFee);
-      console.log(`✅ [ETH] Retiro enviado: ${cantidad} ${criptomoneda.symbol} - TX: ${tx.hash}`);
-      return updated;
-    } catch (txError) {
-      throw new Error(`Error enviando transacción ETH: ${txError.message}`);
-    }
+    const { txHash, fee } = await this.chain.sendTokenTransfer(criptomoneda.direccionContrato, direccionDestino, cantidad.toString());
+    const updated = await TransaccionBlockchain.markWithdrawalAsSent(withdrawal.id, txHash, fee);
+    console.log(`✅ [ETH] Retiro enviado: ${cantidad} ${criptomoneda.symbol} - TX: ${txHash}`);
+    return updated;
   }
 
   async updateConfirmations() {

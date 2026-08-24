@@ -56,6 +56,25 @@ describe('BNB native withdrawal — processPendingWithdrawals (fake chain)', () 
     expect(bal.balanceBloqueado).toBe('0.00000000');
   });
 
+  test('BEP20 token withdrawal goes through sendTokenTransfer', async () => {
+    const user = await f.seedUser();
+    const busd = await f.seedCripto('BUSD');
+    await busd.update({ red: 'bsc-testnet', direccionContrato: '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' });
+    await f.seedBalance(user, busd, '500');
+    const w = await TransaccionBlockchain.createWithdrawal({
+      userId: user.id, criptomonedaId: busd.id, cantidad: '100', direccionDestino: '0xrecipient0000000000000000000000000000dead',
+    });
+
+    const fake = new FakeEvmClient({ tokenBalance: '1000', txHash: '0xbeptok0000000000000000000000000000000000000000000000000000beef' });
+    await new BscService({ chainClient: fake }).processPendingWithdrawals();
+
+    const row = await TransaccionBlockchain.findByPk(w.id);
+    expect(row.estado).toBe('procesando');
+    expect(fake.sendTokenCalls).toHaveLength(1);
+    expect(fake.sendTokenCalls[0].contractAddress).toBe('0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb');
+    expect(fake.sendCalls).toHaveLength(0); // native path not used
+  });
+
   test('two concurrent processPendingWithdrawals broadcast at most once', async () => {
     const user = await f.seedUser();
     const bnb = await seedBnb();
