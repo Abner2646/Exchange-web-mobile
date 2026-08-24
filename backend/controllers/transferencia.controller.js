@@ -386,14 +386,16 @@ const reenviarCodigo = async (req, res) => {
 
   const { transferencia, codigo } = await Transferencia.reenviarCodigo(id);
 
-  // Send new code by email
-  const remitente = await Usuario.findByPk(usuarioId);
-  const destinatario = await Usuario.findByPk(transferencia.usuarioDestinatarioId);
-  const criptomoneda = await Criptomoneda.getById(transferencia.criptomonedaId);
-
-  // Send new code by email — failure is non-fatal; the DB update already
-  // committed a new code and expiry, so return success regardless.
+  // Notify by email — best-effort. reenviarCodigo already committed the new code
+  // and expiry, so the whole email pipeline is non-fatal: not just the send, but
+  // the lookups feeding it. If a DB hiccup made one of those lookups reject, it
+  // would otherwise surface a 500 for an operation that actually succeeded — and
+  // the user might retry, burning another code. Log and return success.
   try {
+    const remitente = await Usuario.findByPk(usuarioId);
+    const destinatario = await Usuario.findByPk(transferencia.usuarioDestinatarioId);
+    const criptomoneda = await Criptomoneda.getById(transferencia.criptomonedaId);
+
     await emailService.enviarCodigoTransferencia(
       remitente.email,
       codigo,
