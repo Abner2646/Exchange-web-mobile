@@ -534,23 +534,27 @@ class EthereumService {
     }
 
     if (criptomoneda.symbol === 'ETH') {
-      // NATIVE — migrated to the chain-client port.
+      // NATIVE — sign → pre-record txHash → broadcast → finalize.
       const walletBalance = await this.chain.getNativeBalance();
       if (money.compare(String(walletBalance), String(cantidad)) < 0) {
         throw new Error(`Balance insuficiente en wallet maestra ETH: ${walletBalance} < ${cantidad}`);
       }
-      const { txHash, fee } = await this.chain.sendNativeTransfer(direccionDestino, cantidad.toString());
+      const { txHash, signed, fee } = await this.chain.signNativeTransfer(direccionDestino, cantidad.toString());
+      await TransaccionBlockchain.recordWithdrawalTxHash(withdrawal.id, txHash); // intent before broadcast
+      await this.chain.broadcast(signed);
       const updated = await TransaccionBlockchain.markWithdrawalAsSent(withdrawal.id, txHash, fee);
       console.log(`✅ [ETH] Retiro enviado: ${cantidad} ${criptomoneda.symbol} - TX: ${txHash}`);
       return updated;
     }
 
-    // TOKEN (ERC20) — migrated to the chain-client port.
+    // TOKEN (ERC20) — sign → pre-record txHash → broadcast → finalize.
     const walletBalance = await this.chain.getTokenBalance(criptomoneda.direccionContrato);
     if (money.compare(String(walletBalance), String(cantidad)) < 0) {
       throw new Error(`Balance insuficiente en wallet maestra ETH: ${walletBalance} < ${cantidad}`);
     }
-    const { txHash, fee } = await this.chain.sendTokenTransfer(criptomoneda.direccionContrato, direccionDestino, cantidad.toString());
+    const { txHash, signed, fee } = await this.chain.signTokenTransfer(criptomoneda.direccionContrato, direccionDestino, cantidad.toString());
+    await TransaccionBlockchain.recordWithdrawalTxHash(withdrawal.id, txHash);
+    await this.chain.broadcast(signed);
     const updated = await TransaccionBlockchain.markWithdrawalAsSent(withdrawal.id, txHash, fee);
     console.log(`✅ [ETH] Retiro enviado: ${cantidad} ${criptomoneda.symbol} - TX: ${txHash}`);
     return updated;

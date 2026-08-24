@@ -38,9 +38,10 @@ describe('ETH native withdrawal — processPendingWithdrawals (fake chain)', () 
     expect(row.txHash).toBe('0xsent00000000000000000000000000000000000000000000000000000000beef');
     expect(row.feeBlockchain).toBe('0.00042000');
 
-    expect(fake.sendCalls).toHaveLength(1);
-    expect(fake.sendCalls[0].toAddress).toBe('0xrecipient0000000000000000000000000000dead');
-    expect(fake.sendCalls[0].amount).toBe('1.00000000'); // cantidad from DECIMAL(28,8)
+    expect(fake.signCalls).toHaveLength(1);
+    expect(fake.signCalls[0].toAddress).toBe('0xrecipient0000000000000000000000000000dead');
+    expect(fake.signCalls[0].amount).toBe('1.00000000'); // cantidad from DECIMAL(28,8)
+    expect(fake.broadcastCalls).toHaveLength(1); // broadcast happened after pre-record
   });
 
   test('insufficient master wallet balance → not sent, marked fallido, user balance restored', async () => {
@@ -54,7 +55,7 @@ describe('ETH native withdrawal — processPendingWithdrawals (fake chain)', () 
 
     const row = await TransaccionBlockchain.findByPk(w.id);
     expect(row.estado).toBe('fallido');
-    expect(fake.sendCalls).toHaveLength(0);
+    expect(fake.signCalls).toHaveLength(0); // balance check throws before signing
 
     // failWithdrawal returns the locked funds to available.
     const bal = await f.getBalance(user, eth);
@@ -74,7 +75,7 @@ describe('ETH native withdrawal — processPendingWithdrawals (fake chain)', () 
     await service.processPendingWithdrawals(); // sends, row → procesando
     await service.processPendingWithdrawals(); // query only picks 'pendiente' → nothing
 
-    expect(fake.sendCalls).toHaveLength(1);
+    expect(fake.broadcastCalls).toHaveLength(1);
   });
 });
 
@@ -97,9 +98,11 @@ describe('ERC20 token withdrawal — via the chain-client port', () => {
     const row = await TransaccionBlockchain.findByPk(w.id);
     expect(row.estado).toBe('procesando');
     expect(row.txHash).toBe('0xtoken0000000000000000000000000000000000000000000000000000000beef');
-    expect(fake.sendTokenCalls).toHaveLength(1);
-    expect(fake.sendTokenCalls[0].contractAddress).toBe('0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
-    expect(fake.sendTokenCalls[0].toAddress).toBe('0xrecipient0000000000000000000000000000dead');
+    expect(fake.signCalls).toHaveLength(1);
+    expect(fake.signCalls[0].kind).toBe('token');
+    expect(fake.signCalls[0].contractAddress).toBe('0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
+    expect(fake.signCalls[0].toAddress).toBe('0xrecipient0000000000000000000000000000dead');
+    expect(fake.broadcastCalls).toHaveLength(1);
   });
 });
 
@@ -135,6 +138,6 @@ describe('atomic claim before broadcast (anti double-spend)', () => {
     ]);
 
     // The atomic claim serializes: only the winner broadcasts.
-    expect(fake.sendCalls).toHaveLength(1);
+    expect(fake.broadcastCalls).toHaveLength(1);
   });
 });

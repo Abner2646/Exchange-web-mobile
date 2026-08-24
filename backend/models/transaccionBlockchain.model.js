@@ -439,6 +439,17 @@ function createTransaccionBlockchainModel(sequelize) {
     return affected === 1;
   };
 
+  // Persiste el txHash (intención de envío) ANTES del broadcast, mientras la
+  // fila está en 'procesando' (ya reclamada). Así, si el proceso cae alrededor
+  // del broadcast, el reaper tiene un hash concreto para verificar on-chain si
+  // el retiro salió o no — en vez de tener que adivinar. No cambia el estado.
+  TransaccionBlockchain.recordWithdrawalTxHash = async (id, txHash) => {
+    await TransaccionBlockchain.update(
+      { txHash },
+      { where: { id, tipo: 'retiro', estado: 'procesando' } }
+    );
+  };
+
   TransaccionBlockchain.markWithdrawalAsSent = async (id, txHash, feeBlockchain) => {
     const transaction = await sequelize.transaction();
 

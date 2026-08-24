@@ -16,6 +16,17 @@ class EvmChainClient {
   // Send `amount` (human units, string) of the token at `contractAddress` to
   // `toAddress`. Returns { txHash, fee } (fee in native human units, string).
   async sendTokenTransfer(contractAddress, toAddress, amount) { throw new Error('EvmChainClient.sendTokenTransfer not implemented'); }
+
+  // Two-phase send (so the txHash can be persisted BEFORE broadcast — anti
+  // stuck-claim). sign* build + sign the tx with NO network effect and return
+  // the deterministic hash + an opaque signed payload; broadcast sends it.
+  async signNativeTransfer(toAddress, amount) { throw new Error('EvmChainClient.signNativeTransfer not implemented'); }
+  async signTokenTransfer(contractAddress, toAddress, amount) { throw new Error('EvmChainClient.signTokenTransfer not implemented'); }
+  async broadcast(signed) { throw new Error('EvmChainClient.broadcast not implemented'); }
+
+  // On-chain lookup for the reaper: confirmations, 0 if in-mempool/unconfirmed,
+  // or null if the tx is unknown to the node (never broadcast / dropped).
+  async getConfirmations(txHash) { throw new Error('EvmChainClient.getConfirmations not implemented'); }
 }
 
 module.exports = EvmChainClient;

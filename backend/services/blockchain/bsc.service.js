@@ -550,23 +550,27 @@ class BscService {
     }
 
     if (criptomoneda.symbol === 'BNB') {
-      // NATIVE — migrated to the chain-client port (BSC is EVM).
+      // NATIVE — sign → pre-record txHash → broadcast → finalize (BSC is EVM).
       const walletBalance = await this.chain.getNativeBalance();
       if (money.compare(String(walletBalance), String(cantidad)) < 0) {
         throw new Error(`Balance insuficiente en wallet maestra BSC: ${walletBalance} < ${cantidad}`);
       }
-      const { txHash, fee } = await this.chain.sendNativeTransfer(direccionDestino, cantidad.toString());
+      const { txHash, signed, fee } = await this.chain.signNativeTransfer(direccionDestino, cantidad.toString());
+      await TransaccionBlockchain.recordWithdrawalTxHash(withdrawal.id, txHash);
+      await this.chain.broadcast(signed);
       const updated = await TransaccionBlockchain.markWithdrawalAsSent(withdrawal.id, txHash, fee);
       console.log(`✅ [BSC] Retiro enviado: ${cantidad} ${criptomoneda.symbol} - TX: ${txHash}`);
       return updated;
     }
 
-    // TOKEN (BEP20) — migrated to the chain-client port.
+    // TOKEN (BEP20) — sign → pre-record txHash → broadcast → finalize.
     const walletBalance = await this.chain.getTokenBalance(criptomoneda.direccionContrato);
     if (money.compare(String(walletBalance), String(cantidad)) < 0) {
       throw new Error(`Balance insuficiente en wallet maestra BSC: ${walletBalance} < ${cantidad}`);
     }
-    const { txHash, fee } = await this.chain.sendTokenTransfer(criptomoneda.direccionContrato, direccionDestino, cantidad.toString());
+    const { txHash, signed, fee } = await this.chain.signTokenTransfer(criptomoneda.direccionContrato, direccionDestino, cantidad.toString());
+    await TransaccionBlockchain.recordWithdrawalTxHash(withdrawal.id, txHash);
+    await this.chain.broadcast(signed);
     const updated = await TransaccionBlockchain.markWithdrawalAsSent(withdrawal.id, txHash, fee);
     console.log(`✅ [BSC] Retiro enviado: ${cantidad} ${criptomoneda.symbol} - TX: ${txHash}`);
     return updated;

@@ -35,8 +35,9 @@ describe('BNB native withdrawal — processPendingWithdrawals (fake chain)', () 
     expect(row.estado).toBe('procesando');
     expect(row.txHash).toBe('0xbnbsent0000000000000000000000000000000000000000000000000000beef');
     expect(row.feeBlockchain).toBe('0.00042000');
-    expect(fake.sendCalls).toHaveLength(1);
-    expect(fake.sendCalls[0].toAddress).toBe('0xrecipient0000000000000000000000000000dead');
+    expect(fake.signCalls).toHaveLength(1);
+    expect(fake.signCalls[0].toAddress).toBe('0xrecipient0000000000000000000000000000dead');
+    expect(fake.broadcastCalls).toHaveLength(1);
   });
 
   test('insufficient master wallet balance → not sent, marked fallido, user balance restored', async () => {
@@ -50,7 +51,7 @@ describe('BNB native withdrawal — processPendingWithdrawals (fake chain)', () 
 
     const row = await TransaccionBlockchain.findByPk(w.id);
     expect(row.estado).toBe('fallido');
-    expect(fake.sendCalls).toHaveLength(0);
+    expect(fake.signCalls).toHaveLength(0);
     const bal = await f.getBalance(user, bnb);
     expect(bal.balanceDisponible).toBe('5.00000000');
     expect(bal.balanceBloqueado).toBe('0.00000000');
@@ -70,9 +71,9 @@ describe('BNB native withdrawal — processPendingWithdrawals (fake chain)', () 
 
     const row = await TransaccionBlockchain.findByPk(w.id);
     expect(row.estado).toBe('procesando');
-    expect(fake.sendTokenCalls).toHaveLength(1);
-    expect(fake.sendTokenCalls[0].contractAddress).toBe('0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb');
-    expect(fake.sendCalls).toHaveLength(0); // native path not used
+    expect(fake.signCalls).toHaveLength(1);
+    expect(fake.signCalls[0].kind).toBe('token');
+    expect(fake.signCalls[0].contractAddress).toBe('0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb');
   });
 
   test('two concurrent processPendingWithdrawals broadcast at most once', async () => {
@@ -87,6 +88,6 @@ describe('BNB native withdrawal — processPendingWithdrawals (fake chain)', () 
       new BscService({ chainClient: fake }).processPendingWithdrawals(),
     ]);
 
-    expect(fake.sendCalls).toHaveLength(1);
+    expect(fake.broadcastCalls).toHaveLength(1);
   });
 });
