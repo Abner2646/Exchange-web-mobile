@@ -10,7 +10,10 @@ class EthereumService {
     this.isTestnet = process.env.NODE_ENV !== 'production';
 
     // Chain-client seam: injected in tests, built from env in prod.
-    this.chain = opts.chainClient || EthersEvmClient.fromEnv({ isTestnet: this.isTestnet });
+    this.chain = opts.chainClient || new EthersEvmClient({
+      rpcUrl: this.isTestnet ? process.env.ETHEREUM_SEPOLIA_RPC_URL : process.env.ETHEREUM_RPC_URL,
+      privateKey: this.isTestnet ? process.env.ETH_SEPOLIA_PRIVATE_KEY : process.env.ETH_PRIVATE_KEY,
+    });
 
     // Legacy ethers handles for the not-yet-migrated paths (token withdrawal,
     // scan, confirmations, token balance). The real adapter exposes them; a fake
@@ -522,15 +525,16 @@ class EthereumService {
   async processWithdrawal(withdrawal) {
     const { cantidad, direccionDestino, criptomoneda } = withdrawal;
 
+    // Atomic claim BEFORE any broadcast (anti double-spend), for BOTH native and
+    // token paths. If another concurrent run already claimed this row, skip.
+    const claimed = await TransaccionBlockchain.claimForProcessing(withdrawal.id);
+    if (!claimed) {
+      console.log(`⏭️ [ETH] Retiro ${withdrawal.id} ya reclamado por otra corrida, se saltea`);
+      return null;
+    }
+
     if (criptomoneda.symbol === 'ETH') {
       // NATIVE — migrated to the chain-client port.
-      // Atomic claim BEFORE broadcasting (anti double-spend). If another
-      // concurrent run already claimed this row, skip — do not broadcast again.
-      const claimed = await TransaccionBlockchain.claimForProcessing(withdrawal.id);
-      if (!claimed) {
-        console.log(`⏭️ [ETH] Retiro ${withdrawal.id} ya reclamado por otra corrida, se saltea`);
-        return null;
-      }
       const walletBalance = await this.chain.getNativeBalance();
       if (money.compare(String(walletBalance), String(cantidad)) < 0) {
         throw new Error(`Balance insuficiente en wallet maestra ETH: ${walletBalance} < ${cantidad}`);

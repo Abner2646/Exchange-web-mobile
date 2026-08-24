@@ -11,12 +11,6 @@ class EthersEvmClient extends EvmChainClient {
     this.wallet = wallet || new ethers.Wallet(privateKey, this.provider);
   }
 
-  static fromEnv({ isTestnet }) {
-    const rpcUrl = isTestnet ? process.env.ETHEREUM_SEPOLIA_RPC_URL : process.env.ETHEREUM_RPC_URL;
-    const privateKey = isTestnet ? process.env.ETH_SEPOLIA_PRIVATE_KEY : process.env.ETH_PRIVATE_KEY;
-    return new EthersEvmClient({ rpcUrl, privateKey });
-  }
-
   async getNativeBalance() {
     const balance = await this.provider.getBalance(this.wallet.address);
     return ethers.formatEther(balance);

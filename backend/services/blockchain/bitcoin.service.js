@@ -327,6 +327,18 @@ class BitcoinService {
 
   async processWithdrawal(withdrawal) {
     const { cantidad, direccionDestino } = withdrawal;
+
+    // Atomic claim BEFORE any broadcast (anti double-spend). If another
+    // concurrent run already claimed this row, skip — do not broadcast again.
+    // The claim mechanism (TransaccionBlockchain.claimForProcessing) is proven
+    // atomic; BTC's send path still uses bitcoinjs/BlockCypher inline (its own
+    // chain-client adapter is a follow-up), but the double-spend is closed here.
+    const claimed = await TransaccionBlockchain.claimForProcessing(withdrawal.id);
+    if (!claimed) {
+      console.log(`⏭️ [BTC] Retiro ${withdrawal.id} ya reclamado por otra corrida, se saltea`);
+      return null;
+    }
+
     const amountSatoshis = this.btcToSatoshis(cantidad);
 
     // Verificar balance
