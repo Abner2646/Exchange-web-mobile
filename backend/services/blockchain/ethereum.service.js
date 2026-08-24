@@ -3,20 +3,21 @@ require('dotenv').config();
 const { ethers } = require('ethers');
 const { TransaccionBlockchain, DireccionDeposito, Criptomoneda, BlockchainState } = require('../../models');
 const money = require('../../utils/money');
+const EthersEvmClient = require('./ethersEvmClient');
 
 class EthereumService {
-  constructor() {
+  constructor(opts = {}) {
     this.isTestnet = process.env.NODE_ENV !== 'production';
-    
-    this.provider = new ethers.JsonRpcProvider(
-      this.isTestnet ? process.env.ETHEREUM_SEPOLIA_RPC_URL : process.env.ETHEREUM_RPC_URL
-    );
-    
-    this.wallet = new ethers.Wallet(
-      this.isTestnet ? process.env.ETH_SEPOLIA_PRIVATE_KEY : process.env.ETH_PRIVATE_KEY, 
-      this.provider
-    );
-    
+
+    // Chain-client seam: injected in tests, built from env in prod.
+    this.chain = opts.chainClient || EthersEvmClient.fromEnv({ isTestnet: this.isTestnet });
+
+    // Legacy ethers handles for the not-yet-migrated paths (token withdrawal,
+    // scan, confirmations, token balance). The real adapter exposes them; a fake
+    // adapter leaves them undefined (the native path never touches them).
+    this.provider = this.chain.provider || null;
+    this.wallet = this.chain.wallet || null;
+
     this.network = 'ethereum';
     this.actualNetwork = this.isTestnet ? 'sepolia' : 'ethereum';
     this.chainId = this.isTestnet ? 11155111 : 1; // Sepolia : Mainnet
@@ -521,57 +522,44 @@ class EthereumService {
   async processWithdrawal(withdrawal) {
     const { cantidad, direccionDestino, criptomoneda } = withdrawal;
 
+    if (criptomoneda.symbol === 'ETH') {
+      // NATIVE — migrated to the chain-client port.
+      const walletBalance = await this.chain.getNativeBalance();
+      if (money.compare(String(walletBalance), String(cantidad)) < 0) {
+        throw new Error(`Balance insuficiente en wallet maestra ETH: ${walletBalance} < ${cantidad}`);
+      }
+      const { txHash, fee } = await this.chain.sendNativeTransfer(direccionDestino, cantidad.toString());
+      const updated = await TransaccionBlockchain.markWithdrawalAsSent(withdrawal.id, txHash, fee);
+      console.log(`✅ [ETH] Retiro enviado: ${cantidad} ${criptomoneda.symbol} - TX: ${txHash}`);
+      return updated;
+    }
+
+    // TOKEN (ERC20) — unchanged inline ethers; migrated in a follow-up.
     const walletBalance = await this.getWalletBalance(criptomoneda);
     if (money.compare(String(walletBalance), String(cantidad)) < 0) {
       throw new Error(`Balance insuficiente en wallet maestra ETH: ${walletBalance} < ${cantidad}`);
     }
-
-    let tx;
-    let estimatedFee;
-
     const feeData = await this.provider.getFeeData();
     const gasPrice = feeData.gasPrice || feeData.maxFeePerGas || ethers.parseUnits('20', 'gwei');
-
     try {
-      if (criptomoneda.symbol === 'ETH') {
-        estimatedFee = ethers.formatEther(gasPrice * BigInt(21000));
-
-        tx = await this.wallet.sendTransaction({
-          to: direccionDestino,
-          value: ethers.parseEther(cantidad.toString()),
-          gasLimit: 21000,
-          gasPrice: gasPrice
-        });
-      } else {
-        const contract = new ethers.Contract(
-          criptomoneda.direccionContrato,
-          [
-            'function transfer(address to, uint256 amount) returns (bool)',
-            'function decimals() view returns (uint8)'
-          ],
-          this.wallet
-        );
-
-        estimatedFee = ethers.formatEther(gasPrice * BigInt(60000));
-
-        const decimales = await contract.decimals();
-        const amount = ethers.parseUnits(cantidad.toString(), decimales);
-
-        tx = await contract.transfer(direccionDestino, amount, {
-          gasLimit: 60000,
-          gasPrice: gasPrice
-        });
-      }
-
-      const updated = await TransaccionBlockchain.markWithdrawalAsSent(
-        withdrawal.id,
-        tx.hash,
-        estimatedFee
+      const contract = new ethers.Contract(
+        criptomoneda.direccionContrato,
+        [
+          'function transfer(address to, uint256 amount) returns (bool)',
+          'function decimals() view returns (uint8)'
+        ],
+        this.wallet
       );
-
+      const estimatedFee = ethers.formatEther(gasPrice * BigInt(60000));
+      const decimales = await contract.decimals();
+      const amount = ethers.parseUnits(cantidad.toString(), decimales);
+      const tx = await contract.transfer(direccionDestino, amount, {
+        gasLimit: 60000,
+        gasPrice: gasPrice
+      });
+      const updated = await TransaccionBlockchain.markWithdrawalAsSent(withdrawal.id, tx.hash, estimatedFee);
       console.log(`✅ [ETH] Retiro enviado: ${cantidad} ${criptomoneda.symbol} - TX: ${tx.hash}`);
       return updated;
-
     } catch (txError) {
       throw new Error(`Error enviando transacción ETH: ${txError.message}`);
     }
