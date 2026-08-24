@@ -1,76 +1,76 @@
 const { Transferencia, Usuario, Criptomoneda, BalanceUsuario, Notificaciones } = require('../models/index.js');
 const emailService = require('../services/email.service.js');
 const { sequelize } = require('../models/index.js');
+const AppError = require('../utils/AppError');
+const errorCodes = require('../utils/errorCodes');
 
-// Crear nueva transferencia
+// Create new transfer
 const createTransferencia = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const usuarioRemitenteId = req.user.id;
-    const { 
-      usuarioDestinatarioId, 
-      criptomonedaId, 
-      cantidad, 
-      concepto = '' 
+    const {
+      usuarioDestinatarioId,
+      criptomonedaId,
+      cantidad,
+      concepto = '',
     } = req.body;
 
-    // Validaciones básicas
+    // Basic field validation
     if (!usuarioDestinatarioId || !criptomonedaId || !cantidad) {
       await transaction.rollback();
-      return res.status(400).json({ 
-        error: 'Usuario destinatario, criptomoneda y cantidad son requeridos' 
-      });
+      throw new AppError(400, errorCodes.INVALID_ORDER, 'Usuario destinatario, criptomoneda y cantidad son requeridos');
     }
 
-    // Verificar que el destinatario existe y está activo
+    // Verify recipient exists and is active
     const destinatario = await Usuario.findByPk(usuarioDestinatarioId);
     if (!destinatario || !destinatario.activo) {
       await transaction.rollback();
-      return res.status(400).json({ error: 'Usuario destinatario no válido' });
+      throw new AppError(400, errorCodes.NOT_FOUND, 'Usuario destinatario no válido');
     }
 
-    // Verificar que la criptomoneda existe y está activa
+    // Verify the crypto exists and is active
     const criptomoneda = await Criptomoneda.findByPk(criptomonedaId);
     if (!criptomoneda || !criptomoneda.activa) {
       await transaction.rollback();
-      return res.status(400).json({ error: 'Criptomoneda no válida' });
+      throw new AppError(400, errorCodes.NOT_FOUND, 'Criptomoneda no válida');
     }
 
-    // Verificar fondos del remitente
+    // Check sender funds
     const tieneFondos = await BalanceUsuario.hasAvailableBalance(
-      usuarioRemitenteId, 
-      criptomonedaId, 
+      usuarioRemitenteId,
+      criptomonedaId,
       cantidad
     );
 
     if (!tieneFondos) {
       await transaction.rollback();
-      return res.status(400).json({ error: 'Fondos insuficientes para realizar la transferencia' });
+      throw new AppError(400, errorCodes.INSUFFICIENT_FUNDS, 'Fondos insuficientes para realizar la transferencia');
     }
 
-    // Crear transferencia usando el método directo del modelo
+    // Create the transfer record
     const transferencia = await Transferencia.create({
       usuarioRemitenteId,
       usuarioDestinatarioId,
       criptomonedaId,
       cantidad,
       concepto,
-      estado: 'pendiente'
+      estado: 'pendiente',
     }, { transaction });
 
-    // Generar código de verificación
+    // Generate verification code
     const codigo = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiracion = new Date(Date.now() + 10 * 60 * 1000); // 10 minutos
-    
+    const expiracion = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
     transferencia.codigoVerificacion = codigo;
     transferencia.expiracionCodigo = expiracion;
     await transferencia.save({ transaction });
 
-    // Obtener información del remitente
+    // Fetch sender info for email
     const remitente = await Usuario.findByPk(usuarioRemitenteId, { transaction });
 
-    // Enviar email de verificación al remitente
+    // Send verification email — failure is non-fatal
     try {
       await emailService.enviarCodigoTransferencia(
         remitente.email,
@@ -84,22 +84,6 @@ const createTransferencia = async (req, res) => {
       console.error('Error enviando email de verificación:', emailError);
     }
 
-    // Crear notificación para el remitente
-    /*try {
-      await Notificaciones.createNotification({
-        usuarioId: usuarioRemitenteId,
-        template: 'TRANSFERENCIA_CREADA',
-        templateData: {
-          cantidad,
-          simbolo: criptomoneda.symbol,
-          destinatario: destinatario.username,
-          codigo
-        }
-      }, { transaction });
-    } catch (notifError) {
-      console.error('Error creando notificación:', notifError);
-    }*/
-
     await transaction.commit();
 
     res.status(201).json({
@@ -110,20 +94,24 @@ const createTransferencia = async (req, res) => {
         criptomoneda: criptomoneda.symbol,
         destinatario: destinatario.username,
         estado: transferencia.estado,
-        expiracionCodigo: transferencia.expiracionCodigo
-      }
+        expiracionCodigo: transferencia.expiracionCodigo,
+      },
     });
   } catch (error) {
-    await transaction.rollback();
-    console.error('Error en createTransferencia:', error);
-    res.status(400).json({ error: error.message });
+    // Roll back only when the transaction is still open (i.e., we have not
+    // already called rollback inside a known-error branch above).
+    if (transaction && !transaction.finished) {
+      await transaction.rollback();
+    }
+    // Re-throw so asyncHandler forwards to the central error handler.
+    throw error;
   }
 };
 
-// Procesar transferencia con código de verificación - VERSIÓN COMPATIBLE
+// Process transfer with verification code
 const procesarTransferencia = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const { id } = req.params;
     const { codigoVerificacion } = req.body;
@@ -133,70 +121,70 @@ const procesarTransferencia = async (req, res) => {
 
     if (!codigoVerificacion) {
       await transaction.rollback();
-      return res.status(400).json({ error: 'Código de verificación requerido' });
+      throw new AppError(400, errorCodes.VERIFICATION_CODE_INVALID, 'Código de verificación requerido');
     }
 
-    // Verificar que la transferencia existe y pertenece al usuario
+    // Verify transfer exists and belongs to user
     const transferencia = await Transferencia.findByPk(id, {
       include: [
         { association: 'remitente' },
         { association: 'destinatario' },
-        { association: 'criptomonedaTransferencia' }
+        { association: 'criptomonedaTransferencia' },
       ],
-      transaction
+      transaction,
     });
 
     if (!transferencia) {
       await transaction.rollback();
-      return res.status(404).json({ error: 'Transferencia no encontrada' });
+      throw new AppError(404, errorCodes.TRANSFER_NOT_FOUND, 'Transferencia no encontrada');
     }
 
-    // Verificar permisos
+    // Verify ownership
     if (transferencia.usuarioRemitenteId !== usuarioId) {
       await transaction.rollback();
-      return res.status(403).json({ error: 'No tienes permiso para procesar esta transferencia' });
+      throw new AppError(403, errorCodes.TRANSFER_FORBIDDEN, 'No tienes permiso para procesar esta transferencia');
     }
 
-    // Verificar estado
+    // Verify state
     if (transferencia.estado !== 'pendiente') {
       await transaction.rollback();
-      return res.status(400).json({ error: `La transferencia ya fue ${transferencia.estado}` });
+      throw new AppError(400, errorCodes.TRANSFER_INVALID_STATE, `La transferencia ya fue ${transferencia.estado}`);
     }
 
-    // Verificar código de verificación
-    if (!transferencia.codigoVerificacion || 
+    // Verify verification code value
+    if (!transferencia.codigoVerificacion ||
         transferencia.codigoVerificacion !== codigoVerificacion) {
       await transaction.rollback();
-      return res.status(400).json({ error: 'Código de verificación incorrecto' });
+      throw new AppError(400, errorCodes.VERIFICATION_CODE_INVALID, 'Código de verificación incorrecto');
     }
 
-    // Verificar expiración del código
+    // Verify code expiry
     if (!transferencia.expiracionCodigo || new Date() > transferencia.expiracionCodigo) {
       await transaction.rollback();
-      return res.status(400).json({ error: 'El código de verificación ha expirado' });
+      throw new AppError(400, errorCodes.VERIFICATION_CODE_EXPIRED, 'El código de verificación ha expirado');
     }
 
-    // Verificar que los usuarios existen y están activos
+    // Verify both users are still active
     const remitente = await Usuario.findByPk(transferencia.usuarioRemitenteId, { transaction });
     const destinatario = await Usuario.findByPk(transferencia.usuarioDestinatarioId, { transaction });
 
     if (!remitente || !remitente.activo) {
       await transaction.rollback();
-      return res.status(400).json({ error: 'Usuario remitente no válido' });
+      throw new AppError(400, errorCodes.NOT_FOUND, 'Usuario remitente no válido');
     }
 
     if (!destinatario || !destinatario.activo) {
       await transaction.rollback();
-      return res.status(400).json({ error: 'Usuario destinatario no válido' });
+      throw new AppError(400, errorCodes.NOT_FOUND, 'Usuario destinatario no válido');
     }
 
-    // Verificar fondos del remitente
+    // Re-check sender balance
     const balanceRemitente = await BalanceUsuario.findOne({
       where: {
         userId: transferencia.usuarioRemitenteId,
-        criptomonedaId: transferencia.criptomonedaId
+        criptomonedaId: transferencia.criptomonedaId,
       },
-      transaction
+      transaction,
     });
 
     const balanceDisponible = balanceRemitente ? parseFloat(balanceRemitente.balanceDisponible) : 0;
@@ -204,42 +192,37 @@ const procesarTransferencia = async (req, res) => {
 
     if (balanceDisponible < cantidadTransferencia) {
       await transaction.rollback();
-      return res.status(400).json({ 
-        error: `Fondos insuficientes. Disponible: ${balanceDisponible}, Requerido: ${cantidadTransferencia}` 
-      });
+      throw new AppError(400, errorCodes.INSUFFICIENT_FUNDS, 'Fondos insuficientes para completar la transferencia');
     }
 
     console.log(`Ejecutando transferencia: ${cantidadTransferencia} desde ${remitente.username} hacia ${destinatario.username}`);
 
-    // ✅ CORREGIDO: Usar la firma correcta del método updateBalance
-    // RESTAR del remitente
+    // Deduct from sender
     await BalanceUsuario.updateBalance(
       transferencia.usuarioRemitenteId,
       transferencia.criptomonedaId,
       -cantidadTransferencia,
       'disponible',
-      transaction  // ← Solo el objeto transaction, sin {}
+      transaction
     );
 
-    // ✅ CORREGIDO: Usar la firma correcta del método updateBalance  
-    // SUMAR al destinatario
+    // Credit to recipient
     await BalanceUsuario.updateBalance(
       transferencia.usuarioDestinatarioId,
       transferencia.criptomonedaId,
       cantidadTransferencia,
       'disponible',
-      transaction  // ← Solo el objeto transaction, sin {}
+      transaction
     );
 
-    // Actualizar estado de la transferencia
+    // Mark transfer complete
     transferencia.estado = 'completada';
     transferencia.codigoVerificacion = null;
     transferencia.expiracionCodigo = null;
     await transferencia.save({ transaction });
 
-    // Enviar emails de confirmación
+    // Send confirmation emails — failure is non-fatal
     try {
-      // Email al remitente
       await emailService.notificarTransferenciaCompletada(
         remitente.email,
         remitente.username,
@@ -249,7 +232,6 @@ const procesarTransferencia = async (req, res) => {
         'enviada'
       );
 
-      // Email al destinatario
       await emailService.notificarTransferenciaCompletada(
         destinatario.email,
         destinatario.username,
@@ -262,28 +244,26 @@ const procesarTransferencia = async (req, res) => {
       console.error('Error enviando emails de confirmación:', emailError);
     }
 
-    // Crear notificaciones
+    // Create notifications — failure is non-fatal
     try {
-      // Notificación para el remitente
       await Notificaciones.createNotification({
         usuarioId: transferencia.usuarioRemitenteId,
         template: 'TRANSFERENCIA_COMPLETADA_REMITENTE',
         templateData: {
           cantidad: transferencia.cantidad,
           simbolo: transferencia.criptomonedaTransferencia.symbol,
-          destinatario: destinatario.username
-        }
+          destinatario: destinatario.username,
+        },
       }, { transaction });
 
-      // Notificación para el destinatario
       await Notificaciones.createNotification({
         usuarioId: transferencia.usuarioDestinatarioId,
         template: 'TRANSFERENCIA_RECIBIDA',
         templateData: {
           cantidad: transferencia.cantidad,
           simbolo: transferencia.criptomonedaTransferencia.symbol,
-          remitente: remitente.username
-        }
+          remitente: remitente.username,
+        },
       }, { transaction });
     } catch (notifError) {
       console.error('Error creando notificaciones:', notifError);
@@ -301,194 +281,153 @@ const procesarTransferencia = async (req, res) => {
         criptomoneda: transferencia.criptomonedaTransferencia.symbol,
         destinatario: destinatario.username,
         estado: transferencia.estado,
-        fecha: transferencia.updated_at
-      }
+        fecha: transferencia.updated_at,
+      },
     });
   } catch (error) {
-    await transaction.rollback();
-    console.error('❌ Error en procesarTransferencia:', error);
-    res.status(400).json({ error: error.message });
+    if (transaction && !transaction.finished) {
+      await transaction.rollback();
+    }
+    throw error;
   }
 };
 
-// Obtener mis transferencias
+// Get my transfers
 const getMyTransferencias = async (req, res) => {
-  try {
-    const usuarioId = req.user.id;
-    const filters = { ...req.query };
-    
-    const result = await Transferencia.getByUsuario(usuarioId, filters);
-    res.json(result);
-  } catch (error) {
-    console.error('Error en getMyTransferencias:', error);
-    res.status(500).json({ error: error.message });
-  }
+  const usuarioId = req.user.id;
+  const filters = { ...req.query };
+
+  const result = await Transferencia.getByUsuario(usuarioId, filters);
+  res.json(result);
 };
 
-// Obtener transferencia por ID
+// Get transfer by ID
 const getTransferenciaById = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const usuarioId = req.user.id;
-    
-    const transferencia = await Transferencia.getById(id);
-    
-    if (!transferencia) {
-      return res.status(404).json({ error: 'Transferencia no encontrada' });
-    }
+  const { id } = req.params;
+  const usuarioId = req.user.id;
 
-    // Verificar que el usuario tenga acceso a esta transferencia
-    if (transferencia.usuarioRemitenteId !== usuarioId && 
-        transferencia.usuarioDestinatarioId !== usuarioId &&
-        req.user.rol === 'normal') {
-      return res.status(403).json({ error: 'No tienes permiso para ver esta transferencia' });
-    }
+  const transferencia = await Transferencia.getById(id);
 
-    res.json(transferencia);
-  } catch (error) {
-    console.error('Error en getTransferenciaById:', error);
-    res.status(500).json({ error: error.message });
+  if (!transferencia) {
+    throw new AppError(404, errorCodes.TRANSFER_NOT_FOUND, 'Transferencia no encontrada');
   }
+
+  // Verify user has access to this transfer
+  if (transferencia.usuarioRemitenteId !== usuarioId &&
+      transferencia.usuarioDestinatarioId !== usuarioId &&
+      req.user.rol === 'normal') {
+    throw new AppError(403, errorCodes.TRANSFER_FORBIDDEN, 'No tienes permiso para ver esta transferencia');
+  }
+
+  res.json(transferencia);
 };
 
-// Cancelar transferencia
+// Cancel transfer
 const cancelarTransferencia = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const usuarioId = req.user.id;
-    
-    const transferencia = await Transferencia.cancelarTransferencia(id, usuarioId);
-    
-    // Crear notificación de cancelación
-    try {
-      await Notificaciones.createNotification({
-        usuarioId: usuarioId,
-        template: 'TRANSFERENCIA_CANCELADA',
-        templateData: {
-          cantidad: transferencia.cantidad,
-          simbolo: transferencia.criptomoneda.symbol,
-          destinatario: transferencia.destinatario.username
-        }
-      });
-    } catch (notifError) {
-      console.error('Error creando notificación de cancelación:', notifError);
-    }
+  const { id } = req.params;
+  const usuarioId = req.user.id;
 
-    res.json({
-      message: 'Transferencia cancelada exitosamente',
-      data: transferencia
+  const transferencia = await Transferencia.cancelarTransferencia(id, usuarioId);
+
+  // Create cancellation notification — failure is non-fatal
+  try {
+    await Notificaciones.createNotification({
+      usuarioId,
+      template: 'TRANSFERENCIA_CANCELADA',
+      templateData: {
+        cantidad: transferencia.cantidad,
+        simbolo: transferencia.criptomoneda.symbol,
+        destinatario: transferencia.destinatario.username,
+      },
     });
-  } catch (error) {
-    console.error('Error en cancelarTransferencia:', error);
-    res.status(400).json({ error: error.message });
+  } catch (notifError) {
+    console.error('Error creando notificación de cancelación:', notifError);
   }
+
+  res.json({
+    message: 'Transferencia cancelada exitosamente',
+    data: transferencia,
+  });
 };
 
-// Reenviar código de verificación
+// Resend verification code
 const reenviarCodigo = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const usuarioId = req.user.id;
-    
-    // Verificar que la transferencia existe y pertenece al usuario
-    const transferenciaExistente = await Transferencia.getById(id);
-    if (!transferenciaExistente) {
-      return res.status(404).json({ error: 'Transferencia no encontrada' });
-    }
+  const { id } = req.params;
+  const usuarioId = req.user.id;
 
-    if (transferenciaExistente.usuarioRemitenteId !== usuarioId) {
-      return res.status(403).json({ error: 'No tienes permiso para reenviar el código de esta transferencia' });
-    }
-
-    const { transferencia, codigo } = await Transferencia.reenviarCodigo(id);
-
-    // Enviar nuevo código por email
-    try {
-      const remitente = await Usuario.findByPk(usuarioId);
-      const destinatario = await Usuario.findByPk(transferencia.usuarioDestinatarioId);
-      const criptomoneda = await Criptomoneda.getById(transferencia.criptomonedaId);
-
-      await emailService.enviarCodigoTransferencia(
-        remitente.email,
-        codigo,
-        remitente.username,
-        transferencia.cantidad,
-        criptomoneda.symbol,
-        destinatario.username
-      );
-    } catch (emailError) {
-      console.error('Error reenviando código:', emailError);
-      return res.status(500).json({ error: 'Error enviando código de verificación' });
-    }
-
-    res.json({
-      message: 'Código de verificación reenviado exitosamente',
-      data: {
-        id: transferencia.id,
-        expiracionCodigo: transferencia.expiracionCodigo
-      }
-    });
-  } catch (error) {
-    console.error('Error en reenviarCodigo:', error);
-    res.status(400).json({ error: error.message });
+  // Verify transfer exists and belongs to user
+  const transferenciaExistente = await Transferencia.getById(id);
+  if (!transferenciaExistente) {
+    throw new AppError(404, errorCodes.TRANSFER_NOT_FOUND, 'Transferencia no encontrada');
   }
+
+  if (transferenciaExistente.usuarioRemitenteId !== usuarioId) {
+    throw new AppError(403, errorCodes.TRANSFER_FORBIDDEN, 'No tienes permiso para reenviar el código de esta transferencia');
+  }
+
+  const { transferencia, codigo } = await Transferencia.reenviarCodigo(id);
+
+  // Send new code by email
+  const remitente = await Usuario.findByPk(usuarioId);
+  const destinatario = await Usuario.findByPk(transferencia.usuarioDestinatarioId);
+  const criptomoneda = await Criptomoneda.getById(transferencia.criptomonedaId);
+
+  await emailService.enviarCodigoTransferencia(
+    remitente.email,
+    codigo,
+    remitente.username,
+    transferencia.cantidad,
+    criptomoneda.symbol,
+    destinatario.username
+  );
+
+  res.json({
+    message: 'Código de verificación reenviado exitosamente',
+    data: {
+      id: transferencia.id,
+      expiracionCodigo: transferencia.expiracionCodigo,
+    },
+  });
 };
 
-// Verificar fondos antes de transferir
+// Verify funds before transferring
 const verificarFondos = async (req, res) => {
-  try {
-    const usuarioId = req.user.id;
-    const { criptomonedaId, cantidad } = req.body;
+  const usuarioId = req.user.id;
+  const { criptomonedaId, cantidad } = req.body;
 
-    if (!criptomonedaId || !cantidad) {
-      return res.status(400).json({ 
-        error: 'Criptomoneda y cantidad son requeridos' 
-      });
-    }
-
-    const tieneFondos = await BalanceUsuario.hasAvailableBalance(
-      usuarioId, 
-      criptomonedaId, 
-      cantidad
-    );
-
-    const criptomoneda = await Criptomoneda.getById(criptomonedaId);
-    const balance = await BalanceUsuario.getByUserAndCrypto(usuarioId, criptomonedaId);
-
-    res.json({
-      tieneFondos,
-      balanceDisponible: balance ? parseFloat(balance.balanceDisponible) : 0,
-      cantidadSolicitada: parseFloat(cantidad),
-      criptomoneda: criptomoneda.symbol,
-      suficiente: tieneFondos
-    });
-  } catch (error) {
-    console.error('Error en verificarFondos:', error);
-    res.status(500).json({ error: error.message });
+  if (!criptomonedaId || !cantidad) {
+    throw new AppError(400, errorCodes.INVALID_ORDER, 'Criptomoneda y cantidad son requeridos');
   }
+
+  const tieneFondos = await BalanceUsuario.hasAvailableBalance(
+    usuarioId,
+    criptomonedaId,
+    cantidad
+  );
+
+  const criptomoneda = await Criptomoneda.getById(criptomonedaId);
+  const balance = await BalanceUsuario.getByUserAndCrypto(usuarioId, criptomonedaId);
+
+  res.json({
+    tieneFondos,
+    balanceDisponible: balance ? parseFloat(balance.balanceDisponible) : 0,
+    cantidadSolicitada: parseFloat(cantidad),
+    criptomoneda: criptomoneda.symbol,
+    suficiente: tieneFondos,
+  });
 };
 
-// Métodos administrativos
+// Admin methods
 const getAllTransferencias = async (req, res) => {
-  try {
-    const filters = { ...req.query };
-    const result = await Transferencia.getAll(filters);
-    res.json(result);
-  } catch (error) {
-    console.error('Error en getAllTransferencias:', error);
-    res.status(500).json({ error: error.message });
-  }
+  const filters = { ...req.query };
+  const result = await Transferencia.getAll(filters);
+  res.json(result);
 };
 
 const getTransferenciaStats = async (req, res) => {
-  try {
-    const filters = req.query;
-    const stats = await Transferencia.getStats(filters);
-    res.json(stats);
-  } catch (error) {
-    console.error('Error en getTransferenciaStats:', error);
-    res.status(500).json({ error: error.message });
-  }
+  const filters = req.query;
+  const stats = await Transferencia.getStats(filters);
+  res.json(stats);
 };
 
 module.exports = {
@@ -500,5 +439,5 @@ module.exports = {
   reenviarCodigo,
   verificarFondos,
   getAllTransferencias,
-  getTransferenciaStats
+  getTransferenciaStats,
 };
