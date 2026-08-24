@@ -4,70 +4,70 @@ const router = Router();
 
 // Middleware
 const { authenticateToken, requireEmailVerified } = require('../middleware/authMiddleware.js');
-const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
+const { isAdmin } = require('../middleware/adminMiddleware.js');
 
-// Importa el controlador
+const asyncHandler = require('../utils/asyncHandler');
 const ofertaP2PController = require('../controllers/ofertaP2P.controller.js');
 
-// --------------------- RUTAS PÚBLICAS/BÚSQUEDA ---------------------
+// --------------------- PUBLIC / SEARCH ROUTES ---------------------
 
-// Buscar ofertas compatibles
-router.get('/compatible', authenticateToken, ofertaP2PController.findCompatibleOffers);
+// Find compatible offers
+router.get('/compatible', authenticateToken, asyncHandler(ofertaP2PController.findCompatibleOffers));
 
-// Buscar ofertas por término
-router.get('/search', authenticateToken, ofertaP2PController.searchOfertas);
+// Search offers by term
+router.get('/search', authenticateToken, asyncHandler(ofertaP2PController.searchOfertas));
 
-// Obtener ofertas por tipo (compra/venta)
-router.get('/tipo/:tipo', authenticateToken, ofertaP2PController.getOfertasByTipo);
+// Get offers by type (compra/venta)
+router.get('/tipo/:tipo', authenticateToken, asyncHandler(ofertaP2PController.getOfertasByTipo));
 
-// Obtener ofertas por criptomoneda
-router.get('/criptomoneda/:criptomonedaId', authenticateToken, ofertaP2PController.getOfertasByCrypto);
+// Get offers by crypto
+router.get('/criptomoneda/:criptomonedaId', authenticateToken, asyncHandler(ofertaP2PController.getOfertasByCrypto));
 
-// --------------------- RUTAS CRUD BÁSICAS ---------------------
+// --------------------- BASIC CRUD ROUTES ---------------------
 
-// Obtener todas las ofertas activas e inactivas (con filtros)
-router.get('/', authenticateToken, ofertaP2PController.getOfertas);
+// Get all offers (active and inactive, with filters)
+router.get('/', authenticateToken, asyncHandler(ofertaP2PController.getOfertas));
 
-// Obtener todas las ofertas activas (con filtros)
-router.get('/activas', authenticateToken, ofertaP2PController.getOfertasActivas);
+// Get all active offers (with filters)
+router.get('/activas', authenticateToken, asyncHandler(ofertaP2PController.getOfertasActivas));
 
-// Obtener oferta por ID aunque esté desactivada
-router.get('/:id', authenticateToken, ofertaP2PController.getOfertaById);
+// Get offer by ID (even if deactivated)
+router.get('/:id', authenticateToken, asyncHandler(ofertaP2PController.getOfertaById));
 
-// Crear nueva oferta
-router.post('/', authenticateToken, requireEmailVerified, ofertaP2PController.createOferta);
+// Create new offer
+router.post('/', authenticateToken, requireEmailVerified, asyncHandler(ofertaP2PController.createOferta));
 
-// Actualizar oferta por ID
-router.put('/:id', authenticateToken, requireEmailVerified, ofertaP2PController.updateOferta);
+// Update offer by ID
+router.put('/:id', authenticateToken, requireEmailVerified, asyncHandler(ofertaP2PController.updateOferta));
 
-// Eliminar/Desactivar oferta por ID
-router.delete('/:id', authenticateToken, requireEmailVerified, ofertaP2PController.deleteOferta);
+// Deactivate offer by ID
+router.delete('/:id', authenticateToken, requireEmailVerified, asyncHandler(ofertaP2PController.deleteOferta));
 
-// --------------------- RUTAS ESPECÍFICAS DEL USUARIO ---------------------
+// --------------------- USER-SPECIFIC ROUTES ---------------------
 
-// Obtener mis ofertas
-router.get('/me/ofertas', authenticateToken, ofertaP2PController.getMyOfertas);
+// Get my offers
+router.get('/me/ofertas', authenticateToken, asyncHandler(ofertaP2PController.getMyOfertas));
 
-// Activar/Desactivar mi oferta
-router.patch('/:id/toggle', authenticateToken, requireEmailVerified, ofertaP2PController.toggleMyOferta);
+// Toggle my offer active/inactive
+router.patch('/:id/toggle', authenticateToken, requireEmailVerified, asyncHandler(ofertaP2PController.toggleMyOferta));
 
-// Verificar si puedo aceptar una oferta
-router.get('/:id/can-accept', authenticateToken, ofertaP2PController.checkOfferAcceptability);
+// Check if I can accept an offer
+router.get('/:id/can-accept', authenticateToken, asyncHandler(ofertaP2PController.checkOfferAcceptability));
 
-// --------------------- RUTAS DE MÉTODOS DE PAGO ---------------------
+// --------------------- PAYMENT METHOD ROUTES ---------------------
 
-// Agregar métodos de pago a una oferta
-router.post('/:id/metodos-pago', authenticateToken, requireEmailVerified, ofertaP2PController.addMetodosPago);
+// Add payment methods to an offer
+router.post('/:id/metodos-pago', authenticateToken, requireEmailVerified, asyncHandler(ofertaP2PController.addMetodosPago));
 
-// Eliminar métodos de pago de una oferta
-router.delete('/:id/metodos-pago', authenticateToken, requireEmailVerified, ofertaP2PController.removeMetodosPago);
+// Remove payment methods from an offer
+router.delete('/:id/metodos-pago', authenticateToken, requireEmailVerified, asyncHandler(ofertaP2PController.removeMetodosPago));
 
-// --------------------- RUTAS ADMINISTRATIVAS ---------------------
+// --------------------- ADMIN ROUTES ---------------------
 
-// Obtener estadísticas de ofertas (solo admin)
-router.get('/admin/stats', authenticateToken, isAdmin, ofertaP2PController.getOfertasStats);
+// Get offer statistics (admin only)
+router.get('/admin/stats', authenticateToken, isAdmin, asyncHandler(ofertaP2PController.getOfertasStats));
 
-// Cambiar estado de oferta (solo admin)
-router.patch('/:id/status', authenticateToken, isAdmin, ofertaP2PController.updateOfertaStatus);
+// Change offer status (admin only)
+router.patch('/:id/status', authenticateToken, isAdmin, asyncHandler(ofertaP2PController.updateOfertaStatus));
 
 module.exports = router;
