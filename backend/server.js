@@ -14,6 +14,7 @@ if (!process.env.JWT_SECRET) {
 const { sequelize } = require('./models');
 const configurePassport = require('./config/passport.config');
 const apiRoutes = require('./routes');
+const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -103,19 +104,13 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Error handling
-app.use((err, req, res, next) => {
-  console.error('❌ Error:', err.stack);
-  res.status(500).json({
-    error: 'Something went wrong!',
-    message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
-  });
-});
-
 // 404
 app.use('*', (req, res) => {
-  res.status(404).json({ error: 'Route not found' });
+  res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found' } });
 });
+
+// Error handling (central handler — sanitizes unexpected errors, no leak)
+app.use(errorHandler);
 
 // ⭐ MODIFICADO: Escuchar en 0.0.0.0 para aceptar conexiones de red local
 async function startServer() {
