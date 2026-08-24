@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const {
-  Usuario, Criptomoneda, ParExchange, BalanceUsuario, WalletMaestra,
+  Usuario, Criptomoneda, ParExchange, BalanceUsuario, WalletMaestra, TradingPair,
 } = require('../../models');
 
 let seq = 0;
@@ -71,7 +71,23 @@ async function getBalance(user, cripto) {
   return BalanceUsuario.findOne({ where: { userId: user.id, criptomonedaId: cripto.id } });
 }
 
+// Spot trading pair. lastPrice defaults to 0 so the order validator's
+// 50%-deviation gate (only active when lastPrice > 0) stays out of the way;
+// maker/taker fees default to 0.1%.
+async function seedTradingPair({ base, quote, makerFee = '0.1', takerFee = '0.1', minOrderAmount = '0', lastPrice = '0', status = 'active' }) {
+  return TradingPair.create({
+    symbol: `${base.symbol}/${quote.symbol}`,
+    baseAssetId: base.id,
+    quoteAssetId: quote.id,
+    status,
+    minOrderAmount,
+    makerFeePercent: makerFee,
+    takerFeePercent: takerFee,
+    lastPrice,
+  });
+}
+
 module.exports = {
   seedUser, authTokenFor, authHeader, seedCripto, seedPar,
-  seedBalance, seedWalletMaestra, getBalance,
+  seedBalance, seedWalletMaestra, getBalance, seedTradingPair,
 };
