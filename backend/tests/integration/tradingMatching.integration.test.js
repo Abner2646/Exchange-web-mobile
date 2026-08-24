@@ -81,3 +81,100 @@ describe('POST /api/trading/orders — create + lock (synchronous)', () => {
     expect(res.body.error.code).toBe('TRADING_PAIR_NOT_FOUND');
   });
 });
+
+const orderBookService = require('../../services/trading/orderBook.service');
+const { Trade } = require('../../models');
+
+// Set up a resting maker order that is 'open' and ready to be matched against.
+// Its own matchOrder finds no opposite side and just moves it pending -> open.
+async function restingOrder(user, args) {
+  const res = await placeOrder(user, args);
+  expect(res.status).toBe(201);
+  await orderBookService.matchOrder(res.body.order.id); // pending -> open, no match
+  return res.body.order.id;
+}
+
+describe('spot matching — service level (awaited)', () => {
+  test('full fill: crossing buy takes a resting sell; Trade created, both settled', async () => {
+    const btc = await f.seedCripto('BTC');
+    const usdt = await f.seedCripto('USDT');
+    const pair = await f.seedTradingPair({ base: btc, quote: usdt });
+
+    const seller = await f.seedUser();
+    const buyer = await f.seedUser();
+    await f.seedBalance(seller, btc, '1');     // locks 1 BTC on sell
+    await f.seedBalance(buyer, usdt, '200');   // locks 100.1 on buy
+
+    await restingOrder(seller, { pair, side: 'sell', quantity: 1, price: 100 });
+    const buyRes = await placeOrder(buyer, { pair, side: 'buy', quantity: 1, price: 100 });
+    expect(buyRes.status).toBe(201);
+
+    // Await matching for determinism (barrier against the controller's background fire).
+    await orderBookService.matchOrder(buyRes.body.order.id);
+
+    expect(await Trade.count()).toBe(1);
+
+    // Seller: base blocked -> 0, quote available += 100 - maker fee 0.1 = 99.9
+    const sellerBtc = await f.getBalance(seller, btc);
+    const sellerUsdt = await f.getBalance(seller, usdt);
+    expect(sellerBtc.balanceBloqueado).toBe('0.00000000');
+    expect(sellerBtc.balanceDisponible).toBe('0.00000000');
+    expect(sellerUsdt.balanceDisponible).toBe('99.90000000');
+
+    // Buyer: base available += 1 - taker fee 0.001 = 0.999; quote available 99.9;
+    // quote blocked 0.1 STAYS (over-reserved taker fee — characterized finding).
+    const buyerBtc = await f.getBalance(buyer, btc);
+    const buyerUsdt = await f.getBalance(buyer, usdt);
+    expect(buyerBtc.balanceDisponible).toBe('0.99900000');
+    expect(buyerUsdt.balanceDisponible).toBe('99.90000000');
+    expect(buyerUsdt.balanceBloqueado).toBe('0.10000000'); // FINDING: stuck fee reserve
+  });
+
+  test('partial fill: buy 0.4 against resting sell 1; sell partially_filled 0.6', async () => {
+    const btc = await f.seedCripto('BTC');
+    const usdt = await f.seedCripto('USDT');
+    const pair = await f.seedTradingPair({ base: btc, quote: usdt });
+
+    const seller = await f.seedUser();
+    const buyer = await f.seedUser();
+    await f.seedBalance(seller, btc, '1');
+    await f.seedBalance(buyer, usdt, '200');
+
+    const sellId = await restingOrder(seller, { pair, side: 'sell', quantity: 1, price: 100 });
+    const buyRes = await placeOrder(buyer, { pair, side: 'buy', quantity: 0.4, price: 100 });
+    await orderBookService.matchOrder(buyRes.body.order.id);
+
+    expect(await Trade.count()).toBe(1);
+
+    const sellOrder = await Order.findByPk(sellId);
+    const buyOrder = await Order.findByPk(buyRes.body.order.id);
+    expect(sellOrder.status).toBe('partially_filled');
+    // quantityRemaining is DECIMAL(_,18) on Order (vs 8 dp on balances).
+    expect(sellOrder.quantityRemaining).toBe('0.600000000000000000');
+    expect(buyOrder.status).toBe('filled');
+
+    // Seller: base blocked -> 0.6, quote available += 40 - maker fee 0.04 = 39.96
+    expect((await f.getBalance(seller, btc)).balanceBloqueado).toBe('0.60000000');
+    expect((await f.getBalance(seller, usdt)).balanceDisponible).toBe('39.96000000');
+    // Buyer: base available += 0.4 - taker 0.0004 = 0.3996
+    expect((await f.getBalance(buyer, btc)).balanceDisponible).toBe('0.39960000');
+  });
+
+  test('self-trade prevention: same user both sides does not match', async () => {
+    const btc = await f.seedCripto('BTC');
+    const usdt = await f.seedCripto('USDT');
+    const pair = await f.seedTradingPair({ base: btc, quote: usdt });
+
+    const user = await f.seedUser();
+    await f.seedBalance(user, btc, '1');
+    await f.seedBalance(user, usdt, '200');
+
+    await restingOrder(user, { pair, side: 'sell', quantity: 1, price: 100 });
+    const buyRes = await placeOrder(user, { pair, side: 'buy', quantity: 1, price: 100 });
+    await orderBookService.matchOrder(buyRes.body.order.id);
+
+    expect(await Trade.count()).toBe(0);
+    const buyOrder = await Order.findByPk(buyRes.body.order.id);
+    expect(buyOrder.status).toBe('open'); // rested, no match
+  });
+});
