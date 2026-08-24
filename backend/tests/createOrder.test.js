@@ -15,6 +15,12 @@
 // that invoked the handler directly and expected the old res-based response
 // have been migrated to use the HTTP layer (supertest + asyncHandler +
 // errorHandler) while preserving the same business-behavior assertion.
+//
+// NOTE (money.js migration 2026-08-24): the settlement arithmetic moved out of
+// the controller (float parseFloat/Number) into intercambioSettlement.service
+// (exact, money.js). The deltas passed to updateBalance/addToBalance are now
+// canonical strings ('-101', '1', ...) instead of Numbers — same boundary
+// change already applied across the money-movement path.
 
 const request = require('supertest');
 const express = require('express');
@@ -120,10 +126,10 @@ describe('createOrder', () => {
     // Débito en quote (negativo) y crédito en base (positivo) — exactamente
     // lo que "comprar" tiene que hacer.
     expect(BalanceUsuario.updateBalance).toHaveBeenCalledWith(
-      USER_ID, CRIPTO_QUOTE_ID, -101, 'disponible', expect.anything()
+      USER_ID, CRIPTO_QUOTE_ID, '-101', 'disponible', expect.anything()
     );
     expect(BalanceUsuario.updateBalance).toHaveBeenCalledWith(
-      USER_ID, CRIPTO_BASE_ID, 1, 'disponible', expect.anything()
+      USER_ID, CRIPTO_BASE_ID, '1', 'disponible', expect.anything()
     );
   });
 
@@ -140,10 +146,10 @@ describe('createOrder', () => {
     expect(res.body.data.tipo).toBe('venta');
 
     expect(BalanceUsuario.updateBalance).toHaveBeenCalledWith(
-      USER_ID, CRIPTO_BASE_ID, -1, 'disponible', expect.anything()
+      USER_ID, CRIPTO_BASE_ID, '-1', 'disponible', expect.anything()
     );
     expect(BalanceUsuario.updateBalance).toHaveBeenCalledWith(
-      USER_ID, CRIPTO_QUOTE_ID, 99, 'disponible', expect.anything()
+      USER_ID, CRIPTO_QUOTE_ID, '99', 'disponible', expect.anything()
     );
   });
 
@@ -154,7 +160,7 @@ describe('createOrder', () => {
     const req = { user: { id: USER_ID }, body: { parId: PAR_ID, tipo: 'venta', cantidadBase: 1 } };
     await createOrder(req, mockRes());
 
-    expect(WalletMaestra.addToBalance).toHaveBeenCalledWith('wallet-maestra-quote', 1, transaction);
+    expect(WalletMaestra.addToBalance).toHaveBeenCalledWith('wallet-maestra-quote', '1', transaction);
   });
 
   test('rechaza la orden si supera el límite diario (chequeo ya no está deshabilitado)', async () => {

@@ -3,6 +3,8 @@
 const { IntercambioExchange, Usuario, ParExchange, BalanceUsuario, WalletMaestra, Criptomoneda, sequelize } = require('../models/index.js');
 const AppError = require('../utils/AppError');
 const errorCodes = require('../utils/errorCodes');
+const money = require('../utils/money');
+const { calculateSettlement } = require('../services/intercambioSettlement.service');
 
 // Función auxiliar para validar fechas
 const isValidDate = (dateString) => {
@@ -75,8 +77,10 @@ const createOrder = async (req, res) => {
       throw new AppError(404, errorCodes.EXCHANGE_PAIR_NOT_FOUND, 'Par de intercambio no encontrado o inactivo');
     }
 
-    const precio = parseFloat(par.precioActual);
-    if (!precio || precio <= 0) {
+    // precio canónico (string): par.precioActual es DECIMAL — pasarlo por
+    // parseFloat perdería dígitos en precios de alta precisión antes de operar.
+    const precio = String(par.precioActual);
+    if (!par.precioActual || money.compare(precio, '0') <= 0) {
       await transaction.rollback();
       throw new AppError(400, errorCodes.EXCHANGE_PAIR_NO_PRICE, 'El par no tiene un precio válido configurado');
     }
@@ -87,14 +91,14 @@ const createOrder = async (req, res) => {
       throw new AppError(404, errorCodes.EXCHANGE_USER_NOT_FOUND, 'Usuario no encontrado o inactivo');
     }
 
-    const cantidadQuote = parseFloat((cantidadBase * precio).toFixed(8));
-    const comisionPorcentaje = parseFloat(par.comisionPorcentaje || 0.1);
-    const comisionMonto = parseFloat((cantidadQuote * (comisionPorcentaje / 100)).toFixed(8));
+    const comisionPorcentaje = String(par.comisionPorcentaje || '0.1');
+    const { cantidadQuote, comisionMonto, requiredQuote, netQuote } =
+      calculateSettlement({ cantidadBase, precio, comisionPorcentaje, tipo });
 
     const dailyVolume = await IntercambioExchange.getDailyVolume(usuarioId, new Date(), transaction);
-    const newDailyVolume = dailyVolume + cantidadQuote;
+    const newDailyVolume = money.add(String(dailyVolume), cantidadQuote);
 
-    if (newDailyVolume > usuario.limiteDiarioUsd) {
+    if (money.compare(newDailyVolume, String(usuario.limiteDiarioUsd)) > 0) {
       await transaction.rollback();
       throw new AppError(400, errorCodes.EXCHANGE_DAILY_LIMIT_EXCEEDED, 'Límite diario de operaciones excedido');
     }
@@ -104,37 +108,35 @@ const createOrder = async (req, res) => {
     let netAmount;
 
     if (tipo === 'compra') {
-      // Comprar: se paga en quote (+ comisión), se recibe base.
-      const requiredAmount = cantidadQuote + comisionMonto;
-
+      // Comprar: se paga en quote (requiredQuote = valor + comisión), se recibe base.
       const balanceQuote = await BalanceUsuario.findOne({
         where: { userId: usuarioId, criptomonedaId: criptoQuoteId },
         transaction
       });
 
-      if (!balanceQuote || parseFloat(balanceQuote.balanceDisponible) < requiredAmount) {
+      if (!balanceQuote || money.compare(String(balanceQuote.balanceDisponible), requiredQuote) < 0) {
         await transaction.rollback();
         throw new AppError(400, errorCodes.EXCHANGE_INSUFFICIENT_BALANCE, 'Saldo insuficiente en moneda quote para realizar la operación');
       }
 
-      await BalanceUsuario.updateBalance(usuarioId, criptoQuoteId, -requiredAmount, 'disponible', transaction);
-      await BalanceUsuario.updateBalance(usuarioId, criptoBaseId, cantidadBase, 'disponible', transaction);
-      netAmount = cantidadBase;
+      await BalanceUsuario.updateBalance(usuarioId, criptoQuoteId, money.multiply(requiredQuote, '-1'), 'disponible', transaction);
+      await BalanceUsuario.updateBalance(usuarioId, criptoBaseId, String(cantidadBase), 'disponible', transaction);
+      netAmount = String(cantidadBase);
     } else {
-      // Vender: se paga en base, se recibe quote (- comisión).
+      // Vender: se paga en base, se recibe quote (netQuote = valor - comisión).
       const balanceBase = await BalanceUsuario.findOne({
         where: { userId: usuarioId, criptomonedaId: criptoBaseId },
         transaction
       });
 
-      if (!balanceBase || parseFloat(balanceBase.balanceDisponible) < cantidadBase) {
+      if (!balanceBase || money.compare(String(balanceBase.balanceDisponible), String(cantidadBase)) < 0) {
         await transaction.rollback();
         throw new AppError(400, errorCodes.EXCHANGE_INSUFFICIENT_BALANCE, 'Saldo insuficiente en moneda base para realizar la operación');
       }
 
-      await BalanceUsuario.updateBalance(usuarioId, criptoBaseId, -cantidadBase, 'disponible', transaction);
-      netAmount = cantidadQuote - comisionMonto;
-      await BalanceUsuario.updateBalance(usuarioId, criptoQuoteId, netAmount, 'disponible', transaction);
+      await BalanceUsuario.updateBalance(usuarioId, criptoBaseId, money.multiply(String(cantidadBase), '-1'), 'disponible', transaction);
+      netAmount = netQuote;
+      await BalanceUsuario.updateBalance(usuarioId, criptoQuoteId, netQuote, 'disponible', transaction);
     }
 
     // La comisión siempre se cobra en la moneda quote, para los dos tipos de operación.
@@ -301,25 +303,19 @@ const calculateExchange = async (req, res) => {
     throw new AppError(404, errorCodes.EXCHANGE_PAIR_NOT_FOUND, 'Par de intercambio no encontrado o inactivo');
   }
 
-  const precio = parseFloat(par.precioActual);
-  if (!precio || precio <= 0) {
+  const precio = String(par.precioActual);
+  if (!par.precioActual || money.compare(precio, '0') <= 0) {
     throw new AppError(400, errorCodes.EXCHANGE_PAIR_NO_PRICE, 'El par no tiene un precio válido configurado');
   }
 
-  // Calcular con el precio actual del par
-  const cantidadQuote = parseFloat((cantidadBase * precio).toFixed(8));
-  const comisionPorcentaje = parseFloat(par.comisionPorcentaje || 0.1);
-  const comisionMonto = parseFloat((cantidadQuote * (comisionPorcentaje / 100)).toFixed(8));
+  // Mismo settlement exacto que usa la ejecución (createExchange): así el monto
+  // mostrado en el preview coincide con el ejecutado, no dos cálculos float
+  // independientes que podían divergir.
+  const comisionPorcentaje = String(par.comisionPorcentaje || '0.1');
+  const { cantidadQuote, comisionMonto, cantidadFinal } =
+    calculateSettlement({ cantidadBase, precio, comisionPorcentaje, tipo });
 
-  let cantidadFinal, impactoSlippage = 0;
-
-  if (tipo === 'compra') {
-    // Para comprar base: necesito quote + comisión
-    cantidadFinal = cantidadQuote + comisionMonto;
-  } else {
-    // Para vender base: recibo quote - comisión
-    cantidadFinal = cantidadQuote - comisionMonto;
-  }
+  const impactoSlippage = 0;
 
   const calculation = {
     par: {
