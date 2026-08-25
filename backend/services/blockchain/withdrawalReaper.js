@@ -39,7 +39,18 @@ async function reapStaleWithdrawals({ getClientForNetwork, staleMinutes = 15, no
     // Without a client we cannot verify — be conservative and leave it.
     if (!client) { left++; continue; }
 
-    const confirmations = await client.getConfirmations(row.txHash);
+    // A lookup FAILURE (transient RPC/API error) must never cause a revert —
+    // only a definitive "absent" (null) may. getConfirmations returns null only
+    // when the node/API definitively does not know the tx; it throws on transient
+    // errors, which we swallow and leave the row for the next sweep.
+    let confirmations;
+    try {
+      confirmations = await client.getConfirmations(row.txHash);
+    } catch (err) {
+      console.warn(`[reaper] getConfirmations failed for ${row.txHash}, leaving row: ${err.message}`);
+      left++;
+      continue;
+    }
     if (confirmations === null) {
       // Provably unknown to the node → never made it on-chain → safe to revert.
       await TransaccionBlockchain.failWithdrawal(row.id, 'reaped: tx absent on-chain');

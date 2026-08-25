@@ -83,6 +83,22 @@ test('a tx in mempool (0 confirmations) is treated as present → left', async (
   expect(row.estado).toBe('procesando'); // 0 confs = mempool = present, do not revert
 });
 
+test('getConfirmations throwing (transient error) → left untouched, never reverted', async () => {
+  const user = await f.seedUser();
+  const eth = await seedEth();
+  await f.seedBalance(user, eth, '5');
+  const w = await seedStuck(user, eth, { txHash: '0xabc' });
+
+  const throwingClient = {
+    async getConfirmations() { throw new Error('RPC timeout'); },
+  };
+  const res = await reapStaleWithdrawals({ getClientForNetwork: () => throwingClient });
+
+  expect(res.reverted).toBe(0);
+  const row = await TransaccionBlockchain.findByPk(w.id);
+  expect(row.estado).toBe('procesando'); // never revert on a lookup error
+});
+
 test('not stale yet → skipped', async () => {
   const user = await f.seedUser();
   const eth = await seedEth();
