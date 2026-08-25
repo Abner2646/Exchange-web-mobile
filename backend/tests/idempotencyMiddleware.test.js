@@ -50,7 +50,7 @@ test('missing Idempotency-Key header -> 400, controller not called', async () =>
   const next = jest.fn();
   await idempotency(req, res, next);
   expect(res.statusCode).toBe(400);
-  expect(res._json.code).toBe('IDEMPOTENCY_KEY_REQUIRED');
+  expect(res._json.error.code).toBe('IDEMPOTENCY_KEY_REQUIRED');
   expect(next).not.toHaveBeenCalled();
 });
 
@@ -93,7 +93,7 @@ test('same key, different body -> 422', async () => {
   const next = jest.fn();
   await idempotency(req, res, next);
   expect(res.statusCode).toBe(422);
-  expect(res._json.code).toBe('IDEMPOTENCY_KEY_REUSED');
+  expect(res._json.error.code).toBe('IDEMPOTENCY_KEY_REUSED');
   expect(next).not.toHaveBeenCalled();
 });
 
@@ -108,7 +108,7 @@ test('in-progress within 90s -> 409', async () => {
   const next = jest.fn();
   await idempotency(req, res, next);
   expect(res.statusCode).toBe(409);
-  expect(res._json.code).toBe('IDEMPOTENCY_REQUEST_IN_PROGRESS');
+  expect(res._json.error.code).toBe('IDEMPOTENCY_REQUEST_IN_PROGRESS');
   expect(next).not.toHaveBeenCalled();
 });
 

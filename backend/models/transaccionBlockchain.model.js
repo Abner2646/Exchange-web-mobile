@@ -420,12 +420,42 @@ function createTransaccionBlockchainModel(sequelize) {
     }
   };
 
+  // Claim atómico de un retiro pendiente ANTES de transmitir on-chain
+  // (anti doble-gasto). El broadcast ocurría con la fila todavía en 'pendiente',
+  // así que dos corridas concurrentes (job + endpoint manual, o multi-instancia)
+  // seleccionaban la misma fila y transmitían el retiro dos veces = doble salida
+  // de la wallet maestra (ROADMAP Fase 1 #0). Este UPDATE condicional es atómico
+  // a nivel fila en Postgres: de dos corridas concurrentes, solo una matchea
+  // `estado='pendiente'` y obtiene affected=1; la otra queda en 0 y se saltea.
+  // Devuelve true si ESTA corrida reclamó la fila.
+  // Trade-off documentado: si el proceso cae entre el claim y el envío, la fila
+  // queda en 'procesando' sin txHash (fondos bloqueados) — más seguro que un
+  // doble envío, pero necesita un reaper de claims viejos (follow-up).
+  TransaccionBlockchain.claimForProcessing = async (id) => {
+    const [affected] = await TransaccionBlockchain.update(
+      { estado: 'procesando' },
+      { where: { id, tipo: 'retiro', estado: 'pendiente' } }
+    );
+    return affected === 1;
+  };
+
+  // Persiste el txHash (intención de envío) ANTES del broadcast, mientras la
+  // fila está en 'procesando' (ya reclamada). Así, si el proceso cae alrededor
+  // del broadcast, el reaper tiene un hash concreto para verificar on-chain si
+  // el retiro salió o no — en vez de tener que adivinar. No cambia el estado.
+  TransaccionBlockchain.recordWithdrawalTxHash = async (id, txHash) => {
+    await TransaccionBlockchain.update(
+      { txHash },
+      { where: { id, tipo: 'retiro', estado: 'procesando' } }
+    );
+  };
+
   TransaccionBlockchain.markWithdrawalAsSent = async (id, txHash, feeBlockchain) => {
     const transaction = await sequelize.transaction();
-    
+
     try {
       const retiro = await TransaccionBlockchain.findByPk(id, { transaction });
-      
+
       if (!retiro) {
         throw new Error('Retiro no encontrado');
       }
@@ -434,8 +464,11 @@ function createTransaccionBlockchainModel(sequelize) {
         throw new Error('La transacción no es un retiro');
       }
 
-      if (retiro.estado !== 'pendiente') {
-        throw new Error('El retiro no está en estado pendiente');
+      // Acepta 'pendiente' (paths aún no migrados que envían y luego marcan) y
+      // 'procesando' (path con claim atómico: la fila ya fue reclamada antes del
+      // envío). Cualquier otro estado (confirmado/completado/fallido) es inválido.
+      if (retiro.estado !== 'pendiente' && retiro.estado !== 'procesando') {
+        throw new Error('El retiro no está en estado pendiente ni procesando');
       }
 
       await TransaccionBlockchain.update(

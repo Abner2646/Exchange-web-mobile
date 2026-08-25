@@ -139,20 +139,6 @@ function createTradeModel(sequelize) {
     }
   };
 
-  // Métodos de creación
-  Trade.createTrade = async (data, transaction = null) => {
-    try {
-      const trade = await Trade.create({
-        ...data,
-        totalValue: parseFloat(data.quantity) * parseFloat(data.price)
-      }, { transaction });
-
-      return trade;
-    } catch (error) {
-      throw new Error(`Error al crear trade: ${error.message}`);
-    }
-  };
-
   // Métodos estadísticos
   Trade.getStats = async (tradingPairId = null, timeRange = '24h') => {
     try {

@@ -6,11 +6,12 @@ const transferenciaController = require('../controllers/transferencia.controller
 const { authenticateToken, requireEmailVerified } = require('../middleware/authMiddleware.js');
 const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
 const idempotency = require('../middleware/idempotency.middleware');
+const asyncHandler = require('../utils/asyncHandler');
 
 // =============== RUTAS DE USUARIO AUTENTICADO ===============
 
 // POST /api/transfers - Crear nueva transferencia
-router.post('/', authenticateToken, requireEmailVerified, idempotency, transferenciaController.createTransferencia);
+router.post('/', authenticateToken, requireEmailVerified, idempotency, asyncHandler(transferenciaController.createTransferencia));
 /*
 {
   "usuarioDestinatarioId": "uuid-del-usuario-destinatario",
@@ -21,7 +22,7 @@ router.post('/', authenticateToken, requireEmailVerified, idempotency, transfere
 */
 
 // POST /api/transfers/:id/process - Procesar transferencia con código
-router.post('/:id/process', authenticateToken, requireEmailVerified, transferenciaController.procesarTransferencia);
+router.post('/:id/process', authenticateToken, requireEmailVerified, asyncHandler(transferenciaController.procesarTransferencia));
 /*
 {
   "codigoVerificacion": "123456"
@@ -29,19 +30,23 @@ router.post('/:id/process', authenticateToken, requireEmailVerified, transferenc
 */
 
 // GET /api/transfers/my - Obtener mis transferencias
-router.get('/my', authenticateToken, requireEmailVerified, transferenciaController.getMyTransferencias);
+router.get('/my', authenticateToken, requireEmailVerified, asyncHandler(transferenciaController.getMyTransferencias));
+
+// GET /api/transfers/stats - Estadísticas de transferencias (admin)
+// NOTE: must be registered BEFORE /:id to avoid Express matching "stats" as an id param
+router.get('/stats', authenticateToken, isAdmin, asyncHandler(transferenciaController.getTransferenciaStats));
 
 // GET /api/transfers/:id - Obtener transferencia por ID
-router.get('/:id', authenticateToken, requireEmailVerified, transferenciaController.getTransferenciaById);
+router.get('/:id', authenticateToken, requireEmailVerified, asyncHandler(transferenciaController.getTransferenciaById));
 
 // PUT /api/transfers/:id/cancel - Cancelar transferencia
-router.put('/:id/cancel', authenticateToken, requireEmailVerified, transferenciaController.cancelarTransferencia);
+router.put('/:id/cancel', authenticateToken, requireEmailVerified, asyncHandler(transferenciaController.cancelarTransferencia));
 
 // POST /api/transfers/:id/resend-code - Reenviar código de verificación
-router.post('/:id/resend-code', authenticateToken, requireEmailVerified, transferenciaController.reenviarCodigo);
+router.post('/:id/resend-code', authenticateToken, requireEmailVerified, asyncHandler(transferenciaController.reenviarCodigo));
 
 // POST /api/transfers/verify-funds - Verificar fondos antes de transferir
-router.post('/verify-funds', authenticateToken, requireEmailVerified, transferenciaController.verificarFondos);
+router.post('/verify-funds', authenticateToken, requireEmailVerified, asyncHandler(transferenciaController.verificarFondos));
 /*
 {
   "criptomonedaId": "uuid-de-la-criptomoneda",
@@ -52,9 +57,6 @@ router.post('/verify-funds', authenticateToken, requireEmailVerified, transferen
 // =============== RUTAS ADMINISTRATIVAS ===============
 
 // GET /api/transfers - Obtener todas las transferencias (admin)
-router.get('/', authenticateToken, isAdmin, transferenciaController.getAllTransferencias);
-
-// GET /api/transfers/stats - Estadísticas de transferencias (admin)
-router.get('/stats', authenticateToken, isAdmin, transferenciaController.getTransferenciaStats);
+router.get('/', authenticateToken, isAdmin, asyncHandler(transferenciaController.getAllTransferencias));
 
 module.exports = router;

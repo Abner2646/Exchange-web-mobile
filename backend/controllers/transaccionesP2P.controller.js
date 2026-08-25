@@ -4,95 +4,92 @@ const { Op } = require('sequelize');
 // importados acá — ReferenceError garantizado en las dos rutas activas
 // GET /me/transacciones y GET /history/:otroUsuarioId.
 const { TransaccionP2P, Criptomoneda, Usuario } = require('../models/index.js');
+const AppError = require('../utils/AppError');
+const errorCodes = require('../utils/errorCodes');
 
-// Listar transacciones con filtros
+// No controller-level Sequelize transactions in this file.
+// The model methods (createTransaction, confirmPayment, completeTransaction,
+// cancelTransaction) each open and manage their own Sequelize transaction
+// internally — they always rollback-then-throw on failure and commit on success.
+// The controller simply calls the model method; if it throws, asyncHandler
+// forwards the error to the central handler. No rollback needed here.
+
+// List transactions with filters
 const getTransacciones = async (req, res) => {
-  try {
-    const filters = { ...req.query };
-    const result = await TransaccionP2P.getAll(filters);
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+  const filters = { ...req.query };
+  const result = await TransaccionP2P.getAll(filters);
+  res.json(result);
 };
 
-// Obtener transacción por ID
+// Get transaction by ID
 const getTransaccionById = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const result = await TransaccionP2P.getById(id);
-    if (!result) return res.status(404).json({ error: 'Transacción no encontrada' });
+  const { id } = req.params;
+  const result = await TransaccionP2P.getById(id);
+  if (!result) throw new AppError(404, errorCodes.P2P_TX_NOT_FOUND, 'Transaction not found');
 
-    // Verificar que el usuario tenga acceso a esta transacción
-    const usuarioId = req.user.id;
-    if (req.user.rol !== 'admin' && 
-        result.compradorId !== usuarioId && 
-        result.vendedorId !== usuarioId) {
-      return res.status(403).json({ error: 'No tienes permiso para ver esta transacción' });
-    }
-
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  // Verify the requesting user has access to this transaction
+  const usuarioId = req.user.id;
+  if (req.user.rol !== 'admin' &&
+      result.compradorId !== usuarioId &&
+      result.vendedorId !== usuarioId) {
+    throw new AppError(403, errorCodes.P2P_TX_FORBIDDEN, 'You do not have permission to view this transaction');
   }
+
+  res.json(result);
 };
 
-// Crear nueva transacción (iniciar intercambio P2P)
+// Create new transaction (initiate P2P exchange)
 const createTransaccion = async (req, res) => {
-  try {
-    const usuarioId = req.user.id;
-    const { 
-      ofertaId, 
-      cantidad, 
-      metodoPagoId
-    } = req.body;
+  const usuarioId = req.user.id;
+  const {
+    ofertaId,
+    cantidad,
+    metodoPagoId
+  } = req.body;
 
-    // Obtener datos de la oferta
-    const { OfertaP2P } = require('../models/index.js');
-    const oferta = await OfertaP2P.findByPk(ofertaId, {
-      include: ['criptomoneda']
-    });
+  // Fetch offer data
+  const { OfertaP2P } = require('../models/index.js');
+  const oferta = await OfertaP2P.findByPk(ofertaId, {
+    include: ['criptomoneda']
+  });
 
-    if (!oferta) {
-      return res.status(404).json({ error: 'Oferta no encontrada' });
-    }
-
-    // 🆕 VALIDAR QUE NO SEA SU PROPIA OFERTA
-    if (oferta.usuarioId === usuarioId) {
-      return res.status(400).json({ 
-        error: 'No puedes aceptar tu propia oferta' 
-      });
-    }
-
-    // Determinar comprador y vendedor
-    let compradorId, vendedorId;
-    if (oferta.tipo === 'venta') {
-      vendedorId = oferta.usuarioId;
-      compradorId = usuarioId;
-    } else {
-      compradorId = oferta.usuarioId;
-      vendedorId = usuarioId;
-    }
-
-    const transaccionData = {
-      ofertaId,
-      compradorId,
-      vendedorId,
-      criptomonedaId: oferta.criptomonedaId,
-      cantidad,
-      precioUnitario: oferta.precioUnitario,
-      metodoPagoId
-    };
-
-    const nuevaTransaccion = await TransaccionP2P.createTransaction(transaccionData);
-    
-    res.status(201).json({
-      message: 'Transacción iniciada exitosamente. Los fondos han sido bloqueados.',
-      data: nuevaTransaccion
-    });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
+  if (!oferta) {
+    throw new AppError(404, errorCodes.P2P_TX_OFFER_NOT_FOUND, 'Offer not found');
   }
+
+  // Validate user is not accepting their own offer
+  if (oferta.usuarioId === usuarioId) {
+    throw new AppError(400, errorCodes.P2P_TX_OWN_OFFER, 'You cannot accept your own offer');
+  }
+
+  // Determine buyer and seller
+  let compradorId, vendedorId;
+  if (oferta.tipo === 'venta') {
+    vendedorId = oferta.usuarioId;
+    compradorId = usuarioId;
+  } else {
+    compradorId = oferta.usuarioId;
+    vendedorId = usuarioId;
+  }
+
+  const transaccionData = {
+    ofertaId,
+    compradorId,
+    vendedorId,
+    criptomonedaId: oferta.criptomonedaId,
+    cantidad,
+    precioUnitario: oferta.precioUnitario,
+    metodoPagoId
+  };
+
+  // Model opens and manages its own Sequelize transaction internally;
+  // on any failure it rolls back and re-throws — no rollback needed here.
+  const nuevaTransaccion = await TransaccionP2P.createTransaction(transaccionData);
+
+  res.status(201).json({
+    message: 'Transacción iniciada exitosamente. Los fondos han sido bloqueados.',
+    data: nuevaTransaccion
+  });
 };
 
 // Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #11): updateTransaccionStatus
@@ -107,254 +104,212 @@ const createTransaccion = async (req, res) => {
 // su propia validación de negocio en el modelo). Se borran ambas funciones
 // y sus rutas en vez de intentar mantenerlas vivas.
 
-// Confirmar pago (comprador)
+// Confirm payment (buyer)
+// Model manages its own transaction internally — no rollback needed in controller.
 const confirmPayment = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const usuarioId = req.user.id;
+  const { id } = req.params;
+  const usuarioId = req.user.id;
 
-    const updated = await TransaccionP2P.confirmPayment(id, usuarioId);
-    res.json({ 
-      message: 'Pago confirmado exitosamente', 
-      data: updated 
-    });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
+  const updated = await TransaccionP2P.confirmPayment(id, usuarioId);
+  res.json({
+    message: 'Pago confirmado exitosamente',
+    data: updated
+  });
 };
 
-// Completar transacción (vendedor)
+// Complete transaction (seller)
+// Model manages its own transaction internally — no rollback needed in controller.
 const completeTransaction = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const usuarioId = req.user.id;
+  const { id } = req.params;
+  const usuarioId = req.user.id;
 
-    const updated = await TransaccionP2P.completeTransaction(id, usuarioId);
-    res.json({ 
-      message: 'Transacción completada exitosamente', 
-      data: updated 
-    });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
+  const updated = await TransaccionP2P.completeTransaction(id, usuarioId);
+  res.json({
+    message: 'Transacción completada exitosamente',
+    data: updated
+  });
 };
 
-// Cancelar transacción
+// Cancel transaction
+// Model manages its own transaction internally — no rollback needed in controller.
 const cancelTransaction = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const usuarioId = req.user.id;
+  const { id } = req.params;
+  const usuarioId = req.user.id;
 
-    const updated = await TransaccionP2P.cancelTransaction(id, usuarioId);
-    res.json({ 
-      message: 'Transacción cancelada exitosamente', 
-      data: updated 
-    });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
+  const updated = await TransaccionP2P.cancelTransaction(id, usuarioId);
+  res.json({
+    message: 'Transacción cancelada exitosamente',
+    data: updated
+  });
 };
 
-// Obtener mis transacciones
+// Get my transactions
 const getMyTransacciones = async (req, res) => {
-  try {
-    const usuarioId = req.user.id;
-    const { page = 1, limit = 10, estado } = req.query;
-    
-    const whereCondition = {
-      [Op.or]: [
-        { compradorId: usuarioId },
-        { vendedorId: usuarioId }
-      ]
-    };
+  const usuarioId = req.user.id;
+  const { page = 1, limit = 10, estado } = req.query;
 
-    if (estado && estado !== 'todas') {
-      whereCondition.estado = estado;
-    }
+  const whereCondition = {
+    [Op.or]: [
+      { compradorId: usuarioId },
+      { vendedorId: usuarioId }
+    ]
+  };
 
-    const { count, rows: transacciones } = await TransaccionP2P.findAndCountAll({
-      where: whereCondition,
-      include: [
-        {
-          model: Criptomoneda,
-          as: 'criptomoneda',
-          attributes: ['id', 'symbol', 'nombre', 'iconUrl']
-        },
-        {
-          model: Usuario,
-          as: 'comprador',
-          attributes: ['id', 'username', 'reputacionPromedio']
-        },
-        {
-          model: Usuario,
-          as: 'vendedor',
-          attributes: ['id', 'username', 'reputacionPromedio']
-        }
-      ],
-      order: [['created_at', 'DESC']],
-      limit: parseInt(limit),
-      offset: (parseInt(page) - 1) * parseInt(limit)
-    });
-
-    // Agregar campo esComprador a cada transacción
-    const transaccionesConRol = transacciones.map(t => ({
-      ...t.toJSON(),
-      esComprador: t.compradorId === usuarioId
-    }));
-
-    res.json({
-      transacciones: transaccionesConRol,
-      total: count,
-      page: parseInt(page),
-      limit: parseInt(limit)
-    });
-  } catch (error) {
-    console.error('Error en getMyTransacciones:', error);
-    res.status(500).json({ error: error.message });
+  if (estado && estado !== 'todas') {
+    whereCondition.estado = estado;
   }
-};
 
-// Obtener transacciones pendientes
-const getPendingTransacciones = async (req, res) => {
-  try {
-    const usuarioId = req.user.id;
-    
-    const result = await TransaccionP2P.getPendingTransactions(usuarioId);
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// Obtener estadísticas de transacciones (admin)
-const getTransaccionesStats = async (req, res) => {
-  try {
-    const filters = req.query;
-    const stats = await TransaccionP2P.getStats(filters);
-    res.json(stats);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// Obtener volumen de usuario
-const getUserVolume = async (req, res) => {
-  try {
-    const usuarioId = req.params.usuarioId || req.user.id;
-    const { period = '30d' } = req.query;
-
-    // Si no es admin y no es su propio volumen, denegar acceso
-    if (req.user.rol !== 'admin' && usuarioId !== req.user.id) {
-      return res.status(403).json({ error: 'No tienes permiso para ver este volumen' });
-    }
-
-    const volume = await TransaccionP2P.getUserVolume(usuarioId, period);
-    res.json(volume);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// Verificar timeouts (tarea administrativa)
-const checkTimeouts = async (req, res) => {
-  try {
-    const canceladas = await TransaccionP2P.checkTimeouts();
-    res.json({ 
-      message: `Se cancelaron ${canceladas} transacciones por timeout`,
-      transaccionesCanceladas: canceladas
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// Obtener transacciones por oferta
-const getTransaccionesByOferta = async (req, res) => {
-  try {
-    const { ofertaId } = req.params;
-    const filters = { ...req.query, ofertaId };
-
-    const result = await TransaccionP2P.getAll(filters);
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// Obtener historial de transacciones con usuario específico
-const getTransactionHistory = async (req, res) => {
-  try {
-    const { otroUsuarioId } = req.params;
-    const usuarioId = req.user.id;
-    const { page = 1, limit = 20 } = req.query;
-
-    const filters = {
-      page: parseInt(page),
-      limit: parseInt(limit)
-    };
-
-    // Filtrar transacciones donde el usuario actual y el otro usuario participaron
-    const result = await TransaccionP2P.getAll({
-      ...filters,
-      where: {
-        [Op.or]: [
-          { compradorId: usuarioId, vendedorId: otroUsuarioId },
-          { compradorId: otroUsuarioId, vendedorId: usuarioId }
-        ]
+  const { count, rows: transacciones } = await TransaccionP2P.findAndCountAll({
+    where: whereCondition,
+    include: [
+      {
+        model: Criptomoneda,
+        as: 'criptomoneda',
+        attributes: ['id', 'symbol', 'nombre', 'iconUrl']
+      },
+      {
+        model: Usuario,
+        as: 'comprador',
+        attributes: ['id', 'username', 'reputacionPromedio']
+      },
+      {
+        model: Usuario,
+        as: 'vendedor',
+        attributes: ['id', 'username', 'reputacionPromedio']
       }
-    });
+    ],
+    order: [['created_at', 'DESC']],
+    limit: parseInt(limit),
+    offset: (parseInt(page) - 1) * parseInt(limit)
+  });
 
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+  // Add esComprador field to each transaction
+  const transaccionesConRol = transacciones.map(t => ({
+    ...t.toJSON(),
+    esComprador: t.compradorId === usuarioId
+  }));
+
+  res.json({
+    transacciones: transaccionesConRol,
+    total: count,
+    page: parseInt(page),
+    limit: parseInt(limit)
+  });
 };
 
-// Forzar cambio de estado (solo admin)
-const forceStatusChange = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { estado, motivo } = req.body;
+// Get pending transactions
+const getPendingTransacciones = async (req, res) => {
+  const usuarioId = req.user.id;
+  const result = await TransaccionP2P.getPendingTransactions(usuarioId);
+  res.json(result);
+};
 
-    // Solo admin puede forzar cambios de estado
-    if (req.user.rol !== 'admin') {
-      return res.status(403).json({ error: 'Solo administradores pueden forzar cambios de estado' });
-    }
+// Get transaction statistics (admin)
+const getTransaccionesStats = async (req, res) => {
+  const filters = req.query;
+  const stats = await TransaccionP2P.getStats(filters);
+  res.json(stats);
+};
 
-    const transaccion = await TransaccionP2P.findByPk(id);
-    if (!transaccion) {
-      return res.status(404).json({ error: 'Transacción no encontrada' });
-    }
+// Get user volume
+const getUserVolume = async (req, res) => {
+  const usuarioId = req.params.usuarioId || req.user.id;
+  const { period = '30d' } = req.query;
 
-    const updateData = { estado };
-    
-    // Agregar timestamps según el nuevo estado
-    switch (estado) {
-      case 'pago_confirmado':
-        updateData.fechaPagoConfirmado = new Date();
-        break;
-      case 'completada':
-        updateData.fechaCompletada = new Date();
-        break;
-    }
-
-    await transaccion.update(updateData);
-
-    // Registrar la acción administrativa si tienes un modelo de logs
-    // await LogAdmin.create({
-    //   adminId: req.user.id,
-    //   accion: 'FORZAR_ESTADO_TRANSACCION',
-    //   detalles: { transaccionId: id, estadoAnterior: transaccion.estado, nuevoEstado: estado, motivo }
-    // });
-
-    const updated = await TransaccionP2P.getById(id);
-    res.json({ 
-      message: 'Estado forzado exitosamente', 
-      data: updated 
-    });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
+  // Non-admin users can only view their own volume
+  if (req.user.rol !== 'admin' && usuarioId !== req.user.id) {
+    throw new AppError(403, errorCodes.P2P_TX_FORBIDDEN, 'You do not have permission to view this volume');
   }
+
+  const volume = await TransaccionP2P.getUserVolume(usuarioId, period);
+  res.json(volume);
+};
+
+// Check timeouts (administrative task)
+const checkTimeouts = async (req, res) => {
+  const canceladas = await TransaccionP2P.checkTimeouts();
+  res.json({
+    message: `Se cancelaron ${canceladas} transacciones por timeout`,
+    transaccionesCanceladas: canceladas
+  });
+};
+
+// Get transactions by offer
+const getTransaccionesByOferta = async (req, res) => {
+  const { ofertaId } = req.params;
+  const filters = { ...req.query, ofertaId };
+  const result = await TransaccionP2P.getAll(filters);
+  res.json(result);
+};
+
+// Get transaction history with a specific user
+const getTransactionHistory = async (req, res) => {
+  const { otroUsuarioId } = req.params;
+  const usuarioId = req.user.id;
+  const { page = 1, limit = 20 } = req.query;
+
+  const filters = {
+    page: parseInt(page),
+    limit: parseInt(limit)
+  };
+
+  // Filter transactions where both the current user and the other user participated
+  const result = await TransaccionP2P.getAll({
+    ...filters,
+    where: {
+      [Op.or]: [
+        { compradorId: usuarioId, vendedorId: otroUsuarioId },
+        { compradorId: otroUsuarioId, vendedorId: usuarioId }
+      ]
+    }
+  });
+
+  res.json(result);
+};
+
+// Force status change (admin only)
+// No Sequelize transaction opened in this controller handler; findByPk and
+// instance.update() each execute in their own auto-committed statement.
+const forceStatusChange = async (req, res) => {
+  const { id } = req.params;
+  const { estado, motivo } = req.body;
+
+  // Only admin can force status changes
+  if (req.user.rol !== 'admin') {
+    throw new AppError(403, errorCodes.P2P_TX_ADMIN_REQUIRED, 'Only administrators can force status changes');
+  }
+
+  const transaccion = await TransaccionP2P.findByPk(id);
+  if (!transaccion) {
+    throw new AppError(404, errorCodes.P2P_TX_NOT_FOUND, 'Transaction not found');
+  }
+
+  const updateData = { estado };
+
+  // Add timestamps based on new state
+  switch (estado) {
+    case 'pago_confirmado':
+      updateData.fechaPagoConfirmado = new Date();
+      break;
+    case 'completada':
+      updateData.fechaCompletada = new Date();
+      break;
+  }
+
+  await transaccion.update(updateData);
+
+  // Register administrative action if you have a log model
+  // await LogAdmin.create({
+  //   adminId: req.user.id,
+  //   accion: 'FORZAR_ESTADO_TRANSACCION',
+  //   detalles: { transaccionId: id, estadoAnterior: transaccion.estado, nuevoEstado: estado, motivo }
+  // });
+
+  const updated = await TransaccionP2P.getById(id);
+  res.json({
+    message: 'Estado forzado exitosamente',
+    data: updated
+  });
 };
 
 module.exports = {

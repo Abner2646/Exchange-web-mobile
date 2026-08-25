@@ -1,10 +1,12 @@
-// controllers/trading.controller.js 
+// controllers/trading.controller.js
 const orderBookService = require('../services/trading/orderBook.service');
 const orderValidator = require('../services/trading/orderValidator.service');
 const balanceManager = require('../services/trading/balanceManager.service');
 const feeCalculator = require('../services/trading/feeCalculator.service');
 const tradeExecutor = require('../services/trading/tradeExecutor.service');
 const { Order, TradingPair, Trade } = require('../models');
+const AppError = require('../utils/AppError');
+const errorCodes = require('../utils/errorCodes');
 
 class TradingController {
 
@@ -13,165 +15,141 @@ class TradingController {
    * POST /api/trading/orders
    */
   async createOrder(req, res) {
-    try {
-      const { 
-        tradingPairId, 
-        orderType, 
-        side, 
-        quantity, 
-        price, 
-        stopPrice,
-        timeInForce = 'GTC',
-        clientOrderId
-      } = req.body;
-      
-      const userId = req.user.id;
+    const {
+      tradingPairId,
+      orderType,
+      side,
+      quantity,
+      price,
+      stopPrice,
+      timeInForce = 'GTC',
+      clientOrderId
+    } = req.body;
 
-      // 1. Validar trading pair
-      const tradingPair = await TradingPair.findByPk(tradingPairId, {
+    const userId = req.user.id;
+
+    // 1. Validar trading pair
+    const tradingPair = await TradingPair.findByPk(tradingPairId, {
+      include: [
+        { association: 'baseAsset' },
+        { association: 'quoteAsset' }
+      ]
+    });
+
+    if (!tradingPair || tradingPair.status !== 'active') {
+      throw new AppError(400, errorCodes.TRADING_PAIR_NOT_FOUND, 'Par de trading no disponible');
+    }
+
+    // 2. Validar orden
+    const validation = await orderValidator.validateOrder({
+      tradingPairId,
+      orderType,
+      side,
+      quantity,
+      price,
+      stopPrice,
+      timeInForce,
+      userId
+    });
+
+    if (!validation.valid) {
+      throw new AppError(400, errorCodes.INVALID_ORDER, validation.error);
+    }
+
+    // 3. Verificar balance suficiente
+    const balanceCheck = await balanceManager.checkSufficientBalance(
+      userId,
+      tradingPairId,
+      side,
+      quantity,
+      price
+    );
+
+    if (!balanceCheck.sufficient) {
+      throw new AppError(400, errorCodes.INSUFFICIENT_BALANCE, balanceCheck.error);
+    }
+
+    // 4. Bloquear balance
+    const balanceLocked = await balanceManager.lockBalanceForOrder({
+      userId,
+      tradingPair,
+      side,
+      quantity,
+      price: orderType === 'market' ? null : price
+    });
+
+    if (!balanceLocked.success) {
+      throw new AppError(400, errorCodes.INSUFFICIENT_BALANCE, balanceLocked.error);
+    }
+
+    // 5. Calcular fee
+    const feeData = await feeCalculator.calculateOrderFee({
+      tradingPairId,
+      side,
+      quantity,
+      price,
+      orderType
+    });
+
+    // 6. Crear orden
+    const order = await Order.create({
+      userId,
+      tradingPairId,
+      orderType,
+      side,
+      quantity,
+      quantityRemaining: quantity,
+      price: orderType === 'limit' ? price : null,
+      stopPrice,
+      timeInForce,
+      status: 'pending',
+      tradingType: 'spot',
+      feePercent: feeData.feePercent,
+      feeCurrency: feeData.feeCurrency,
+      clientOrderId,
+      leverage: 1
+    });
+
+    // 7. Intentar matching inmediato (asíncrono)
+    orderBookService.matchOrder(order.id)
+      .then(matchResult => {
+        // Emitir evento WebSocket si está disponible
+        if (req.io) {
+          req.io.to(`orderbook:${tradingPairId}`).emit('orderbook_update', {
+            action: 'new_order',
+            orderId: order.id,
+            side: order.side
+          });
+
+          if (matchResult.matched && matchResult.trades.length > 0) {
+            req.io.to(`user:${userId}`).emit('order_filled', {
+              orderId: order.id,
+              trades: matchResult.trades
+            });
+          }
+        }
+      })
+      .catch(err => {
+        console.error('Error en matching asíncrono:', err);
+      });
+
+    // 8. Recargar orden con relaciones
+    const createdOrder = await Order.findByPk(order.id, {
+      include: [{
+        model: TradingPair,
+        as: 'tradingPair',
         include: [
           { association: 'baseAsset' },
           { association: 'quoteAsset' }
         ]
-      });
+      }]
+    });
 
-      if (!tradingPair || tradingPair.status !== 'active') {
-        return res.status(400).json({ 
-          success: false,
-          error: 'Par de trading no disponible' 
-        });
-      }
-
-      // 2. Validar orden
-      const validation = await orderValidator.validateOrder({
-        tradingPairId,
-        orderType,
-        side,
-        quantity,
-        price,
-        stopPrice,
-        timeInForce,
-        userId
-      });
-
-      if (!validation.valid) {
-        return res.status(400).json({ 
-          success: false,
-          error: validation.error 
-        });
-      }
-
-      // 3. Verificar balance suficiente
-      const balanceCheck = await balanceManager.checkSufficientBalance(
-        userId,
-        tradingPairId,
-        side,
-        quantity,
-        price
-      );
-
-      if (!balanceCheck.sufficient) {
-        return res.status(400).json({ 
-          success: false,
-          error: balanceCheck.error,
-          required: balanceCheck.required,
-          available: balanceCheck.available
-        });
-      }
-
-      // 4. Bloquear balance
-      const balanceLocked = await balanceManager.lockBalanceForOrder({
-        userId,
-        tradingPair,
-        side,
-        quantity,
-        price: orderType === 'market' ? null : price
-      });
-
-      if (!balanceLocked.success) {
-        return res.status(400).json({ 
-          success: false,
-          error: balanceLocked.error 
-        });
-      }
-
-      // 5. Calcular fee
-      const feeData = await feeCalculator.calculateOrderFee({
-        tradingPairId,
-        side,
-        quantity,
-        price,
-        orderType
-      });
-
-      // 6. Crear orden
-      const order = await Order.create({
-        userId,
-        tradingPairId,
-        orderType,
-        side,
-        quantity,
-        quantityRemaining: quantity,
-        price: orderType === 'limit' ? price : null,
-        stopPrice,
-        timeInForce,
-        status: 'pending',
-        tradingType: 'spot',
-        feePercent: feeData.feePercent,
-        feeCurrency: feeData.feeCurrency,
-        clientOrderId,
-        leverage: 1
-      });
-
-      // 7. Intentar matching inmediato (asíncrono)
-      orderBookService.matchOrder(order.id)
-        .then(matchResult => {
-          // Emitir evento WebSocket si está disponible
-          if (req.io) {
-            req.io.to(`orderbook:${tradingPairId}`).emit('orderbook_update', {
-              action: 'new_order',
-              orderId: order.id,
-              side: order.side
-            });
-
-            if (matchResult.matched && matchResult.trades.length > 0) {
-              req.io.to(`user:${userId}`).emit('order_filled', {
-                orderId: order.id,
-                trades: matchResult.trades
-              });
-            }
-          }
-        })
-        .catch(err => {
-          console.error('Error en matching asíncrono:', err);
-        });
-
-      // 8. Recargar orden con relaciones
-      const createdOrder = await Order.findByPk(order.id, {
-        include: [{
-          model: TradingPair,
-          as: 'tradingPair',
-          include: [
-            { association: 'baseAsset' },
-            { association: 'quoteAsset' }
-          ]
-        }]
-      });
-
-      res.status(201).json({
-        success: true,
-        order: createdOrder,
-        message: 'Orden creada exitosamente'
-      });
-
-    } catch (error) {
-      console.error('Error creando orden:', error);
-      res.status(500).json({ 
-        success: false,
-        error: 'Error al crear orden',
-        details: error.message
-      });
-    }
+    res.status(201).json({
+      success: true,
+      order: createdOrder,
+      message: 'Orden creada exitosamente'
+    });
   }
 
   /**

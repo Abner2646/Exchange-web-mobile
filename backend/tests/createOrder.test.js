@@ -9,6 +9,21 @@
 // probando es la lógica de negocio del controller (qué balance se debita,
 // cuál se acredita, en qué signo), no la capa de persistencia — eso es
 // trabajo de un test de integración con DB real (Fase 2 del roadmap).
+//
+// NOTE (refactor 2026-08-24): createOrder and checkTransactionLimit now throw
+// AppError instead of calling res.status().json() for business failures. Tests
+// that invoked the handler directly and expected the old res-based response
+// have been migrated to use the HTTP layer (supertest + asyncHandler +
+// errorHandler) while preserving the same business-behavior assertion.
+//
+// NOTE (money.js migration 2026-08-24): the settlement arithmetic moved out of
+// the controller (float parseFloat/Number) into intercambioSettlement.service
+// (exact, money.js). The deltas passed to updateBalance/addToBalance are now
+// canonical strings ('-101', '1', ...) instead of Numbers — same boundary
+// change already applied across the money-movement path.
+
+const request = require('supertest');
+const express = require('express');
 
 jest.mock('../models/index.js', () => ({
   IntercambioExchange: { create: jest.fn(), getDailyVolume: jest.fn() },
@@ -29,6 +44,8 @@ const {
   sequelize,
 } = require('../models/index.js');
 
+const asyncHandler = require('../utils/asyncHandler');
+const errorHandler = require('../middleware/errorHandler');
 const { createOrder, checkTransactionLimit } = require('../controllers/intercambioExchange.controller');
 
 function mockRes() {
@@ -38,6 +55,26 @@ function mockRes() {
     status(code) { this.statusCode = code; return this; },
     json(payload) { this.body = payload; return this; },
   };
+}
+
+/** Build a minimal app that routes POST / to createOrder via asyncHandler. */
+function buildCreateOrderApp(userId = USER_ID) {
+  const app = express();
+  app.use(express.json());
+  app.use((req, _res, next) => { req.user = { id: userId }; next(); });
+  app.post('/', asyncHandler(createOrder));
+  app.use(errorHandler);
+  return app;
+}
+
+/** Build a minimal app that routes POST /check-limit to checkTransactionLimit. */
+function buildCheckLimitApp(userId = USER_ID) {
+  const app = express();
+  app.use(express.json());
+  app.use((req, _res, next) => { req.user = { id: userId }; next(); });
+  app.post('/check-limit', asyncHandler(checkTransactionLimit));
+  app.use(errorHandler);
+  return app;
 }
 
 const CRIPTO_BASE_ID = 'base-crypto-id';
@@ -89,10 +126,10 @@ describe('createOrder', () => {
     // Débito en quote (negativo) y crédito en base (positivo) — exactamente
     // lo que "comprar" tiene que hacer.
     expect(BalanceUsuario.updateBalance).toHaveBeenCalledWith(
-      USER_ID, CRIPTO_QUOTE_ID, -101, 'disponible', expect.anything()
+      USER_ID, CRIPTO_QUOTE_ID, '-101', 'disponible', expect.anything()
     );
     expect(BalanceUsuario.updateBalance).toHaveBeenCalledWith(
-      USER_ID, CRIPTO_BASE_ID, 1, 'disponible', expect.anything()
+      USER_ID, CRIPTO_BASE_ID, '1', 'disponible', expect.anything()
     );
   });
 
@@ -109,10 +146,10 @@ describe('createOrder', () => {
     expect(res.body.data.tipo).toBe('venta');
 
     expect(BalanceUsuario.updateBalance).toHaveBeenCalledWith(
-      USER_ID, CRIPTO_BASE_ID, -1, 'disponible', expect.anything()
+      USER_ID, CRIPTO_BASE_ID, '-1', 'disponible', expect.anything()
     );
     expect(BalanceUsuario.updateBalance).toHaveBeenCalledWith(
-      USER_ID, CRIPTO_QUOTE_ID, 99, 'disponible', expect.anything()
+      USER_ID, CRIPTO_QUOTE_ID, '99', 'disponible', expect.anything()
     );
   });
 
@@ -123,21 +160,24 @@ describe('createOrder', () => {
     const req = { user: { id: USER_ID }, body: { parId: PAR_ID, tipo: 'venta', cantidadBase: 1 } };
     await createOrder(req, mockRes());
 
-    expect(WalletMaestra.addToBalance).toHaveBeenCalledWith('wallet-maestra-quote', 1, transaction);
+    expect(WalletMaestra.addToBalance).toHaveBeenCalledWith('wallet-maestra-quote', '1', transaction);
   });
 
   test('rechaza la orden si supera el límite diario (chequeo ya no está deshabilitado)', async () => {
+    // Migrated to HTTP layer: createOrder now throws AppError for business
+    // failures so the assertion must go through asyncHandler + errorHandler.
     setupCommonMocks({ limiteDiarioUsd: 50, dailyVolume: 0 });
     BalanceUsuario.findOne.mockResolvedValue({ balanceDisponible: '200' });
 
     // cantidadQuote = 1 * 100 = 100, supera el límite de 50
-    const req = { user: { id: USER_ID }, body: { parId: PAR_ID, tipo: 'venta', cantidadBase: 1 } };
-    const res = mockRes();
+    const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const res = await request(buildCreateOrderApp())
+      .post('/')
+      .send({ parId: PAR_ID, tipo: 'venta', cantidadBase: 1 });
+    spy.mockRestore();
 
-    await createOrder(req, res);
-
-    expect(res.statusCode).toBe(400);
-    expect(res.body.error).toBe('Límite diario excedido');
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('EXCHANGE_DAILY_LIMIT_EXCEEDED');
     expect(BalanceUsuario.updateBalance).not.toHaveBeenCalled();
   });
 });
@@ -158,16 +198,18 @@ describe('checkTransactionLimit', () => {
     expect(res.body.canTransact).toBe(true);
   });
 
-  test('devuelve canTransact:false cuando se supera el límite', async () => {
+  test('devuelve 400 EXCHANGE_DAILY_LIMIT_EXCEEDED cuando se supera el límite', async () => {
+    // Migrated to HTTP layer: checkTransactionLimit now throws AppError instead
+    // of responding directly. The canTransact:false field has been replaced by
+    // the canonical error envelope in the 400 response.
     IntercambioExchange.getDailyVolume.mockResolvedValue(950);
     Usuario.findByPk.mockResolvedValue({ limiteDiarioUsd: 1000 });
 
-    const req = { user: { id: USER_ID }, body: { cantidadQuote: 100 } };
-    const res = mockRes();
+    const res = await request(buildCheckLimitApp())
+      .post('/check-limit')
+      .send({ cantidadQuote: 100 });
 
-    await checkTransactionLimit(req, res);
-
-    expect(res.statusCode).toBe(400);
-    expect(res.body.canTransact).toBe(false);
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('EXCHANGE_DAILY_LIMIT_EXCEEDED');
   });
 });

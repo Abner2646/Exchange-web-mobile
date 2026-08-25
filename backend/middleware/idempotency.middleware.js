@@ -12,8 +12,7 @@ const STALE_MS = 90 * 1000; // in-progress rows older than this are reclaimable
 
 function inProgress(res) {
   return res.status(409).json({
-    error: 'A request with this Idempotency-Key is already being processed. Retry shortly.',
-    code: 'IDEMPOTENCY_REQUEST_IN_PROGRESS'
+    error: { code: 'IDEMPOTENCY_REQUEST_IN_PROGRESS', message: 'A request with this Idempotency-Key is already being processed. Retry shortly.' }
   });
 }
 
@@ -51,8 +50,7 @@ async function handle(req, res, next) {
   const key = req.get('Idempotency-Key');
   if (!key) {
     return res.status(400).json({
-      error: 'Idempotency-Key header is required',
-      code: 'IDEMPOTENCY_KEY_REQUIRED'
+      error: { code: 'IDEMPOTENCY_KEY_REQUIRED', message: 'Idempotency-Key header is required' }
     });
   }
 
@@ -74,8 +72,7 @@ async function handle(req, res, next) {
 
   if (existing.requestHash !== requestHash) {
     return res.status(422).json({
-      error: 'Idempotency-Key was already used with a different request',
-      code: 'IDEMPOTENCY_KEY_REUSED'
+      error: { code: 'IDEMPOTENCY_KEY_REUSED', message: 'Idempotency-Key was already used with a different request' }
     });
   }
 

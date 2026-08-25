@@ -327,6 +327,18 @@ class BitcoinService {
 
   async processWithdrawal(withdrawal) {
     const { cantidad, direccionDestino } = withdrawal;
+
+    // Atomic claim BEFORE any broadcast (anti double-spend). If another
+    // concurrent run already claimed this row, skip — do not broadcast again.
+    // The claim mechanism (TransaccionBlockchain.claimForProcessing) is proven
+    // atomic; BTC's send path still uses bitcoinjs/BlockCypher inline (its own
+    // chain-client adapter is a follow-up), but the double-spend is closed here.
+    const claimed = await TransaccionBlockchain.claimForProcessing(withdrawal.id);
+    if (!claimed) {
+      console.log(`⏭️ [BTC] Retiro ${withdrawal.id} ya reclamado por otra corrida, se saltea`);
+      return null;
+    }
+
     const amountSatoshis = this.btcToSatoshis(cantidad);
 
     // Verificar balance
@@ -341,13 +353,21 @@ class BitcoinService {
       throw new Error('No hay UTXOs disponibles en wallet maestra');
     }
 
-    // Construir transacción
+    // Construir + firmar transacción (aún sin transmitir)
     const { txHex, actualFee } = await this.buildTransaction(
       utxos, direccionDestino, amountSatoshis
     );
 
+    // El txid de una tx Bitcoin firmada es determinista: se conoce ANTES del
+    // broadcast. Lo pre-registramos para que el reaper pueda verificar on-chain
+    // si el retiro salió — sin esto, un crash entre broadcast y mark dejaría la
+    // fila sin txHash y el reaper la revertiría aunque el BTC ya se transmitió
+    // (doble-gasto). Ver spec 2026-08-24-fase2-withdrawal-reaper-onchain.
+    const txid = bitcoin.Transaction.fromHex(txHex).getId();
+    await TransaccionBlockchain.recordWithdrawalTxHash(withdrawal.id, txid);
+
     // Broadcast
-    const txid = await this.broadcastTransaction(txHex);
+    await this.broadcastTransaction(txHex);
 
     // Actualizar en DB
     const updated = await TransaccionBlockchain.markWithdrawalAsSent(
@@ -652,6 +672,20 @@ class BitcoinService {
     } catch (error) {
       throw new Error(`Error broadcasting BTC transaction: ${error.message}`);
     }
+  }
+
+  // On-chain lookup for the withdrawal reaper. Returns confirmations (0 if seen
+  // but unconfirmed), or null ONLY when BlockCypher definitively does not know
+  // the tx (404). Transient errors THROW so the reaper leaves the row (never
+  // reverts on a lookup failure). Not exercised by the test harness — verify on
+  // a testnet smoke-test before prod.
+  async getConfirmations(txHash) {
+    const url = `${this.baseUrl}/txs/${txHash}${this.apiToken}`;
+    const response = await fetch(url);
+    if (response.status === 404) return null; // definitively absent on-chain
+    if (!response.ok) throw new Error(`BlockCypher tx lookup failed: ${response.status}`);
+    const data = await response.json();
+    return data.confirmations ?? 0;
   }
 
   async getTransactionOutput(txHash, outputIndex) {

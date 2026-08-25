@@ -3,21 +3,30 @@ require('dotenv').config();
 const { ethers } = require('ethers');
 const { TransaccionBlockchain, DireccionDeposito, Criptomoneda, BlockchainState } = require('../../models');
 const money = require('../../utils/money');
+const EthersEvmClient = require('./ethersEvmClient');
 
 class BscService {
-  constructor() {
+  constructor(opts = {}) {
     try {
       this.isTestnet = process.env.BSC_NETWORK === 'testnet' || process.env.NODE_ENV !== 'production';
-      
-      const rpcUrl = this.isTestnet ? process.env.BSC_TESTNET_RPC_URL : process.env.BSC_RPC_URL;
-      const privateKey = this.isTestnet ? process.env.BNB_TESTNET_PRIVATE_KEY : process.env.BNB_PRIVATE_KEY;
-      
-      if (!rpcUrl || !privateKey) {
-        throw new Error(`Configuración BSC incompleta para ${this.isTestnet ? 'testnet' : 'mainnet'}`);
+
+      // Chain-client seam: injected in tests, built from env in prod. BSC is EVM,
+      // so it reuses the same EvmChainClient port/adapter as Ethereum.
+      if (opts.chainClient) {
+        this.chain = opts.chainClient;
+      } else {
+        const rpcUrl = this.isTestnet ? process.env.BSC_TESTNET_RPC_URL : process.env.BSC_RPC_URL;
+        const privateKey = this.isTestnet ? process.env.BNB_TESTNET_PRIVATE_KEY : process.env.BNB_PRIVATE_KEY;
+        if (!rpcUrl || !privateKey) {
+          throw new Error(`Configuración BSC incompleta para ${this.isTestnet ? 'testnet' : 'mainnet'}`);
+        }
+        this.chain = new EthersEvmClient({ rpcUrl, privateKey, fallbackGwei: '5' });
       }
-      
-      this.provider = new ethers.JsonRpcProvider(rpcUrl);
-      this.wallet = new ethers.Wallet(privateKey, this.provider);
+
+      // Legacy ethers handles for the not-yet-migrated paths (token withdrawal,
+      // scan, confirmations). Real adapter exposes them; a fake leaves them null.
+      this.provider = this.chain.provider || null;
+      this.wallet = this.chain.wallet || null;
       this.network = 'bsc';
       this.actualNetwork = this.isTestnet ? 'bsc-testnet' : 'bsc';
       this.chainId = this.isTestnet ? 97 : 56; // BSC Testnet : BSC Mainnet
@@ -532,60 +541,39 @@ class BscService {
   async processWithdrawal(withdrawal) {
     const { cantidad, direccionDestino, criptomoneda } = withdrawal;
 
-    const walletBalance = await this.getWalletBalance(criptomoneda);
+    // Atomic claim BEFORE any broadcast (anti double-spend), for BOTH native and
+    // token paths. If another concurrent run already claimed this row, skip.
+    const claimed = await TransaccionBlockchain.claimForProcessing(withdrawal.id);
+    if (!claimed) {
+      console.log(`⏭️ [BSC] Retiro ${withdrawal.id} ya reclamado por otra corrida, se saltea`);
+      return null;
+    }
+
+    if (criptomoneda.symbol === 'BNB') {
+      // NATIVE — sign → pre-record txHash → broadcast → finalize (BSC is EVM).
+      const walletBalance = await this.chain.getNativeBalance();
+      if (money.compare(String(walletBalance), String(cantidad)) < 0) {
+        throw new Error(`Balance insuficiente en wallet maestra BSC: ${walletBalance} < ${cantidad}`);
+      }
+      const { txHash, signed, fee } = await this.chain.signNativeTransfer(direccionDestino, cantidad.toString());
+      await TransaccionBlockchain.recordWithdrawalTxHash(withdrawal.id, txHash);
+      await this.chain.broadcast(signed);
+      const updated = await TransaccionBlockchain.markWithdrawalAsSent(withdrawal.id, txHash, fee);
+      console.log(`✅ [BSC] Retiro enviado: ${cantidad} ${criptomoneda.symbol} - TX: ${txHash}`);
+      return updated;
+    }
+
+    // TOKEN (BEP20) — sign → pre-record txHash → broadcast → finalize.
+    const walletBalance = await this.chain.getTokenBalance(criptomoneda.direccionContrato);
     if (money.compare(String(walletBalance), String(cantidad)) < 0) {
       throw new Error(`Balance insuficiente en wallet maestra BSC: ${walletBalance} < ${cantidad}`);
     }
-
-    let tx;
-    let estimatedFee;
-
-    const feeData = await this.provider.getFeeData();
-    const gasPrice = feeData.gasPrice || feeData.maxFeePerGas || ethers.parseUnits('5', 'gwei');
-
-    try {
-      if (criptomoneda.symbol === 'BNB') {
-        estimatedFee = ethers.formatEther(gasPrice * BigInt(21000));
-
-        tx = await this.wallet.sendTransaction({
-          to: direccionDestino,
-          value: ethers.parseEther(cantidad.toString()),
-          gasLimit: 21000,
-          gasPrice: gasPrice
-        });
-      } else {
-        const contract = new ethers.Contract(
-          criptomoneda.direccionContrato,
-          [
-            'function transfer(address to, uint256 amount) returns (bool)',
-            'function decimals() view returns (uint8)'
-          ],
-          this.wallet
-        );
-
-        estimatedFee = ethers.formatEther(gasPrice * BigInt(60000));
-
-        const decimales = await contract.decimals();
-        const amount = ethers.parseUnits(cantidad.toString(), decimales);
-
-        tx = await contract.transfer(direccionDestino, amount, {
-          gasLimit: 60000,
-          gasPrice: gasPrice
-        });
-      }
-
-      const updated = await TransaccionBlockchain.markWithdrawalAsSent(
-        withdrawal.id,
-        tx.hash,
-        estimatedFee
-      );
-
-      console.log(`✅ [BSC] Retiro enviado: ${cantidad} ${criptomoneda.symbol} - TX: ${tx.hash}`);
-      return updated;
-
-    } catch (txError) {
-      throw new Error(`Error enviando transacción BSC: ${txError.message}`);
-    }
+    const { txHash, signed, fee } = await this.chain.signTokenTransfer(criptomoneda.direccionContrato, direccionDestino, cantidad.toString());
+    await TransaccionBlockchain.recordWithdrawalTxHash(withdrawal.id, txHash);
+    await this.chain.broadcast(signed);
+    const updated = await TransaccionBlockchain.markWithdrawalAsSent(withdrawal.id, txHash, fee);
+    console.log(`✅ [BSC] Retiro enviado: ${cantidad} ${criptomoneda.symbol} - TX: ${txHash}`);
+    return updated;
   }
 
   async updateConfirmations() {

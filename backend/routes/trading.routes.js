@@ -9,6 +9,7 @@ const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
 const { body, param, query } = require('express-validator');
 const { validate } = require('../middleware/validation.middleware');
 const idempotency = require('../middleware/idempotency.middleware');
+const asyncHandler = require('../utils/asyncHandler');
 
 // Rate limiting
 const tradingRateLimit = require('express-rate-limit')({
@@ -35,7 +36,7 @@ router.post('/orders', // Bien
   ],
   validate,
   idempotency,
-  tradingController.createOrder
+  asyncHandler(tradingController.createOrder)
 );
 /*
 {

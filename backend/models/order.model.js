@@ -205,40 +205,6 @@ function createOrderModel(sequelize) {
     }
   };
 
-  Order.updateOrderFilled = async (orderId, filledQuantity, executionPrice, transaction = null) => {
-    try {
-      const order = await Order.findByPk(orderId, { transaction });
-      
-      if (!order) {
-        throw new Error('Orden no encontrada');
-      }
-
-      const newFilled = parseFloat(order.quantityFilled) + parseFloat(filledQuantity);
-      const newRemaining = parseFloat(order.quantity) - newFilled;
-      
-      // Calcular precio promedio ponderado
-      const previousTotal = parseFloat(order.quantityFilled) * parseFloat(order.averagePrice || 0);
-      const newTotal = parseFloat(filledQuantity) * parseFloat(executionPrice);
-      const newAveragePrice = newFilled > 0 ? (previousTotal + newTotal) / newFilled : 0;
-
-      const updateData = {
-        quantityFilled: newFilled,
-        quantityRemaining: newRemaining,
-        averagePrice: newAveragePrice,
-        status: newRemaining <= 0 ? 'filled' : 'partially_filled'
-      };
-
-      if (newRemaining <= 0) {
-        updateData.executedAt = new Date();
-      }
-
-      await order.update(updateData, { transaction });
-      return order;
-    } catch (error) {
-      throw new Error(`Error al actualizar cantidad ejecutada: ${error.message}`);
-    }
-  };
-
   Order.cancelOrder = async (orderId, reason = 'User cancelled', transaction = null) => {
     try {
       const order = await Order.findByPk(orderId, { transaction });
