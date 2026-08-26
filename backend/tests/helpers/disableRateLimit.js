@@ -5,4 +5,11 @@
 // real routes repeatedly. It is wired ONLY into jest.integration.config.js —
 // the unit config does not load it, so authRateLimiting.test.js still asserts
 // that limiting works. Never set in production.
-process.env.DISABLE_RATE_LIMIT = process.env.DISABLE_RATE_LIMIT || 'true';
+//
+// PATTERN for later auth etapas: only `registerLimiter` honors this flag today,
+// because it is the only limiter integration tests currently saturate. When a
+// new integration test exercises another auth route repeatedly (login, verify,
+// forgot-password, 2FA…), add the same
+//   skip: () => process.env.DISABLE_RATE_LIMIT === 'true'
+// to that limiter in middleware/rateLimiters.js.
+process.env.DISABLE_RATE_LIMIT = 'true';
