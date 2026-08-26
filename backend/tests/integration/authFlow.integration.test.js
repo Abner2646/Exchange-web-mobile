@@ -4,6 +4,8 @@ const app = require('../../app');
 const { sequelize, resetDb } = require('../helpers/db');
 const { createFakeEmailService } = require('../helpers/fakeEmailService');
 const { Usuario } = require('../../models');
+const bcrypt = require('bcrypt');
+const f = require('../helpers/factories');
 
 let fakeEmail;
 beforeEach(async () => {
@@ -58,5 +60,41 @@ describe('POST /api/usuario/register — rejections', () => {
 
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/8 caracteres/i);
+  });
+});
+
+describe('POST /api/usuario/login + GET /api/usuario/me', () => {
+  async function seedLoginUser() {
+    const passwordHash = await bcrypt.hash('password123', 12);
+    return f.seedUser({ email: 'loginuser@test.local', username: 'loginuser', passwordHash });
+  }
+
+  test('logs in with correct credentials and returns a usable token', async () => {
+    await seedLoginUser();
+
+    const res = await request(app)
+      .post('/api/usuario/login')
+      .send({ emailOrUsername: 'loginuser@test.local', password: 'password123' });
+
+    expect(res.status).toBe(200);
+    expect(typeof res.body.token).toBe('string');
+    expect(res.body.user.email).toBe('loginuser@test.local');
+  });
+
+  test('GET /me with the login token returns the profile (pins req.user, kills req.usuario regression)', async () => {
+    const user = await seedLoginUser();
+
+    const login = await request(app)
+      .post('/api/usuario/login')
+      .send({ emailOrUsername: 'loginuser@test.local', password: 'password123' });
+    const token = login.body.token;
+
+    const me = await request(app)
+      .get('/api/usuario/me')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(me.status).toBe(200);
+    expect(me.body.id).toBe(user.id);
+    expect(me.body.email).toBe('loginuser@test.local');
   });
 });
