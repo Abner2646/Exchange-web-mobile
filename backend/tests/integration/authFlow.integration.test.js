@@ -39,3 +39,24 @@ describe('POST /api/usuario/register', () => {
     expect(JSON.stringify(res.body)).not.toContain(verifications[0].codigo);
   });
 });
+
+describe('POST /api/usuario/register — rejections', () => {
+  test('rejects a duplicate email/username', async () => {
+    const body = { email: 'dupe@test.local', username: 'dupe', password: 'password123' };
+    const first = await request(app).post('/api/usuario/register').send(body);
+    expect(first.status).toBe(201);
+
+    const second = await request(app).post('/api/usuario/register').send(body);
+    expect(second.status).toBe(400);
+    expect(second.body.error).toMatch(/en uso/i);
+  });
+
+  test('rejects a password shorter than 8 characters', async () => {
+    const res = await request(app)
+      .post('/api/usuario/register')
+      .send({ email: 'weak@test.local', username: 'weak', password: 'short' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/8 caracteres/i);
+  });
+});
