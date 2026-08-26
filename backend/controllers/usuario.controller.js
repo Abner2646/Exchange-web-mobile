@@ -183,7 +183,7 @@ const registerUsuario = async (req, res) => {
     
     // Enviar código de verificación por email
     try {
-      await emailService.enviarCodigoVerificacionEmail(
+      await req.app.locals.emailService.enviarCodigoVerificacionEmail(
         user.email,
         codigoVerificacion,
         user.username
