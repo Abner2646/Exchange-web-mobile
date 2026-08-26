@@ -98,3 +98,36 @@ describe('POST /api/usuario/login + GET /api/usuario/me', () => {
     expect(me.body.email).toBe('loginuser@test.local');
   });
 });
+
+describe('auth rejections', () => {
+  test('login with wrong password → 401', async () => {
+    const passwordHash = await bcrypt.hash('password123', 12);
+    await f.seedUser({ email: 'wrongpw@test.local', username: 'wrongpw', passwordHash });
+
+    const res = await request(app)
+      .post('/api/usuario/login')
+      .send({ emailOrUsername: 'wrongpw@test.local', password: 'not-the-password' });
+
+    expect(res.status).toBe(401);
+  });
+
+  test('login for a nonexistent user → 401', async () => {
+    const res = await request(app)
+      .post('/api/usuario/login')
+      .send({ emailOrUsername: 'ghost@test.local', password: 'password123' });
+
+    expect(res.status).toBe(401);
+  });
+
+  test('GET /me without a token → 401', async () => {
+    const res = await request(app).get('/api/usuario/me');
+    expect(res.status).toBe(401);
+  });
+
+  test('GET /me with a garbage token → 401', async () => {
+    const res = await request(app)
+      .get('/api/usuario/me')
+      .set('Authorization', 'Bearer not-a-real-jwt');
+    expect(res.status).toBe(401);
+  });
+});
