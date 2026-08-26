@@ -45,6 +45,13 @@ const registerLimiter = rateLimit({
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
   max: 5,
+  // Integration tests POST { emailOrUsername }, so the keyGenerator below falls
+  // back to a single per-IP key and the in-memory counter (not reset by
+  // resetDb) saturates as the auth suite grows. Same integration-only bypass as
+  // registerLimiter — never set in production, and the unit config does not load
+  // the setup file that sets it, so authRateLimiting.test.js still verifies real
+  // limiting.
+  skip: () => process.env.DISABLE_RATE_LIMIT === 'true',
   message: {
     error: 'Demasiados intentos de login. Intenta nuevamente en 15 minutos.'
   },

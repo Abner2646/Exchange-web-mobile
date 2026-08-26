@@ -13,7 +13,12 @@ beforeEach(async () => {
   fakeEmail = createFakeEmailService();
   app.locals.emailService = fakeEmail;
 });
-afterAll(async () => { await sequelize.close(); });
+afterAll(async () => {
+  // Restore the real email service on the shared app singleton so a later suite
+  // in the same worker does not inherit this file's fake.
+  app.locals.emailService = require('../../services/email.service');
+  await sequelize.close();
+});
 
 describe('POST /api/usuario/register', () => {
   test('creates an active-unverified user, returns a token, emails exactly one verification code', async () => {
@@ -64,6 +69,9 @@ describe('POST /api/usuario/register — rejections', () => {
 });
 
 describe('POST /api/usuario/login + GET /api/usuario/me', () => {
+  // Seed-direct with a real bcrypt hash (seedUser's default passwordHash is a
+  // placeholder). This sets up login quickly; the register happy-path test above
+  // is what exercises the real registration path end to end.
   async function seedLoginUser() {
     const passwordHash = await bcrypt.hash('password123', 12);
     return f.seedUser({ email: 'loginuser@test.local', username: 'loginuser', passwordHash });
