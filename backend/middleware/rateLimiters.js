@@ -12,6 +12,13 @@ const rateLimit = require('express-rate-limit');
 const registerLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hora
   max: 3,
+  // Integration tests hit this route many times from one IP in a single
+  // process (the store is not reset by DB truncation). This flag, set only by
+  // the integration test harness, bypasses the limiter there. It is never set
+  // in production, so the limiter stays fully active in prod, and the unit
+  // suite (authRateLimiting.test.js) does not set it either, so that test
+  // still verifies real limiting.
+  skip: () => process.env.DISABLE_RATE_LIMIT === 'true',
   message: {
     error: 'Demasiados intentos de registro. Intenta nuevamente en 1 hora.'
   },
