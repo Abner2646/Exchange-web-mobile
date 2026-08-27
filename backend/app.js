@@ -17,6 +17,10 @@ const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
 
+// Email side-effects go through app.locals so tests can inject a fake.
+// Default is the real service module (production behavior unchanged).
+app.locals.emailService = require('./services/email.service');
+
 // CORS (same policy as before)
 const rawAllowed = process.env.ALLOWED_ORIGINS || process.env.FRONTEND_URL || '';
 const allowedOrigins = rawAllowed.split(',').map(s => s.trim()).filter(Boolean);
