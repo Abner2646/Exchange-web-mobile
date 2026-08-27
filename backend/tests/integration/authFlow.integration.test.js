@@ -24,6 +24,7 @@ afterAll(async () => {
 // captured (never read from the DB). Shared by the Etapa 2 describe blocks.
 async function registerAndGetCode({ email, username, password = 'password123' }) {
   const res = await request(app).post('/api/usuario/register').send({ email, username, password });
+  expect(res.status).toBe(201); // fail loudly here if registration didn't succeed
   const sent = fakeEmail.sent.find((s) => s.type === 'verificacion' && s.email === email);
   return { res, token: res.body.token, code: sent && sent.codigo };
 }
