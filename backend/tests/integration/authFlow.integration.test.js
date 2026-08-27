@@ -204,3 +204,29 @@ describe('requireEmailVerified gate (GET /api/transferencia/my)', () => {
     expect(after.status).toBe(200);
   });
 });
+
+describe('POST /api/usuario/resend-verification-email', () => {
+  test('re-emails a new verification code that verifies the account', async () => {
+    const { token } = await registerAndGetCode({ email: 'resend@test.local', username: 'resenduser' });
+
+    const resend = await request(app)
+      .post('/api/usuario/resend-verification-email')
+      .set('Authorization', `Bearer ${token}`);
+    expect(resend.status).toBe(200);
+
+    // Two verification emails now: the register one + the resend one.
+    const verifications = fakeEmail.sent.filter((s) => s.type === 'verificacion' && s.email === 'resend@test.local');
+    expect(verifications).toHaveLength(2);
+
+    // The resend's code is the current valid one and verifies the account.
+    const newCode = verifications[1].codigo;
+    expect(newCode).toBeTruthy();
+
+    const verify = await request(app)
+      .post('/api/usuario/verify-email')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ codigo: newCode });
+    expect(verify.status).toBe(200);
+    expect(verify.body.user.emailVerificado).toBe(true);
+  });
+});

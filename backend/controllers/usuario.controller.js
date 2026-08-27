@@ -355,12 +355,12 @@ const resendVerificationEmail = async (req, res) => {
     
     // Enviar código por email
     try {
-      await emailService.enviarCodigoVerificacionEmail(
+      await req.app.locals.emailService.enviarCodigoVerificacionEmail(
         user.email,
         codigo,
         user.username
       );
-      
+
       res.json({
         message: 'Código de verificación reenviado exitosamente',
         email: user.email
