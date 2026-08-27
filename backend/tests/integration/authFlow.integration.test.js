@@ -181,3 +181,26 @@ describe('POST /api/usuario/verify-email', () => {
     expect(user.emailVerificado).toBe(false);
   });
 });
+
+describe('requireEmailVerified gate (GET /api/transferencia/my)', () => {
+  test('unverified user is 403, then 200 after verifying (same token)', async () => {
+    const { token, code } = await registerAndGetCode({ email: 'gated@test.local', username: 'gateduser' });
+
+    const before = await request(app)
+      .get('/api/transferencia/my')
+      .set('Authorization', `Bearer ${token}`);
+    expect(before.status).toBe(403);
+    expect(before.body.requiresEmailVerification).toBe(true);
+
+    const verify = await request(app)
+      .post('/api/usuario/verify-email')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ codigo: code });
+    expect(verify.status).toBe(200);
+
+    const after = await request(app)
+      .get('/api/transferencia/my')
+      .set('Authorization', `Bearer ${token}`);
+    expect(after.status).toBe(200);
+  });
+});
