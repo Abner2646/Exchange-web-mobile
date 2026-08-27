@@ -20,6 +20,14 @@ afterAll(async () => {
   await sequelize.close();
 });
 
+// Registers via HTTP and returns the token + the verification code the fake
+// captured (never read from the DB). Shared by the Etapa 2 describe blocks.
+async function registerAndGetCode({ email, username, password = 'password123' }) {
+  const res = await request(app).post('/api/usuario/register').send({ email, username, password });
+  const sent = fakeEmail.sent.find((s) => s.type === 'verificacion' && s.email === email);
+  return { res, token: res.body.token, code: sent && sent.codigo };
+}
+
 describe('POST /api/usuario/register', () => {
   test('creates an active-unverified user, returns a token, emails exactly one verification code', async () => {
     const res = await request(app)
@@ -137,5 +145,39 @@ describe('auth rejections', () => {
       .get('/api/usuario/me')
       .set('Authorization', 'Bearer not-a-real-jwt');
     expect(res.status).toBe(401);
+  });
+});
+
+describe('POST /api/usuario/verify-email', () => {
+  test('verifies the email with the emailed code and returns an updated token', async () => {
+    const { token, code } = await registerAndGetCode({ email: 'verify@test.local', username: 'verifyuser' });
+    expect(code).toBeTruthy();
+
+    const res = await request(app)
+      .post('/api/usuario/verify-email')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ codigo: code });
+
+    expect(res.status).toBe(200);
+    expect(res.body.user.emailVerificado).toBe(true);
+    expect(typeof res.body.token).toBe('string');
+
+    const user = await Usuario.findOne({ where: { email: 'verify@test.local' } });
+    expect(user.emailVerificado).toBe(true);
+  });
+
+  test('rejects a wrong verification code with 400', async () => {
+    const { token } = await registerAndGetCode({ email: 'badcode@test.local', username: 'badcodeuser' });
+
+    const res = await request(app)
+      .post('/api/usuario/verify-email')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ codigo: 'not-the-code' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/inv[aá]lido|expirado/i);
+
+    const user = await Usuario.findOne({ where: { email: 'badcode@test.local' } });
+    expect(user.emailVerificado).toBe(false);
   });
 });
