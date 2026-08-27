@@ -6,10 +6,10 @@
 // the unit config does not load it, so authRateLimiting.test.js still asserts
 // that limiting works. Never set in production.
 //
-// PATTERN for later auth etapas: only `registerLimiter` honors this flag today,
-// because it is the only limiter integration tests currently saturate. When a
-// new integration test exercises another auth route repeatedly (login, verify,
-// forgot-password, 2FA…), add the same
+// PATTERN for later auth etapas: the `registerLimiter` and `loginLimiter`
+// honor this flag today, because they are the limiters integration tests
+// currently saturate. When a new integration test exercises another auth route
+// repeatedly (verify-email, forgot-password, 2FA…), add the same
 //   skip: () => process.env.DISABLE_RATE_LIMIT === 'true'
 // to that limiter in middleware/rateLimiters.js.
 process.env.DISABLE_RATE_LIMIT = 'true';
