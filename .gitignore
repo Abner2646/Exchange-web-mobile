@@ -1,6 +1,7 @@
 # Notas y documentación interna del proyecto (no públicas)
 # Nota: los patterns sin "/" matchean el nombre de archivo en cualquier carpeta.
 misNotas.md
+misPrompts.md
 ROADMAP.md
 AUDITORIA_BACKEND.md
 CONTRIBUTING.md
