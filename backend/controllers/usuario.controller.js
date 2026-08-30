@@ -453,7 +453,7 @@ const toggle2FA = async (req, res) => {
     const { user, token } = await Usuario.toggle2FA(userId, nuevoEstado);
     
     // Notificar por email
-    await emailService.notificar2FAChange(user.email, user.username, nuevoEstado);
+    await req.app.locals.emailService.notificar2FAChange(user.email, user.username, nuevoEstado);
     
     res.json({
       message: `Autenticación en dos pasos ${nuevoEstado ? 'activada' : 'desactivada'} exitosamente`,
@@ -473,7 +473,7 @@ const loginStep1 = async (req, res) => {
     const result = await Usuario.loginStep1(emailOrUsername, password);
     
     if (result.requires2FA) {
-      await emailService.enviarCodigo2FA(
+      await req.app.locals.emailService.enviarCodigo2FA(
         result.user.email,
         result.codigo2FA,
         result.user.username
@@ -516,8 +516,8 @@ const resend2FACode = async (req, res) => {
     const { temporalToken } = req.body;
     const { user, codigo } = await Usuario.resend2FACode(temporalToken);
     
-    await emailService.enviarCodigo2FA(user.email, codigo, user.username);
-    
+    await req.app.locals.emailService.enviarCodigo2FA(user.email, codigo, user.username);
+
     res.json({
       message: 'Código 2FA reenviado exitosamente'
     });
