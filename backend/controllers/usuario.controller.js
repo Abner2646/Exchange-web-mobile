@@ -386,7 +386,7 @@ const requestPasswordReset = async (req, res) => {
     const result = await Usuario.requestPasswordReset(email);
     
     if (result.sent) {
-      await emailService.enviarCodigoRecuperacion(
+      await req.app.locals.emailService.enviarCodigoRecuperacion(
         result.user.email,
         result.codigo,
         result.user.username
@@ -418,8 +418,8 @@ const resetPassword = async (req, res) => {
     }
     
     const { user, token } = await Usuario.resetPasswordWithCode(email, codigo, newPassword);
-    
-    await emailService.notificarCambioPassword(user.email, user.username);
+
+    await req.app.locals.emailService.notificarCambioPassword(user.email, user.username);
     
     res.json({
       message: 'Contraseña actualizada exitosamente',
@@ -553,8 +553,8 @@ const changePassword = async (req, res) => {
     const { currentPassword, newPassword } = req.body;
     
     const { user, token } = await Usuario.changePassword(userId, currentPassword, newPassword);
-    
-    await emailService.notificarCambioPassword(user.email, user.username);
+
+    await req.app.locals.emailService.notificarCambioPassword(user.email, user.username);
     
     res.json({
       message: 'Contraseña actualizada exitosamente',
