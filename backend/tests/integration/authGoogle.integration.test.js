@@ -106,6 +106,32 @@ describe('POST /api/usuario/login/google (verifies a Google id_token)', () => {
     expect(count).toBe(0);
   });
 
+  test('rejects a token whose Google email is NOT verified — no takeover of an existing email account', async () => {
+    // A pre-existing password account at this email.
+    const victim = await f.seedUser({
+      email: 'victim@test.local', username: 'victim', passwordHash: 'a-real-hash', emailVerificado: false,
+    });
+    // Attacker presents a validly-signed Google token for the victim's email,
+    // but Google marks it email_verified:false (alias / unverified domain).
+    fakeGoogle.register('unverified-token', {
+      googleId: 'attacker-google-id',
+      email: 'victim@test.local',
+      name: 'attacker',
+      emailVerified: false,
+    });
+
+    const res = await request(app)
+      .post('/api/usuario/login/google')
+      .send({ idToken: 'unverified-token' });
+
+    expect(res.status).toBe(401);
+
+    // The victim account is untouched: not linked to Google, still unverified.
+    const reloaded = await Usuario.findByPk(victim.id);
+    expect(reloaded.googleId).toBeNull();
+    expect(reloaded.emailVerificado).toBe(false);
+  });
+
   test('logs in an existing Google user from a verified token (isNew false, same account)', async () => {
     const existing = await f.seedUser({
       email: 'existg@test.local',

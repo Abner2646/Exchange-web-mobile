@@ -261,6 +261,14 @@ const loginWithGoogle = async (req, res) => {
     return res.status(401).json({ error: 'Token de Google inválido' });
   }
 
+  // Reject tokens whose email Google has NOT verified. Otherwise a validly-signed
+  // token for an unverified/alias email could link to (and take over) a
+  // pre-existing password account at that address via findOrCreateGoogleUser's
+  // link-by-email path. Legit Gmail logins always carry email_verified:true.
+  if (!verified.emailVerified) {
+    return res.status(401).json({ error: 'El email de la cuenta de Google no está verificado' });
+  }
+
   const transaction = await sequelize.transaction();
 
   try {
