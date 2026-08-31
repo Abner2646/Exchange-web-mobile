@@ -59,6 +59,10 @@ coverage/
 # nyc test coverage
 .nyc_output
 
+# Stryker mutation testing outputs
+.stryker-tmp/
+reports/mutation/
+
 # Grunt intermediate storage
 .grunt
 

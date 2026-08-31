@@ -1,0 +1,19 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "_comment": "Mutation testing — the QUALITY check that complements the CI coverage floor. Scoped to the money-critical modules on purpose: mutating the whole codebase would be far too slow, and these are where a surviving mutant (a bug the tests do not catch) matters most. Runs against the unit suite via jest. Not a per-push CI gate (too slow) — run manually / on a schedule. See ROADMAP 'Estándares de testing'.",
+  "packageManager": "npm",
+  "testRunner": "jest",
+  "jest": {
+    "projectType": "custom",
+    "configFile": "jest.stryker.config.js"
+  },
+  "coverageAnalysis": "perTest",
+  "mutate": [
+    "utils/money.js",
+    "services/intercambioSettlement.service.js",
+    "services/trading/feeCalculator.service.js",
+    "services/trading/balanceManager.service.js"
+  ],
+  "reporters": ["html", "clear-text", "progress"],
+  "thresholds": { "high": 80, "low": 60, "break": null }
+}
