@@ -1,5 +1,6 @@
 // jobs/blockchain.jobs.js - VERSIÓN MEJORADA CON DIAGNÓSTICOS
 const BlockchainServiceManager = require('../services/blockchain');
+const { reapStaleWithdrawals, makeGetClientForNetwork } = require('../services/blockchain/withdrawalReaper');
 const { TransaccionBlockchain, DireccionDeposito, Criptomoneda, BlockchainState } = require('../models');
 require('dotenv').config();
 
@@ -17,7 +18,12 @@ class BlockchainJobManager {
       // estaba en .env.template (WITHDRAWAL_PROCESS_INTERVAL_MS) pero nunca
       // se usaba en ningún lado — no existía el job que lo consumiera.
       withdrawalProcess: parseInt(process.env.WITHDRAWAL_PROCESS_INTERVAL_MS) || 120000, // 2 minutos
+      // Barrido del reaper: recupera retiros 'procesando' estancados por un crash
+      // entre el claim atómico y el broadcast. Ver runReaperJob / withdrawalReaper.
+      reaperSweep: parseInt(process.env.REAPER_SWEEP_INTERVAL_MS) || 300000, // 5 minutos
     };
+    // Antigüedad mínima (min) para que una fila 'procesando' sea candidata del reaper.
+    this.reaperStaleMinutes = parseInt(process.env.WITHDRAWAL_STALE_MINUTES) || 15;
     
     // Contadores para estadísticas
     this.stats = {
@@ -623,6 +629,30 @@ class BlockchainJobManager {
     }
   }
 
+  // Reaper de retiros: recupera filas 'procesando' que quedaron estancadas por un
+  // crash entre el claim atómico y el broadcast. Revierte SOLO cuando la tx es
+  // provablemente inexistente on-chain (nunca una que pudo haber salido — eso
+  // sería doble-gasto del lado del usuario). La lógica vive en withdrawalReaper;
+  // acá solo se le inyecta el manager real como fuente de getConfirmations.
+  async runReaperJob() {
+    const startTime = Date.now();
+    try {
+      console.log('🩹 [WITHDRAWAL_REAPER] Barriendo retiros procesando estancados...');
+      const getClientForNetwork = makeGetClientForNetwork(BlockchainServiceManager);
+      const { reverted, left } = await reapStaleWithdrawals({
+        getClientForNetwork,
+        staleMinutes: this.reaperStaleMinutes,
+      });
+      const duration = Date.now() - startTime;
+      console.log(`✅ [WITHDRAWAL_REAPER] Completado en ${duration}ms. Revertidos: ${reverted}, dejados: ${left}`);
+      return { success: true, reverted, left, duration, timestamp: new Date() };
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      console.error(`❌ [WITHDRAWAL_REAPER] Error después de ${duration}ms:`, error.message);
+      return { success: false, error: error.message, duration, timestamp: new Date() };
+    }
+  }
+
   async getPendingTransactionsByNetwork() {
     try {
       const pendingTxs = await TransaccionBlockchain.findAll({
@@ -681,6 +711,11 @@ class BlockchainJobManager {
       await this.runWithdrawalProcessJob();
     }, this.intervals.withdrawalProcess));
 
+    // Job del reaper: recupera retiros 'procesando' estancados, ver runReaperJob
+    this.jobs.set('withdrawalReaper', setInterval(async () => {
+      await this.runReaperJob();
+    }, this.intervals.reaperSweep));
+
     // Job de diagnóstico periódico (cada 10 minutos)
     this.jobs.set('systemDiagnostic', setInterval(async () => {
       await this.runSystemDiagnostic();
@@ -732,6 +767,8 @@ class BlockchainJobManager {
         return await this.runConfirmationUpdateJob();
       case 'withdrawalProcess':
         return await this.runWithdrawalProcessJob();
+      case 'withdrawalReaper':
+        return await this.runReaperJob();
       case 'systemDiagnostic':
         return await this.runSystemDiagnostic();
       default:

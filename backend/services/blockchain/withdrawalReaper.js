@@ -64,4 +64,20 @@ async function reapStaleWithdrawals({ getClientForNetwork, staleMinutes = 15, no
   return { reverted, left };
 }
 
-module.exports = { reapStaleWithdrawals };
+// Adapts a BlockchainServiceManager to the reaper's getClientForNetwork(red)
+// contract: an object with getConfirmations(txHash). EVM services expose it on
+// their `.chain` client; the Bitcoin service implements it directly. A network
+// with no service, or one that cannot report confirmations, resolves to null so
+// the reaper leaves the row rather than guessing.
+function makeGetClientForNetwork(manager) {
+  const canConfirm = (o) => o && typeof o.getConfirmations === 'function';
+  return (red) => {
+    const service = manager.getService(red);
+    if (!service) return null;
+    if (canConfirm(service.chain)) return service.chain;
+    if (canConfirm(service)) return service;
+    return null;
+  };
+}
+
+module.exports = { reapStaleWithdrawals, makeGetClientForNetwork };
