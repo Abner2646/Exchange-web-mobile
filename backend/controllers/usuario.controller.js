@@ -52,7 +52,7 @@ const inicializarUsuarioCompleto = async (usuario, transaction) => {
       );
 
       const direccionDeposito = await DireccionDeposito.create({
-        usuarioId: usuario.id,
+        userId: usuario.id, // la entity usa `userId` (field user_id); `usuarioId` se ignoraba → NOT NULL
         criptomonedaId: criptomoneda.id,
         walletMaestraId: walletMaestra.id,
         direccion: nuevaDireccion,
@@ -66,7 +66,7 @@ const inicializarUsuarioCompleto = async (usuario, transaction) => {
       });
 
       const balanceInicial = await BalanceUsuario.create({
-        usuarioId: usuario.id,
+        userId: usuario.id, // la entity usa `userId` (field user_id), no `usuarioId`
         criptomonedaId: criptomoneda.id,
         balanceDisponible: 0,
         balanceBloqueado: 0
