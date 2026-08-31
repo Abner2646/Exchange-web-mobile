@@ -1,11 +1,25 @@
 require('../helpers/testEnv');
 const request = require('supertest');
 const { app, installAuthHarness } = require('../helpers/authHarness');
+const { createFakeGoogleVerifier } = require('../helpers/fakeGoogleVerifier');
 const { Usuario } = require('../../models');
 const userService = require('../../services/user.service');
 const f = require('../helpers/factories');
 
 installAuthHarness();
+
+// The id_token verifier is the security boundary with Google: the endpoint
+// verifies a Google-signed token server-side instead of trusting a client
+// googleId. Inject a fake that maps known tokens to payloads and throws on the
+// rest, so both the happy path and the reject-invalid-token path run offline.
+let fakeGoogle;
+beforeEach(() => {
+  fakeGoogle = createFakeGoogleVerifier();
+  app.locals.googleTokenVerifier = fakeGoogle;
+});
+afterAll(() => {
+  app.locals.googleTokenVerifier = require('../../services/auth/googleTokenVerifier');
+});
 
 // A canonical passport-google-oauth20 profile is the architectural boundary with
 // Google: passport does the OAuth handshake and hands us this object; our code
@@ -15,7 +29,7 @@ function googleProfile({ id, email, displayName }) {
   return { id, displayName, emails: [{ value: email }] };
 }
 
-describe('userService.findOrCreateGoogleUser (the OAuth brain)', () => {
+describe('userService.findOrCreateGoogleUser (the single Google brain)', () => {
   test('creates a new, email-verified, passwordless user from a Google profile', async () => {
     const result = await userService.findOrCreateGoogleUser(
       googleProfile({ id: 'google-new-1', email: 'alice@test.local', displayName: 'Alice' })
@@ -25,7 +39,7 @@ describe('userService.findOrCreateGoogleUser (the OAuth brain)', () => {
     expect(result.googleId).toBe('google-new-1');
     expect(result.email).toBe('alice@test.local');
     expect(result.username).toBe('alice');        // displayName becomes the username, normalized lowercase
-    expect(result.emailVerificado).toBe(true);   // Google already verified the email
+    expect(result.emailVerificado).toBe(true);    // Google already verified the email
     expect(result.passwordHash).toBeNull();
 
     const inDb = await Usuario.findOne({ where: { googleId: 'google-new-1' } });
@@ -80,41 +94,35 @@ describe('userService.findOrCreateGoogleUser (the OAuth brain)', () => {
   });
 });
 
-// Path A (POST /login/google). NOTE (characterization, not endorsement): this
-// endpoint trusts a client-supplied googleId with NO server-side verification of
-// a Google-signed id_token — a real account-takeover vector, flagged in ROADMAP
-// Radar. These tests pin current behavior; they do not bless the security model.
-// Its create path is Usuario.createWithProvider (distinct from Path B's
-// findOrCreateGoogleUser: createWithProvider keys only on googleId, not email).
-// The endpoint's NEW-user path also runs user provisioning
-// (inicializarUsuarioCompleto: deposit-address derivation + welcome notification),
-// which is a separate concern needing crypto+wallet seeding — out of scope here,
-// so new-user creation is characterized at the model level below.
-describe('Google login (createWithProvider + POST /login/google)', () => {
-  test('createWithProvider creates a new verified, passwordless Google user with a token', async () => {
-    const { user, token, isNew } = await Usuario.createWithProvider({
-      googleId: 'google-provider-new', email: 'provg@test.local', username: 'provg', pais: 'AR',
-    });
+describe('POST /api/usuario/login/google (verifies a Google id_token)', () => {
+  test('rejects an unverified / forged id_token with 401 and creates no user', async () => {
+    const res = await request(app)
+      .post('/api/usuario/login/google')
+      .send({ idToken: 'forged-token' }); // not registered in the fake -> verify throws
 
-    expect(isNew).toBe(true);
-    expect(typeof token).toBe('string');
-    expect(user.googleId).toBe('google-provider-new');
-    expect(user.email).toBe('provg@test.local');
-    expect(user.emailVerificado).toBe(true);
-    expect(user.passwordHash).toBeNull();
+    expect(res.status).toBe(401);
+
+    const count = await Usuario.count();
+    expect(count).toBe(0);
   });
 
-  test('logs in an existing Google user idempotently (isNew false, same account)', async () => {
+  test('logs in an existing Google user from a verified token (isNew false, same account)', async () => {
     const existing = await f.seedUser({
       email: 'existg@test.local',
       username: 'existg',
       passwordHash: null,
       googleId: 'google-endpoint-exist',
     });
+    fakeGoogle.register('good-token', {
+      googleId: 'google-endpoint-exist',
+      email: 'existg@test.local',
+      name: 'existg',
+      emailVerified: true,
+    });
 
     const res = await request(app)
       .post('/api/usuario/login/google')
-      .send({ googleId: 'google-endpoint-exist', email: 'existg@test.local', username: 'existg', pais: 'AR' });
+      .send({ idToken: 'good-token' });
 
     expect(res.status).toBe(200);
     expect(res.body.isNew).toBe(false);

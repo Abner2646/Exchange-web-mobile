@@ -137,34 +137,6 @@ function createUsuarioModel(sequelize) {
     return { user: newUser, codigoVerificacion };
   };
 
-  Usuario.createWithProvider = async (providerData) => {
-    const { googleId, email, username, pais, ...otherData } = providerData;
-
-    let user = await Usuario.findOne({
-      where: { googleId }
-    });
-
-    if (user) {
-      const token = user.generateUpdatedJWT();
-      return { user, token, isNew: false };
-    }
-
-    const userData = {
-      email: email.toLowerCase(),
-      username: username || email.split('@')[0].toLowerCase(),
-      googleId,
-      pais,
-      passwordHash: null,
-      emailVerificado: true,
-      ...otherData
-    };
-
-    const newUser = await Usuario.create(userData);
-    const token = newUser.generateUpdatedJWT();
-
-    return { user: newUser, token, isNew: true };
-  };
-
   // --------------------- MÉTODOS PARA RECUPERACIÓN DE CONTRASEÑA --------------------- //
   
   Usuario.requestPasswordReset = async (email) => {

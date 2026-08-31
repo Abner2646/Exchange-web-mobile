@@ -122,6 +122,41 @@ The exchange daily-volume limit is computed over the **UTC** calendar day, not
 the server's local day. Any client-side "remaining daily limit resets at…"
 display should compute the boundary in UTC to match.
 
+### 7. Google login sends a verified id_token (breaking change)
+
+`POST /api/usuario/login/google` **no longer accepts** the old
+`{ googleId, email, username, pais }` body. That shape trusted a client-supplied
+`googleId` with no server-side verification — an account-takeover vector (anyone
+could claim any Google identity). The endpoint now requires a **Google Identity
+Services `id_token`** and verifies it server-side (signature + audience) before
+trusting anything.
+
+New contract:
+
+```json
+POST /api/usuario/login/google
+{ "idToken": "<the Google id_token / credential from Google Identity Services>" }
+```
+
+- The client obtains the `idToken` from Google Identity Services (the `credential`
+  field of the GIS callback) and sends **only** that. The backend derives the
+  Google id, email, and name from the verified token — do not send them.
+- **401** if the token is missing, expired, forged, or minted for a different
+  client (audience mismatch). Treat 401 here as "Google sign-in failed, retry".
+- Success returns the same shape as before: `{ message, user, token, isNew }`
+  (`token` is our app JWT; `isNew` true when the account was just created).
+- Country is **not** taken from this request anymore; it's set later via
+  profile/KYC (roadmap 4.7). New Google accounts get a default until then.
+- Both this endpoint and the server-side OAuth redirect flow
+  (`GET /auth/google/callback`) now resolve to the **same** account logic
+  (link-by-email + force email-verified), so signing in with Google via either
+  path is consistent.
+
+**Still open (do not assume fixed):** the OAuth redirect flow still returns the
+app JWT in the **redirect URL query string** — a separate concern tracked in
+ROADMAP Radar #12c; the callback contract may change (cookie / short-lived
+exchange) when that's addressed.
+
 ---
 
 ## Expected upcoming contract changes (heads-up, not yet done)

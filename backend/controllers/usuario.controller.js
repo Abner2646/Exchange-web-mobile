@@ -3,6 +3,7 @@ const { Usuario, Criptomoneda, WalletMaestra, DireccionDeposito, BalanceUsuario,
 const { Op } = require('sequelize');
 const { sequelize } = require('../models/index.js');
 const emailService = require('../services/email.service.js');
+const userService = require('../services/user.service');
 
 // Función helper para generar dirección única
 const generarDireccionDerivada = async (walletMaestra, usuarioId, derivationIndex) => {
@@ -243,43 +244,59 @@ const loginUsuario = async (req, res) => {
   }
 };
 
-// Login con Google
+// Login con Google.
+// The client sends a Google Identity Services id_token; we verify it server-side
+// (via the injected app.locals.googleTokenVerifier) and only then trust the
+// identity. Both this endpoint and the passport callback funnel into the same
+// brain (userService.findOrCreateGoogleUser), so there is one Google identity
+// semantics (link-by-email + force email-verified).
 const loginWithGoogle = async (req, res) => {
-  const transaction = await sequelize.transaction();
-  
+  const { idToken } = req.body;
+
+  // Security boundary: an unverified/forged token never reaches the DB.
+  let verified;
   try {
-    const { googleId, email, username, pais } = req.body;
-    const { user, token, isNew } = await Usuario.createWithProvider({
-      googleId,
-      email,
-      username,
-      pais
-    });
+    verified = await req.app.locals.googleTokenVerifier.verify(idToken);
+  } catch (error) {
+    return res.status(401).json({ error: 'Token de Google inválido' });
+  }
+
+  const transaction = await sequelize.transaction();
+
+  try {
+    const profile = {
+      id: verified.googleId,
+      displayName: verified.name,
+      emails: [{ value: verified.email }],
+    };
+    const result = await userService.findOrCreateGoogleUser(profile);
 
     let inicializacionResult = null;
-    
-    if (isNew) {
-      inicializacionResult = await inicializarUsuarioCompleto(user, transaction);
+    if (result.isNewUser) {
+      inicializacionResult = await inicializarUsuarioCompleto(result, transaction);
     }
-    
+
     await transaction.commit();
 
+    const usuario = await Usuario.findByPk(result.id);
+    const token = usuario.generateUpdatedJWT();
+
     const response = {
-      message: isNew ? 'Usuario registrado con Google exitosamente' : 'Login exitoso con Google',
+      message: result.isNewUser ? 'Usuario registrado con Google exitosamente' : 'Login exitoso con Google',
       user: {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        rol: user.rol,
-        kycVerificado: user.kycVerificado,
-        reputacionPromedio: user.reputacionPromedio,
-        pais: user.pais
+        id: result.id,
+        email: result.email,
+        username: result.username,
+        rol: result.rol,
+        kycVerificado: result.kycVerificado,
+        reputacionPromedio: result.reputacionPromedio,
+        pais: result.pais
       },
       token,
-      isNew
+      isNew: result.isNewUser
     };
 
-    if (isNew && inicializacionResult) {
+    if (result.isNewUser && inicializacionResult) {
       response.inicializacion = {
         direccionesCreadas: inicializacionResult.direccionesCreadas.length,
         balancesCreados: inicializacionResult.balancesCreados.length,
@@ -291,7 +308,7 @@ const loginWithGoogle = async (req, res) => {
   } catch (error) {
     await transaction.rollback();
     console.error('Error en login con Google:', error);
-    res.status(400).json({ 
+    res.status(400).json({
       error: error.message,
       details: 'Error durante el proceso de autenticación'
     });
