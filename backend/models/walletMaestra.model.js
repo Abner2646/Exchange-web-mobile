@@ -175,7 +175,11 @@ function createWalletMaestraModel(sequelize) {
           {
             model: sequelize.models.Criptomoneda,
             as: 'criptomoneda',
-            attributes: ['id', 'symbol', 'nombre', 'red', 'decimales', 'derivationPath', 'addressFormat']
+            // NOTE: no 'derivationPath' / 'addressFormat' — those are NOT columns
+            // on Criptomoneda (the HD derivation path lives on WalletMaestra).
+            // Selecting them made Postgres throw "column criptomoneda.derivationPath
+            // does not exist" on every call, breaking deposit-address provisioning.
+            attributes: ['id', 'symbol', 'nombre', 'red', 'decimales']
           },
           {
             model: sequelize.models.DireccionDeposito,
