@@ -42,7 +42,15 @@ module.exports = {
     dialectOptions: {
       ssl: {
         require: true,
-        rejectUnauthorized: false
+        // Validate the DB server's TLS certificate by default — prevents a
+        // man-in-the-middle on the Postgres connection. Previously this was
+        // hardcoded to false, which silently disabled that validation.
+        // DB_SSL_REJECT_UNAUTHORIZED=false is an explicit, insecure escape hatch
+        // only for a provider whose CA chain isn't wired up yet; prefer supplying
+        // the CA bundle via DB_SSL_CA (e.g. the RDS global bundle) and leaving
+        // validation on.
+        rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false',
+        ...(process.env.DB_SSL_CA ? { ca: process.env.DB_SSL_CA } : {})
       }
     }
   }
