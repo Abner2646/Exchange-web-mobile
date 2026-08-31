@@ -155,4 +155,32 @@ describe('POST /api/usuario/login/google (verifies a Google id_token)', () => {
     expect(res.body.user.id).toBe(existing.id);
     expect(typeof res.body.token).toBe('string');
   });
+
+  // NOTE: the happy new-user provisioning path (isNew + inicializarUsuarioCompleto
+  // succeeding) is NOT covered here: WalletMaestra.getByCriptomoneda references a
+  // non-existent `criptomoneda.derivationPath` column, so provisioning throws in
+  // the harness (and likely in prod). Flagged separately in ROADMAP; the
+  // atomicity guarantee below is what matters for this fix.
+  test('a failed provisioning rolls back the whole new-user signup — no orphaned account', async () => {
+    // No active crypto is seeded, so inicializarUsuarioCompleto throws inside the
+    // controller transaction. The signup must roll back ENTIRELY: leaving a
+    // committed user row would be an orphan (log-in-able but with no deposit
+    // addresses/balances, and never re-provisioned because a retry matches it by
+    // googleId → isNewUser false).
+    fakeGoogle.register('brandnew-token', {
+      googleId: 'brand-new-google-id',
+      email: 'brandnew@test.local',
+      name: 'brandnew',
+      emailVerified: true,
+    });
+
+    const res = await request(app)
+      .post('/api/usuario/login/google')
+      .send({ idToken: 'brandnew-token' });
+
+    expect(res.status).toBe(400); // provisioning failed
+    // The atomicity guarantee: the user row was rolled back with it.
+    const orphan = await Usuario.findOne({ where: { googleId: 'brand-new-google-id' } });
+    expect(orphan).toBeNull();
+  });
 });

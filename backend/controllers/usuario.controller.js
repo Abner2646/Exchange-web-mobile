@@ -277,7 +277,9 @@ const loginWithGoogle = async (req, res) => {
       displayName: verified.name,
       emails: [{ value: verified.email }],
     };
-    const result = await userService.findOrCreateGoogleUser(profile);
+    // Pass the transaction so the user row and provisioning are atomic: a failed
+    // inicializarUsuarioCompleto rolls back the user too (no orphaned account).
+    const result = await userService.findOrCreateGoogleUser(profile, transaction);
 
     let inicializacionResult = null;
     if (result.isNewUser) {
