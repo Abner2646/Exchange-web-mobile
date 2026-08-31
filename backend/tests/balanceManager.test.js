@@ -32,18 +32,18 @@ const pair = {
 };
 
 describe('lockBalanceForOrder — monto a bloquear exacto', () => {
-  test('compra market: quantity*price + fee, sin error de coma', async () => {
+  test('compra market: bloquea quantity*price sin fee (el fee taker se cobra del base al liquidar), sin error de coma', async () => {
     BalanceUsuario.hasAvailableBalance.mockResolvedValue(true);
 
     const r = await balanceManager.lockBalanceForOrder({
       userId: 'u', tradingPair: pair, side: 'buy', quantity: '0.1', price: null,
     });
 
-    // 0.1*0.2 = 0.02 ; fee = 0.02*(0.2/100)=0.00004 ; total = 0.02004
-    // float daría 0.020040000000000004
+    // 0.1*0.2 = 0.02 exacto (float daría 0.020000000000000004). Sin reserva de
+    // fee en quote: el fee taker sale del base recibido al liquidar (Radar #12a).
     expect(r.success).toBe(true);
-    expect(r.amountLocked).toBe('0.02004');
-    expect(BalanceUsuario.blockBalance).toHaveBeenCalledWith('u', 'q', '0.02004', null);
+    expect(r.amountLocked).toBe('0.02');
+    expect(BalanceUsuario.blockBalance).toHaveBeenCalledWith('u', 'q', '0.02', null);
   });
 
   test('venta: bloquea la cantidad de base asset como string', async () => {
@@ -59,7 +59,7 @@ describe('lockBalanceForOrder — monto a bloquear exacto', () => {
 });
 
 describe('unlockBalanceFromOrder — monto a desbloquear exacto', () => {
-  test('compra: quantityRemaining*price + fee, sin error de coma', async () => {
+  test('compra: desbloquea quantityRemaining*price sin fee (simétrico con el lock), sin error de coma', async () => {
     const order = {
       side: 'buy', tradingPairId: 'p', quantityRemaining: '0.1', price: '0.2',
       feePercent: '0.2', userId: 'u',
@@ -69,8 +69,8 @@ describe('unlockBalanceFromOrder — monto a desbloquear exacto', () => {
 
     const r = await balanceManager.unlockBalanceFromOrder(order, tx);
 
-    expect(r.amountUnlocked).toBe('0.02004');
-    expect(BalanceUsuario.unblockBalance).toHaveBeenCalledWith('u', 'q', '0.02004', tx);
+    expect(r.amountUnlocked).toBe('0.02');
+    expect(BalanceUsuario.unblockBalance).toHaveBeenCalledWith('u', 'q', '0.02', tx);
   });
 });
 
@@ -97,13 +97,13 @@ describe('updateBalancesAfterTrade — deltas exactos que mueven plata real', ()
 });
 
 describe('checkSufficientBalance — requerido exacto como string', () => {
-  test('compra: required = valor + fee; available como string', async () => {
+  test('compra: required = cantidad*precio (sin fee); available como string', async () => {
     TradingPair.findByPk.mockResolvedValue(pair);
     BalanceUsuario.getByUserAndCrypto.mockResolvedValue({ balanceDisponible: '0.03' });
 
     const r = await balanceManager.checkSufficientBalance('u', 'p', 'buy', '0.1', '0.2');
 
-    expect(r.required).toBe('0.02004');
+    expect(r.required).toBe('0.02');
     expect(r.available).toBe('0.03');
     expect(r.sufficient).toBe(true);
   });

@@ -157,6 +157,28 @@ app JWT in the **redirect URL query string** — a separate concern tracked in
 ROADMAP Radar #12c; the callback contract may change (cookie / short-lived
 exchange) when that's addressed.
 
+### 8. Spot trading fee is charged from the received asset
+
+The taker fee on a spot order is charged from the asset you **receive** at
+settlement (Binance-style), not reserved up front in the asset you spend:
+
+- **Buy:** placing a buy order locks exactly `quantity * price` in the quote
+  asset (e.g. USDT). The fee is deducted from the **base** asset received (you
+  get `quantity - fee` BTC). So the quote balance a buy needs is `quantity *
+  price` — do **not** add the fee on top when showing "required balance".
+- **Sell:** locks `quantity` of the base asset; the fee is deducted from the
+  **quote** received.
+
+Previously a buy over-reserved the estimated taker fee in quote and never
+released it (funds stuck in "locked" forever). That is fixed: the lock now
+matches what settlement consumes, and cancelling an order returns exactly what
+was locked. (ROADMAP Radar #12a.)
+
+**Still open:** if a buy fills at a **better** price than its limit, the price
+improvement currently stays in "locked" until the order fully resolves — a
+separate residual-release gap tracked in the roadmap. Don't assume locked hits
+zero on a price-improved partial fill.
+
 ---
 
 ## Expected upcoming contract changes (heads-up, not yet done)
