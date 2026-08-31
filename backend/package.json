@@ -9,7 +9,9 @@
     "migrate": "npx sequelize-cli db:migrate",
     "seed": "npx sequelize-cli db:seed:all",
     "test": "jest --config jest.config.js",
+    "test:coverage": "jest --config jest.config.js --coverage",
     "test:integration": "jest --config jest.integration.config.js",
+    "test:integration:coverage": "jest --config jest.integration.config.js --coverage",
     "test:integration:up": "docker compose -f ../docker-compose.test.yml up -d --wait",
     "test:integration:down": "docker compose -f ../docker-compose.test.yml down -v"
   },
