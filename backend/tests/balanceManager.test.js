@@ -1,11 +1,13 @@
 // tests/balanceManager.test.js
 //
-// Fase 1 — migración de balanceManager a money.js. Antes calculaba los montos a
-// bloquear/mover con parseFloat + aritmética de Number (float binario): un
-// simple 0.1 * 0.2 daba 0.020000000000000004 y ese error viajaba directo al
-// saldo bloqueado del usuario. Después: aritmética exacta con decimal.js y
-// montos como string canónico, tanto en los deltas que mueven plata como en los
-// valores de lectura que se devuelven al cliente.
+// Fase 1 — migración de balanceManager a money.js: aritmética exacta con
+// decimal.js y montos como string canónico en los deltas que mueven plata y en
+// los valores de lectura. Endurecido 2026-08-31 con mutation testing (Stryker):
+// además de los montos exactos, se aseveran los guards de rechazo (precio
+// inválido, balance insuficiente, par/balance ausente), el flag `success` de
+// retorno, el lado (buy→quote / sell→base) en unlock y checkSufficientBalance, el
+// uso del price pasado (no lastPrice), y el borde disponible==requerido — todo lo
+// que un mutante lógico hacía pasar antes sin que ningún test lo atrapara.
 
 jest.mock('../models', () => ({
   BalanceUsuario: {
@@ -42,6 +44,7 @@ describe('lockBalanceForOrder — monto a bloquear exacto', () => {
     // 0.1*0.2 = 0.02 exacto (float daría 0.020000000000000004). Sin reserva de
     // fee en quote: el fee taker sale del base recibido al liquidar (Radar #12a).
     expect(r.success).toBe(true);
+    expect(r.assetLocked).toBe('q');
     expect(r.amountLocked).toBe('0.02');
     expect(BalanceUsuario.blockBalance).toHaveBeenCalledWith('u', 'q', '0.02', null);
   });
@@ -53,15 +56,40 @@ describe('lockBalanceForOrder — monto a bloquear exacto', () => {
       userId: 'u', tradingPair: pair, side: 'sell', quantity: '0.1', price: null,
     });
 
+    expect(r.success).toBe(true);
+    expect(r.assetLocked).toBe('base');
     expect(r.amountLocked).toBe('0.1');
     expect(BalanceUsuario.blockBalance).toHaveBeenCalledWith('u', 'base', '0.1', null);
+  });
+
+  test('precio no positivo (0) → success:false con error de precio, no bloquea', async () => {
+    // rawPrice = '0' (truthy) pero compare('0','0') <= 0 → guard dispara.
+    const r = await balanceManager.lockBalanceForOrder({
+      userId: 'u', tradingPair: pair, side: 'buy', quantity: '0.1', price: '0',
+    });
+
+    expect(r.success).toBe(false);
+    expect(r.error).toMatch(/determinar el precio/i);
+    expect(BalanceUsuario.blockBalance).not.toHaveBeenCalled();
+  });
+
+  test('balance insuficiente → success:false, no bloquea', async () => {
+    BalanceUsuario.hasAvailableBalance.mockResolvedValue(false);
+
+    const r = await balanceManager.lockBalanceForOrder({
+      userId: 'u', tradingPair: pair, side: 'buy', quantity: '0.1', price: '0.2',
+    });
+
+    expect(r.success).toBe(false);
+    expect(r.error).toMatch(/insuficiente/i);
+    expect(BalanceUsuario.blockBalance).not.toHaveBeenCalled();
   });
 });
 
 describe('unlockBalanceFromOrder — monto a desbloquear exacto', () => {
-  test('compra: desbloquea quantityRemaining*price sin fee (simétrico con el lock), sin error de coma', async () => {
+  test('compra: desbloquea quantityRemaining * order.price (no lastPrice), sin error de coma', async () => {
     const order = {
-      side: 'buy', tradingPairId: 'p', quantityRemaining: '0.1', price: '0.2',
+      side: 'buy', tradingPairId: 'p', quantityRemaining: '0.1', price: '0.3',
       feePercent: '0.2', userId: 'u',
       tradingPair: { quoteAssetId: 'q', baseAssetId: 'base', lastPrice: '0.2' },
     };
@@ -69,13 +97,37 @@ describe('unlockBalanceFromOrder — monto a desbloquear exacto', () => {
 
     const r = await balanceManager.unlockBalanceFromOrder(order, tx);
 
-    expect(r.amountUnlocked).toBe('0.02');
-    expect(BalanceUsuario.unblockBalance).toHaveBeenCalledWith('u', 'q', '0.02', tx);
+    expect(r.success).toBe(true);
+    expect(r.assetUnlocked).toBe('q');
+    expect(r.amountUnlocked).toBe('0.03'); // 0.1*0.3 (order.price), NO 0.1*0.2 (lastPrice)
+    expect(BalanceUsuario.unblockBalance).toHaveBeenCalledWith('u', 'q', '0.03', tx);
+  });
+
+  test('venta: desbloquea la cantidad en base asset', async () => {
+    const order = {
+      side: 'sell', tradingPairId: 'p', quantityRemaining: '0.1', userId: 'u',
+      tradingPair: { quoteAssetId: 'q', baseAssetId: 'base', lastPrice: '0.2' },
+    };
+    const tx = {};
+
+    const r = await balanceManager.unlockBalanceFromOrder(order, tx);
+
+    expect(r.success).toBe(true);
+    expect(r.assetUnlocked).toBe('base');
+    expect(r.amountUnlocked).toBe('0.1');
+    expect(BalanceUsuario.unblockBalance).toHaveBeenCalledWith('u', 'base', '0.1', tx);
+  });
+
+  test('sin trading pair (ni en el order ni en la DB) → lanza "no encontrado"', async () => {
+    TradingPair.findByPk.mockResolvedValue(null);
+    const order = { side: 'buy', tradingPairId: 'p', quantityRemaining: '0.1', price: '0.2', feePercent: '0.2', userId: 'u' };
+
+    await expect(balanceManager.unlockBalanceFromOrder(order, {})).rejects.toThrow(/no encontrado/i);
   });
 });
 
 describe('updateBalancesAfterTrade — deltas exactos que mueven plata real', () => {
-  test('reduce bloqueado / aumenta disponible sin error de coma', async () => {
+  test('reduce bloqueado / aumenta disponible sin error de coma, y devuelve success:true', async () => {
     const trade = {
       buyerId: 'b', sellerId: 's', tradingPairId: 'p',
       quantity: '0.1', price: '0.2', buyerFee: '0.0001', sellerFee: '0.00004',
@@ -83,8 +135,9 @@ describe('updateBalancesAfterTrade — deltas exactos que mueven plata real', ()
     const buyOrder = { tradingPair: { quoteAssetId: 'q', baseAssetId: 'base' } };
     const tx = {};
 
-    await balanceManager.updateBalancesAfterTrade(trade, buyOrder, {}, tx);
+    const r = await balanceManager.updateBalancesAfterTrade(trade, buyOrder, {}, tx);
 
+    expect(r.success).toBe(true);
     // buyerQuoteAmount = 0.1*0.2 = 0.02  (float: 0.020000000000000004)
     expect(BalanceUsuario.updateBalance).toHaveBeenCalledWith('b', 'q', '-0.02', 'bloqueado', tx);
     // buyerBaseAmount = 0.1 - 0.0001 = 0.0999
@@ -97,15 +150,67 @@ describe('updateBalancesAfterTrade — deltas exactos que mueven plata real', ()
 });
 
 describe('checkSufficientBalance — requerido exacto como string', () => {
-  test('compra: required = cantidad*precio (sin fee); available como string', async () => {
+  test('compra: required = cantidad * price (usa el price pasado, no lastPrice); pide quote asset', async () => {
     TradingPair.findByPk.mockResolvedValue(pair);
-    BalanceUsuario.getByUserAndCrypto.mockResolvedValue({ balanceDisponible: '0.03' });
+    BalanceUsuario.getByUserAndCrypto.mockResolvedValue({ balanceDisponible: '0.05' });
+
+    // price 0.3 distinto de lastPrice 0.2.
+    const r = await balanceManager.checkSufficientBalance('u', 'p', 'buy', '0.1', '0.3');
+
+    expect(r.required).toBe('0.03'); // 0.1*0.3, no 0.1*0.2
+    expect(r.available).toBe('0.05');
+    expect(r.sufficient).toBe(true);
+    expect(BalanceUsuario.getByUserAndCrypto).toHaveBeenCalledWith('u', 'q'); // quote para compra
+  });
+
+  test('venta: required = cantidad (base asset)', async () => {
+    TradingPair.findByPk.mockResolvedValue(pair);
+    BalanceUsuario.getByUserAndCrypto.mockResolvedValue({ balanceDisponible: '1' });
+
+    const r = await balanceManager.checkSufficientBalance('u', 'p', 'sell', '0.1', '0.2');
+
+    expect(r.required).toBe('0.1');
+    expect(r.sufficient).toBe(true);
+    expect(BalanceUsuario.getByUserAndCrypto).toHaveBeenCalledWith('u', 'base'); // base para venta
+  });
+
+  test('insuficiente: disponible < requerido → sufficient false', async () => {
+    TradingPair.findByPk.mockResolvedValue(pair);
+    BalanceUsuario.getByUserAndCrypto.mockResolvedValue({ balanceDisponible: '0.01' }); // < 0.02
 
     const r = await balanceManager.checkSufficientBalance('u', 'p', 'buy', '0.1', '0.2');
 
-    expect(r.required).toBe('0.02');
-    expect(r.available).toBe('0.03');
+    expect(r.sufficient).toBe(false);
+    expect(r.error).toMatch(/insuficiente/i);
+  });
+
+  test('borde: disponible == requerido → sufficient true', async () => {
+    TradingPair.findByPk.mockResolvedValue(pair);
+    BalanceUsuario.getByUserAndCrypto.mockResolvedValue({ balanceDisponible: '0.02' }); // == 0.02
+
+    const r = await balanceManager.checkSufficientBalance('u', 'p', 'buy', '0.1', '0.2');
+
     expect(r.sufficient).toBe(true);
+  });
+
+  test('sin trading pair → sufficient false con error "no encontrado"', async () => {
+    TradingPair.findByPk.mockResolvedValue(null);
+
+    const r = await balanceManager.checkSufficientBalance('u', 'p', 'buy', '0.1', '0.2');
+
+    expect(r.sufficient).toBe(false);
+    expect(r.error).toMatch(/no encontrado/i);
+  });
+
+  test('sin balance en la cripto → sufficient false, available "0"', async () => {
+    TradingPair.findByPk.mockResolvedValue(pair);
+    BalanceUsuario.getByUserAndCrypto.mockResolvedValue(null);
+
+    const r = await balanceManager.checkSufficientBalance('u', 'p', 'buy', '0.1', '0.2');
+
+    expect(r.sufficient).toBe(false);
+    expect(r.available).toBe('0');
+    expect(r.error).toMatch(/no tienes balance/i);
   });
 });
 
@@ -118,5 +223,13 @@ describe('getTradingBalance — lectura como string exacto', () => {
     const r = await balanceManager.getTradingBalance('u', 'c');
 
     expect(r).toEqual({ available: '0.1', locked: '0.2', total: '0.3' });
+  });
+
+  test('sin balance → devuelve ceros (no lanza)', async () => {
+    BalanceUsuario.getByUserAndCrypto.mockResolvedValue(null);
+
+    const r = await balanceManager.getTradingBalance('u', 'c');
+
+    expect(r).toEqual({ available: '0', locked: '0', total: '0' });
   });
 });
