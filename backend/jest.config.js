@@ -31,8 +31,10 @@ module.exports = {
     '**/money.js': { statements: 95, branches: 90, functions: 95, lines: 95 },
     '**/intercambioSettlement.service.js': { statements: 90, branches: 90, functions: 90, lines: 90 },
     // Money services — lock in their current unit coverage so it can't regress.
-    '**/balanceManager.service.js': { lines: 63, functions: 68 },
-    '**/feeCalculator.service.js': { lines: 55 },
+    // Ratcheted up 2026-08-31 after the mutation-testing hardening pass
+    // (mutation score covered: balanceManager 99%, feeCalculator 97%).
+    '**/balanceManager.service.js': { lines: 78, functions: 70, branches: 82 },
+    '**/feeCalculator.service.js': { lines: 76, branches: 63 },
     '**/orderBook.service.js': { lines: 50 },
     '**/tradeExecutor.service.js': { lines: 44 },
   },
