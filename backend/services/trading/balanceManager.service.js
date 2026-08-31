@@ -3,14 +3,13 @@ const { BalanceUsuario, TradingPair } = require('../../models');
 const { sequelize } = require('../../models');
 const money = require('../../utils/money');
 
-// fee = amount * (feePercent / 100), exacto y como string canónico (mismo
-// criterio que feeCalculator). Los inputs se normalizan con String() en el
-// borde por si algún caller todavía pasa un Number; de acá para adentro toda la
-// aritmética pasa por money.js (decimal.js), nunca por el float binario.
-function feeOf(amount, feePercent) {
-  return money.divide(money.multiply(String(amount), String(feePercent)), '100');
-}
-
+// Modelo de fee (alineado 2026-08-31, antes Radar #12a): el fee taker se cobra
+// del ASSET RECIBIDO al liquidar (compra → fee en base; venta → fee en quote),
+// estilo Binance, y así ya lo hace updateBalancesAfterTrade. Por lo tanto el
+// bloqueo NO reserva fee en el asset entregado: una compra bloquea exactamente
+// cantidad*precio en quote (una venta, cantidad en base). Antes la compra
+// reservaba además el fee taker en quote pero la liquidación solo consumía
+// cantidad*precio → el fee reservado quedaba trabado para siempre en bloqueado.
 class BalanceManagerService {
 
   /**
@@ -45,10 +44,9 @@ class BalanceManagerService {
           };
         }
 
-        // Calcular total necesario (cantidad * precio) + fee estimado (taker,
-        // porque es el más alto)
-        const baseAmount = money.multiply(String(quantity), String(rawPrice));
-        amountToLock = money.add(baseAmount, feeOf(baseAmount, tradingPair.takerFeePercent));
+        // Total necesario = cantidad * precio (sin fee: el fee taker se cobra del
+        // base recibido al liquidar, no se reserva en quote — ver nota arriba).
+        amountToLock = money.multiply(String(quantity), String(rawPrice));
 
       } else {
         // VENTA: necesitamos bloquear BASE ASSET (ej: BTC para vender)
@@ -110,10 +108,10 @@ class BalanceManagerService {
         // Era una compra - desbloqueamos QUOTE ASSET
         assetToUnlock = tradingPair.quoteAssetId;
 
-        // Calcular cuánto estaba bloqueado para la cantidad restante (+ fee)
+        // Lo bloqueado para la cantidad restante = restante * precio (sin fee,
+        // simétrico con lockBalanceForOrder).
         const rawPrice = order.price || tradingPair.lastPrice;
-        const baseAmount = money.multiply(String(order.quantityRemaining), String(rawPrice));
-        amountToUnlock = money.add(baseAmount, feeOf(baseAmount, order.feePercent));
+        amountToUnlock = money.multiply(String(order.quantityRemaining), String(rawPrice));
 
       } else {
         // Era una venta - desbloqueamos BASE ASSET
@@ -218,8 +216,7 @@ class BalanceManagerService {
       if (side === 'buy') {
         assetNeeded = tradingPair.quoteAssetId;
         const rawPrice = price || tradingPair.lastPrice;
-        const baseAmount = money.multiply(String(quantity), String(rawPrice));
-        amountNeeded = money.add(baseAmount, feeOf(baseAmount, tradingPair.takerFeePercent));
+        amountNeeded = money.multiply(String(quantity), String(rawPrice));
       } else {
         assetNeeded = tradingPair.baseAssetId;
         amountNeeded = String(quantity);

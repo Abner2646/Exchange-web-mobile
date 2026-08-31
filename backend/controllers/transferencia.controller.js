@@ -1,5 +1,4 @@
 const { Transferencia, Usuario, Criptomoneda, BalanceUsuario, Notificaciones } = require('../models/index.js');
-const emailService = require('../services/email.service.js');
 const { sequelize } = require('../models/index.js');
 const AppError = require('../utils/AppError');
 const errorCodes = require('../utils/errorCodes');
@@ -72,7 +71,7 @@ const createTransferencia = async (req, res) => {
 
     // Send verification email — failure is non-fatal
     try {
-      await emailService.enviarCodigoTransferencia(
+      await req.app.locals.emailService.enviarCodigoTransferencia(
         remitente.email,
         codigo,
         remitente.username,
@@ -223,7 +222,7 @@ const procesarTransferencia = async (req, res) => {
 
     // Send confirmation emails — failure is non-fatal
     try {
-      await emailService.notificarTransferenciaCompletada(
+      await req.app.locals.emailService.notificarTransferenciaCompletada(
         remitente.email,
         remitente.username,
         transferencia.cantidad,
@@ -232,7 +231,7 @@ const procesarTransferencia = async (req, res) => {
         'enviada'
       );
 
-      await emailService.notificarTransferenciaCompletada(
+      await req.app.locals.emailService.notificarTransferenciaCompletada(
         destinatario.email,
         destinatario.username,
         transferencia.cantidad,
@@ -396,7 +395,7 @@ const reenviarCodigo = async (req, res) => {
     const destinatario = await Usuario.findByPk(transferencia.usuarioDestinatarioId);
     const criptomoneda = await Criptomoneda.getById(transferencia.criptomonedaId);
 
-    await emailService.enviarCodigoTransferencia(
+    await req.app.locals.emailService.enviarCodigoTransferencia(
       remitente.email,
       codigo,
       remitente.username,

@@ -25,19 +25,20 @@ jest.mock('../models/index.js', () => ({
   sequelize: { transaction: jest.fn() },
 }));
 
-jest.mock('../services/email.service.js', () => ({
-  enviarCodigoTransferencia: jest.fn().mockResolvedValue(undefined),
-}));
-
 const { Transferencia, Usuario, Criptomoneda } = require('../models/index.js');
-const emailService = require('../services/email.service.js');
 
 const asyncHandler = require('../utils/asyncHandler');
 const errorHandler = require('../middleware/errorHandler');
 const { reenviarCodigo } = require('../controllers/transferencia.controller');
 
+// The controller sends through the injectable seam (req.app.locals.emailService),
+// so the test injects a fake there and asserts on it — same pattern as the auth
+// and integration suites.
+let fakeEmail;
+
 function buildApp() {
   const app = express();
+  app.locals.emailService = fakeEmail;
   app.use(express.json());
   app.use((req, _res, next) => {
     req.user = { id: 'user-sender-id' };
@@ -48,7 +49,10 @@ function buildApp() {
   return app;
 }
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  fakeEmail = { enviarCodigoTransferencia: jest.fn().mockResolvedValue(undefined) };
+});
 
 function setupHappyPathUntilLookups() {
   Transferencia.getById.mockResolvedValue({
@@ -92,7 +96,7 @@ describe('reenviarCodigo — resiliencia post-commit', () => {
     const res = await request(buildApp()).post('/transfers/tx-id/resend-code').send({});
 
     expect(res.status).toBe(200);
-    expect(emailService.enviarCodigoTransferencia).toHaveBeenCalledWith(
+    expect(fakeEmail.enviarCodigoTransferencia).toHaveBeenCalledWith(
       'sender@x.com', '654321', 'sender', '0.5', 'BTC', 'dest'
     );
   });

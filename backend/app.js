@@ -21,6 +21,10 @@ const app = express();
 // Default is the real service module (production behavior unchanged).
 app.locals.emailService = require('./services/email.service');
 
+// Google id_token verification goes through app.locals so tests can inject a
+// fake. Default is the real google-auth-library verifier (prod unchanged).
+app.locals.googleTokenVerifier = require('./services/auth/googleTokenVerifier');
+
 // CORS (same policy as before)
 const rawAllowed = process.env.ALLOWED_ORIGINS || process.env.FRONTEND_URL || '';
 const allowedOrigins = rawAllowed.split(',').map(s => s.trim()).filter(Boolean);
