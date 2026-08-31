@@ -61,7 +61,9 @@ coverage/
 
 # Stryker mutation testing outputs
 .stryker-tmp/
-reports/mutation/
+# A pattern with a mid-slash is anchored to repo root, so "reports/mutation/"
+# did NOT match backend/reports/. Match the backend output dir explicitly.
+backend/reports/
 
 # Grunt intermediate storage
 .grunt
