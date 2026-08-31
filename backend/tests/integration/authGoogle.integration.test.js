@@ -26,7 +26,9 @@ afterAll(() => {
 // starts here. So the Google flows are tested from the profile inward — there is
 // no value (and much fragility) in driving a real OAuth handshake in a test.
 function googleProfile({ id, email, displayName }) {
-  return { id, displayName, emails: [{ value: email }] };
+  // A legit Google login always carries email_verified:true, which
+  // passport-google-oauth20 exposes as emails[0].verified.
+  return { id, displayName, emails: [{ value: email, verified: true }] };
 }
 
 describe('userService.findOrCreateGoogleUser (the single Google brain)', () => {
@@ -70,6 +72,31 @@ describe('userService.findOrCreateGoogleUser (the single Google brain)', () => {
     expect(rows[0].id).toBe(local.id);
     expect(rows[0].googleId).toBe('google-bob');
     expect(rows[0].emailVerificado).toBe(true);
+  });
+
+  test('refuses to link/create when the Google profile email is NOT verified (closes the passport takeover path)', async () => {
+    // A pre-existing password account at this email.
+    const victim = await f.seedUser({
+      email: 'dave@test.local', username: 'dave', passwordHash: 'a-real-hash', emailVerificado: false,
+    });
+
+    // The profile passport hands the shared brain when Google reports the email
+    // as NOT verified (alias / unverified domain). findOrCreateGoogleUser is the
+    // single choke point BOTH the REST endpoint and the passport callback funnel
+    // through, so gating here closes the passport path too — no separate,
+    // hard-to-test passport handshake test is needed.
+    await expect(
+      userService.findOrCreateGoogleUser({
+        id: 'attacker-google-id',
+        displayName: 'Dave',
+        emails: [{ value: 'dave@test.local', verified: false }],
+      })
+    ).rejects.toThrow();
+
+    // The victim account is untouched: not linked to Google, still unverified.
+    const reloaded = await Usuario.findByPk(victim.id);
+    expect(reloaded.googleId).toBeNull();
+    expect(reloaded.emailVerificado).toBe(false);
   });
 
   test('returns the existing Google user on repeat login and back-fills emailVerificado', async () => {

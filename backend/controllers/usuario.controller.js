@@ -275,7 +275,10 @@ const loginWithGoogle = async (req, res) => {
     const profile = {
       id: verified.googleId,
       displayName: verified.name,
-      emails: [{ value: verified.email }],
+      // verified:true here mirrors the passport profile shape; it's already
+      // guaranteed by the emailVerified gate above, and findOrCreateGoogleUser
+      // now enforces it as a single choke point (defense in depth).
+      emails: [{ value: verified.email, verified: verified.emailVerified }],
     };
     // Pass the transaction so the user row and provisioning are atomic: a failed
     // inicializarUsuarioCompleto rolls back the user too (no orphaned account).
