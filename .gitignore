@@ -161,6 +161,9 @@ Thumbs.db
 package-lock.json
 yarn.lock
 pnpm-lock.yaml
+# Exception: the backend lockfile IS tracked — reproducible builds + supply-chain
+# integrity for the audit-grade backend, and required by `npm ci` in CI.
+!backend/package-lock.json
 
 # Jest
 jest_coverage/

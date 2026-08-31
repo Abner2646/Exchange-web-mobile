@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [dev, main]
+
+# Cancel superseded runs on the same ref (a new push obsoletes the old run).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Unit suite first: no database needed, fastest feedback.
+      - name: Unit tests
+        run: npm test
+
+      # Integration suite against the ephemeral dockerized Postgres. The runner
+      # has Docker + compose; we reuse the exact local compose file. Hard rule:
+      # no mainnet keys ever reach CI — the tests run entirely on test defaults
+      # (see tests/helpers/testEnv.js) and injected fakes.
+      - name: Start ephemeral test database
+        run: npm run test:integration:up
+
+      - name: Integration tests
+        run: npm run test:integration
+
+      - name: Stop test database
+        if: always()
+        run: npm run test:integration:down
