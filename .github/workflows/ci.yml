@@ -30,9 +30,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Unit suite first: no database needed, fastest feedback.
-      - name: Unit tests
-        run: npm test
+      # Unit suite first: no database needed, fastest feedback. Runs with
+      # coverage so the coverageThreshold floor in jest.config.js is enforced —
+      # the build fails if coverage drops below it.
+      - name: Unit tests + coverage floor
+        run: npm run test:coverage
 
       # Integration suite against the ephemeral dockerized Postgres. The runner
       # has Docker + compose; we reuse the exact local compose file. Hard rule:
@@ -41,8 +43,8 @@ jobs:
       - name: Start ephemeral test database
         run: npm run test:integration:up
 
-      - name: Integration tests
-        run: npm run test:integration
+      - name: Integration tests + coverage floor
+        run: npm run test:integration:coverage
 
       - name: Stop test database
         if: always()
