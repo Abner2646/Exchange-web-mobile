@@ -177,14 +177,13 @@ const procesarTransferencia = async (req, res) => {
       throw new AppError(400, errorCodes.TRANSFER_RESOURCE_NOT_FOUND, 'Usuario destinatario no válido');
     }
 
-    // Re-check sender balance
-    const balanceRemitente = await BalanceUsuario.findOne({
-      where: {
-        userId: transferencia.usuarioRemitenteId,
-        criptomonedaId: transferencia.criptomonedaId,
-      },
-      transaction,
-    });
+    // Re-check sender balance. Read-flip (Plan 3/4 Paso A): lee del ledger via
+    // getByUserAndCrypto (devuelve objeto con balanceDisponible '0' si no hay cuenta).
+    const balanceRemitente = await BalanceUsuario.getByUserAndCrypto(
+      transferencia.usuarioRemitenteId,
+      transferencia.criptomonedaId,
+      { transaction }
+    );
 
     const balanceDisponible = balanceRemitente ? parseFloat(balanceRemitente.balanceDisponible) : 0;
     const cantidadTransferencia = parseFloat(transferencia.cantidad);

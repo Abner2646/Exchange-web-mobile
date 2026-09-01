@@ -109,10 +109,8 @@ const createOrder = async (req, res) => {
 
     if (tipo === 'compra') {
       // Comprar: se paga en quote (requiredQuote = valor + comisión), se recibe base.
-      const balanceQuote = await BalanceUsuario.findOne({
-        where: { userId: usuarioId, criptomonedaId: criptoQuoteId },
-        transaction
-      });
+      // Read-flip (Plan 3/4 Paso A): lee del ledger via getByUserAndCrypto.
+      const balanceQuote = await BalanceUsuario.getByUserAndCrypto(usuarioId, criptoQuoteId, { transaction });
 
       if (!balanceQuote || money.compare(String(balanceQuote.balanceDisponible), requiredQuote) < 0) {
         await transaction.rollback();
@@ -124,10 +122,8 @@ const createOrder = async (req, res) => {
       netAmount = String(cantidadBase);
     } else {
       // Vender: se paga en base, se recibe quote (netQuote = valor - comisión).
-      const balanceBase = await BalanceUsuario.findOne({
-        where: { userId: usuarioId, criptomonedaId: criptoBaseId },
-        transaction
-      });
+      // Read-flip (Plan 3/4 Paso A): lee del ledger via getByUserAndCrypto.
+      const balanceBase = await BalanceUsuario.getByUserAndCrypto(usuarioId, criptoBaseId, { transaction });
 
       if (!balanceBase || money.compare(String(balanceBase.balanceDisponible), String(cantidadBase)) < 0) {
         await transaction.rollback();
