@@ -94,4 +94,27 @@ async function liquidarTrade({
   return postTransaction({ tipo: 'liquidacion_trade', referencia, descripcion: 'Trade spot', lineas }, transaction);
 }
 
-module.exports = { liquidarSwap, liquidarTrade };
+// Retiro transmitido/confirmado on-chain: los fondos bloqueados salen del
+// custodio al mundo on-chain. funding:bloqueado −A → external_onchain +(A−wf),
+// con fee_revenue +wf si el exchange cobra un fee de retiro (hoy wf=0). Se postea
+// cuando el retiro se confirma en cadena (no en el broadcast: el reaper puede
+// revertir un 'procesando' que nunca llegó, y ahí los fondos siguen bloqueados).
+async function marcarRetiroTransmitido({
+  userId, criptomonedaId, cantidad, feeRetiro = '0', referencia,
+}, transaction = null) {
+  const { postTransaction } = require('./postingService');
+  const { PROPOSITOS } = require('./ledgerAccounts');
+  const neto = money.subtract(String(cantidad), String(feeRetiro));
+
+  const lineas = [
+    { ownerId: userId, proposito: PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId, monto: money.subtract('0', String(cantidad)) },
+    { ownerId: null, proposito: PROPOSITOS.EXTERNAL_ONCHAIN, criptomonedaId, monto: neto },
+  ];
+  if (money.compare(String(feeRetiro), '0') > 0) {
+    lineas.push({ ownerId: null, proposito: PROPOSITOS.FEE_REVENUE, criptomonedaId, monto: String(feeRetiro) });
+  }
+
+  return postTransaction({ tipo: 'retiro', referencia, descripcion: 'Retiro transmitido on-chain', lineas }, transaction);
+}
+
+module.exports = { liquidarSwap, liquidarTrade, marcarRetiroTransmitido };

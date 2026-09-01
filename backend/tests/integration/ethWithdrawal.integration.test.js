@@ -4,6 +4,12 @@ const f = require('../helpers/factories');
 const FakeEvmClient = require('../helpers/fakeEvmClient');
 const EthereumService = require('../../services/blockchain/ethereum.service');
 const { TransaccionBlockchain } = require('../../models');
+const posting = require('../../services/ledger/postingService');
+const recon = require('../../services/ledger/reconciliation');
+const { PROPOSITOS } = require('../../services/ledger/ledgerAccounts');
+
+const casa = (proposito, criptomonedaId) =>
+  posting.getSaldoCuenta({ ownerId: null, proposito, criptomonedaId });
 
 beforeEach(async () => { await resetDb(); });
 afterAll(async () => { await sequelize.close(); });
@@ -103,6 +109,29 @@ describe('ERC20 token withdrawal — via the chain-client port', () => {
     expect(fake.signCalls[0].contractAddress).toBe('0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
     expect(fake.signCalls[0].toAddress).toBe('0xrecipient0000000000000000000000000000dead');
     expect(fake.broadcastCalls).toHaveLength(1);
+  });
+});
+
+describe('withdrawal ledger settlement — confirmed debits blocked funds to external_onchain', () => {
+  test('block → sent → confirmed: funding:bloqueado → external_onchain, book reconciles', async () => {
+    const user = await f.seedUser();
+    const eth = await seedEth();
+    await f.seedBalance(user, eth, '5');
+    const w = await seedPendingWithdrawal(user, eth, '1'); // block 1: disponible 4, bloqueado 1
+
+    // Broadcast (procesando + txHash), then reach the required confirmations.
+    await TransaccionBlockchain.markWithdrawalAsSent(w.id, '0xsent00000000000000000000000000000000000000000000000000000000beef', '0.00042');
+    const row = await TransaccionBlockchain.findByPk(w.id);
+    await TransaccionBlockchain.updateConfirmations(w.id, row.confirmacionesRequeridas);
+
+    // The blocked funds have left to the on-chain world.
+    const bal = await f.getBalance(user, eth);
+    expect(bal.balanceDisponible).toBe('4.00000000');
+    expect(bal.balanceBloqueado).toBe('0.00000000'); // no longer stuck in blocked
+    expect(await casa(PROPOSITOS.EXTERNAL_ONCHAIN, eth.id)).toBe('1.00000000');
+
+    expect((await recon.reconciliarInterno()).ok).toBe(true);
+    expect((await recon.reconciliarExterno()).ok).toBe(true);
   });
 });
 

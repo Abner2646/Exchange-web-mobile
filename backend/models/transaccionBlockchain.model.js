@@ -253,6 +253,21 @@ function createTransaccionBlockchainModel(sequelize) {
         await TransaccionBlockchain._acreditarDeposito(transaccion, transaction);
       }
 
+      // Paso D: si es un retiro confirmado on-chain, debitar los fondos bloqueados
+      // al mundo on-chain (funding:bloqueado → external_onchain). Se hace acá
+      // (confirmación), no en el broadcast: el reaper puede revertir un
+      // 'procesando' sin confirmar vía failWithdrawal (bloqueado→disponible), y si
+      // ya hubiéramos debitado a external eso quedaría inconsistente.
+      if (transaccion.tipo === 'retiro' && updateData.estado === 'confirmado' && transaccion.estado !== 'confirmado') {
+        const { marcarRetiroTransmitido } = require('../services/ledger/operations');
+        await marcarRetiroTransmitido({
+          userId: transaccion.userId,
+          criptomonedaId: transaccion.criptomonedaId,
+          cantidad: String(transaccion.cantidad),
+          referencia: `retiro:${transaccion.id}`,
+        }, transaction);
+      }
+
       await transaction.commit();
       return await TransaccionBlockchain.getById(id);
     } catch (error) {
@@ -427,38 +442,10 @@ function createTransaccionBlockchainModel(sequelize) {
     }
   };
 
-  TransaccionBlockchain.completeWithdrawal = async (id) => {
-    // Ver el comentario de _acreditarDeposito (Altos #10).
-    const { BalanceUsuario } = require('./index');
-    const transaction = await sequelize.transaction();
-
-    try {
-      const retiro = await TransaccionBlockchain.findByPk(id, { transaction });
-      
-      if (!retiro) {
-        throw new Error('Retiro no encontrado');
-      }
-
-      // Write-flip (Paso B): los fondos salieron on-chain → debitar de bloqueado
-      // (una pata, contrapartida suspense; Paso D lo enriquece a external_onchain).
-      await BalanceUsuario.updateBalance(retiro.userId, retiro.criptomonedaId, money.subtract('0', String(retiro.cantidad)), 'bloqueado', transaction);
-
-      // Marcar como completado
-      await TransaccionBlockchain.update(
-        { estado: 'completado' },
-        { 
-          where: { id },
-          transaction
-        }
-      );
-
-      await transaction.commit();
-      return await TransaccionBlockchain.getById(id);
-    } catch (error) {
-      await transaction.rollback();
-      throw new Error(`Error al completar retiro: ${error.message}`);
-    }
-  };
+  // (Paso D: completeWithdrawal se eliminó — era código muerto sin callers. El
+  // débito de los fondos bloqueados al mundo on-chain ahora lo hace
+  // updateConfirmations al confirmarse el retiro, vía marcarRetiroTransmitido
+  // (funding:bloqueado → external_onchain), simétrico a _acreditarDeposito.)
 
   TransaccionBlockchain.failWithdrawal = async (id, razon) => {
     // Ver el comentario de _acreditarDeposito (Altos #10).

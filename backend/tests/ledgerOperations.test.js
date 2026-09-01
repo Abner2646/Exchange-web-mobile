@@ -9,7 +9,7 @@ jest.mock('../services/ledger/postingService', () => ({ postTransaction: jest.fn
 
 const { postTransaction } = require('../services/ledger/postingService');
 const { PROPOSITOS } = require('../services/ledger/ledgerAccounts');
-const { liquidarSwap, liquidarTrade } = require('../services/ledger/operations');
+const { liquidarSwap, liquidarTrade, marcarRetiroTransmitido } = require('../services/ledger/operations');
 
 beforeEach(() => jest.clearAllMocks());
 
@@ -79,5 +79,31 @@ describe('liquidarTrade arma el asiento del trade spot user↔user', () => {
     const { lineas } = postTransaction.mock.calls[0][0];
     expect(lineas).toHaveLength(4);
     expect(lineas.some((l) => l.proposito === PROPOSITOS.FEE_REVENUE)).toBe(false);
+  });
+});
+
+describe('marcarRetiroTransmitido arma el asiento del retiro on-chain', () => {
+  test('sin fee: funding:bloqueado −A → external_onchain +A (2 líneas)', async () => {
+    await marcarRetiroTransmitido({
+      userId: 'u', criptomonedaId: 'BTC', cantidad: '1', referencia: 'retiro:1',
+    }, 'tx');
+
+    const [asiento, transaction] = postTransaction.mock.calls[0];
+    expect(transaction).toBe('tx');
+    expect(asiento.tipo).toBe('retiro');
+    expect(asiento.lineas).toHaveLength(2);
+    expect(asiento.lineas).toContainEqual({ ownerId: 'u', proposito: PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId: 'BTC', monto: '-1' });
+    expect(asiento.lineas).toContainEqual({ ownerId: null, proposito: PROPOSITOS.EXTERNAL_ONCHAIN, criptomonedaId: 'BTC', monto: '1' });
+  });
+
+  test('con fee de retiro: external_onchain +(A−wf) y fee_revenue +wf', async () => {
+    await marcarRetiroTransmitido({
+      userId: 'u', criptomonedaId: 'BTC', cantidad: '1', feeRetiro: '0.1', referencia: 'retiro:2',
+    });
+
+    const { lineas } = postTransaction.mock.calls[0][0];
+    expect(lineas).toContainEqual({ ownerId: 'u', proposito: PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId: 'BTC', monto: '-1' });
+    expect(lineas).toContainEqual({ ownerId: null, proposito: PROPOSITOS.EXTERNAL_ONCHAIN, criptomonedaId: 'BTC', monto: '0.9' });
+    expect(lineas).toContainEqual({ ownerId: null, proposito: PROPOSITOS.FEE_REVENUE, criptomonedaId: 'BTC', monto: '0.1' });
   });
 });
