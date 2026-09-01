@@ -1,7 +1,6 @@
 // models/balanceUsuario.js
 require('dotenv').config();
 
-const initBalanceUser = require('./entities/balanceUsuario.entity');
 const { Op } = require('sequelize');
 const money = require('../utils/money');
 const crypto = require('crypto');
@@ -56,7 +55,13 @@ async function agregarFundingLedger({ userId = null, criptomonedaId = null } = {
 }
 
 function createBalanceUserModel(sequelize) {
-  const BalanceUsuario = initBalanceUser(sequelize);
+  // Paso C: BalanceUsuario ya NO es un modelo Sequelize — la tabla balances_users
+  // se eliminó. Es una FACHADA de operaciones de saldo respaldada por el ledger de
+  // partida doble (los métodos postean/leen del ledger). Se conserva el nombre y
+  // la API estática para no tocar los ~40 call sites (swap/trading/P2P/depósitos/
+  // retiros); el rename a un servicio de saldos queda para Fase 6.2. `sequelize`
+  // se usa sólo para sequelize.models.Criptomoneda en reclamarBtcGratis.
+  const BalanceUsuario = {};
 
   // getById se retiro en el write-flip (Paso B): leia balances_users por PK de
   // fila, que no tiene analogo en el ledger (las cuentas son (dueño, proposito,

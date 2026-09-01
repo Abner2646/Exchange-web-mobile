@@ -200,8 +200,11 @@ doesn't hard-code assumptions that are about to change:
   longer carry a per-row `id` or `updatedAt`** — an entry is keyed by its
   `criptomoneda`/`criptomonedaId`, with `balanceDisponible`/`balanceBloqueado` as
   canonical strings (never `parseFloat` them). Affects
-  `GET /api/intercambioExchange/me/balances` and the other balance-listing reads.
-  Coming next: a single balance-per-(user,crypto)
+  `GET /api/intercambioExchange/me/balances` and the other balance-listing reads;
+  and (c) **the user profile (`GET /api/usuario/me`, `getById`) no longer embeds a
+  `balances` array** — fetch balances from a balances endpoint
+  (`GET /api/balances/my/balances` or `/api/intercambioExchange/me/balances`)
+  instead. Coming next: a single balance-per-(user,crypto)
   becomes several accounts (funding / spot / futures / earn) with available /
   blocked / **pending** states, and internal transfer flows between them. Don't
   hard-code "one balance per asset", and don't assume every listed asset has a row

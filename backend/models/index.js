@@ -96,13 +96,9 @@ const SaldoLedger = initSaldoLedger(sequelize);
 // RELACIONES DE USUARIOS
 // ================================
 
-// Usuario puede tener muchos balances
-// Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #9): la columna real en
-// balances_users es user_id (userId en el modelo), no usuarioId — con
-// 'usuarioId' Sequelize crea una columna fantasma nunca poblada y
-// Usuario.include('balances') devolvía siempre un array vacío en silencio.
-Usuario.hasMany(BalanceUsuario, { foreignKey: 'userId', as: 'balances' });
-BalanceUsuario.belongsTo(Usuario, { foreignKey: 'userId', as: 'usuario' });
+// (Paso C: Usuario↔BalanceUsuario se eliminó — BalanceUsuario ya no es un modelo
+// Sequelize sino una fachada del ledger; los saldos se leen de la proyección del
+// ledger, no de una asociación.)
 
 // Usuario puede tener muchas direcciones de depósito
 // Mismo bug (Críticos #9), y encima asimétrico: el belongsTo ya se había
@@ -169,9 +165,7 @@ WalletMaestra.belongsTo(Criptomoneda, { foreignKey: 'criptomonedaId', as: 'cript
 Criptomoneda.hasMany(DireccionDeposito, { foreignKey: 'criptomonedaId', as: 'direccionesDeposito' });
 DireccionDeposito.belongsTo(Criptomoneda, { foreignKey: 'criptomonedaId', as: 'criptomoneda' });
 
-// Criptomoneda puede tener muchos balances de usuarios
-Criptomoneda.hasMany(BalanceUsuario, { foreignKey: 'criptomonedaId', as: 'balances' });
-BalanceUsuario.belongsTo(Criptomoneda, { foreignKey: 'criptomonedaId', as: 'criptomoneda' });
+// (Paso C: Criptomoneda↔BalanceUsuario se eliminó junto con la tabla balances_users.)
 
 // Criptomoneda puede estar en muchas ofertas P2P
 Criptomoneda.hasMany(OfertaP2P, { foreignKey: 'criptomonedaId', as: 'ofertas' });

@@ -8,8 +8,8 @@
 //
 // Este test prueba que ese require lazy resuelve de verdad, en runtime,
 // al modelo real — no alcanza con "no explota al cargar", hay que probar
-// que _acreditarDeposito efectivamente escribe en la tabla balances_users
-// a través del grafo completo de asociaciones de models/index.js.
+// que _acreditarDeposito efectivamente acredita en el ledger (vía updateBalance)
+// a través del grafo completo de modelos de models/index.js.
 //
 // Postgres real a propósito: es justamente el orden de carga / resolución
 // de módulos lo que se está probando.

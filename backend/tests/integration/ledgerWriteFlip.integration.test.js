@@ -45,19 +45,15 @@ describe('write-flip: deposit settlement posts to the ledger', () => {
 });
 
 describe('write-flip: updateBalance/blockBalance/unblockBalance post to the ledger, not balances_users', () => {
-  test('updateBalance credits the ledger and does NOT write balances_users', async () => {
+  test('updateBalance credits the ledger', async () => {
     const cripto = await f.seedCripto('BTC');
     const user = await f.seedUser();
-    await f.seedBalance(user, cripto, '5'); // legacy row (hooks:false) = 5; ledger = 5
+    await f.seedBalance(user, cripto, '5');
 
     await BalanceUsuario.updateBalance(user.id, cripto.id, '3.00000000', 'disponible');
 
     const l = await funding(user, cripto);
-    expect(l.disponible).toBe('8.00000000'); // ledger moved
-
-    // The legacy row is untouched (still 5) — the write went to the ledger only.
-    const row = await BalanceUsuario.findOne({ where: { userId: user.id, criptomonedaId: cripto.id } });
-    expect(String(row.balanceDisponible)).toBe('5.00000000');
+    expect(l.disponible).toBe('8.00000000');
   });
 
   test('updateBalance rejects an overdraw with an /insuficiente/ message', async () => {

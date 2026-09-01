@@ -3,7 +3,7 @@ const request = require('supertest');
 const app = require('../../app');
 const { sequelize, resetDb } = require('../helpers/db');
 const f = require('../helpers/factories');
-const { IntercambioExchange, WalletMaestra, BalanceUsuario } = require('../../models');
+const { IntercambioExchange, WalletMaestra } = require('../../models');
 
 beforeEach(async () => { await resetDb(); });
 afterAll(async () => { await sequelize.close(); });
@@ -57,26 +57,19 @@ describe('POST /api/intercambioExchange (swap) — buy', () => {
     expect(usdtEntry.balanceDisponible).toBe('0.69700000');
   });
 
-  // Paso A del write-flip: /me/balances lee de la PROYECCION del ledger, no de
-  // balances_users. Se prueba por DIVERGENCIA: una fila legacy escrita con
-  // hooks:false (el mirror no dispara → el ledger no tiene esa cuenta) NO debe
-  // aparecer en la respuesta; solo las criptos con movimiento real en el ledger.
-  test('GET /me/balances reads the ledger projection, not balances_users (divergence proof)', async () => {
+  // Paso C: /me/balances lee la proyección del ledger (balances_users ya no
+  // existe). Sólo aparecen las criptos con saldo real en el ledger.
+  test('GET /me/balances lists only cryptos with a real ledger balance', async () => {
     const user = await f.seedUser();
     const btc = await f.seedCripto('BTC');
-    await f.seedBalance(user, btc, '2'); // create con hooks → el mirror crea la cuenta funding en el ledger
-    const usdt = await f.seedCripto('USDT');
-    // Fila legacy-only (hooks:false): el ledger no la conoce.
-    await BalanceUsuario.create(
-      { userId: user.id, criptomonedaId: usdt.id, balanceDisponible: '999.00000000', balanceBloqueado: '0' },
-      { hooks: false }
-    );
+    await f.seedBalance(user, btc, '2');
+    await f.seedCripto('USDT'); // sin saldo → no debe aparecer
 
     const res = await request(app).get('/api/intercambioExchange/me/balances').set(f.authHeader(user));
     expect(res.status).toBe(200);
     const symbols = res.body.map((b) => b.criptomoneda.symbol);
     expect(symbols).toContain('BTC');
-    expect(symbols).not.toContain('USDT'); // fila legacy-only ausente en la vista del ledger
+    expect(symbols).not.toContain('USDT'); // sin movimiento en el ledger
     const btcEntry = res.body.find((b) => b.criptomoneda.symbol === 'BTC');
     expect(btcEntry.balanceDisponible).toBe('2.00000000');
   });
