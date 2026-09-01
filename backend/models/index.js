@@ -30,6 +30,12 @@ const tradeModel = require('./trade.model');
 const priceCandleModel = require('./priceCandle.model');
 const idempotencyKeyModel = require('./idempotencyKey.model');
 
+// LEDGER (partida doble) — Radar #1 + #10
+const initCuentaLedger = require('./entities/cuentaLedger.entity');
+const initAsientoLedger = require('./entities/asientoLedger.entity');
+const initMovimientoLedger = require('./entities/movimientoLedger.entity');
+const initSaldoLedger = require('./entities/saldoLedger.entity');
+
 
 
 // Connecting to the database
@@ -72,6 +78,12 @@ const Order = orderModel(sequelize);
 const Trade = tradeModel(sequelize);
 const PriceCandle = priceCandleModel(sequelize);
 const IdempotencyKey = idempotencyKeyModel(sequelize);
+
+// 🆕 LEDGER MODELS (partida doble)
+const CuentaLedger = initCuentaLedger(sequelize);
+const AsientoLedger = initAsientoLedger(sequelize);
+const MovimientoLedger = initMovimientoLedger(sequelize);
+const SaldoLedger = initSaldoLedger(sequelize);
 
 
 
@@ -289,6 +301,17 @@ Criptomoneda.hasMany(Transferencia, { foreignKey: 'criptomonedaId', as: 'transfe
 Transferencia.belongsTo(Criptomoneda, { foreignKey: 'criptomonedaId', as: 'criptomonedaTransferencia' }); // Alias único
 
 
+// ================================
+// RELACIONES DEL LEDGER (partida doble)
+// ================================
+AsientoLedger.hasMany(MovimientoLedger, { foreignKey: 'asientoId', as: 'movimientos' });
+MovimientoLedger.belongsTo(AsientoLedger, { foreignKey: 'asientoId', as: 'asiento' });
+MovimientoLedger.belongsTo(CuentaLedger, { foreignKey: 'cuentaId', as: 'cuenta' });
+CuentaLedger.hasMany(MovimientoLedger, { foreignKey: 'cuentaId', as: 'movimientos' });
+CuentaLedger.hasOne(SaldoLedger, { foreignKey: 'cuentaId', as: 'saldoProyectado' });
+SaldoLedger.belongsTo(CuentaLedger, { foreignKey: 'cuentaId', as: 'cuenta' });
+
+
 
 module.exports = {
   sequelize,
@@ -314,5 +337,10 @@ module.exports = {
   Order,
   Trade,
   PriceCandle,
-  IdempotencyKey
+  IdempotencyKey,
+  // 🆕 LEDGER MODELS (partida doble)
+  CuentaLedger,
+  AsientoLedger,
+  MovimientoLedger,
+  SaldoLedger,
 };
