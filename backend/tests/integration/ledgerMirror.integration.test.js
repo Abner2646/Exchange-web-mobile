@@ -53,3 +53,19 @@ describe('balance mirror — ledger shadows every BalanceUsuario write', () => {
     expect(l.disponible).toBe('9.00000000');
   });
 });
+
+const recon = require('../../services/ledger/reconciliation');
+
+describe('reconciliarConLegacy', () => {
+  test('reports parity after a mix of writes', async () => {
+    const cripto = await f.seedCripto('BTC');
+    const user = await f.seedUser();
+    await BalanceUsuario.create({ userId: user.id, criptomonedaId: cripto.id, balanceDisponible: '10.00000000', balanceBloqueado: '0' });
+    await BalanceUsuario.blockBalance(user.id, cripto.id, '3.00000000');
+    await BalanceUsuario.updateBalance(user.id, cripto.id, '2.00000000', 'disponible');
+
+    const res = await recon.reconciliarConLegacy();
+    expect(res.ok).toBe(true);
+    expect(res.discrepancias).toEqual([]);
+  });
+});
