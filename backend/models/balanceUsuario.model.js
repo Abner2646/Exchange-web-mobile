@@ -5,6 +5,23 @@ const initBalanceUser = require('./entities/balanceUsuario.entity');
 const { Op } = require('sequelize');
 const money = require('../utils/money');
 
+// Plan 3 (read-flip): las lecturas de saldo salen de la PROYECCION del ledger
+// (compartimento Funding), no de balances_users. Requires lazy para evitar el
+// ciclo models<->services/ledger (este modulo lo carga models/index.js). El
+// mirror (Plan 2) mantiene paridad, asi que hoy los valores coinciden; el flip
+// prepara el terreno para dejar de escribir balances_users por-camino.
+async function leerFundingDesdeLedger(userId, criptomonedaId, transaction = null) {
+  const { getSaldoCuenta } = require('../services/ledger/postingService');
+  const { PROPOSITOS } = require('../services/ledger/ledgerAccounts');
+  const balanceDisponible = await getSaldoCuenta(
+    { ownerId: userId, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId }, transaction
+  );
+  const balanceBloqueado = await getSaldoCuenta(
+    { ownerId: userId, proposito: PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId }, transaction
+  );
+  return { balanceDisponible, balanceBloqueado };
+}
+
 function createBalanceUserModel(sequelize) {
   const BalanceUsuario = initBalanceUser(sequelize);
 
@@ -66,21 +83,13 @@ function createBalanceUserModel(sequelize) {
   };
 
   // Métodos de balance
-  BalanceUsuario.getTotalBalance = async (userId, criptomonedaId) => {
+  BalanceUsuario.getTotalBalance = async (userId, criptomonedaId, transaction = null) => {
     try {
-      const balance = await BalanceUsuario.findOne({
-        where: { userId, criptomonedaId }
-      });
-      
-      if (!balance) return { disponible: '0', bloqueado: '0', total: '0' };
-
-      const disponible = String(balance.balanceDisponible);
-      const bloqueado = String(balance.balanceBloqueado);
-
+      const { balanceDisponible, balanceBloqueado } = await leerFundingDesdeLedger(userId, criptomonedaId, transaction);
       return {
-        disponible,
-        bloqueado,
-        total: money.add(disponible, bloqueado)
+        disponible: balanceDisponible,
+        bloqueado: balanceBloqueado,
+        total: money.add(balanceDisponible, balanceBloqueado)
       };
     } catch (error) {
       throw new Error(`Error al calcular balance total: ${error.message}`);
@@ -216,15 +225,10 @@ function createBalanceUserModel(sequelize) {
   };
 
   // Métodos de validación
-  BalanceUsuario.hasAvailableBalance = async (userId, criptomonedaId, amount) => {
+  BalanceUsuario.hasAvailableBalance = async (userId, criptomonedaId, amount, transaction = null) => {
     try {
-      const balance = await BalanceUsuario.findOne({
-        where: { userId, criptomonedaId }
-      });
-
-      if (!balance) return false;
-
-      return money.compare(String(balance.balanceDisponible), String(amount)) >= 0;
+      const { balanceDisponible } = await leerFundingDesdeLedger(userId, criptomonedaId, transaction);
+      return money.compare(balanceDisponible, String(amount)) >= 0;
     } catch (error) {
       throw new Error(`Error al verificar balance disponible: ${error.message}`);
     }

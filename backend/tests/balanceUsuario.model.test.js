@@ -77,23 +77,12 @@ describe('BalanceUsuario.unblockBalance — mueve bloqueado->disponible exacto',
   });
 });
 
-describe('BalanceUsuario.getTotalBalance — total exacto como string', () => {
-  test('0.1 + 0.2 === "0.3"', async () => {
-    const balance = { balanceDisponible: '0.1', balanceBloqueado: '0.2' };
-    BalanceUsuario.findOne = jest.fn().mockResolvedValue(balance);
-
-    const r = await BalanceUsuario.getTotalBalance('u', 'c');
-
-    expect(r).toEqual({ disponible: '0.1', bloqueado: '0.2', total: '0.3' });
-  });
-});
-
-describe('BalanceUsuario.hasAvailableBalance — comparación exacta', () => {
-  test('disponible igual al requerido devuelve true', async () => {
-    const balance = { balanceDisponible: '0.3' };
-    BalanceUsuario.findOne = jest.fn().mockResolvedValue(balance);
-
-    expect(await BalanceUsuario.hasAvailableBalance('u', 'c', '0.3')).toBe(true);
-    expect(await BalanceUsuario.hasAvailableBalance('u', 'c', '0.30000001')).toBe(false);
-  });
-});
+// NOTA (Plan 3, read-flip): getTotalBalance y hasAvailableBalance ya NO leen de
+// balances_users via findOne — ahora leen de la proyeccion del ledger
+// (leerFundingDesdeLedger). Por eso dejaron de ser unit-mockables y sus tests
+// viven ahora en tests/integration/ledgerReadFlip.integration.test.js (con DB
+// real). La exactitud monetaria sigue garantizada porque ambos metodos usan
+// money.add/money.compare (unit-testeados en money.test.js). Los tests de
+// updateBalance/blockBalance/unblockBalance de arriba siguen aca: esos metodos
+// son ESCRITURAS y siguen basados en findOne/findOrCreate (balances_users +
+// mirror), no se flipearon.
