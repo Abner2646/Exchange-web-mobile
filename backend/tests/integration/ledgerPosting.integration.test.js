@@ -48,3 +48,74 @@ describe('ledgerAccounts.resolveAccount', () => {
     expect(ledgerAccounts.isCuentaUsuario(casa)).toBe(false);
   });
 });
+
+const posting = require('../../services/ledger/postingService');
+
+describe('postTransaction', () => {
+  async function seedCryptoAndUser() {
+    const cripto = await f.seedCripto('BTC');
+    const user = await f.seedUser();
+    return { cripto, user };
+  }
+
+  test('posts a balanced transfer and updates both projections', async () => {
+    const { cripto, user } = await seedCryptoAndUser();
+    // Fund the user first (apertura -> funding:disponible +10).
+    await posting.postTransaction({
+      tipo: 'apertura', referencia: 'seed-1', lineas: [
+        { ownerId: null, proposito: ledgerAccounts.PROPOSITOS.APERTURA, criptomonedaId: cripto.id, monto: '-10.00000000' },
+        { ownerId: user.id, proposito: ledgerAccounts.PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: cripto.id, monto: '10.00000000' },
+      ],
+    });
+
+    // Block 4: disponible -> bloqueado.
+    await posting.postTransaction({
+      tipo: 'reserva_orden', referencia: 'block-1', lineas: [
+        { ownerId: user.id, proposito: ledgerAccounts.PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: cripto.id, monto: '-4.00000000' },
+        { ownerId: user.id, proposito: ledgerAccounts.PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId: cripto.id, monto: '4.00000000' },
+      ],
+    });
+
+    const disp = await posting.getSaldoCuenta({ ownerId: user.id, proposito: ledgerAccounts.PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: cripto.id });
+    const bloq = await posting.getSaldoCuenta({ ownerId: user.id, proposito: ledgerAccounts.PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId: cripto.id });
+    expect(disp).toBe('6.00000000');
+    expect(bloq).toBe('4.00000000');
+  });
+
+  test('is idempotent on referencia (a replay posts nothing)', async () => {
+    const { cripto, user } = await seedCryptoAndUser();
+    const lineas = [
+      { ownerId: null, proposito: ledgerAccounts.PROPOSITOS.APERTURA, criptomonedaId: cripto.id, monto: '-3.00000000' },
+      { ownerId: user.id, proposito: ledgerAccounts.PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: cripto.id, monto: '3.00000000' },
+    ];
+    await posting.postTransaction({ tipo: 'apertura', referencia: 'dup-1', lineas });
+    await posting.postTransaction({ tipo: 'apertura', referencia: 'dup-1', lineas }); // replay
+
+    expect(await AsientoLedger.count()).toBe(1);
+    const disp = await posting.getSaldoCuenta({ ownerId: user.id, proposito: ledgerAccounts.PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: cripto.id });
+    expect(disp).toBe('3.00000000');
+  });
+
+  test('rejects an overdraw on a user account and rolls back the whole asiento', async () => {
+    const { cripto, user } = await seedCryptoAndUser();
+    await expect(posting.postTransaction({
+      tipo: 'reserva_orden', referencia: 'over-1', lineas: [
+        { ownerId: user.id, proposito: ledgerAccounts.PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: cripto.id, monto: '-5.00000000' },
+        { ownerId: user.id, proposito: ledgerAccounts.PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId: cripto.id, monto: '5.00000000' },
+      ],
+    })).rejects.toThrow(/sobregiro/i);
+
+    expect(await AsientoLedger.count()).toBe(0); // rolled back
+    expect(await MovimientoLedger.count()).toBe(0);
+  });
+
+  test('rejects an unbalanced asiento before touching the DB', async () => {
+    const { cripto, user } = await seedCryptoAndUser();
+    await expect(posting.postTransaction({
+      tipo: 'apertura', referencia: 'bad-1', lineas: [
+        { ownerId: user.id, proposito: ledgerAccounts.PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: cripto.id, monto: '5.00000000' },
+      ],
+    })).rejects.toThrow(/desbalanceado/i);
+    expect(await AsientoLedger.count()).toBe(0);
+  });
+});
