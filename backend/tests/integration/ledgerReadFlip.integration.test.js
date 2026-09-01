@@ -54,4 +54,31 @@ describe('read-flip: getTotalBalance + hasAvailableBalance read the ledger proje
     expect(await BalanceUsuario.hasAvailableBalance(realUser.id, cripto.id, '5.00000000')).toBe(true);
     expect(await BalanceUsuario.hasAvailableBalance(realUser.id, cripto.id, '5.00000001')).toBe(false);
   });
+
+  test('getByUserAndCrypto returns the LEDGER balance as an object (divergence proof)', async () => {
+    const cripto = await f.seedCripto('BTC');
+    const user = await f.seedUser();
+    // Legacy row says 99/7 but the ledger has nothing.
+    await BalanceUsuario.create(
+      { userId: user.id, criptomonedaId: cripto.id, balanceDisponible: '99.00000000', balanceBloqueado: '7.00000000' },
+      { hooks: false }
+    );
+
+    const b = await BalanceUsuario.getByUserAndCrypto(user.id, cripto.id);
+    expect(b.balanceDisponible).toBe('0'); // from the ledger, not 99
+    expect(b.balanceBloqueado).toBe('0');
+    expect(b.userId).toBe(user.id);
+    expect(b.criptomonedaId).toBe(cripto.id);
+  });
+
+  test('getByUserAndCrypto reflects mirrored balances', async () => {
+    const cripto = await f.seedCripto('BTC');
+    const user = await f.seedUser();
+    await BalanceUsuario.create({ userId: user.id, criptomonedaId: cripto.id, balanceDisponible: '8.00000000', balanceBloqueado: '0' });
+    await BalanceUsuario.blockBalance(user.id, cripto.id, '3.00000000');
+
+    const b = await BalanceUsuario.getByUserAndCrypto(user.id, cripto.id);
+    expect(b.balanceDisponible).toBe('5.00000000');
+    expect(b.balanceBloqueado).toBe('3.00000000');
+  });
 });

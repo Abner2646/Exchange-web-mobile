@@ -46,19 +46,7 @@ function createBalanceUserModel(sequelize) {
     }
   };
 
-  BalanceUsuario.getByUserAndCrypto = async (userId, criptomonedaId) => {
-    try {
-      const balance = await BalanceUsuario.findOne({
-        where: { 
-          userId,
-          criptomonedaId 
-        }
-      });
-      return balance;
-    } catch (error) {
-      throw new Error(`Error al obtener balance específico: ${error.message}`);
-    }
-  };
+  // getByUserAndCrypto se define mas abajo (una sola vez, leyendo del ledger).
 
   BalanceUsuario.getAll = async (filters = {}) => {
     try {
@@ -129,14 +117,16 @@ function createBalanceUserModel(sequelize) {
     }
   };
 
-  // 🆕 MÉTODO PARA OBTENER BALANCE EN TRANSACCIÓN
+  // Plan 3 (read-flip): lee de la PROYECCION del ledger (compartimento Funding).
+  // Contrato: devuelve un objeto {userId, criptomonedaId, balanceDisponible,
+  // balanceBloqueado} con '0' si la cuenta no existe — en un ledger "sin balance"
+  // == "0". Es equivalente al viejo null-si-no-hay-fila para los callers que
+  // chequean saldo: compare('0', monto>0) < 0 → insuficiente, igual que !balance.
+  // options.transaction se respeta (P2P/transferencia lo pasan).
   BalanceUsuario.getByUserAndCrypto = async (userId, criptomonedaId, options = {}) => {
     try {
-      const balance = await BalanceUsuario.findOne({
-        where: { userId, criptomonedaId },
-        ...options
-      });
-      return balance;
+      const { balanceDisponible, balanceBloqueado } = await leerFundingDesdeLedger(userId, criptomonedaId, options.transaction);
+      return { userId, criptomonedaId, balanceDisponible, balanceBloqueado };
     } catch (error) {
       throw new Error(`Error al obtener balance: ${error.message}`);
     }
