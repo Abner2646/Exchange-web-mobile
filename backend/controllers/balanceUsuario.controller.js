@@ -11,18 +11,6 @@ const getBalances = async (req, res) => {
   }
 };
 
-// Obtener balance por ID
-const getBalanceById = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const result = await BalanceUsuario.getById(id);
-    if (!result) return res.status(404).json({ error: 'Balance no encontrado' });
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
 // Obtener balances por usuario
 const getBalancesByUser = async (req, res) => {
   try {
@@ -223,7 +211,6 @@ const transferBalance = async (req, res) => {
 
 module.exports = {
   getBalances,
-  getBalanceById,
   getBalancesByUser,
   getBalanceByUserAndCrypto,
   getMyBalances,

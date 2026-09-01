@@ -22,18 +22,44 @@ async function leerFundingDesdeLedger(userId, criptomonedaId, transaction = null
   return { balanceDisponible, balanceBloqueado };
 }
 
+// Read-flip (write-flip Paso A/B): agrega la proyeccion Funding del ledger para
+// las lecturas de admin. Devuelve, por (usuario, cripto) con cuenta funding, el
+// disponible y bloqueado desde SaldoLedger. Require lazy por el ciclo
+// models<->services/ledger.
+async function agregarFundingLedger({ userId = null, criptomonedaId = null } = {}) {
+  const { CuentaLedger, SaldoLedger } = require('./index');
+  const { PROPOSITOS, HOUSE_OWNER_ID } = require('../services/ledger/ledgerAccounts');
+  const where = { proposito: [PROPOSITOS.FUNDING_DISPONIBLE, PROPOSITOS.FUNDING_BLOQUEADO] };
+  if (userId) where.ownerId = userId;
+  else where.ownerId = { [Op.ne]: HOUSE_OWNER_ID }; // solo cuentas de usuario
+  if (criptomonedaId) where.criptomonedaId = criptomonedaId;
+
+  const cuentas = await CuentaLedger.findAll({
+    where,
+    include: [{ model: SaldoLedger, as: 'saldoProyectado', attributes: ['saldo'] }],
+  });
+
+  // Colapsar disponible/bloqueado por (ownerId, criptomonedaId).
+  const porClave = new Map();
+  for (const c of cuentas) {
+    const clave = `${c.ownerId}:${c.criptomonedaId}`;
+    if (!porClave.has(clave)) {
+      porClave.set(clave, { userId: c.ownerId, criptomonedaId: c.criptomonedaId, balanceDisponible: '0', balanceBloqueado: '0' });
+    }
+    const entrada = porClave.get(clave);
+    const saldo = c.saldoProyectado ? String(c.saldoProyectado.saldo) : '0';
+    if (c.proposito === PROPOSITOS.FUNDING_DISPONIBLE) entrada.balanceDisponible = saldo;
+    else entrada.balanceBloqueado = saldo;
+  }
+  return [...porClave.values()];
+}
+
 function createBalanceUserModel(sequelize) {
   const BalanceUsuario = initBalanceUser(sequelize);
 
-  // Métodos de consulta básicos
-  BalanceUsuario.getById = async (id) => {
-    try {
-      const balance = await BalanceUsuario.findByPk(id);
-      return balance;
-    } catch (error) {
-      throw new Error(`Error al obtener balance por ID: ${error.message}`);
-    }
-  };
+  // getById se retiro en el write-flip (Paso B): leia balances_users por PK de
+  // fila, que no tiene analogo en el ledger (las cuentas son (dueño, proposito,
+  // cripto), no una fila por (usuario, cripto)). Era admin-only y sin tests.
 
   // Plan 3 (read-flip): agrega desde la proyeccion del ledger las cuentas
   // Funding del usuario (una entrada por cripto que tenga cuenta funding). Nota:
@@ -64,23 +90,16 @@ function createBalanceUserModel(sequelize) {
 
   // getByUserAndCrypto se define mas abajo (una sola vez, leyendo del ledger).
 
+  // Read-flip (Paso B): lista desde la proyeccion Funding del ledger.
   BalanceUsuario.getAll = async (filters = {}) => {
     try {
-      const where = {};
-      
-      if (filters.userId) where.userId = filters.userId;
-      if (filters.criptomonedaId) where.criptomonedaId = filters.criptomonedaId;
+      let filas = await agregarFundingLedger({ userId: filters.userId, criptomonedaId: filters.criptomonedaId });
       if (filters.minBalance) {
-        where.balanceDisponible = { [Op.gte]: filters.minBalance };
+        filas = filas.filter((f) => money.compare(f.balanceDisponible, String(filters.minBalance)) >= 0);
       }
-
-      const balances = await BalanceUsuario.findAll({
-        where,
-        limit: filters.limit || 50,
-        offset: filters.offset || 0
-      });
-
-      return balances;
+      const offset = filters.offset || 0;
+      const limit = filters.limit || 50;
+      return filas.slice(offset, offset + limit);
     } catch (error) {
       throw new Error(`Error al obtener todos los balances: ${error.message}`);
     }
@@ -240,18 +259,13 @@ function createBalanceUserModel(sequelize) {
     }
   };
 
-  // Métodos administrativos
+  // Métodos administrativos (read-flip Paso B: agregan la proyeccion del ledger)
   BalanceUsuario.getUsersWithBalance = async (criptomonedaId, minAmount = 0) => {
     try {
-      const balances = await BalanceUsuario.findAll({
-        where: {
-          criptomonedaId,
-          balanceDisponible: { [Op.gt]: minAmount }
-        },
-        attributes: ['userId', 'balanceDisponible', 'balanceBloqueado']
-      });
-
-      return balances;
+      const filas = await agregarFundingLedger({ criptomonedaId });
+      return filas
+        .filter((f) => money.compare(f.balanceDisponible, String(minAmount)) > 0)
+        .map((f) => ({ userId: f.userId, balanceDisponible: f.balanceDisponible, balanceBloqueado: f.balanceBloqueado }));
     } catch (error) {
       throw new Error(`Error al obtener usuarios con balance: ${error.message}`);
     }
@@ -259,17 +273,18 @@ function createBalanceUserModel(sequelize) {
 
   BalanceUsuario.getBalanceStats = async () => {
     try {
-      const stats = await BalanceUsuario.findAll({
-        attributes: [
-          'criptomonedaId',
-          [sequelize.fn('COUNT', sequelize.col('id')), 'totalUsers'],
-          [sequelize.fn('SUM', sequelize.col('balance_disponible')), 'totalDisponible'],
-          [sequelize.fn('SUM', sequelize.col('balance_bloqueado')), 'totalBloqueado']
-        ],
-        group: ['criptomonedaId']
-      });
-
-      return stats;
+      const filas = await agregarFundingLedger();
+      const porCripto = new Map();
+      for (const f of filas) {
+        if (!porCripto.has(f.criptomonedaId)) {
+          porCripto.set(f.criptomonedaId, { criptomonedaId: f.criptomonedaId, totalUsers: 0, totalDisponible: '0', totalBloqueado: '0' });
+        }
+        const s = porCripto.get(f.criptomonedaId);
+        s.totalUsers += 1;
+        s.totalDisponible = money.add(s.totalDisponible, f.balanceDisponible);
+        s.totalBloqueado = money.add(s.totalBloqueado, f.balanceBloqueado);
+      }
+      return [...porCripto.values()];
     } catch (error) {
       throw new Error(`Error al obtener estadísticas de balance: ${error.message}`);
     }
@@ -278,13 +293,10 @@ function createBalanceUserModel(sequelize) {
   // Método para reclamar BTC (SOLO TESTNET - ELIMINAR EN PRODUCCIÓN)
   BalanceUsuario.reclamarBtcGratis = async (userId, transaction = null) => {
     try {
-      // 1. Verificar que el usuario NO tenga ningún balance existente
-      const balancesExistentes = await BalanceUsuario.findAll({
-        where: { userId }
-      });
-
-      // Si tiene algún balance con saldo > 0, no puede reclamar
-      const tieneSaldo = balancesExistentes.some(balance => {
+      // 1. Verificar que el usuario NO tenga ningún balance existente.
+      // Read-flip (Paso B): el "ya tiene saldo" sale de la proyeccion del ledger.
+      const balancesLedger = await BalanceUsuario.getByUserId(userId);
+      const tieneSaldo = balancesLedger.some(balance => {
         const total = money.add(String(balance.balanceDisponible), String(balance.balanceBloqueado));
         return money.compare(total, '0') > 0;
       });

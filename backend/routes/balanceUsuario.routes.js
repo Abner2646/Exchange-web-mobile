@@ -32,8 +32,8 @@ router.get('/', authenticateToken, isAdmin, balanceUserController.getBalances); 
 // GET /api/balances/stats - Estadísticas de balances (admin)
 router.get('/stats', authenticateToken, isSuperAdmin, balanceUserController.getBalanceStats); // Bien
 
-// GET /api/balances/:id - Obtener balance por ID (admin)
-router.get('/:id', authenticateToken, isAdmin, balanceUserController.getBalanceById);
+// (GET /api/balances/:id retirado en el write-flip Paso B: lectura por PK de fila
+// de balances_users, sin analogo en el ledger.)
 
 // =============== RUTAS DE USUARIO AUTENTICADO ===============
 
