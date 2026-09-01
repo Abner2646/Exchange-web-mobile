@@ -29,7 +29,7 @@ jest.mock('../models/index.js', () => ({
   IntercambioExchange: { create: jest.fn(), getDailyVolume: jest.fn() },
   Usuario: { findByPk: jest.fn() },
   ParExchange: { findByPk: jest.fn() },
-  BalanceUsuario: { findOne: jest.fn(), updateBalance: jest.fn() },
+  BalanceUsuario: { findOne: jest.fn(), getByUserAndCrypto: jest.fn(), updateBalance: jest.fn() },
   WalletMaestra: { findOne: jest.fn(), addToBalance: jest.fn() },
   Criptomoneda: {},
   sequelize: { transaction: jest.fn() },
@@ -113,7 +113,7 @@ describe('createOrder', () => {
   test('tipo "compra" debita quote y acredita base (no al revés)', async () => {
     setupCommonMocks();
     // Balance quote suficiente para pagar 1 BTC * 100 + 1% comisión = 101
-    BalanceUsuario.findOne.mockResolvedValue({ balanceDisponible: '200' });
+    BalanceUsuario.getByUserAndCrypto.mockResolvedValue({ balanceDisponible: '200' });
 
     const req = { user: { id: USER_ID }, body: { parId: PAR_ID, tipo: 'compra', cantidadBase: 1 } };
     const res = mockRes();
@@ -135,7 +135,7 @@ describe('createOrder', () => {
 
   test('tipo "venta" debita base y acredita quote', async () => {
     setupCommonMocks();
-    BalanceUsuario.findOne.mockResolvedValue({ balanceDisponible: '200' });
+    BalanceUsuario.getByUserAndCrypto.mockResolvedValue({ balanceDisponible: '200' });
 
     const req = { user: { id: USER_ID }, body: { parId: PAR_ID, tipo: 'venta', cantidadBase: 1 } };
     const res = mockRes();
@@ -155,7 +155,7 @@ describe('createOrder', () => {
 
   test('la comisión se acredita en la misma transacción de la orden', async () => {
     const transaction = setupCommonMocks();
-    BalanceUsuario.findOne.mockResolvedValue({ balanceDisponible: '200' });
+    BalanceUsuario.getByUserAndCrypto.mockResolvedValue({ balanceDisponible: '200' });
 
     const req = { user: { id: USER_ID }, body: { parId: PAR_ID, tipo: 'venta', cantidadBase: 1 } };
     await createOrder(req, mockRes());
@@ -167,7 +167,7 @@ describe('createOrder', () => {
     // Migrated to HTTP layer: createOrder now throws AppError for business
     // failures so the assertion must go through asyncHandler + errorHandler.
     setupCommonMocks({ limiteDiarioUsd: 50, dailyVolume: 0 });
-    BalanceUsuario.findOne.mockResolvedValue({ balanceDisponible: '200' });
+    BalanceUsuario.getByUserAndCrypto.mockResolvedValue({ balanceDisponible: '200' });
 
     // cantidadQuote = 1 * 100 = 100, supera el límite de 50
     const spy = jest.spyOn(console, 'error').mockImplementation(() => {});

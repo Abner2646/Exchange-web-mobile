@@ -29,6 +29,7 @@ jest.mock('../models/index.js', () => ({
   ParExchange: { findByPk: jest.fn() },
   BalanceUsuario: {
     findOne: jest.fn(),
+    getByUserAndCrypto: jest.fn(),
     updateBalance: jest.fn(),
   },
   WalletMaestra: {
@@ -118,7 +119,9 @@ describe('createOrder — known business error → canonical envelope', () => {
       limiteDiarioUsd: 99999,
     });
     IntercambioExchange.getDailyVolume.mockResolvedValue(0);
-    BalanceUsuario.findOne.mockResolvedValue(null); // no balance record
+    // Read-flip: el controller lee el saldo via getByUserAndCrypto, que en el
+    // ledger devuelve un objeto con '0' cuando no hay cuenta (insuficiente).
+    BalanceUsuario.getByUserAndCrypto.mockResolvedValue({ balanceDisponible: '0' });
 
     const res = await request(buildApp())
       .post('/intercambioExchange')
