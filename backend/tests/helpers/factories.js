@@ -47,12 +47,28 @@ async function seedPar({ base, quote, precio, comision }) {
 }
 
 async function seedBalance(user, cripto, monto) {
-  return BalanceUsuario.create({
+  // La fila legacy se crea con hooks:false (el mirror NO dispara) y el ledger se
+  // siembra directo con un asiento 'apertura' → seedBalance no depende del mirror
+  // (que se elimina en el write-flip). Mismo valor de funding, contrapartida en
+  // la cuenta de casa 'apertura'.
+  const { postTransaction } = require('../../services/ledger/postingService');
+  const { PROPOSITOS } = require('../../services/ledger/ledgerAccounts');
+  const crypto = require('crypto');
+  const fila = await BalanceUsuario.create({
     userId: user.id,
     criptomonedaId: cripto.id,
     balanceDisponible: monto,
     balanceBloqueado: '0',
+  }, { hooks: false });
+  await postTransaction({
+    tipo: 'apertura',
+    referencia: `seed:${crypto.randomUUID()}`,
+    lineas: [
+      { ownerId: null, proposito: PROPOSITOS.APERTURA, criptomonedaId: cripto.id, monto: `-${monto}` },
+      { ownerId: user.id, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: cripto.id, monto: String(monto) },
+    ],
   });
+  return fila;
 }
 
 // red 'test' sidesteps the network-specific xpub validation; the swap only
