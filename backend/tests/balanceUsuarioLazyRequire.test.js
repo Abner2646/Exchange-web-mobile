@@ -67,9 +67,13 @@ describeIfDb('transaccionBlockchain.model.js: require lazy de BalanceUsuario', (
     const user = await Usuario.create({ email: 'lazy@test.com', username: 'lazy_user', passwordHash: 'x', rol: 'normal' });
     const cripto = await Criptomoneda.create({ symbol: 'ETH', nombre: 'Ethereum', red: 'ethereum', decimales: 18 });
 
-    // Write-flip (Paso B): _acreditarDeposito delega en updateBalance, que postea
-    // al ledger. Se prueba que el require lazy resuelve el modelo real y que la
-    // acreditacion llega a la proyeccion Funding del ledger.
+    // Paso D: el depósito primero se acredita PENDIENTE (al detectarse), y
+    // _acreditarDeposito (al confirmar) mueve pendiente → disponible. Se prueba
+    // que el require lazy resuelve el modelo real y que la confirmación llega a la
+    // proyección Funding del ledger.
+    const { registrarDepositoPendiente } = require('../services/ledger/operations');
+    await registrarDepositoPendiente({ userId: user.id, criptomonedaId: cripto.id, cantidad: '1.50000000', referencia: `dep-pend:${user.id}` });
+
     await TransaccionBlockchain._acreditarDeposito(
       { id: '99999999-9999-4999-8999-999999999999', userId: user.id, criptomonedaId: cripto.id, cantidad: '1.50000000', estado: 'pendiente' },
       null

@@ -117,4 +117,32 @@ async function marcarRetiroTransmitido({
   return postTransaction({ tipo: 'retiro', referencia, descripcion: 'Retiro transmitido on-chain', lineas }, transaction);
 }
 
-module.exports = { liquidarSwap, liquidarTrade, marcarRetiroTransmitido };
+// Depósito detectado on-chain (sin confirmar): el mundo on-chain acredita al
+// usuario en estado PENDIENTE. external_onchain −A → funding:pendiente +A. El
+// usuario ve el depósito como "pendiente" hasta que confirme.
+async function registrarDepositoPendiente({ userId, criptomonedaId, cantidad, referencia }, transaction = null) {
+  const { postTransaction } = require('./postingService');
+  const { PROPOSITOS } = require('./ledgerAccounts');
+  const lineas = [
+    { ownerId: null, proposito: PROPOSITOS.EXTERNAL_ONCHAIN, criptomonedaId, monto: money.subtract('0', String(cantidad)) },
+    { ownerId: userId, proposito: PROPOSITOS.FUNDING_PENDIENTE, criptomonedaId, monto: String(cantidad) },
+  ];
+  return postTransaction({ tipo: 'deposito', referencia, descripcion: 'Depósito detectado (pendiente)', lineas }, transaction);
+}
+
+// Depósito confirmado: el saldo pendiente pasa a disponible.
+// funding:pendiente −A → funding:disponible +A.
+async function confirmarDeposito({ userId, criptomonedaId, cantidad, referencia }, transaction = null) {
+  const { postTransaction } = require('./postingService');
+  const { PROPOSITOS } = require('./ledgerAccounts');
+  const lineas = [
+    { ownerId: userId, proposito: PROPOSITOS.FUNDING_PENDIENTE, criptomonedaId, monto: money.subtract('0', String(cantidad)) },
+    { ownerId: userId, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId, monto: String(cantidad) },
+  ];
+  return postTransaction({ tipo: 'deposito', referencia, descripcion: 'Depósito confirmado', lineas }, transaction);
+}
+
+module.exports = {
+  liquidarSwap, liquidarTrade, marcarRetiroTransmitido,
+  registrarDepositoPendiente, confirmarDeposito,
+};

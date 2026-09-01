@@ -1,16 +1,20 @@
 // tests/transaccionBlockchain.model.test.js
 //
-// Write-flip (Paso B). El settlement (acreditar deposito / fallar retiro) ya no
-// hace aritmetica cruda sobre balances_users: delega en los metodos del modelo
-// (updateBalance/unblockBalance), que postean al ledger. Este unit test verifica
-// esa DELEGACION con los montos correctos; la exactitud monetaria y el resultado
-// en el ledger se cubren en tests/integration/ledgerWriteFlip.integration.test.js.
+// Write-flip (Paso B) + Paso D. El settlement delega en operaciones de dominio
+// del ledger: acreditar depósito → confirmarDeposito (pendiente→disponible);
+// fallar retiro → unblockBalance. Este unit test verifica esa DELEGACION; el
+// resultado en el ledger se cubre en ledgerWriteFlip.integration.test.js.
 
 jest.mock('../models/entities/transaccionBlockchain.entity');
 jest.mock('../models/index', () => ({ BalanceUsuario: {} }));
+jest.mock('../services/ledger/operations', () => ({
+  confirmarDeposito: jest.fn(),
+  registrarDepositoPendiente: jest.fn(),
+}));
 
 const initTransaccionBlockchain = require('../models/entities/transaccionBlockchain.entity');
 const { BalanceUsuario } = require('../models/index');
+const { confirmarDeposito } = require('../services/ledger/operations');
 const createTransaccionBlockchainModel = require('../models/transaccionBlockchain.model');
 
 const fakeModel = {};
@@ -20,16 +24,18 @@ const TransaccionBlockchain = createTransaccionBlockchainModel(sequelize);
 
 beforeEach(() => jest.clearAllMocks());
 
-describe('_acreditarDeposito — delega en updateBalance', () => {
-  test('acredita la cantidad exacta al funding:disponible del usuario', async () => {
-    BalanceUsuario.updateBalance = jest.fn().mockResolvedValue({});
+describe('_acreditarDeposito — delega en confirmarDeposito (pendiente→disponible)', () => {
+  test('confirma el depósito por la cantidad exacta, en la transacción', async () => {
     TransaccionBlockchain.update = jest.fn().mockResolvedValue([1]);
     sequelize.models.Criptomoneda.findByPk.mockResolvedValue({ symbol: 'BTC' });
 
     const transaccion = { id: 't1', userId: 'u', criptomonedaId: 'c', cantidad: '0.2', estado: 'confirmado' };
     await TransaccionBlockchain._acreditarDeposito(transaccion, {});
 
-    expect(BalanceUsuario.updateBalance).toHaveBeenCalledWith('u', 'c', '0.2', 'disponible', {});
+    expect(confirmarDeposito).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'u', criptomonedaId: 'c', cantidad: '0.2', referencia: 'deposito-conf:t1' }),
+      {}
+    );
   });
 });
 

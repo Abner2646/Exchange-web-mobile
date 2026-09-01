@@ -198,6 +198,18 @@ function createTransaccionBlockchainModel(sequelize) {
       };
 
       const nuevoDeposito = await TransaccionBlockchain.create(depositData, { transaction });
+
+      // Paso D: depósito detectado → acreditar en estado PENDIENTE en el ledger
+      // (external_onchain → funding:pendiente). Al confirmar, _acreditarDeposito
+      // lo mueve a disponible.
+      const { registrarDepositoPendiente } = require('../services/ledger/operations');
+      await registrarDepositoPendiente({
+        userId: data.userId,
+        criptomonedaId: data.criptomonedaId,
+        cantidad: String(data.cantidad),
+        referencia: `deposito-pend:${nuevoDeposito.id}`,
+      }, transaction);
+
       await transaction.commit();
 
       return await TransaccionBlockchain.getById(nuevoDeposito.id);
@@ -287,7 +299,6 @@ function createTransaccionBlockchainModel(sequelize) {
     // sería circular (transaccionBlockchain.model.js se está cargando
     // *desde* models/index.js), pero para cuando esta función corre de
     // verdad (un request real) models/index.js ya terminó de inicializar.
-    const { BalanceUsuario } = require('./index');
     try {
       console.log(`🔧 DEBUG - Acreditando depósito:`, {
         transaccionId: transaccion.id,
@@ -297,10 +308,15 @@ function createTransaccionBlockchainModel(sequelize) {
         estado: transaccion.estado
       });
 
-      // Write-flip (Paso B): acreditar el deposito via el metodo (postea al ledger
-      // funding:disponible; Paso D lo enriquece a external_onchain -> pendiente ->
-      // disponible). Ya no hay findOrCreate/update crudo sobre balances_users.
-      await BalanceUsuario.updateBalance(transaccion.userId, transaccion.criptomonedaId, String(transaccion.cantidad), 'disponible', transaction);
+      // Paso D: el depósito ya está en funding:pendiente (registrado al detectarse
+      // en createDeposit). Al confirmar, se mueve pendiente → disponible.
+      const { confirmarDeposito } = require('../services/ledger/operations');
+      await confirmarDeposito({
+        userId: transaccion.userId,
+        criptomonedaId: transaccion.criptomonedaId,
+        cantidad: String(transaccion.cantidad),
+        referencia: `deposito-conf:${transaccion.id}`,
+      }, transaction);
 
       // ✅ CORRECCIÓN: Marcar transacción como completada (no confirmada)
       await TransaccionBlockchain.update(

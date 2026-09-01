@@ -9,7 +9,10 @@ jest.mock('../services/ledger/postingService', () => ({ postTransaction: jest.fn
 
 const { postTransaction } = require('../services/ledger/postingService');
 const { PROPOSITOS } = require('../services/ledger/ledgerAccounts');
-const { liquidarSwap, liquidarTrade, marcarRetiroTransmitido } = require('../services/ledger/operations');
+const {
+  liquidarSwap, liquidarTrade, marcarRetiroTransmitido,
+  registrarDepositoPendiente, confirmarDeposito,
+} = require('../services/ledger/operations');
 
 beforeEach(() => jest.clearAllMocks());
 
@@ -105,5 +108,25 @@ describe('marcarRetiroTransmitido arma el asiento del retiro on-chain', () => {
     expect(lineas).toContainEqual({ ownerId: 'u', proposito: PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId: 'BTC', monto: '-1' });
     expect(lineas).toContainEqual({ ownerId: null, proposito: PROPOSITOS.EXTERNAL_ONCHAIN, criptomonedaId: 'BTC', monto: '0.9' });
     expect(lineas).toContainEqual({ ownerId: null, proposito: PROPOSITOS.FEE_REVENUE, criptomonedaId: 'BTC', monto: '0.1' });
+  });
+});
+
+describe('registrarDepositoPendiente / confirmarDeposito arman los asientos del depósito', () => {
+  test('detección: external_onchain −A → funding:pendiente +A', async () => {
+    await registrarDepositoPendiente({ userId: 'u', criptomonedaId: 'BTC', cantidad: '1.5', referencia: 'dep-pend:1' }, 'tx');
+
+    const [asiento, transaction] = postTransaction.mock.calls[0];
+    expect(transaction).toBe('tx');
+    expect(asiento.tipo).toBe('deposito');
+    expect(asiento.lineas).toContainEqual({ ownerId: null, proposito: PROPOSITOS.EXTERNAL_ONCHAIN, criptomonedaId: 'BTC', monto: '-1.5' });
+    expect(asiento.lineas).toContainEqual({ ownerId: 'u', proposito: PROPOSITOS.FUNDING_PENDIENTE, criptomonedaId: 'BTC', monto: '1.5' });
+  });
+
+  test('confirmación: funding:pendiente −A → funding:disponible +A', async () => {
+    await confirmarDeposito({ userId: 'u', criptomonedaId: 'BTC', cantidad: '1.5', referencia: 'dep-conf:1' });
+
+    const { lineas } = postTransaction.mock.calls[0][0];
+    expect(lineas).toContainEqual({ ownerId: 'u', proposito: PROPOSITOS.FUNDING_PENDIENTE, criptomonedaId: 'BTC', monto: '-1.5' });
+    expect(lineas).toContainEqual({ ownerId: 'u', proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: 'BTC', monto: '1.5' });
   });
 });

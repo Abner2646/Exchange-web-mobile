@@ -19,7 +19,11 @@ async function leerFundingDesdeLedger(userId, criptomonedaId, transaction = null
   const balanceBloqueado = await getSaldoCuenta(
     { ownerId: userId, proposito: PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId }, transaction
   );
-  return { balanceDisponible, balanceBloqueado };
+  // Paso D: estado PENDIENTE (depósitos detectados sin confirmar).
+  const balancePendiente = await getSaldoCuenta(
+    { ownerId: userId, proposito: PROPOSITOS.FUNDING_PENDIENTE, criptomonedaId }, transaction
+  );
+  return { balanceDisponible, balanceBloqueado, balancePendiente };
 }
 
 // Read-flip (write-flip Paso A/B): agrega la proyeccion Funding del ledger para
@@ -29,7 +33,7 @@ async function leerFundingDesdeLedger(userId, criptomonedaId, transaction = null
 async function agregarFundingLedger({ userId = null, criptomonedaId = null } = {}) {
   const { CuentaLedger, SaldoLedger } = require('./index');
   const { PROPOSITOS, HOUSE_OWNER_ID } = require('../services/ledger/ledgerAccounts');
-  const where = { proposito: [PROPOSITOS.FUNDING_DISPONIBLE, PROPOSITOS.FUNDING_BLOQUEADO] };
+  const where = { proposito: [PROPOSITOS.FUNDING_DISPONIBLE, PROPOSITOS.FUNDING_BLOQUEADO, PROPOSITOS.FUNDING_PENDIENTE] };
   if (userId) where.ownerId = userId;
   else where.ownerId = { [Op.ne]: HOUSE_OWNER_ID }; // solo cuentas de usuario
   if (criptomonedaId) where.criptomonedaId = criptomonedaId;
@@ -39,17 +43,18 @@ async function agregarFundingLedger({ userId = null, criptomonedaId = null } = {
     include: [{ model: SaldoLedger, as: 'saldoProyectado', attributes: ['saldo'] }],
   });
 
-  // Colapsar disponible/bloqueado por (ownerId, criptomonedaId).
+  // Colapsar disponible/bloqueado/pendiente por (ownerId, criptomonedaId).
   const porClave = new Map();
   for (const c of cuentas) {
     const clave = `${c.ownerId}:${c.criptomonedaId}`;
     if (!porClave.has(clave)) {
-      porClave.set(clave, { userId: c.ownerId, criptomonedaId: c.criptomonedaId, balanceDisponible: '0', balanceBloqueado: '0' });
+      porClave.set(clave, { userId: c.ownerId, criptomonedaId: c.criptomonedaId, balanceDisponible: '0', balanceBloqueado: '0', balancePendiente: '0' });
     }
     const entrada = porClave.get(clave);
     const saldo = c.saldoProyectado ? String(c.saldoProyectado.saldo) : '0';
     if (c.proposito === PROPOSITOS.FUNDING_DISPONIBLE) entrada.balanceDisponible = saldo;
-    else entrada.balanceBloqueado = saldo;
+    else if (c.proposito === PROPOSITOS.FUNDING_BLOQUEADO) entrada.balanceBloqueado = saldo;
+    else entrada.balancePendiente = saldo;
   }
   return [...porClave.values()];
 }
@@ -79,14 +84,14 @@ function createBalanceUserModel(sequelize) {
       const { CuentaLedger } = require('./index');
       const { PROPOSITOS } = require('../services/ledger/ledgerAccounts');
       const cuentas = await CuentaLedger.findAll({
-        where: { ownerId: userId, proposito: [PROPOSITOS.FUNDING_DISPONIBLE, PROPOSITOS.FUNDING_BLOQUEADO] },
+        where: { ownerId: userId, proposito: [PROPOSITOS.FUNDING_DISPONIBLE, PROPOSITOS.FUNDING_BLOQUEADO, PROPOSITOS.FUNDING_PENDIENTE] },
         attributes: ['criptomonedaId'],
         group: ['criptomonedaId'],
       });
       const balances = [];
       for (const c of cuentas) {
-        const { balanceDisponible, balanceBloqueado } = await leerFundingDesdeLedger(userId, c.criptomonedaId);
-        balances.push({ userId, criptomonedaId: c.criptomonedaId, balanceDisponible, balanceBloqueado });
+        const { balanceDisponible, balanceBloqueado, balancePendiente } = await leerFundingDesdeLedger(userId, c.criptomonedaId);
+        balances.push({ userId, criptomonedaId: c.criptomonedaId, balanceDisponible, balanceBloqueado, balancePendiente });
       }
       return balances;
     } catch (error) {
@@ -114,10 +119,12 @@ function createBalanceUserModel(sequelize) {
   // Métodos de balance
   BalanceUsuario.getTotalBalance = async (userId, criptomonedaId, transaction = null) => {
     try {
-      const { balanceDisponible, balanceBloqueado } = await leerFundingDesdeLedger(userId, criptomonedaId, transaction);
+      const { balanceDisponible, balanceBloqueado, balancePendiente } = await leerFundingDesdeLedger(userId, criptomonedaId, transaction);
       return {
         disponible: balanceDisponible,
         bloqueado: balanceBloqueado,
+        pendiente: balancePendiente, // Paso D: depósitos detectados sin confirmar
+        // total = spendable + reserved; NO incluye pendiente (aún no confirmado).
         total: money.add(balanceDisponible, balanceBloqueado)
       };
     } catch (error) {
@@ -162,8 +169,8 @@ function createBalanceUserModel(sequelize) {
   // options.transaction se respeta (P2P/transferencia lo pasan).
   BalanceUsuario.getByUserAndCrypto = async (userId, criptomonedaId, options = {}) => {
     try {
-      const { balanceDisponible, balanceBloqueado } = await leerFundingDesdeLedger(userId, criptomonedaId, options.transaction);
-      return { userId, criptomonedaId, balanceDisponible, balanceBloqueado };
+      const { balanceDisponible, balanceBloqueado, balancePendiente } = await leerFundingDesdeLedger(userId, criptomonedaId, options.transaction);
+      return { userId, criptomonedaId, balanceDisponible, balanceBloqueado, balancePendiente };
     } catch (error) {
       throw new Error(`Error al obtener balance: ${error.message}`);
     }

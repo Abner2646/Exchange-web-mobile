@@ -13,6 +13,7 @@ async function funding(user, cripto) {
   return {
     disponible: await posting.getSaldoCuenta({ ownerId: user.id, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: cripto.id }),
     bloqueado: await posting.getSaldoCuenta({ ownerId: user.id, proposito: PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId: cripto.id }),
+    pendiente: await posting.getSaldoCuenta({ ownerId: user.id, proposito: PROPOSITOS.FUNDING_PENDIENTE, criptomonedaId: cripto.id }),
   };
 }
 
@@ -30,17 +31,28 @@ describe('seedBalance seeds the ledger directly (mirror-independent)', () => {
   });
 });
 
-describe('write-flip: deposit settlement posts to the ledger', () => {
-  test('_acreditarDeposito credits funding:disponible in the ledger', async () => {
+describe('write-flip: deposit settlement posts to the ledger (detected → pending → confirmed)', () => {
+  test('detected credits funding:pendiente; _acreditarDeposito moves pending → disponible', async () => {
     const cripto = await f.seedCripto('BTC');
     const user = await f.seedUser();
+    const { registrarDepositoPendiente } = require('../../services/ledger/operations');
+
+    // Detección on-chain: acredita PENDIENTE (external_onchain → funding:pendiente).
+    await registrarDepositoPendiente({ userId: user.id, criptomonedaId: cripto.id, cantidad: '1.50000000', referencia: 'dep-pend:1' });
+    let l = await funding(user, cripto);
+    expect(l.pendiente).toBe('1.50000000');
+    expect(l.disponible).toBe('0');
+
+    // Confirmación: pendiente → disponible.
     await TransaccionBlockchain._acreditarDeposito(
       { id: '11111111-1111-4111-8111-111111111111', userId: user.id, criptomonedaId: cripto.id, cantidad: '1.50000000', estado: 'confirmado' },
       null
     );
-    const l = await funding(user, cripto);
+    l = await funding(user, cripto);
     expect(l.disponible).toBe('1.50000000');
+    expect(l.pendiente).toBe('0.00000000');
     expect((await recon.reconciliarInterno()).ok).toBe(true);
+    expect((await recon.reconciliarExterno()).ok).toBe(true);
   });
 });
 

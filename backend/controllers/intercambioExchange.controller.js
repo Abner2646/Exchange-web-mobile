@@ -388,6 +388,7 @@ const getMyBalances = async (req, res) => {
       criptomonedaId: b.criptomonedaId,
       balanceDisponible: b.balanceDisponible,
       balanceBloqueado: b.balanceBloqueado,
+      balancePendiente: b.balancePendiente, // Paso D: depósitos detectados sin confirmar
       criptomoneda: criptoPorId.get(b.criptomonedaId) || null
     }))
     .sort((a, b) => money.compare(b.balanceDisponible, a.balanceDisponible));
