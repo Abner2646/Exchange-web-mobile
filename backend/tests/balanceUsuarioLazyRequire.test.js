@@ -63,24 +63,21 @@ describeIfDb('transaccionBlockchain.model.js: require lazy de BalanceUsuario', (
     expect(source).not.toMatch(/require\(['"]\.\/entities\/balanceUsuario\.entity['"]\)/);
   });
 
-  test('_acreditarDeposito escribe de verdad en balances_users vía el modelo real de models/index.js', async () => {
+  test('_acreditarDeposito acredita de verdad en el ledger vía el modelo real de models/index.js', async () => {
     const user = await Usuario.create({ email: 'lazy@test.com', username: 'lazy_user', passwordHash: 'x', rol: 'normal' });
     const cripto = await Criptomoneda.create({ symbol: 'ETH', nombre: 'Ethereum', red: 'ethereum', decimales: 18 });
 
-    // id con formato UUID real (aunque no corresponda a ninguna fila) para
-    // que el UPDATE final de _acreditarDeposito no falle por tipo de dato
-    // — con un id no-UUID, ese UPDATE revienta y el catch de la función no
-    // hace rollback de la transacción, dejándola "aborted" en Postgres
-    // (bug preexistente, separado del que se está probando acá).
-    const transaction = await sequelize.transaction();
+    // Write-flip (Paso B): _acreditarDeposito delega en updateBalance, que postea
+    // al ledger. Se prueba que el require lazy resuelve el modelo real y que la
+    // acreditacion llega a la proyeccion Funding del ledger.
     await TransaccionBlockchain._acreditarDeposito(
-      { id: '99999999-9999-4999-8999-999999999999', userId: user.id, criptomonedaId: cripto.id, cantidad: 1.5, estado: 'pendiente' },
-      transaction
+      { id: '99999999-9999-4999-8999-999999999999', userId: user.id, criptomonedaId: cripto.id, cantidad: '1.50000000', estado: 'pendiente' },
+      null
     );
-    await transaction.commit();
 
-    const balance = await BalanceUsuario.findOne({ where: { userId: user.id, criptomonedaId: cripto.id } });
-    expect(balance).not.toBeNull();
-    expect(parseFloat(balance.balanceDisponible)).toBe(1.5);
+    const posting = require('../services/ledger/postingService');
+    const { PROPOSITOS } = require('../services/ledger/ledgerAccounts');
+    const disponible = await posting.getSaldoCuenta({ ownerId: user.id, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: cripto.id });
+    expect(disponible).toBe('1.50000000');
   });
 });

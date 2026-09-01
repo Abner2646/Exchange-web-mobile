@@ -43,27 +43,9 @@ async function reconciliarExterno(transaction = null) {
   return { ok, porCripto };
 }
 
-// Paridad transicional: mientras el shim CDC (balanceMirror) espeja
-// balances_users al ledger, el ledger funding de cada (usuario, cripto) debe
-// igualar la fila legacy. Es el gate que prueba que el shim captura el 100% de
-// las escrituras. Se retira cuando la migracion por-camino elimina balances_users.
-async function reconciliarConLegacy(transaction = null) {
-  const { BalanceUsuario } = require('../../models');
-  const { PROPOSITOS } = require('./ledgerAccounts');
-  const { getSaldoCuenta } = require('./postingService');
-  const filas = await BalanceUsuario.findAll({ transaction });
-  const discrepancias = [];
-  for (const b of filas) {
-    const disp = await getSaldoCuenta({ ownerId: b.userId, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: b.criptomonedaId }, transaction);
-    const bloq = await getSaldoCuenta({ ownerId: b.userId, proposito: PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId: b.criptomonedaId }, transaction);
-    if (money.compare(disp, String(b.balanceDisponible)) !== 0) {
-      discrepancias.push({ userId: b.userId, criptomonedaId: b.criptomonedaId, campo: 'disponible', ledger: disp, legacy: String(b.balanceDisponible) });
-    }
-    if (money.compare(bloq, String(b.balanceBloqueado)) !== 0) {
-      discrepancias.push({ userId: b.userId, criptomonedaId: b.criptomonedaId, campo: 'bloqueado', ledger: bloq, legacy: String(b.balanceBloqueado) });
-    }
-  }
-  return { ok: discrepancias.length === 0, discrepancias };
-}
+// (Write-flip Paso B: reconciliarConLegacy se retiró junto con el shim CDC —
+// probaba paridad ledger==balances_users, que ya no aplica: el ledger es la
+// única fuente de verdad. La reconciliación viva es interna (proyección==SUM) y
+// externa (el libro cierra en cero).)
 
-module.exports = { reconciliarInterno, reconciliarExterno, reconciliarConLegacy };
+module.exports = { reconciliarInterno, reconciliarExterno };

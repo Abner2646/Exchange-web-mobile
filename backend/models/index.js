@@ -85,8 +85,9 @@ const AsientoLedger = initAsientoLedger(sequelize);
 const MovimientoLedger = initMovimientoLedger(sequelize);
 const SaldoLedger = initSaldoLedger(sequelize);
 
-// Shim transicional: el ledger espeja toda escritura de BalanceUsuario (CDC).
-require('../services/ledger/balanceMirror').registrarMirrorDeBalance(BalanceUsuario);
+// (Write-flip Paso B: el shim CDC balanceMirror se eliminó — todas las escrituras
+// de dinero postean al ledger DIRECTO vía updateBalance/blockBalance/unblockBalance
+// y el settlement de deposito/retiro. El ledger es el único escritor de dinero.)
 
 
 

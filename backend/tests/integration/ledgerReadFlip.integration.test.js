@@ -28,10 +28,10 @@ describe('read-flip: getTotalBalance + hasAvailableBalance read the ledger proje
     expect(total.total).toBe('0');
   });
 
-  test('getTotalBalance reflects real ledger balances after mirrored writes', async () => {
+  test('getTotalBalance reflects real ledger balances after ledger writes', async () => {
     const cripto = await f.seedCripto('BTC');
     const user = await f.seedUser();
-    await BalanceUsuario.create({ userId: user.id, criptomonedaId: cripto.id, balanceDisponible: '10.00000000', balanceBloqueado: '0' });
+    await f.seedBalance(user, cripto, '10');
     await BalanceUsuario.blockBalance(user.id, cripto.id, '4.00000000');
 
     const total = await BalanceUsuario.getTotalBalance(user.id, cripto.id);
@@ -50,9 +50,9 @@ describe('read-flip: getTotalBalance + hasAvailableBalance read the ledger proje
     );
     expect(await BalanceUsuario.hasAvailableBalance(legacyUser.id, cripto.id, '1.00000000')).toBe(false);
 
-    // Real user: a mirrored credit from zero → ledger reflects 5.
+    // Real user: a ledger credit from zero → ledger reflects 5.
     const realUser = await f.seedUser();
-    await BalanceUsuario.create({ userId: realUser.id, criptomonedaId: cripto.id, balanceDisponible: '5.00000000', balanceBloqueado: '0' });
+    await f.seedBalance(realUser, cripto, '5');
     expect(await BalanceUsuario.hasAvailableBalance(realUser.id, cripto.id, '5.00000000')).toBe(true);
     expect(await BalanceUsuario.hasAvailableBalance(realUser.id, cripto.id, '5.00000001')).toBe(false);
   });
@@ -73,10 +73,10 @@ describe('read-flip: getTotalBalance + hasAvailableBalance read the ledger proje
     expect(b.criptomonedaId).toBe(cripto.id);
   });
 
-  test('getByUserAndCrypto reflects mirrored balances', async () => {
+  test('getByUserAndCrypto reflects ledger balances', async () => {
     const cripto = await f.seedCripto('BTC');
     const user = await f.seedUser();
-    await BalanceUsuario.create({ userId: user.id, criptomonedaId: cripto.id, balanceDisponible: '8.00000000', balanceBloqueado: '0' });
+    await f.seedBalance(user, cripto, '8');
     await BalanceUsuario.blockBalance(user.id, cripto.id, '3.00000000');
 
     const b = await BalanceUsuario.getByUserAndCrypto(user.id, cripto.id);
@@ -88,8 +88,8 @@ describe('read-flip: getTotalBalance + hasAvailableBalance read the ledger proje
     const btc = await f.seedCripto('BTC');
     const usdt = await f.seedCripto('USDT');
     const user = await f.seedUser();
-    await BalanceUsuario.create({ userId: user.id, criptomonedaId: btc.id, balanceDisponible: '2.00000000', balanceBloqueado: '0' });
-    await BalanceUsuario.create({ userId: user.id, criptomonedaId: usdt.id, balanceDisponible: '100.00000000', balanceBloqueado: '0' });
+    await f.seedBalance(user, btc, '2');
+    await f.seedBalance(user, usdt, '100');
     // A legacy zero-row (hooks:false) does NOT appear (no ledger movement).
     const eth = await f.seedCripto('ETH');
     await BalanceUsuario.create({ userId: user.id, criptomonedaId: eth.id, balanceDisponible: '0', balanceBloqueado: '0' }, { hooks: false });
