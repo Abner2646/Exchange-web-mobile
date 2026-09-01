@@ -24,7 +24,7 @@ describe('WalletMaestra.getByCriptomoneda', () => {
 });
 
 describe('deposit-address provisioning on email verification', () => {
-  test('a verified user gets a deposit address + balance row for each active crypto with a master wallet', async () => {
+  test('a verified user gets a deposit address for each active crypto with a master wallet', async () => {
     const btc = await f.seedCripto('BTC'); // red 'test' → generarDireccionDerivada default branch
     await f.seedWalletMaestra(btc);
 
@@ -36,13 +36,15 @@ describe('deposit-address provisioning on email verification', () => {
       .send({ codigo: code });
     expect(verify.status).toBe(200);
 
-    // The deposit address + balance must exist. Two regressions blocked this:
+    // The deposit address must exist. Two regressions blocked this:
     // (1) getByCriptomoneda selected phantom columns, and (2) the DireccionDeposito
     // was created with `usuarioId` instead of the entity's `userId` field. Either
     // one made provisioning throw, and verify-email swallows that error → the user
     // ended up verified but with no deposit addresses.
+    // Write-flip (Paso B): el provisioning ya NO crea filas de balance en 0 (en el
+    // ledger, 0 == cuenta inexistente, creada lazy al primer movimiento); por eso
+    // se asevera la direccion de deposito, que es el entregable real del provisioning.
     const user = await Usuario.findOne({ where: { email: 'prov@test.local' } });
     expect(await DireccionDeposito.count({ where: { userId: user.id } })).toBeGreaterThan(0);
-    expect(await BalanceUsuario.count({ where: { userId: user.id } })).toBeGreaterThan(0);
   });
 });

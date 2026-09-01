@@ -1,5 +1,5 @@
 require('../helpers/testEnv');
-const { sequelize, BalanceUsuario } = require('../../models');
+const { sequelize, BalanceUsuario, TransaccionBlockchain } = require('../../models');
 const { resetDb } = require('../helpers/db');
 const f = require('../helpers/factories');
 const posting = require('../../services/ledger/postingService');
@@ -27,6 +27,20 @@ describe('seedBalance seeds the ledger directly (mirror-independent)', () => {
     // Not doubled: exactly 7 (would be 14 if both a mirrored create AND apertura fired).
     expect((await recon.reconciliarInterno()).ok).toBe(true);
     expect((await recon.reconciliarExterno()).ok).toBe(true);
+  });
+});
+
+describe('write-flip: deposit settlement posts to the ledger', () => {
+  test('_acreditarDeposito credits funding:disponible in the ledger', async () => {
+    const cripto = await f.seedCripto('BTC');
+    const user = await f.seedUser();
+    await TransaccionBlockchain._acreditarDeposito(
+      { id: '11111111-1111-4111-8111-111111111111', userId: user.id, criptomonedaId: cripto.id, cantidad: '1.50000000', estado: 'confirmado' },
+      null
+    );
+    const l = await funding(user, cripto);
+    expect(l.disponible).toBe('1.50000000');
+    expect((await recon.reconciliarInterno()).ok).toBe(true);
   });
 });
 

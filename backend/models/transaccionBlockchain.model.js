@@ -282,53 +282,10 @@ function createTransaccionBlockchainModel(sequelize) {
         estado: transaccion.estado
       });
 
-      // Actualizar balance del usuario usando la entidad directa
-      const [balance] = await BalanceUsuario.findOrCreate({
-        where: {
-          userId: transaccion.userId,
-          criptomonedaId: transaccion.criptomonedaId
-        },
-        defaults: {
-          userId: transaccion.userId,
-          criptomonedaId: transaccion.criptomonedaId,
-          balanceDisponible: 0,
-          balanceBloqueado: 0
-        },
-        transaction
-      });
-
-      console.log(`🔧 DEBUG - Balance actual antes de acreditar:`, {
-        balanceId: balance.id,
-        balanceDisponible: balance.balanceDisponible,
-        balanceBloqueado: balance.balanceBloqueado
-      });
-
-      const nuevoBalance = money.add(String(balance.balanceDisponible), String(transaccion.cantidad));
-
-      console.log(`🔧 DEBUG - Nuevo balance calculado:`, {
-        balanceAnterior: balance.balanceDisponible,
-        cantidadDepositada: transaccion.cantidad,
-        nuevoBalance: nuevoBalance
-      });
-
-      // ✅ CORRECCIÓN CRÍTICA: Actualizar el balance correctamente
-      const [updatedRows] = await BalanceUsuario.update(
-        { balanceDisponible: nuevoBalance },
-        { 
-          where: { id: balance.id },
-          transaction,
-          returning: true // Para PostgreSQL, obtener el registro actualizado
-        }
-      );
-
-      console.log(`🔧 DEBUG - Balance actualizado, filas afectadas: ${updatedRows || 1}`);
-
-      // ✅ CORRECCIÓN: Verificar que el balance se actualizó correctamente
-      const balanceVerificacion = await BalanceUsuario.findByPk(balance.id, { transaction });
-      console.log(`🔧 DEBUG - Balance después de actualizar:`, {
-        balanceDisponible: balanceVerificacion.balanceDisponible,
-        balanceBloqueado: balanceVerificacion.balanceBloqueado
-      });
+      // Write-flip (Paso B): acreditar el deposito via el metodo (postea al ledger
+      // funding:disponible; Paso D lo enriquece a external_onchain -> pendiente ->
+      // disponible). Ya no hay findOrCreate/update crudo sobre balances_users.
+      await BalanceUsuario.updateBalance(transaccion.userId, transaccion.criptomonedaId, String(transaccion.cantidad), 'disponible', transaction);
 
       // ✅ CORRECCIÓN: Marcar transacción como completada (no confirmada)
       await TransaccionBlockchain.update(
@@ -372,33 +329,11 @@ function createTransaccionBlockchainModel(sequelize) {
         throw new Error('Datos incompletos para crear retiro');
       }
 
-      // Verificar balance suficiente usando la entidad directa
-      const balance = await BalanceUsuario.findOne({
-        where: {
-          userId: data.userId,
-          criptomonedaId: data.criptomonedaId
-        },
-        transaction
-      });
-
-      if (!balance || money.compare(String(balance.balanceDisponible), String(data.cantidad)) < 0) {
-        throw new Error('Balance insuficiente para retiro. (Mensaje desde el model)');
-      }
-
-      // Bloquear balance
-      const nuevoBalanceDisponible = money.subtract(String(balance.balanceDisponible), String(data.cantidad));
-      const nuevoBalanceBloqueado = money.add(String(balance.balanceBloqueado), String(data.cantidad));
-
-      await BalanceUsuario.update(
-        { 
-          balanceDisponible: nuevoBalanceDisponible,
-          balanceBloqueado: nuevoBalanceBloqueado
-        },
-        { 
-          where: { id: balance.id },
-          transaction
-        }
-      );
+      // Write-flip (Paso B): bloquear via el metodo (postea disponible->bloqueado
+      // en el ledger; el guard de sobregiro del ledger rechaza si no alcanza). Su
+      // mensaje /insuficiente/ preserva la semantica de "Balance insuficiente para
+      // retiro" para el caller.
+      await BalanceUsuario.blockBalance(data.userId, data.criptomonedaId, String(data.cantidad), transaction);
 
       // Crear transacción de retiro
       const retiroData = {
@@ -504,26 +439,9 @@ function createTransaccionBlockchainModel(sequelize) {
         throw new Error('Retiro no encontrado');
       }
 
-      // Desbloquear balance (liberar los fondos ya enviados) usando la entidad directa
-      const balance = await BalanceUsuario.findOne({
-        where: {
-          userId: retiro.userId,
-          criptomonedaId: retiro.criptomonedaId
-        },
-        transaction
-      });
-
-      if (balance) {
-        const nuevoBalanceBloqueado = money.subtract(String(balance.balanceBloqueado), String(retiro.cantidad));
-
-        await BalanceUsuario.update(
-          { balanceBloqueado: money.compare(nuevoBalanceBloqueado, '0') < 0 ? '0' : nuevoBalanceBloqueado },
-          { 
-            where: { id: balance.id },
-            transaction
-          }
-        );
-      }
+      // Write-flip (Paso B): los fondos salieron on-chain → debitar de bloqueado
+      // (una pata, contrapartida suspense; Paso D lo enriquece a external_onchain).
+      await BalanceUsuario.updateBalance(retiro.userId, retiro.criptomonedaId, money.subtract('0', String(retiro.cantidad)), 'bloqueado', transaction);
 
       // Marcar como completado
       await TransaccionBlockchain.update(
@@ -554,30 +472,8 @@ function createTransaccionBlockchainModel(sequelize) {
         throw new Error('Retiro no encontrado');
       }
 
-      // Revertir balance (devolver fondos al disponible) usando la entidad directa
-      const balance = await BalanceUsuario.findOne({
-        where: {
-          userId: retiro.userId,
-          criptomonedaId: retiro.criptomonedaId
-        },
-        transaction
-      });
-
-      if (balance) {
-        const nuevoBalanceDisponible = money.add(String(balance.balanceDisponible), String(retiro.cantidad));
-        const nuevoBalanceBloqueado = money.subtract(String(balance.balanceBloqueado), String(retiro.cantidad));
-
-        await BalanceUsuario.update(
-          {
-            balanceDisponible: nuevoBalanceDisponible,
-            balanceBloqueado: money.compare(nuevoBalanceBloqueado, '0') < 0 ? '0' : nuevoBalanceBloqueado
-          },
-          { 
-            where: { id: balance.id },
-            transaction
-          }
-        );
-      }
+      // Write-flip (Paso B): retiro fallido → devolver bloqueado a disponible.
+      await BalanceUsuario.unblockBalance(retiro.userId, retiro.criptomonedaId, String(retiro.cantidad), transaction);
 
       // Marcar como fallido
       await TransaccionBlockchain.update(
@@ -751,10 +647,8 @@ function createTransaccionBlockchainModel(sequelize) {
         return { valid: false, message: 'Criptomoneda no encontrada o inactiva' };
       }
 
-      // Validar balance suficiente usando la entidad directa
-      const balance = await BalanceUsuario.findOne({
-        where: { userId, criptomonedaId }
-      });
+      // (Write-flip Paso B: se removio el findOne de balances_users que aca solo
+      // alimentaba validaciones comentadas — lectura muerta del path legacy.)
 
       // ESTO DE ACÁ ABAJO ESTÁ BIEN, AUNQUE NO TESTEADO, PERO POR AHORA SON VALIDACIONES INNECESARIAS
 
