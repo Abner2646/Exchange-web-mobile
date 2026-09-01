@@ -4,6 +4,7 @@ require('dotenv').config();
 const initBalanceUser = require('./entities/balanceUsuario.entity');
 const { Op } = require('sequelize');
 const money = require('../utils/money');
+const crypto = require('crypto');
 
 // Plan 3 (read-flip): las lecturas de saldo salen de la PROYECCION del ledger
 // (compartimento Funding), no de balances_users. Requires lazy para evitar el
@@ -119,37 +120,33 @@ function createBalanceUserModel(sequelize) {
     }
   };
 
+  // Write-flip (Paso B): postea al ledger DIRECTO (compartimento Funding). Una
+  // sola pata de usuario + contrapartida en 'suspense' para cerrar en cero (misma
+  // logica que balanceMirror.espejar, ahora sin pasar por balances_users). El
+  // guard de sobregiro vive en postTransaction (FOR UPDATE sobre la proyeccion);
+  // se traduce su error /sobregiro/ al mensaje legacy /insuficiente/ del contrato.
   BalanceUsuario.updateBalance = async (userId, criptomonedaId, amount, type = 'disponible', transaction = null) => {
+    const { postTransaction } = require('../services/ledger/postingService');
+    const { PROPOSITOS } = require('../services/ledger/ledgerAccounts');
+    const proposito = type === 'disponible' ? PROPOSITOS.FUNDING_DISPONIBLE : PROPOSITOS.FUNDING_BLOQUEADO;
+    const monto = String(amount);
     try {
-      const [balance] = await BalanceUsuario.findOrCreate({
-        where: { userId, criptomonedaId },
-        defaults: {
-          userId,
-          criptomonedaId,
-          balanceDisponible: 0,
-          balanceBloqueado: 0
-        },
-        transaction
-      });
-
-      const field = type === 'disponible' ? 'balanceDisponible' : 'balanceBloqueado';
-      const currentBalance = String(balance[field] ?? 0);
-      const newBalance = money.add(currentBalance, String(amount));
-
-      if (money.compare(newBalance, '0') < 0) {
-        throw new Error(
-          `Balance insuficiente. ${type === 'disponible' ? 'Disponible' : 'Bloqueado'}: ${currentBalance}, ` +
-          `Operación: ${amount}, Resultado: ${newBalance}`
-        );
-      }
-
-      balance[field] = newBalance;
-      await balance.save({ transaction });
-
-      return balance;
+      await postTransaction({
+        tipo: 'ajuste_legacy',
+        referencia: `writeflip:${crypto.randomUUID()}`,
+        lineas: [
+          { ownerId: userId, proposito, criptomonedaId, monto },
+          { ownerId: null, proposito: PROPOSITOS.SUSPENSE, criptomonedaId, monto: money.subtract('0', monto) },
+        ],
+      }, transaction);
     } catch (error) {
+      if (/sobregiro/i.test(error.message)) {
+        throw new Error(`Error al actualizar balance: Balance insuficiente. ${type}`);
+      }
       throw new Error(`Error al actualizar balance: ${error.message}`);
     }
+    const { balanceDisponible, balanceBloqueado } = await leerFundingDesdeLedger(userId, criptomonedaId, transaction);
+    return { userId, criptomonedaId, balanceDisponible, balanceBloqueado };
   };
 
   // Plan 3 (read-flip): lee de la PROYECCION del ledger (compartimento Funding).
@@ -167,86 +164,55 @@ function createBalanceUserModel(sequelize) {
     }
   };
 
-  // Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #5): antes esto era
-  // findOne() + save() sin transacción ni lock — dos requests casi
-  // simultáneas podían leer el mismo balance, las dos pasar la validación,
-  // y las dos escribir (TOCTOU clásico, permitía bloquear más de lo
-  // disponible). Ahora el read+check+write pasa por un único SELECT ... FOR
-  // UPDATE: la segunda llamada concurrente espera a que la primera
-  // transacción termine y recién ahí lee el balance ya actualizado, en vez
-  // de correr en paralelo sobre el mismo dato viejo.
-  //
-  // `transaction` es opcional: si el caller ya tiene una abierta se suma a
-  // ella (mismo patrón que WalletMaestra.updateBalance); si no, abre y
-  // gestiona la suya.
+  // Write-flip (Paso B): bloquear = dos patas de usuario (disponible -A,
+  // bloqueado +A). Suma cero sin suspense. El anti-sobregiro (Críticos #5) sigue
+  // vivo pero ahora es el FOR UPDATE de postTransaction sobre la fila de
+  // proyeccion (probado en ledgerPosting concurrency); ya no hay findOne+save
+  // sobre balances_users. `transaction` opcional: se pasa a postTransaction.
   BalanceUsuario.blockBalance = async (userId, criptomonedaId, amount, transaction = null) => {
-    const ownTransaction = !transaction;
-    const t = transaction || await sequelize.transaction();
-
+    const { postTransaction } = require('../services/ledger/postingService');
+    const { PROPOSITOS } = require('../services/ledger/ledgerAccounts');
+    const monto = String(amount);
     try {
-      const balance = await BalanceUsuario.findOne({
-        where: { userId, criptomonedaId },
-        transaction: t,
-        lock: t.LOCK.UPDATE
-      });
-
-      if (!balance) {
-        throw new Error('Balance no encontrado');
-      }
-
-      const availableBalance = String(balance.balanceDisponible);
-      const amountToBlock = String(amount);
-
-      if (money.compare(availableBalance, amountToBlock) < 0) {
-        throw new Error('Balance disponible insuficiente para bloquear');
-      }
-
-      balance.balanceDisponible = money.subtract(availableBalance, amountToBlock);
-      balance.balanceBloqueado = money.add(String(balance.balanceBloqueado), amountToBlock);
-
-      await balance.save({ transaction: t });
-
-      if (ownTransaction) await t.commit();
-      return balance;
+      await postTransaction({
+        tipo: 'reserva_orden',
+        referencia: `block:${crypto.randomUUID()}`,
+        lineas: [
+          { ownerId: userId, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId, monto: money.subtract('0', monto) },
+          { ownerId: userId, proposito: PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId, monto },
+        ],
+      }, transaction);
     } catch (error) {
-      if (ownTransaction) await t.rollback();
+      if (/sobregiro/i.test(error.message)) {
+        throw new Error('Error al bloquear balance: Balance disponible insuficiente para bloquear');
+      }
       throw new Error(`Error al bloquear balance: ${error.message}`);
     }
+    const { balanceDisponible, balanceBloqueado } = await leerFundingDesdeLedger(userId, criptomonedaId, transaction);
+    return { userId, criptomonedaId, balanceDisponible, balanceBloqueado };
   };
 
   BalanceUsuario.unblockBalance = async (userId, criptomonedaId, amount, transaction = null) => {
-    const ownTransaction = !transaction;
-    const t = transaction || await sequelize.transaction();
-
+    const { postTransaction } = require('../services/ledger/postingService');
+    const { PROPOSITOS } = require('../services/ledger/ledgerAccounts');
+    const monto = String(amount);
     try {
-      const balance = await BalanceUsuario.findOne({
-        where: { userId, criptomonedaId },
-        transaction: t,
-        lock: t.LOCK.UPDATE
-      });
-
-      if (!balance) {
-        throw new Error('Balance no encontrado');
-      }
-
-      const blockedBalance = String(balance.balanceBloqueado);
-      const amountToUnblock = String(amount);
-
-      if (money.compare(blockedBalance, amountToUnblock) < 0) {
-        throw new Error('Balance bloqueado insuficiente para desbloquear');
-      }
-
-      balance.balanceBloqueado = money.subtract(blockedBalance, amountToUnblock);
-      balance.balanceDisponible = money.add(String(balance.balanceDisponible), amountToUnblock);
-
-      await balance.save({ transaction: t });
-
-      if (ownTransaction) await t.commit();
-      return balance;
+      await postTransaction({
+        tipo: 'liberacion_reserva',
+        referencia: `unblock:${crypto.randomUUID()}`,
+        lineas: [
+          { ownerId: userId, proposito: PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId, monto: money.subtract('0', monto) },
+          { ownerId: userId, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId, monto },
+        ],
+      }, transaction);
     } catch (error) {
-      if (ownTransaction) await t.rollback();
+      if (/sobregiro/i.test(error.message)) {
+        throw new Error('Error al desbloquear balance: Balance bloqueado insuficiente para desbloquear');
+      }
       throw new Error(`Error al desbloquear balance: ${error.message}`);
     }
+    const { balanceDisponible, balanceBloqueado } = await leerFundingDesdeLedger(userId, criptomonedaId, transaction);
+    return { userId, criptomonedaId, balanceDisponible, balanceBloqueado };
   };
 
   // Métodos de validación

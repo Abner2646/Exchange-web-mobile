@@ -83,8 +83,12 @@ async function seedWalletMaestra(cripto) {
   });
 }
 
+// Write-flip (Paso B): el saldo autoritativo es el ledger, no balances_users
+// (las escrituras postean al ledger directo). getBalance lee la proyeccion via
+// getByUserAndCrypto → devuelve { userId, criptomonedaId, balanceDisponible,
+// balanceBloqueado } con strings canonicos, mismo shape que usan los tests.
 async function getBalance(user, cripto) {
-  return BalanceUsuario.findOne({ where: { userId: user.id, criptomonedaId: cripto.id } });
+  return BalanceUsuario.getByUserAndCrypto(user.id, cripto.id);
 }
 
 // Spot trading pair. lastPrice defaults to 0 so the order validator's

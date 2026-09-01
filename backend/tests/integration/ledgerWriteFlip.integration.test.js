@@ -29,3 +29,71 @@ describe('seedBalance seeds the ledger directly (mirror-independent)', () => {
     expect((await recon.reconciliarExterno()).ok).toBe(true);
   });
 });
+
+describe('write-flip: updateBalance/blockBalance/unblockBalance post to the ledger, not balances_users', () => {
+  test('updateBalance credits the ledger and does NOT write balances_users', async () => {
+    const cripto = await f.seedCripto('BTC');
+    const user = await f.seedUser();
+    await f.seedBalance(user, cripto, '5'); // legacy row (hooks:false) = 5; ledger = 5
+
+    await BalanceUsuario.updateBalance(user.id, cripto.id, '3.00000000', 'disponible');
+
+    const l = await funding(user, cripto);
+    expect(l.disponible).toBe('8.00000000'); // ledger moved
+
+    // The legacy row is untouched (still 5) — the write went to the ledger only.
+    const row = await BalanceUsuario.findOne({ where: { userId: user.id, criptomonedaId: cripto.id } });
+    expect(String(row.balanceDisponible)).toBe('5.00000000');
+  });
+
+  test('updateBalance rejects an overdraw with an /insuficiente/ message', async () => {
+    const cripto = await f.seedCripto('BTC');
+    const user = await f.seedUser();
+    await f.seedBalance(user, cripto, '1');
+    await expect(
+      BalanceUsuario.updateBalance(user.id, cripto.id, '-2.00000000', 'disponible')
+    ).rejects.toThrow(/insuficiente/i);
+  });
+
+  test('blockBalance moves disponible->bloqueado in the ledger', async () => {
+    const cripto = await f.seedCripto('BTC');
+    const user = await f.seedUser();
+    await f.seedBalance(user, cripto, '10');
+    await BalanceUsuario.blockBalance(user.id, cripto.id, '4.00000000');
+
+    const l = await funding(user, cripto);
+    expect(l.disponible).toBe('6.00000000');
+    expect(l.bloqueado).toBe('4.00000000');
+  });
+
+  test('blockBalance rejects blocking more than disponible', async () => {
+    const cripto = await f.seedCripto('BTC');
+    const user = await f.seedUser();
+    await f.seedBalance(user, cripto, '3');
+    await expect(BalanceUsuario.blockBalance(user.id, cripto.id, '5')).rejects.toThrow(/insuficiente/i);
+  });
+
+  test('unblockBalance moves bloqueado->disponible in the ledger', async () => {
+    const cripto = await f.seedCripto('BTC');
+    const user = await f.seedUser();
+    await f.seedBalance(user, cripto, '10');
+    await BalanceUsuario.blockBalance(user.id, cripto.id, '6.00000000');
+    await BalanceUsuario.unblockBalance(user.id, cripto.id, '2.00000000');
+
+    const l = await funding(user, cripto);
+    expect(l.disponible).toBe('6.00000000');
+    expect(l.bloqueado).toBe('4.00000000');
+  });
+
+  test('reconciliation holds after a mix of method writes', async () => {
+    const cripto = await f.seedCripto('BTC');
+    const user = await f.seedUser();
+    await f.seedBalance(user, cripto, '10');
+    await BalanceUsuario.updateBalance(user.id, cripto.id, '5', 'disponible');
+    await BalanceUsuario.blockBalance(user.id, cripto.id, '4');
+    await BalanceUsuario.unblockBalance(user.id, cripto.id, '1');
+
+    expect((await recon.reconciliarInterno()).ok).toBe(true);
+    expect((await recon.reconciliarExterno()).ok).toBe(true);
+  });
+});

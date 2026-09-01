@@ -15,31 +15,12 @@ async function fundingLedger(user, cripto) {
   };
 }
 
-describe('balance mirror — ledger shadows every BalanceUsuario write', () => {
-  test('create + updateBalance (static) mirror into funding:disponible', async () => {
-    const cripto = await f.seedCripto('BTC');
-    const user = await f.seedUser();
-    await BalanceUsuario.create({ userId: user.id, criptomonedaId: cripto.id, balanceDisponible: '5.00000000', balanceBloqueado: '0' });
-    await BalanceUsuario.updateBalance(user.id, cripto.id, '3.00000000', 'disponible');
-
-    const l = await fundingLedger(user, cripto);
-    const row = await BalanceUsuario.findOne({ where: { userId: user.id, criptomonedaId: cripto.id } });
-    expect(l.disponible).toBe(String(row.balanceDisponible)); // 8.00000000
-    expect(l.disponible).toBe('8.00000000');
-  });
-
-  test('blockBalance (static, two-sided) mirrors disponible->bloqueado', async () => {
-    const cripto = await f.seedCripto('BTC');
-    const user = await f.seedUser();
-    await BalanceUsuario.create({ userId: user.id, criptomonedaId: cripto.id, balanceDisponible: '10.00000000', balanceBloqueado: '0' });
-    await BalanceUsuario.blockBalance(user.id, cripto.id, '4.00000000');
-
-    const l = await fundingLedger(user, cripto);
-    const row = await BalanceUsuario.findOne({ where: { userId: user.id, criptomonedaId: cripto.id } });
-    expect(l.disponible).toBe(String(row.balanceDisponible)); // 6
-    expect(l.bloqueado).toBe(String(row.balanceBloqueado));   // 4
-  });
-
+describe('balance mirror — ledger shadows every raw BalanceUsuario write', () => {
+  // NOTA (write-flip Paso B): las estaticas updateBalance/blockBalance/unblock
+  // ya NO escriben balances_users (postean al ledger directo), asi que sus tests
+  // de paridad-con-el-mirror se removieron. El mirror sigue vivo para las
+  // escrituras CRUDAS (create/.update de deposito/retiro) hasta que el write-flip
+  // las convierta; eso es lo que este archivo cubre ahora.
   test('raw BalanceUsuario.update (the deposit/withdrawal path) is also mirrored', async () => {
     const cripto = await f.seedCripto('BTC');
     const user = await f.seedUser();
@@ -57,12 +38,11 @@ describe('balance mirror — ledger shadows every BalanceUsuario write', () => {
 const recon = require('../../services/ledger/reconciliation');
 
 describe('reconciliarConLegacy', () => {
-  test('reports parity after a mix of writes', async () => {
+  test('reports parity after mirrored (raw) writes', async () => {
     const cripto = await f.seedCripto('BTC');
     const user = await f.seedUser();
-    await BalanceUsuario.create({ userId: user.id, criptomonedaId: cripto.id, balanceDisponible: '10.00000000', balanceBloqueado: '0' });
-    await BalanceUsuario.blockBalance(user.id, cripto.id, '3.00000000');
-    await BalanceUsuario.updateBalance(user.id, cripto.id, '2.00000000', 'disponible');
+    const b = await BalanceUsuario.create({ userId: user.id, criptomonedaId: cripto.id, balanceDisponible: '10.00000000', balanceBloqueado: '0' });
+    await BalanceUsuario.update({ balanceDisponible: '12.00000000' }, { where: { id: b.id } });
 
     const res = await recon.reconciliarConLegacy();
     expect(res.ok).toBe(true);

@@ -38,7 +38,10 @@ describe('BalanceUsuario.blockBalance under concurrency (real Postgres)', () => 
     expect(rejected).toHaveLength(1);
     expect(rejected[0].reason.message).toMatch(/insuficiente/i);
 
-    const finalBalance = await f.getBalance(user, cripto);
+    // Write-flip: el saldo autoritativo sale del ledger (blockBalance ya no
+    // escribe balances_users). La serializacion la da el FOR UPDATE de
+    // postTransaction sobre la fila de proyeccion.
+    const finalBalance = await BalanceUsuario.getByUserAndCrypto(user.id, cripto.id);
     expect(finalBalance.balanceDisponible).toBe('20.00000000');
     expect(finalBalance.balanceBloqueado).toBe('80.00000000');
   }, 15000);
@@ -51,7 +54,7 @@ describe('BalanceUsuario.blockBalance under concurrency (real Postgres)', () => 
     const fulfilled = results.filter((r) => r.status === 'fulfilled');
     expect(fulfilled.length).toBeLessThanOrEqual(6); // 6 * 15 = 90 <= 100 < 7 * 15 = 105
 
-    const finalBalance = await f.getBalance(user, cripto);
+    const finalBalance = await BalanceUsuario.getByUserAndCrypto(user.id, cripto.id);
     expect(parseFloat(finalBalance.balanceDisponible)).toBeGreaterThanOrEqual(0);
     expect(parseFloat(finalBalance.balanceBloqueado)).toBe(fulfilled.length * 15);
   }, 15000);
