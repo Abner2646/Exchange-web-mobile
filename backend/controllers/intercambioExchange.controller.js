@@ -370,22 +370,33 @@ const checkTransactionLimit = async (req, res) => {
 };
 
 // Obtener mis balances
+// Read-flip (write-flip Paso A): los saldos salen de la PROYECCION del ledger
+// (BalanceUsuario.getByUserId → compartimento Funding), no de balances_users. La
+// asociacion `criptomoneda` se re-adjunta por lookup (la proyeccion devuelve
+// objetos planos). Nota de contrato: ya no hay `id` de fila ni `updated_at`, y
+// las criptos sin movimiento en el ledger (saldo 0) no se listan — cambio de
+// contrato ya documentado en docs/frontend-rebuild/backend-contract-changes.md.
 const getMyBalances = async (req, res) => {
   const usuarioId = req.user.id;
 
-  const balances = await BalanceUsuario.findAll({
-    where: { userId: usuarioId },
-    include: [
-      {
-        model: Criptomoneda,
-        as: 'criptomoneda',
-        attributes: ['id', 'symbol', 'nombre', 'decimales']
-      }
-    ],
-    order: [['balanceDisponible', 'DESC']]
+  const balances = await BalanceUsuario.getByUserId(usuarioId);
+  const criptomonedas = await Criptomoneda.findAll({
+    where: { id: balances.map((b) => b.criptomonedaId) },
+    attributes: ['id', 'symbol', 'nombre', 'decimales']
   });
+  const criptoPorId = new Map(criptomonedas.map((c) => [c.id, c]));
 
-  res.json(balances);
+  const resultado = balances
+    .map((b) => ({
+      userId: b.userId,
+      criptomonedaId: b.criptomonedaId,
+      balanceDisponible: b.balanceDisponible,
+      balanceBloqueado: b.balanceBloqueado,
+      criptomoneda: criptoPorId.get(b.criptomonedaId) || null
+    }))
+    .sort((a, b) => money.compare(b.balanceDisponible, a.balanceDisponible));
+
+  res.json(resultado);
 };
 
 // Listar todos los intercambios (admin)

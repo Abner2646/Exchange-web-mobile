@@ -10,6 +10,7 @@ const BlockchainServiceManager = require('../services/blockchain');
 const BlockchainJobManager = require('../jobs/blockchain.jobs');
 const AppError = require('../utils/AppError');
 const errorCodes = require('../utils/errorCodes');
+const money = require('../utils/money');
 
 class TransaccionBlockchainController {
   // =================== ENDPOINTS PARA USUARIOS ===================
@@ -101,31 +102,29 @@ class TransaccionBlockchainController {
   }
 
   // GET /api/transactions/balances - Obtener balances del usuario
+  // Read-flip (write-flip Paso A): saldos desde la PROYECCION del ledger
+  // (getByUserId → Funding), no de balances_users; montos como strings canonicos
+  // (no parseFloat). Se re-adjunta `criptomoneda` (solo las activas) por lookup.
+  // Ya no hay `id` de fila ni `updated_at`; las criptos sin saldo no se listan.
   async getMyBalances(req, res) {
     const userId = req.user.id;
 
-    const balances = await BalanceUsuario.findAll({
-      where: { userId },
-      include: [
-        {
-          model: Criptomoneda,
-          as: 'criptomoneda',
-          attributes: ['id', 'symbol', 'nombre', 'red', 'decimales'],
-          where: { activa: true }
-        }
-      ],
-      order: [['criptomoneda', 'symbol', 'ASC']]
+    const balances = await BalanceUsuario.getByUserId(userId);
+    const criptomonedas = await Criptomoneda.findAll({
+      where: { id: balances.map((b) => b.criptomonedaId), activa: true },
+      attributes: ['id', 'symbol', 'nombre', 'red', 'decimales']
     });
+    const criptoPorId = new Map(criptomonedas.map((c) => [c.id, c]));
 
-    // Calcular balance total por criptomoneda
-    const balancesConTotal = balances.map(balance => ({
-      id: balance.id,
-      criptomoneda: balance.criptomoneda,
-      balanceDisponible: parseFloat(balance.balanceDisponible),
-      balanceBloqueado: parseFloat(balance.balanceBloqueado),
-      balanceTotal: parseFloat(balance.balanceDisponible) + parseFloat(balance.balanceBloqueado),
-      updatedAt: balance.updated_at
-    }));
+    const balancesConTotal = balances
+      .filter((b) => criptoPorId.has(b.criptomonedaId)) // solo criptos activas
+      .map((b) => ({
+        criptomoneda: criptoPorId.get(b.criptomonedaId),
+        balanceDisponible: b.balanceDisponible,
+        balanceBloqueado: b.balanceBloqueado,
+        balanceTotal: money.add(b.balanceDisponible, b.balanceBloqueado)
+      }))
+      .sort((a, b) => a.criptomoneda.symbol.localeCompare(b.criptomoneda.symbol));
 
     res.json({
       success: true,

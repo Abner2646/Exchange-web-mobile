@@ -194,9 +194,14 @@ doesn't hard-code assumptions that are about to change:
   the mutable `BalanceUsuario` is being replaced by an append-only double-entry
   ledger as the source of truth (balances are now read from a ledger projection;
   writes are being cut over path-by-path). Behavior is currently preserved
-  (parity-reconciled), with one live change to note: **balance listings no longer
-  include zero-balance entries** (a crypto the user has never funded simply won't
-  appear, instead of showing `0`). Coming next: a single balance-per-(user,crypto)
+  (parity-reconciled), with two live changes to note: (a) **balance listings no
+  longer include zero-balance entries** (a crypto the user has never funded simply
+  won't appear, instead of showing `0`); and (b) **balance-listing entries no
+  longer carry a per-row `id` or `updatedAt`** — an entry is keyed by its
+  `criptomoneda`/`criptomonedaId`, with `balanceDisponible`/`balanceBloqueado` as
+  canonical strings (never `parseFloat` them). Affects
+  `GET /api/intercambioExchange/me/balances` and the other balance-listing reads.
+  Coming next: a single balance-per-(user,crypto)
   becomes several accounts (funding / spot / futures / earn) with available /
   blocked / **pending** states, and internal transfer flows between them. Don't
   hard-code "one balance per asset", and don't assume every listed asset has a row
