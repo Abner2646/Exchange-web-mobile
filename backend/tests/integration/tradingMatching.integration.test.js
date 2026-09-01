@@ -4,6 +4,12 @@ const app = require('../../app');
 const { sequelize, resetDb } = require('../helpers/db');
 const f = require('../helpers/factories');
 const { Order } = require('../../models');
+const posting = require('../../services/ledger/postingService');
+const recon = require('../../services/ledger/reconciliation');
+const { PROPOSITOS } = require('../../services/ledger/ledgerAccounts');
+
+const casa = (proposito, criptomonedaId) =>
+  posting.getSaldoCuenta({ ownerId: null, proposito, criptomonedaId });
 
 let idemSeq = 0;
 function placeOrder(user, { pair, side, orderType = 'limit', quantity, price }) {
@@ -131,6 +137,15 @@ describe('spot matching — service level (awaited)', () => {
     expect(buyerBtc.balanceDisponible).toBe('0.99900000');
     expect(buyerUsdt.balanceDisponible).toBe('100.00000000');
     expect(buyerUsdt.balanceBloqueado).toBe('0.00000000'); // FIXED: no stuck fee reserve
+
+    // Paso D enrichment: both fees are now explicit in fee_revenue (taker fee in
+    // base, maker fee in quote), instead of vanishing implicitly.
+    expect(await casa(PROPOSITOS.FEE_REVENUE, btc.id)).toBe('0.00100000');  // taker 0.1% of 1
+    expect(await casa(PROPOSITOS.FEE_REVENUE, usdt.id)).toBe('0.10000000'); // maker 0.1% of 100
+
+    // The book closes: internal (projection==SUM) and external (net-zero per crypto).
+    expect((await recon.reconciliarInterno()).ok).toBe(true);
+    expect((await recon.reconciliarExterno()).ok).toBe(true);
   });
 
   test('partial fill: buy 0.4 against resting sell 1; sell partially_filled 0.6', async () => {

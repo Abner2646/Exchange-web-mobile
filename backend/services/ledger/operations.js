@@ -56,4 +56,42 @@ async function liquidarSwap({
   return postTransaction({ tipo: 'swap', referencia, descripcion: `Swap ${tipo}`, lineas }, transaction);
 }
 
-module.exports = { liquidarSwap };
+// Liquida un trade spot user↔user (order book). Un solo asiento, net-zero por
+// cripto. A diferencia del swap (contra treasury), acá las contrapartes son los
+// dos usuarios; la casa sólo cobra su comisión:
+//  - BASE: el vendedor libera lo bloqueado; el comprador recibe (cantidad − feeComprador);
+//    fee_revenue cobra feeComprador (taker/maker según lado, en base).
+//  - QUOTE: el comprador libera lo bloqueado (cantidad·precio); el vendedor recibe
+//    (montoQuote − feeVendedor); fee_revenue cobra feeVendedor (en quote).
+// Reemplaza los 4 updateBalance (funding+suspense) del settlement previo, en el
+// que ambas comisiones desaparecían implícitamente (las absorbía suspense).
+async function liquidarTrade({
+  compradorId, vendedorId, baseAssetId, quoteAssetId,
+  cantidad, montoQuote, feeComprador, feeVendedor, referencia,
+}, transaction = null) {
+  const { postTransaction } = require('./postingService');
+  const { PROPOSITOS } = require('./ledgerAccounts');
+  const neg = (x) => money.subtract('0', String(x));
+  const baseNeto = money.subtract(String(cantidad), String(feeComprador));
+  const quoteNeto = money.subtract(String(montoQuote), String(feeVendedor));
+
+  const lineas = [
+    // BASE: vendedor (bloqueado) → comprador (disponible) + fee_revenue.
+    { ownerId: vendedorId, proposito: PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId: baseAssetId, monto: neg(cantidad) },
+    { ownerId: compradorId, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: baseAssetId, monto: baseNeto },
+    // QUOTE: comprador (bloqueado) → vendedor (disponible) + fee_revenue.
+    { ownerId: compradorId, proposito: PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId: quoteAssetId, monto: neg(montoQuote) },
+    { ownerId: vendedorId, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: quoteAssetId, monto: quoteNeto },
+  ];
+  // Las líneas de comisión sólo si el fee > 0 (evita cuentas/movimientos en cero).
+  if (money.compare(String(feeComprador), '0') > 0) {
+    lineas.push({ ownerId: null, proposito: PROPOSITOS.FEE_REVENUE, criptomonedaId: baseAssetId, monto: String(feeComprador) });
+  }
+  if (money.compare(String(feeVendedor), '0') > 0) {
+    lineas.push({ ownerId: null, proposito: PROPOSITOS.FEE_REVENUE, criptomonedaId: quoteAssetId, monto: String(feeVendedor) });
+  }
+
+  return postTransaction({ tipo: 'liquidacion_trade', referencia, descripcion: 'Trade spot', lineas }, transaction);
+}
+
+module.exports = { liquidarSwap, liquidarTrade };

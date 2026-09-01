@@ -21,7 +21,14 @@ jest.mock('../models', () => ({
   sequelize: {},
 }));
 
+// Paso D: el settlement del trade liquida en el ledger vía liquidarTrade
+// (comprador↔vendedor + fee_revenue por lado). Se mockea la operación de dominio
+// y se asevera la delegación; el resultado real en el ledger lo cubre el test de
+// integración de matching.
+jest.mock('../services/ledger/operations', () => ({ liquidarTrade: jest.fn() }));
+
 const { BalanceUsuario, TradingPair } = require('../models');
+const { liquidarTrade } = require('../services/ledger/operations');
 const balanceManager = require('../services/trading/balanceManager.service');
 
 beforeEach(() => jest.clearAllMocks());
@@ -126,10 +133,10 @@ describe('unlockBalanceFromOrder — monto a desbloquear exacto', () => {
   });
 });
 
-describe('updateBalancesAfterTrade — deltas exactos que mueven plata real', () => {
-  test('reduce bloqueado / aumenta disponible sin error de coma, y devuelve success:true', async () => {
+describe('updateBalancesAfterTrade — delega la liquidación al ledger', () => {
+  test('llama a liquidarTrade con montoQuote y fees exactos, en la transacción, y devuelve success:true', async () => {
     const trade = {
-      buyerId: 'b', sellerId: 's', tradingPairId: 'p',
+      id: 't1', buyerId: 'b', sellerId: 's', tradingPairId: 'p',
       quantity: '0.1', price: '0.2', buyerFee: '0.0001', sellerFee: '0.00004',
     };
     const buyOrder = { tradingPair: { quoteAssetId: 'q', baseAssetId: 'base' } };
@@ -138,14 +145,20 @@ describe('updateBalancesAfterTrade — deltas exactos que mueven plata real', ()
     const r = await balanceManager.updateBalancesAfterTrade(trade, buyOrder, {}, tx);
 
     expect(r.success).toBe(true);
-    // buyerQuoteAmount = 0.1*0.2 = 0.02  (float: 0.020000000000000004)
-    expect(BalanceUsuario.updateBalance).toHaveBeenCalledWith('b', 'q', '-0.02', 'bloqueado', tx);
-    // buyerBaseAmount = 0.1 - 0.0001 = 0.0999
-    expect(BalanceUsuario.updateBalance).toHaveBeenCalledWith('b', 'base', '0.0999', 'disponible', tx);
-    // seller bloqueado -0.1
-    expect(BalanceUsuario.updateBalance).toHaveBeenCalledWith('s', 'base', '-0.1', 'bloqueado', tx);
-    // sellerQuoteAmount = 0.02 - 0.00004 = 0.01996
-    expect(BalanceUsuario.updateBalance).toHaveBeenCalledWith('s', 'q', '0.01996', 'disponible', tx);
+    expect(liquidarTrade).toHaveBeenCalledWith(
+      expect.objectContaining({
+        compradorId: 'b',
+        vendedorId: 's',
+        baseAssetId: 'base',
+        quoteAssetId: 'q',
+        cantidad: '0.1',
+        montoQuote: '0.02', // 0.1*0.2 exacto (float daría 0.020000000000000004)
+        feeComprador: '0.0001',
+        feeVendedor: '0.00004',
+        referencia: 'trade:t1',
+      }),
+      tx
+    );
   });
 });
 

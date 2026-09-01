@@ -2,6 +2,7 @@
 const { BalanceUsuario, TradingPair } = require('../../models');
 const { sequelize } = require('../../models');
 const money = require('../../utils/money');
+const { liquidarTrade } = require('../ledger/operations');
 
 // Modelo de fee (alineado 2026-08-31, antes Radar #12a): el fee taker se cobra
 // del ASSET RECIBIDO al liquidar (compra → fee en base; venta → fee en quote),
@@ -145,47 +146,23 @@ class BalanceManagerService {
   async updateBalancesAfterTrade(trade, buyOrder, sellOrder, transaction) {
     try {
       const tradingPair = buyOrder.tradingPair || await TradingPair.findByPk(trade.tradingPairId, { transaction });
+      const montoQuote = money.multiply(String(trade.quantity), String(trade.price));
 
-      // COMPRADOR
-      // 1. Reduce balance bloqueado de QUOTE ASSET (USDT)
-      const buyerQuoteAmount = money.multiply(String(trade.quantity), String(trade.price));
-      await BalanceUsuario.updateBalance(
-        trade.buyerId,
-        tradingPair.quoteAssetId,
-        money.multiply(buyerQuoteAmount, '-1'),
-        'bloqueado',
-        transaction
-      );
-
-      // 2. Aumenta balance disponible de BASE ASSET (BTC) - descontando fee
-      const buyerBaseAmount = money.subtract(String(trade.quantity), String(trade.buyerFee));
-      await BalanceUsuario.updateBalance(
-        trade.buyerId,
-        tradingPair.baseAssetId,
-        buyerBaseAmount,
-        'disponible',
-        transaction
-      );
-
-      // VENDEDOR
-      // 1. Reduce balance bloqueado de BASE ASSET (BTC)
-      await BalanceUsuario.updateBalance(
-        trade.sellerId,
-        tradingPair.baseAssetId,
-        money.multiply(String(trade.quantity), '-1'),
-        'bloqueado',
-        transaction
-      );
-
-      // 2. Aumenta balance disponible de QUOTE ASSET (USDT) - descontando fee
-      const sellerQuoteAmount = money.subtract(buyerQuoteAmount, String(trade.sellerFee));
-      await BalanceUsuario.updateBalance(
-        trade.sellerId,
-        tradingPair.quoteAssetId,
-        sellerQuoteAmount,
-        'disponible',
-        transaction
-      );
+      // Paso D: liquidación rica en el ledger (un asiento). Comprador↔vendedor
+      // (funding: bloqueado→disponible por cripto) + ambas comisiones a fee_revenue.
+      // Los saldos de usuario son idénticos al settlement previo; sólo se hace
+      // explícita la comisión (antes la absorbía suspense).
+      await liquidarTrade({
+        compradorId: trade.buyerId,
+        vendedorId: trade.sellerId,
+        baseAssetId: tradingPair.baseAssetId,
+        quoteAssetId: tradingPair.quoteAssetId,
+        cantidad: String(trade.quantity),
+        montoQuote,
+        feeComprador: String(trade.buyerFee),
+        feeVendedor: String(trade.sellerFee),
+        referencia: `trade:${trade.id}`,
+      }, transaction);
 
       return {
         success: true
