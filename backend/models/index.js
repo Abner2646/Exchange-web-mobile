@@ -85,6 +85,9 @@ const AsientoLedger = initAsientoLedger(sequelize);
 const MovimientoLedger = initMovimientoLedger(sequelize);
 const SaldoLedger = initSaldoLedger(sequelize);
 
+// Shim transicional: el ledger espeja toda escritura de BalanceUsuario (CDC).
+require('../services/ledger/balanceMirror').registrarMirrorDeBalance(BalanceUsuario);
+
 
 
 // Relationships between tables

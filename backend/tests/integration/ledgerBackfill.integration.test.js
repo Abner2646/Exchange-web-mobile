@@ -10,6 +10,14 @@ const { backfillSaldosDeApertura } = require('../../services/ledger/backfill');
 beforeEach(resetDb);
 afterAll(async () => { await sequelize.close(); });
 
+// El backfill es un snapshot ONE-TIME de datos LEGACY (balances_users escritos
+// ANTES de que el ledger/mirror existieran). El mirror CDC (Plan 2) captura las
+// escrituras nuevas — asi que aca las filas legacy se siembran con hooks:false
+// para representar datos pre-mirror; si no, el mirror ya las habria espejado y
+// el backfill las duplicaria. En produccion los datos legacy predatan al mirror
+// por construccion, asi que backfill (snapshot) + mirror (deltas) no se solapan.
+const legacy = { hooks: false };
+
 describe('backfillSaldosDeApertura', () => {
   test('mirrors each BalanceUsuario into funding disponible/bloqueado and reconciles', async () => {
     const cripto = await f.seedCripto('BTC');
@@ -17,7 +25,7 @@ describe('backfillSaldosDeApertura', () => {
     await BalanceUsuario.create({
       userId: user.id, criptomonedaId: cripto.id,
       balanceDisponible: '6.00000000', balanceBloqueado: '4.00000000',
-    });
+    }, legacy);
 
     const res = await backfillSaldosDeApertura();
     expect(res.asientos).toBe(1);
@@ -37,7 +45,7 @@ describe('backfillSaldosDeApertura', () => {
     await BalanceUsuario.create({
       userId: user.id, criptomonedaId: cripto.id,
       balanceDisponible: '3.00000000', balanceBloqueado: '0',
-    });
+    }, legacy);
 
     await backfillSaldosDeApertura();
     await backfillSaldosDeApertura();
@@ -52,7 +60,7 @@ describe('backfillSaldosDeApertura', () => {
     await BalanceUsuario.create({
       userId: user.id, criptomonedaId: cripto.id,
       balanceDisponible: '0', balanceBloqueado: '0',
-    });
+    }, legacy);
 
     const res = await backfillSaldosDeApertura();
     expect(res.asientos).toBe(0);
