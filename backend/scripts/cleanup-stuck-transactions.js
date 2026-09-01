@@ -1,6 +1,6 @@
 // scripts/cleanup-stuck-transactions.js - Eliminar transacciones problemáticas de balance check
 require('dotenv').config();
-const { TransaccionBlockchain, BalanceUsuario } = require('../models');
+const { TransaccionBlockchain } = require('../models');
 const { Op } = require('sequelize');
 
 class BalanceCheckCleanup {
@@ -179,13 +179,12 @@ class BalanceCheckCleanup {
 
       console.log(`✅ ${deletedCount} transacciones eliminadas`);
 
-      // 2. Recalcular balances afectados
-      console.log('🔄 Recalculando balances afectados...');
-      
-      for (const userCrypto of affectedUsers) {
-        await this.recalculateUserBalance(userCrypto.userId, userCrypto.criptomonedaId, transaction);
-        console.log(`✅ Balance recalculado: ${userCrypto.email} - ${userCrypto.symbol}`);
-      }
+      // Write-flip (Paso B/C): el viejo "recalcular balances afectados" recomputaba
+      // balances_users sumando tx (con Number, saltándose money.js) — obsoleto: el
+      // saldo es el ledger de partida doble, no una fila mutable derivada de tx. Las
+      // tx problemáticas eran balance-checks fantasma que nunca postearon dinero, así
+      // que borrarlas no afecta el ledger. La verificación de saldos es la
+      // reconciliación del ledger (reconciliarInterno/Externo).
 
       await transaction.commit();
       
@@ -202,57 +201,6 @@ class BalanceCheckCleanup {
     }
   }
 
-  async recalculateUserBalance(userId, criptomonedaId, transaction) {
-    try {
-      // Calcular balance real basado en depósitos confirmados
-      const totalDeposits = await TransaccionBlockchain.sum('cantidad', {
-        where: {
-          userId,
-          criptomonedaId,
-          tipo: 'deposito',
-          estado: ['confirmado', 'completado']
-        },
-        transaction
-      }) || 0;
-
-      // Calcular retiros completados
-      const totalWithdrawals = await TransaccionBlockchain.sum('cantidad', {
-        where: {
-          userId,
-          criptomonedaId,
-          tipo: 'retiro',
-          estado: ['confirmado', 'completado']
-        },
-        transaction
-      }) || 0;
-
-      // Calcular balance actual
-      const balanceDisponible = totalDeposits - totalWithdrawals;
-
-      // Actualizar o crear balance
-      const [balance] = await BalanceUsuario.findOrCreate({
-        where: { userId, criptomonedaId },
-        defaults: {
-          userId,
-          criptomonedaId,
-          balanceDisponible: Math.max(0, balanceDisponible),
-          balanceBloqueado: 0
-        },
-        transaction
-      });
-
-      if (!balance.isNewRecord) {
-        await balance.update({
-          balanceDisponible: Math.max(0, balanceDisponible)
-        }, { transaction });
-      }
-
-      return balance;
-    } catch (error) {
-      console.error(`Error recalculando balance para usuario ${userId}:`, error.message);
-      throw error;
-    }
-  }
 }
 
 // Ejecutar si es llamado directamente
