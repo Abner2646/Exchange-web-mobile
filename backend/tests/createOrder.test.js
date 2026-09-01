@@ -29,20 +29,24 @@ jest.mock('../models/index.js', () => ({
   IntercambioExchange: { create: jest.fn(), getDailyVolume: jest.fn() },
   Usuario: { findByPk: jest.fn() },
   ParExchange: { findByPk: jest.fn() },
-  BalanceUsuario: { findOne: jest.fn(), getByUserAndCrypto: jest.fn(), updateBalance: jest.fn() },
-  WalletMaestra: { findOne: jest.fn(), addToBalance: jest.fn() },
+  BalanceUsuario: { getByUserAndCrypto: jest.fn() },
   Criptomoneda: {},
   sequelize: { transaction: jest.fn() },
 }));
+
+// Paso D: el swap liquida en el ledger vía liquidarSwap (usuario↔treasury,
+// comisión→fee_revenue). El unit test mockea esa operación de dominio y asevera
+// la delegación; el resultado real en el ledger lo cubre el test de integración.
+jest.mock('../services/ledger/operations', () => ({ liquidarSwap: jest.fn() }));
 
 const {
   IntercambioExchange,
   Usuario,
   ParExchange,
   BalanceUsuario,
-  WalletMaestra,
   sequelize,
 } = require('../models/index.js');
+const { liquidarSwap } = require('../services/ledger/operations');
 
 const asyncHandler = require('../utils/asyncHandler');
 const errorHandler = require('../middleware/errorHandler');
@@ -100,9 +104,9 @@ function setupCommonMocks({ limiteDiarioUsd = 1000000, dailyVolume = 0 } = {}) {
   IntercambioExchange.getDailyVolume.mockResolvedValue(dailyVolume);
   IntercambioExchange.create.mockImplementation(async (data) => ({
     ...data,
+    id: 'order-1',
     toJSON: () => data,
   }));
-  WalletMaestra.findOne.mockResolvedValue({ id: 'wallet-maestra-quote' });
 
   return transaction;
 }
@@ -123,13 +127,19 @@ describe('createOrder', () => {
     expect(res.statusCode).toBe(201);
     expect(res.body.data.tipo).toBe('compra');
 
-    // Débito en quote (negativo) y crédito en base (positivo) — exactamente
-    // lo que "comprar" tiene que hacer.
-    expect(BalanceUsuario.updateBalance).toHaveBeenCalledWith(
-      USER_ID, CRIPTO_QUOTE_ID, '-101', 'disponible', expect.anything()
-    );
-    expect(BalanceUsuario.updateBalance).toHaveBeenCalledWith(
-      USER_ID, CRIPTO_BASE_ID, '1', 'disponible', expect.anything()
+    // Comprar: liquidarSwap recibe requiredQuote (valor+comisión) en quote y
+    // cantidadBase en base — la dirección correcta del swap.
+    expect(liquidarSwap).toHaveBeenCalledWith(
+      expect.objectContaining({
+        usuarioId: USER_ID,
+        criptoQuoteId: CRIPTO_QUOTE_ID,
+        criptoBaseId: CRIPTO_BASE_ID,
+        tipo: 'compra',
+        cantidadQuote: '100',
+        comisionMonto: '1',
+        requiredQuote: '101',
+      }),
+      expect.anything()
     );
   });
 
@@ -145,22 +155,33 @@ describe('createOrder', () => {
     expect(res.statusCode).toBe(201);
     expect(res.body.data.tipo).toBe('venta');
 
-    expect(BalanceUsuario.updateBalance).toHaveBeenCalledWith(
-      USER_ID, CRIPTO_BASE_ID, '-1', 'disponible', expect.anything()
-    );
-    expect(BalanceUsuario.updateBalance).toHaveBeenCalledWith(
-      USER_ID, CRIPTO_QUOTE_ID, '99', 'disponible', expect.anything()
+    // Vender: liquidarSwap recibe cantidadBase en base y netQuote (valor−comisión)
+    // en quote.
+    expect(liquidarSwap).toHaveBeenCalledWith(
+      expect.objectContaining({
+        usuarioId: USER_ID,
+        criptoBaseId: CRIPTO_BASE_ID,
+        criptoQuoteId: CRIPTO_QUOTE_ID,
+        tipo: 'venta',
+        cantidadQuote: '100',
+        comisionMonto: '1',
+        netQuote: '99',
+      }),
+      expect.anything()
     );
   });
 
-  test('la comisión se acredita en la misma transacción de la orden', async () => {
+  test('la liquidación (incluida la comisión → fee_revenue) corre en la transacción de la orden', async () => {
     const transaction = setupCommonMocks();
     BalanceUsuario.getByUserAndCrypto.mockResolvedValue({ balanceDisponible: '200' });
 
     const req = { user: { id: USER_ID }, body: { parId: PAR_ID, tipo: 'venta', cantidadBase: 1 } };
     await createOrder(req, mockRes());
 
-    expect(WalletMaestra.addToBalance).toHaveBeenCalledWith('wallet-maestra-quote', '1', transaction);
+    expect(liquidarSwap).toHaveBeenCalledWith(
+      expect.objectContaining({ comisionMonto: '1', tipo: 'venta' }),
+      transaction
+    );
   });
 
   test('rechaza la orden si supera el límite diario (chequeo ya no está deshabilitado)', async () => {
@@ -178,7 +199,7 @@ describe('createOrder', () => {
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('EXCHANGE_DAILY_LIMIT_EXCEEDED');
-    expect(BalanceUsuario.updateBalance).not.toHaveBeenCalled();
+    expect(liquidarSwap).not.toHaveBeenCalled();
   });
 });
 

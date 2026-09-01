@@ -1,10 +1,11 @@
 // controllers/intercambioExchange.controller.js
 
-const { IntercambioExchange, Usuario, ParExchange, BalanceUsuario, WalletMaestra, Criptomoneda, sequelize } = require('../models/index.js');
+const { IntercambioExchange, Usuario, ParExchange, BalanceUsuario, Criptomoneda, sequelize } = require('../models/index.js');
 const AppError = require('../utils/AppError');
 const errorCodes = require('../utils/errorCodes');
 const money = require('../utils/money');
 const { calculateSettlement } = require('../services/intercambioSettlement.service');
+const { liquidarSwap } = require('../services/ledger/operations');
 
 // Función auxiliar para validar fechas
 const isValidDate = (dateString) => {
@@ -107,44 +108,23 @@ const createOrder = async (req, res) => {
     const criptoQuoteId = par.criptoQuoteId;
     let netAmount;
 
+    // Chequeo de suficiencia sobre la proyección del ledger (da el error code de
+    // dominio correcto). El anti-sobregiro atómico real es el FOR UPDATE de
+    // postTransaction dentro de liquidarSwap.
     if (tipo === 'compra') {
-      // Comprar: se paga en quote (requiredQuote = valor + comisión), se recibe base.
-      // Read-flip (Plan 3/4 Paso A): lee del ledger via getByUserAndCrypto.
       const balanceQuote = await BalanceUsuario.getByUserAndCrypto(usuarioId, criptoQuoteId, { transaction });
-
-      if (!balanceQuote || money.compare(String(balanceQuote.balanceDisponible), requiredQuote) < 0) {
+      if (money.compare(String(balanceQuote.balanceDisponible), requiredQuote) < 0) {
         await transaction.rollback();
         throw new AppError(400, errorCodes.EXCHANGE_INSUFFICIENT_BALANCE, 'Saldo insuficiente en moneda quote para realizar la operación');
       }
-
-      await BalanceUsuario.updateBalance(usuarioId, criptoQuoteId, money.multiply(requiredQuote, '-1'), 'disponible', transaction);
-      await BalanceUsuario.updateBalance(usuarioId, criptoBaseId, String(cantidadBase), 'disponible', transaction);
       netAmount = String(cantidadBase);
     } else {
-      // Vender: se paga en base, se recibe quote (netQuote = valor - comisión).
-      // Read-flip (Plan 3/4 Paso A): lee del ledger via getByUserAndCrypto.
       const balanceBase = await BalanceUsuario.getByUserAndCrypto(usuarioId, criptoBaseId, { transaction });
-
-      if (!balanceBase || money.compare(String(balanceBase.balanceDisponible), String(cantidadBase)) < 0) {
+      if (money.compare(String(balanceBase.balanceDisponible), String(cantidadBase)) < 0) {
         await transaction.rollback();
         throw new AppError(400, errorCodes.EXCHANGE_INSUFFICIENT_BALANCE, 'Saldo insuficiente en moneda base para realizar la operación');
       }
-
-      await BalanceUsuario.updateBalance(usuarioId, criptoBaseId, money.multiply(String(cantidadBase), '-1'), 'disponible', transaction);
       netAmount = netQuote;
-      await BalanceUsuario.updateBalance(usuarioId, criptoQuoteId, netQuote, 'disponible', transaction);
-    }
-
-    // La comisión siempre se cobra en la moneda quote, para los dos tipos de operación.
-    const walletMaestraQuote = await WalletMaestra.findOne({
-      where: { criptomonedaId: criptoQuoteId },
-      transaction
-    });
-
-    if (walletMaestraQuote) {
-      await WalletMaestra.addToBalance(walletMaestraQuote.id, comisionMonto, transaction);
-    } else {
-      console.warn(`No se encontró wallet maestra para ${par.criptoQuote.symbol}`);
     }
 
     const newOrder = await IntercambioExchange.create({
@@ -159,6 +139,22 @@ const createOrder = async (req, res) => {
       estado: 'completado',
       completedAt: new Date()
     }, { transaction });
+
+    // Paso D: liquidación rica en el ledger. Usuario ↔ treasury (inventario de la
+    // casa); la comisión (en quote) acredita fee_revenue. Reemplaza los
+    // updateBalance (funding+suspense) y el crédito a WalletMaestra.balanceTotal.
+    await liquidarSwap({
+      usuarioId,
+      criptoBaseId,
+      criptoQuoteId,
+      cantidadBase,
+      cantidadQuote,
+      comisionMonto,
+      requiredQuote,
+      netQuote,
+      tipo,
+      referencia: `swap:${newOrder.id}`,
+    }, transaction);
 
     await transaction.commit();
 
