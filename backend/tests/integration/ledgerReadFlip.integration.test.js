@@ -81,4 +81,22 @@ describe('read-flip: getTotalBalance + hasAvailableBalance read the ledger proje
     expect(b.balanceDisponible).toBe('5.00000000');
     expect(b.balanceBloqueado).toBe('3.00000000');
   });
+
+  test('getByUserId aggregates the ledger funding balances per crypto', async () => {
+    const btc = await f.seedCripto('BTC');
+    const usdt = await f.seedCripto('USDT');
+    const user = await f.seedUser();
+    await BalanceUsuario.create({ userId: user.id, criptomonedaId: btc.id, balanceDisponible: '2.00000000', balanceBloqueado: '0' });
+    await BalanceUsuario.create({ userId: user.id, criptomonedaId: usdt.id, balanceDisponible: '100.00000000', balanceBloqueado: '0' });
+    // A legacy zero-row (hooks:false) does NOT appear (no ledger movement).
+    const eth = await f.seedCripto('ETH');
+    await BalanceUsuario.create({ userId: user.id, criptomonedaId: eth.id, balanceDisponible: '0', balanceBloqueado: '0' }, { hooks: false });
+
+    const balances = await BalanceUsuario.getByUserId(user.id);
+    const porCripto = Object.fromEntries(balances.map((b) => [b.criptomonedaId, b.balanceDisponible]));
+    expect(balances).toHaveLength(2);
+    expect(porCripto[btc.id]).toBe('2.00000000');
+    expect(porCripto[usdt.id]).toBe('100.00000000');
+    expect(porCripto[eth.id]).toBeUndefined();
+  });
 });

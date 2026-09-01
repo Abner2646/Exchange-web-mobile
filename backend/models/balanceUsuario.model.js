@@ -35,11 +35,27 @@ function createBalanceUserModel(sequelize) {
     }
   };
 
+  // Plan 3 (read-flip): agrega desde la proyeccion del ledger las cuentas
+  // Funding del usuario (una entrada por cripto que tenga cuenta funding). Nota:
+  // a diferencia del viejo (que devolvia TODA fila de balances_users, incluidas
+  // las de saldo 0 que crea el provisioning), aca solo aparecen las criptos con
+  // movimiento en el ledger — el mirror saltea deltas en cero. Es un cambio de
+  // display aceptable (no listar saldos en 0). Devuelve objetos planos (sin la
+  // asociacion .criptomoneda, igual que el viejo findAll sin include).
   BalanceUsuario.getByUserId = async (userId) => {
     try {
-      const balances = await BalanceUsuario.findAll({
-        where: { userId }
+      const { CuentaLedger } = require('./index');
+      const { PROPOSITOS } = require('../services/ledger/ledgerAccounts');
+      const cuentas = await CuentaLedger.findAll({
+        where: { ownerId: userId, proposito: [PROPOSITOS.FUNDING_DISPONIBLE, PROPOSITOS.FUNDING_BLOQUEADO] },
+        attributes: ['criptomonedaId'],
+        group: ['criptomonedaId'],
       });
+      const balances = [];
+      for (const c of cuentas) {
+        const { balanceDisponible, balanceBloqueado } = await leerFundingDesdeLedger(userId, c.criptomonedaId);
+        balances.push({ userId, criptomonedaId: c.criptomonedaId, balanceDisponible, balanceBloqueado });
+      }
       return balances;
     } catch (error) {
       throw new Error(`Error al obtener balances por usuario: ${error.message}`);
