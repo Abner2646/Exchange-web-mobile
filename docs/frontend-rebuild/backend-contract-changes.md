@@ -190,10 +190,17 @@ doesn't hard-code assumptions that are about to change:
   catalog. Design error handling around `error.code` from day one.
 - **Quote-lock for swaps (Radar #11):** swap flow will likely gain a quote id +
   TTL, or a client-sent slippage tolerance. See §5.
-- **Compartmentalized balances / sub-wallets (Radar #10):** a single
-  balance-per-(user,crypto) may become several accounts (funding / spot /
-  futures / earn). Balance reads and transfer flows would gain a wallet/account
-  dimension. Don't hard-code "one balance per asset".
+- **Double-entry ledger + compartmentalized balances (Radar #1 + #10) — MIGRATION IN PROGRESS:**
+  the mutable `BalanceUsuario` is being replaced by an append-only double-entry
+  ledger as the source of truth (balances are now read from a ledger projection;
+  writes are being cut over path-by-path). Behavior is currently preserved
+  (parity-reconciled), with one live change to note: **balance listings no longer
+  include zero-balance entries** (a crypto the user has never funded simply won't
+  appear, instead of showing `0`). Coming next: a single balance-per-(user,crypto)
+  becomes several accounts (funding / spot / futures / earn) with available /
+  blocked / **pending** states, and internal transfer flows between them. Don't
+  hard-code "one balance per asset", and don't assume every listed asset has a row
+  — treat a missing asset as `0`.
 - **Business config moves to the DB (roadmap — admin-editable settings):**
   commissions, trading/swap pairs, limits — currently partly hardcoded/env — are
   expected to become admin-editable data. The client should read these from the
