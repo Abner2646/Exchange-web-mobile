@@ -177,7 +177,7 @@ function createBalanceUserModel(sequelize) {
         referencia: `writeflip:${crypto.randomUUID()}`,
         lineas: [
           { ownerId: userId, proposito, criptomonedaId, monto },
-          { ownerId: null, proposito: PROPOSITOS.SUSPENSE, criptomonedaId, monto: money.subtract('0', monto) },
+          { ownerId: null, proposito: PROPOSITOS.SUSPENSE, criptomonedaId, monto: money.negate(monto) },
         ],
       }, transaction);
     } catch (error) {
@@ -237,12 +237,11 @@ function createBalanceUserModel(sequelize) {
     try {
       const { CuentaLedger } = require('./index');
       const { PROPOSITOS } = require('../services/ledger/ledgerAccounts');
-      // money.add usa toFixed() sin argumentos — strip trailing zeros cuando la
-      // suma es entera. Usamos Decimal.toFixed(8) para mantener la precisión de
-      // 8 decimales que el frontend espera (igual que getSaldoCuenta).
-      const Decimal = require('decimal.js');
-      const fmt8 = (x) => new Decimal(x).toFixed(8);
-      const sumar8 = (a, b) => new Decimal(a).plus(b).toFixed(8);
+      // Presentación a 8 decimales uniformes: money.add strippea trailing zeros
+      // ('1' en vez de '1.00000000'), así que la suma+formato va por
+      // money.format8 (único punto de esa regla de presentación).
+      const fmt8 = (x) => money.format8(x);
+      const sumar8 = (a, b) => money.format8(money.add(a, b));
       const todos = [
         PROPOSITOS.FUNDING_DISPONIBLE, PROPOSITOS.FUNDING_BLOQUEADO, PROPOSITOS.FUNDING_PENDIENTE,
         PROPOSITOS.SPOT_DISPONIBLE, PROPOSITOS.SPOT_BLOQUEADO,
@@ -312,7 +311,7 @@ function createBalanceUserModel(sequelize) {
         tipo: 'reserva_orden',
         referencia: `block:${crypto.randomUUID()}`,
         lineas: [
-          { ownerId: userId, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId, monto: money.subtract('0', monto) },
+          { ownerId: userId, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId, monto: money.negate(monto) },
           { ownerId: userId, proposito: PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId, monto },
         ],
       }, transaction);
@@ -335,7 +334,7 @@ function createBalanceUserModel(sequelize) {
         tipo: 'liberacion_reserva',
         referencia: `unblock:${crypto.randomUUID()}`,
         lineas: [
-          { ownerId: userId, proposito: PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId, monto: money.subtract('0', monto) },
+          { ownerId: userId, proposito: PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId, monto: money.negate(monto) },
           { ownerId: userId, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId, monto },
         ],
       }, transaction);

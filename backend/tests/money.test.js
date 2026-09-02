@@ -119,3 +119,44 @@ describe('money — guarda anti-float (bloquea Number no-entero en el borde)', (
     expect(() => money.add(9007199254740993, '0')).toThrow();
   });
 });
+
+describe('money.negate — cambia el signo (centraliza el idiom subtract("0", x))', () => {
+  test('negativo de un positivo', () => {
+    expect(money.negate('5')).toBe('-5');
+    expect(money.negate('0.30000000')).toBe('-0.3');
+  });
+
+  test('negativo de un negativo', () => {
+    expect(money.negate('-3.5')).toBe('3.5');
+  });
+
+  test('negativo de cero es cero (no "-0")', () => {
+    expect(money.negate('0')).toBe('0');
+  });
+
+  test('idéntico a subtract("0", x) — es el idiom que reemplaza', () => {
+    expect(money.negate('12.34567890')).toBe(money.subtract('0', '12.34567890'));
+  });
+
+  test('respeta la guarda anti-float', () => {
+    expect(() => money.negate(0.1)).toThrow(/string/i);
+  });
+});
+
+describe('money.format8 — formato uniforme a 8 decimales (presentación de saldos)', () => {
+  test('pad de trailing zeros que add/subtract strippean', () => {
+    expect(money.format8('1')).toBe('1.00000000');
+    expect(money.format8('0')).toBe('0.00000000');
+    expect(money.format8('1.5')).toBe('1.50000000');
+  });
+
+  test('redondea a 8 decimales con half-even', () => {
+    // 9 decimales → 8; el 9º dígito decide
+    expect(money.format8('0.123456784')).toBe('0.12345678');
+    expect(money.format8('0.123456786')).toBe('0.12345679');
+  });
+
+  test('respeta la guarda anti-float', () => {
+    expect(() => money.format8(0.1)).toThrow(/string/i);
+  });
+});

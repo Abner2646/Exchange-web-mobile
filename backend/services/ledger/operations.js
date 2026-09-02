@@ -35,24 +35,23 @@ async function liquidarSwap({
     throw new Error(`Compartimento inválido para swap: ${compartimento}`);
   }
   const base = String(cantidadBase);
-  const neg = (x) => money.subtract('0', String(x));
 
   let lineas;
   if (tipo === 'compra') {
     // Paga requiredQuote (valor+comisión) en quote, recibe cantidadBase en base.
     lineas = [
-      { ownerId: usuarioId, proposito: propUsuario, criptomonedaId: criptoQuoteId, monto: neg(requiredQuote) },
+      { ownerId: usuarioId, proposito: propUsuario, criptomonedaId: criptoQuoteId, monto: money.negate(String(requiredQuote)) },
       { ownerId: null, proposito: PROPOSITOS.TREASURY, criptomonedaId: criptoQuoteId, monto: String(cantidadQuote) },
       { ownerId: null, proposito: PROPOSITOS.FEE_REVENUE, criptomonedaId: criptoQuoteId, monto: String(comisionMonto) },
-      { ownerId: null, proposito: PROPOSITOS.TREASURY, criptomonedaId: criptoBaseId, monto: neg(base) },
+      { ownerId: null, proposito: PROPOSITOS.TREASURY, criptomonedaId: criptoBaseId, monto: money.negate(base) },
       { ownerId: usuarioId, proposito: propUsuario, criptomonedaId: criptoBaseId, monto: base },
     ];
   } else {
     // Paga cantidadBase en base, recibe netQuote (valor−comisión) en quote.
     lineas = [
-      { ownerId: usuarioId, proposito: propUsuario, criptomonedaId: criptoBaseId, monto: neg(base) },
+      { ownerId: usuarioId, proposito: propUsuario, criptomonedaId: criptoBaseId, monto: money.negate(base) },
       { ownerId: null, proposito: PROPOSITOS.TREASURY, criptomonedaId: criptoBaseId, monto: base },
-      { ownerId: null, proposito: PROPOSITOS.TREASURY, criptomonedaId: criptoQuoteId, monto: neg(cantidadQuote) },
+      { ownerId: null, proposito: PROPOSITOS.TREASURY, criptomonedaId: criptoQuoteId, monto: money.negate(String(cantidadQuote)) },
       { ownerId: usuarioId, proposito: propUsuario, criptomonedaId: criptoQuoteId, monto: String(netQuote) },
       { ownerId: null, proposito: PROPOSITOS.FEE_REVENUE, criptomonedaId: criptoQuoteId, monto: String(comisionMonto) },
     ];
@@ -71,16 +70,15 @@ async function liquidarTrade({
 }, transaction = null) {
   const { postTransaction } = require('./postingService');
   const { PROPOSITOS } = require('./ledgerAccounts');
-  const neg = (x) => money.subtract('0', String(x));
   const baseNeto = money.subtract(String(cantidad), String(feeComprador));
   const quoteNeto = money.subtract(String(montoQuote), String(feeVendedor));
 
   const lineas = [
     // BASE: vendedor (bloqueado) → comprador (disponible) + fee_revenue.
-    { ownerId: vendedorId, proposito: PROPOSITOS.SPOT_BLOQUEADO, criptomonedaId: baseAssetId, monto: neg(cantidad) },
+    { ownerId: vendedorId, proposito: PROPOSITOS.SPOT_BLOQUEADO, criptomonedaId: baseAssetId, monto: money.negate(String(cantidad)) },
     { ownerId: compradorId, proposito: PROPOSITOS.SPOT_DISPONIBLE, criptomonedaId: baseAssetId, monto: baseNeto },
     // QUOTE: comprador (bloqueado) → vendedor (disponible) + fee_revenue.
-    { ownerId: compradorId, proposito: PROPOSITOS.SPOT_BLOQUEADO, criptomonedaId: quoteAssetId, monto: neg(montoQuote) },
+    { ownerId: compradorId, proposito: PROPOSITOS.SPOT_BLOQUEADO, criptomonedaId: quoteAssetId, monto: money.negate(String(montoQuote)) },
     { ownerId: vendedorId, proposito: PROPOSITOS.SPOT_DISPONIBLE, criptomonedaId: quoteAssetId, monto: quoteNeto },
   ];
   // Las líneas de comisión sólo si el fee > 0 (evita cuentas/movimientos en cero).
@@ -107,7 +105,7 @@ async function marcarRetiroTransmitido({
   const neto = money.subtract(String(cantidad), String(feeRetiro));
 
   const lineas = [
-    { ownerId: userId, proposito: PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId, monto: money.subtract('0', String(cantidad)) },
+    { ownerId: userId, proposito: PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId, monto: money.negate(String(cantidad)) },
     { ownerId: null, proposito: PROPOSITOS.EXTERNAL_ONCHAIN, criptomonedaId, monto: neto },
   ];
   if (money.compare(String(feeRetiro), '0') > 0) {
@@ -124,7 +122,7 @@ async function registrarDepositoPendiente({ userId, criptomonedaId, cantidad, re
   const { postTransaction } = require('./postingService');
   const { PROPOSITOS } = require('./ledgerAccounts');
   const lineas = [
-    { ownerId: null, proposito: PROPOSITOS.EXTERNAL_ONCHAIN, criptomonedaId, monto: money.subtract('0', String(cantidad)) },
+    { ownerId: null, proposito: PROPOSITOS.EXTERNAL_ONCHAIN, criptomonedaId, monto: money.negate(String(cantidad)) },
     { ownerId: userId, proposito: PROPOSITOS.FUNDING_PENDIENTE, criptomonedaId, monto: String(cantidad) },
   ];
   return postTransaction({ tipo: 'deposito', referencia, descripcion: 'Depósito detectado (pendiente)', lineas }, transaction);
@@ -136,7 +134,7 @@ async function confirmarDeposito({ userId, criptomonedaId, cantidad, referencia 
   const { postTransaction } = require('./postingService');
   const { PROPOSITOS } = require('./ledgerAccounts');
   const lineas = [
-    { ownerId: userId, proposito: PROPOSITOS.FUNDING_PENDIENTE, criptomonedaId, monto: money.subtract('0', String(cantidad)) },
+    { ownerId: userId, proposito: PROPOSITOS.FUNDING_PENDIENTE, criptomonedaId, monto: money.negate(String(cantidad)) },
     { ownerId: userId, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId, monto: String(cantidad) },
   ];
   return postTransaction({ tipo: 'deposito', referencia, descripcion: 'Depósito confirmado', lineas }, transaction);
@@ -150,7 +148,7 @@ async function transferirInterno({ remitenteId, destinatarioId, criptomonedaId, 
   const { postTransaction } = require('./postingService');
   const { PROPOSITOS } = require('./ledgerAccounts');
   const lineas = [
-    { ownerId: remitenteId, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId, monto: money.subtract('0', String(cantidad)) },
+    { ownerId: remitenteId, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId, monto: money.negate(String(cantidad)) },
     { ownerId: destinatarioId, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId, monto: String(cantidad) },
   ];
   return postTransaction({ tipo: 'transferencia', referencia, descripcion: 'Transferencia interna', lineas }, transaction);
@@ -165,7 +163,7 @@ async function liquidarP2P({ vendedorId, compradorId, criptomonedaId, cantidad, 
   const { postTransaction } = require('./postingService');
   const { PROPOSITOS } = require('./ledgerAccounts');
   const lineas = [
-    { ownerId: vendedorId, proposito: PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId, monto: money.subtract('0', String(cantidad)) },
+    { ownerId: vendedorId, proposito: PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId, monto: money.negate(String(cantidad)) },
     { ownerId: compradorId, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId, monto: String(cantidad) },
   ];
   return postTransaction({ tipo: 'liquidacion_p2p', referencia, descripcion: 'Liquidación P2P', lineas }, transaction);
@@ -178,7 +176,7 @@ async function acreditarFaucet({ userId, criptomonedaId, cantidad, referencia },
   const { postTransaction } = require('./postingService');
   const { PROPOSITOS } = require('./ledgerAccounts');
   const lineas = [
-    { ownerId: null, proposito: PROPOSITOS.EXTERNAL_ONCHAIN, criptomonedaId, monto: money.subtract('0', String(cantidad)) },
+    { ownerId: null, proposito: PROPOSITOS.EXTERNAL_ONCHAIN, criptomonedaId, monto: money.negate(String(cantidad)) },
     { ownerId: userId, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId, monto: String(cantidad) },
   ];
   return postTransaction({ tipo: 'deposito', referencia, descripcion: 'Faucet testnet', lineas }, transaction);
@@ -204,7 +202,7 @@ async function transferirEntreCompartimentos({ userId, criptomonedaId, cantidad,
   }
   const monto = String(cantidad);
   const lineas = [
-    { ownerId: userId, proposito: propOrigen, criptomonedaId, monto: money.subtract('0', monto) },
+    { ownerId: userId, proposito: propOrigen, criptomonedaId, monto: money.negate(monto) },
     { ownerId: userId, proposito: propDestino, criptomonedaId, monto },
   ];
   return postTransaction({ tipo: 'transferencia_compartimento', referencia, descripcion: `Transferencia ${origen}→${destino}`, lineas }, transaction);
@@ -217,7 +215,7 @@ async function reservarParaOrden({ userId, criptomonedaId, cantidad, referencia 
   const { PROPOSITOS } = require('./ledgerAccounts');
   const monto = String(cantidad);
   const lineas = [
-    { ownerId: userId, proposito: PROPOSITOS.SPOT_DISPONIBLE, criptomonedaId, monto: money.subtract('0', monto) },
+    { ownerId: userId, proposito: PROPOSITOS.SPOT_DISPONIBLE, criptomonedaId, monto: money.negate(monto) },
     { ownerId: userId, proposito: PROPOSITOS.SPOT_BLOQUEADO, criptomonedaId, monto },
   ];
   return postTransaction({ tipo: 'reserva_orden', referencia, descripcion: 'Reserva de orden spot', lineas }, transaction);
@@ -230,7 +228,7 @@ async function liberarReserva({ userId, criptomonedaId, cantidad, referencia }, 
   const { PROPOSITOS } = require('./ledgerAccounts');
   const monto = String(cantidad);
   const lineas = [
-    { ownerId: userId, proposito: PROPOSITOS.SPOT_BLOQUEADO, criptomonedaId, monto: money.subtract('0', monto) },
+    { ownerId: userId, proposito: PROPOSITOS.SPOT_BLOQUEADO, criptomonedaId, monto: money.negate(monto) },
     { ownerId: userId, proposito: PROPOSITOS.SPOT_DISPONIBLE, criptomonedaId, monto },
   ];
   return postTransaction({ tipo: 'liberacion_reserva', referencia, descripcion: 'Liberación de reserva spot', lineas }, transaction);

@@ -55,6 +55,22 @@ function round(value, decimalPlaces) {
   return toDecimal(value).toDecimalPlaces(decimalPlaces, Decimal.ROUND_HALF_EVEN).toFixed();
 }
 
+// Cambia el signo de un monto. Centraliza el idiom `subtract('0', x)` que se
+// repite en cada línea con signo del ledger (débitos/contrapartidas). Definido
+// EN TÉRMINOS de subtract para garantizar salida idéntica a esos call sites
+// (incluye normalizar -0 → '0').
+function negate(value) {
+  return subtract('0', value);
+}
+
+// Formatea un monto a EXACTAMENTE 8 decimales (redondeo half-even + pad de
+// trailing zeros). add/subtract usan toFixed() sin escala y strippean los ceros
+// ('1' en vez de '1.00000000'); para la PRESENTACIÓN de saldos el contrato del
+// front pide 8 decimales uniformes. Este es el único lugar que fija esa regla.
+function format8(value) {
+  return toDecimal(value).toDecimalPlaces(8, Decimal.ROUND_HALF_EVEN).toFixed(8);
+}
+
 // Comparación exacta: devuelve -1 (a < b), 0 (a === b) o 1 (a > b). Reemplaza a
 // los operadores `<`/`>=` sobre montos, que en JS obligan a pasar por Number
 // (float binario) y dan falsos positivos (0.1+0.2 > 0.3). El resultado es un
@@ -63,4 +79,4 @@ function compare(a, b) {
   return toDecimal(a).comparedTo(toDecimal(b));
 }
 
-module.exports = { add, subtract, multiply, divide, round, compare };
+module.exports = { add, subtract, multiply, divide, round, negate, format8, compare };
