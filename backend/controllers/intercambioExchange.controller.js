@@ -180,82 +180,9 @@ const createOrder = async (req, res) => {
   }
 };
 
-// TAMBIÉN CREAR FUNCIÓN PARA REVERTIR LA TRANSACCIÓN SI ES NECESARIO
-const revertLastExchange = async (intercambioId) => {
-  const transaction = await sequelize.transaction();
-
-  try {
-    const intercambio = await IntercambioExchange.findByPk(intercambioId, {
-      include: [
-        {
-          model: ParExchange,
-          include: [
-            { model: Criptomoneda, as: 'criptoBase' },
-            { model: Criptomoneda, as: 'criptoQuote' }
-          ]
-        }
-      ],
-      transaction
-    });
-
-    if (!intercambio) {
-      throw new Error('Intercambio no encontrado');
-    }
-
-    console.log(`Revirtiendo intercambio ${intercambioId}...`);
-
-    // Revertir las operaciones según el tipo
-    if (intercambio.tipo === 'compra') {
-      // Revertir compra: devolver quote, quitar base
-      await BalanceUsuario.updateBalance(
-        intercambio.usuarioId,
-        intercambio.ParExchange.criptoQuoteId,
-        intercambio.cantidadQuote + intercambio.comisionMonto,
-        'disponible',
-        transaction
-      );
-      await BalanceUsuario.updateBalance(
-        intercambio.usuarioId,
-        intercambio.ParExchange.criptoBaseId,
-        -intercambio.cantidadBase,
-        'disponible',
-        transaction
-      );
-    } else {
-      // Revertir venta: devolver base, quitar quote neto
-      await BalanceUsuario.updateBalance(
-        intercambio.usuarioId,
-        intercambio.ParExchange.criptoBaseId,
-        intercambio.cantidadBase,
-        'disponible',
-        transaction
-      );
-      await BalanceUsuario.updateBalance(
-        intercambio.usuarioId,
-        intercambio.ParExchange.criptoQuoteId,
-        -(intercambio.cantidadQuote - intercambio.comisionMonto),
-        'disponible',
-        transaction
-      );
-    }
-
-    // Marcar como revertido
-    await intercambio.update({
-      estado: 'revertido',
-      revertedAt: new Date()
-    }, { transaction });
-
-    await transaction.commit();
-    console.log('Intercambio revertido exitosamente');
-
-  } catch (error) {
-    if (!transaction.finished) {
-      await transaction.rollback();
-    }
-    console.error('Error revirtiendo intercambio:', error);
-    throw error;
-  }
-};
+// (Paso D: se eliminó revertLastExchange — código muerto no exportado ni ruteado
+// que aún usaba updateBalance con aritmética Number. Una reversión de swap, si se
+// necesitara, se haría con un asiento 'reverso' en el ledger.)
 
 // Calcular intercambio antes de ejecutar
 const calculateExchange = async (req, res) => {
