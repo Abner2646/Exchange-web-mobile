@@ -58,13 +58,8 @@ async function liquidarSwap({
 
 // Liquida un trade spot user↔user (order book). Un solo asiento, net-zero por
 // cripto. A diferencia del swap (contra treasury), acá las contrapartes son los
-// dos usuarios; la casa sólo cobra su comisión:
-//  - BASE: el vendedor libera lo bloqueado; el comprador recibe (cantidad − feeComprador);
-//    fee_revenue cobra feeComprador (taker/maker según lado, en base).
-//  - QUOTE: el comprador libera lo bloqueado (cantidad·precio); el vendedor recibe
-//    (montoQuote − feeVendedor); fee_revenue cobra feeVendedor (en quote).
-// Reemplaza los 4 updateBalance (funding+suspense) del settlement previo, en el
-// que ambas comisiones desaparecían implícitamente (las absorbía suspense).
+// dos usuarios; la casa sólo cobra su comisión. Spot: bloqueado→disponible en
+// ambos lados (base para vendedor, quote para comprador).
 async function liquidarTrade({
   compradorId, vendedorId, baseAssetId, quoteAssetId,
   cantidad, montoQuote, feeComprador, feeVendedor, referencia,
@@ -77,11 +72,11 @@ async function liquidarTrade({
 
   const lineas = [
     // BASE: vendedor (bloqueado) → comprador (disponible) + fee_revenue.
-    { ownerId: vendedorId, proposito: PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId: baseAssetId, monto: neg(cantidad) },
-    { ownerId: compradorId, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: baseAssetId, monto: baseNeto },
+    { ownerId: vendedorId, proposito: PROPOSITOS.SPOT_BLOQUEADO, criptomonedaId: baseAssetId, monto: neg(cantidad) },
+    { ownerId: compradorId, proposito: PROPOSITOS.SPOT_DISPONIBLE, criptomonedaId: baseAssetId, monto: baseNeto },
     // QUOTE: comprador (bloqueado) → vendedor (disponible) + fee_revenue.
-    { ownerId: compradorId, proposito: PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId: quoteAssetId, monto: neg(montoQuote) },
-    { ownerId: vendedorId, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: quoteAssetId, monto: quoteNeto },
+    { ownerId: compradorId, proposito: PROPOSITOS.SPOT_BLOQUEADO, criptomonedaId: quoteAssetId, monto: neg(montoQuote) },
+    { ownerId: vendedorId, proposito: PROPOSITOS.SPOT_DISPONIBLE, criptomonedaId: quoteAssetId, monto: quoteNeto },
   ];
   // Las líneas de comisión sólo si el fee > 0 (evita cuentas/movimientos en cero).
   if (money.compare(String(feeComprador), '0') > 0) {

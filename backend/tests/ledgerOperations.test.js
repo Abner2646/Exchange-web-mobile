@@ -69,12 +69,12 @@ describe('liquidarTrade arma el asiento del trade spot user↔user', () => {
     expect(asiento.referencia).toBe('trade:1');
     expect(asiento.descripcion).toBe('Trade spot');
     // BASE: el vendedor libera bloqueado, el comprador recibe neto, la casa cobra el fee taker.
-    expect(asiento.lineas).toContainEqual({ ownerId: 'vendedor', proposito: PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId: 'BTC', monto: '-1' });
-    expect(asiento.lineas).toContainEqual({ ownerId: 'comprador', proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: 'BTC', monto: '0.999' });
+    expect(asiento.lineas).toContainEqual({ ownerId: 'vendedor', proposito: PROPOSITOS.SPOT_BLOQUEADO, criptomonedaId: 'BTC', monto: '-1' });
+    expect(asiento.lineas).toContainEqual({ ownerId: 'comprador', proposito: PROPOSITOS.SPOT_DISPONIBLE, criptomonedaId: 'BTC', monto: '0.999' });
     expect(asiento.lineas).toContainEqual({ ownerId: null, proposito: PROPOSITOS.FEE_REVENUE, criptomonedaId: 'BTC', monto: '0.001' });
     // QUOTE: el comprador libera bloqueado, el vendedor recibe neto, la casa cobra el fee maker.
-    expect(asiento.lineas).toContainEqual({ ownerId: 'comprador', proposito: PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId: 'USDT', monto: '-100' });
-    expect(asiento.lineas).toContainEqual({ ownerId: 'vendedor', proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: 'USDT', monto: '99.9' });
+    expect(asiento.lineas).toContainEqual({ ownerId: 'comprador', proposito: PROPOSITOS.SPOT_BLOQUEADO, criptomonedaId: 'USDT', monto: '-100' });
+    expect(asiento.lineas).toContainEqual({ ownerId: 'vendedor', proposito: PROPOSITOS.SPOT_DISPONIBLE, criptomonedaId: 'USDT', monto: '99.9' });
     expect(asiento.lineas).toContainEqual({ ownerId: null, proposito: PROPOSITOS.FEE_REVENUE, criptomonedaId: 'USDT', monto: '0.1' });
   });
 
