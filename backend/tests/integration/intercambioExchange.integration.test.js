@@ -8,6 +8,10 @@ const posting = require('../../services/ledger/postingService');
 const recon = require('../../services/ledger/reconciliation');
 const { PROPOSITOS } = require('../../services/ledger/ledgerAccounts');
 
+// El swap es money-path → exige Idempotency-Key. Cada request usa una key única.
+let idem = 0;
+const idemKey = () => `idem-${Date.now()}-${idem++}`;
+
 const casa = (proposito, criptomonedaId) =>
   posting.getSaldoCuenta({ ownerId: null, proposito, criptomonedaId });
 
@@ -35,6 +39,7 @@ describe('POST /api/intercambioExchange (swap) — buy', () => {
     const res = await request(app)
       .post('/api/intercambioExchange/')
       .set(f.authHeader(user))
+      .set('Idempotency-Key', idemKey())
       .send({ parId: par.id, tipo: 'compra', cantidadBase: 3 });
 
     expect(res.status).toBe(201);
@@ -66,6 +71,7 @@ describe('POST /api/intercambioExchange (swap) — buy', () => {
     const { user, usdt, par } = await seedBuyScenario();
     await request(app).post('/api/intercambioExchange/')
       .set(f.authHeader(user))
+      .set('Idempotency-Key', idemKey())
       .send({ parId: par.id, tipo: 'compra', cantidadBase: 3 });
 
     const res = await request(app).get('/api/intercambioExchange/me/balances').set(f.authHeader(user));
@@ -107,6 +113,7 @@ describe('POST /api/intercambioExchange (swap) — sell', () => {
 
     const res = await request(app).post('/api/intercambioExchange/')
       .set(f.authHeader(user))
+      .set('Idempotency-Key', idemKey())
       .send({ parId: par.id, tipo: 'venta', cantidadBase: 0.29 });
 
     expect(res.status).toBe(201);
@@ -136,6 +143,7 @@ describe('POST /api/intercambioExchange (swap) — rejections', () => {
 
     const res = await request(app).post('/api/intercambioExchange/')
       .set(f.authHeader(user))
+      .set('Idempotency-Key', idemKey())
       .send({ parId: par.id, tipo: 'compra', cantidadBase: 3 });
 
     expect(res.status).toBe(400);
@@ -149,6 +157,7 @@ describe('POST /api/intercambioExchange (swap) — rejections', () => {
 
     const res = await request(app).post('/api/intercambioExchange/')
       .set(f.authHeader(user))
+      .set('Idempotency-Key', idemKey())
       .send({ parId: par.id, tipo: 'compra', cantidadBase: 3 });
 
     expect(res.status).toBe(400);
@@ -160,6 +169,7 @@ describe('POST /api/intercambioExchange (swap) — rejections', () => {
     const user = await f.seedUser();
     const res = await request(app).post('/api/intercambioExchange/')
       .set(f.authHeader(user))
+      .set('Idempotency-Key', idemKey())
       .send({ parId: '00000000-0000-4000-8000-000000000000', tipo: 'compra', cantidadBase: 1 });
 
     expect(res.status).toBe(404);
