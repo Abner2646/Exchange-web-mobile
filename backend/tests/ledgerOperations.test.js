@@ -12,7 +12,7 @@ const { PROPOSITOS } = require('../services/ledger/ledgerAccounts');
 const {
   liquidarSwap, liquidarTrade, marcarRetiroTransmitido,
   registrarDepositoPendiente, confirmarDeposito, transferirInterno, liquidarP2P,
-  acreditarFaucet,
+  acreditarFaucet, transferirEntreCompartimentos, reservarParaOrden, liberarReserva,
 } = require('../services/ledger/operations');
 
 beforeEach(() => jest.clearAllMocks());
@@ -184,5 +184,42 @@ describe('acreditarFaucet arma el asiento del faucet de testnet', () => {
     expect(asiento.lineas).toHaveLength(2);
     expect(asiento.lineas).toContainEqual({ ownerId: null, proposito: PROPOSITOS.EXTERNAL_ONCHAIN, criptomonedaId: 'BTC', monto: '-1' });
     expect(asiento.lineas).toContainEqual({ ownerId: 'u', proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: 'BTC', monto: '1' });
+  });
+});
+
+describe('transferirEntreCompartimentos mueve disponible entre compartimentos (mismo user)', () => {
+  test('funding→spot: funding:disponible −A, spot:disponible +A', async () => {
+    await transferirEntreCompartimentos({
+      userId: 'u', criptomonedaId: 'BTC', cantidad: '2',
+      origen: 'funding', destino: 'spot', referencia: 'transfer:1',
+    }, 'tx');
+
+    expect(postTransaction).toHaveBeenCalledTimes(1);
+    const [asiento, transaction] = postTransaction.mock.calls[0];
+    expect(transaction).toBe('tx');
+    expect(asiento.tipo).toBe('transferencia_compartimento');
+    expect(asiento.referencia).toBe('transfer:1');
+    expect(asiento.lineas).toContainEqual({ ownerId: 'u', proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: 'BTC', monto: '-2' });
+    expect(asiento.lineas).toContainEqual({ ownerId: 'u', proposito: PROPOSITOS.SPOT_DISPONIBLE, criptomonedaId: 'BTC', monto: '2' });
+  });
+
+  test('spot→funding: spot:disponible −A, funding:disponible +A', async () => {
+    await transferirEntreCompartimentos({
+      userId: 'u', criptomonedaId: 'BTC', cantidad: '2',
+      origen: 'spot', destino: 'funding', referencia: 'transfer:2',
+    });
+    const { lineas } = postTransaction.mock.calls[0][0];
+    expect(lineas).toContainEqual({ ownerId: 'u', proposito: PROPOSITOS.SPOT_DISPONIBLE, criptomonedaId: 'BTC', monto: '-2' });
+    expect(lineas).toContainEqual({ ownerId: 'u', proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: 'BTC', monto: '2' });
+  });
+
+  test('rechaza compartimentos iguales o desconocidos', async () => {
+    await expect(transferirEntreCompartimentos({
+      userId: 'u', criptomonedaId: 'BTC', cantidad: '1', origen: 'spot', destino: 'spot', referencia: 'x',
+    })).rejects.toThrow(/compartimento/i);
+    await expect(transferirEntreCompartimentos({
+      userId: 'u', criptomonedaId: 'BTC', cantidad: '1', origen: 'funding', destino: 'earn', referencia: 'x',
+    })).rejects.toThrow(/compartimento/i);
+    expect(postTransaction).not.toHaveBeenCalled();
   });
 });
