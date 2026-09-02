@@ -30,6 +30,12 @@ const tradeModel = require('./trade.model');
 const priceCandleModel = require('./priceCandle.model');
 const idempotencyKeyModel = require('./idempotencyKey.model');
 
+// LEDGER (partida doble) — Radar #1 + #10
+const initCuentaLedger = require('./entities/cuentaLedger.entity');
+const initAsientoLedger = require('./entities/asientoLedger.entity');
+const initMovimientoLedger = require('./entities/movimientoLedger.entity');
+const initSaldoLedger = require('./entities/saldoLedger.entity');
+
 
 
 // Connecting to the database
@@ -73,6 +79,16 @@ const Trade = tradeModel(sequelize);
 const PriceCandle = priceCandleModel(sequelize);
 const IdempotencyKey = idempotencyKeyModel(sequelize);
 
+// 🆕 LEDGER MODELS (partida doble)
+const CuentaLedger = initCuentaLedger(sequelize);
+const AsientoLedger = initAsientoLedger(sequelize);
+const MovimientoLedger = initMovimientoLedger(sequelize);
+const SaldoLedger = initSaldoLedger(sequelize);
+
+// (Write-flip Paso B: el shim CDC balanceMirror se eliminó — todas las escrituras
+// de dinero postean al ledger DIRECTO vía updateBalance/blockBalance/unblockBalance
+// y el settlement de deposito/retiro. El ledger es el único escritor de dinero.)
+
 
 
 // Relationships between tables
@@ -80,13 +96,9 @@ const IdempotencyKey = idempotencyKeyModel(sequelize);
 // RELACIONES DE USUARIOS
 // ================================
 
-// Usuario puede tener muchos balances
-// Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #9): la columna real en
-// balances_users es user_id (userId en el modelo), no usuarioId — con
-// 'usuarioId' Sequelize crea una columna fantasma nunca poblada y
-// Usuario.include('balances') devolvía siempre un array vacío en silencio.
-Usuario.hasMany(BalanceUsuario, { foreignKey: 'userId', as: 'balances' });
-BalanceUsuario.belongsTo(Usuario, { foreignKey: 'userId', as: 'usuario' });
+// (Paso C: Usuario↔BalanceUsuario se eliminó — BalanceUsuario ya no es un modelo
+// Sequelize sino una fachada del ledger; los saldos se leen de la proyección del
+// ledger, no de una asociación.)
 
 // Usuario puede tener muchas direcciones de depósito
 // Mismo bug (Críticos #9), y encima asimétrico: el belongsTo ya se había
@@ -153,9 +165,7 @@ WalletMaestra.belongsTo(Criptomoneda, { foreignKey: 'criptomonedaId', as: 'cript
 Criptomoneda.hasMany(DireccionDeposito, { foreignKey: 'criptomonedaId', as: 'direccionesDeposito' });
 DireccionDeposito.belongsTo(Criptomoneda, { foreignKey: 'criptomonedaId', as: 'criptomoneda' });
 
-// Criptomoneda puede tener muchos balances de usuarios
-Criptomoneda.hasMany(BalanceUsuario, { foreignKey: 'criptomonedaId', as: 'balances' });
-BalanceUsuario.belongsTo(Criptomoneda, { foreignKey: 'criptomonedaId', as: 'criptomoneda' });
+// (Paso C: Criptomoneda↔BalanceUsuario se eliminó junto con la tabla balances_users.)
 
 // Criptomoneda puede estar en muchas ofertas P2P
 Criptomoneda.hasMany(OfertaP2P, { foreignKey: 'criptomonedaId', as: 'ofertas' });
@@ -289,6 +299,17 @@ Criptomoneda.hasMany(Transferencia, { foreignKey: 'criptomonedaId', as: 'transfe
 Transferencia.belongsTo(Criptomoneda, { foreignKey: 'criptomonedaId', as: 'criptomonedaTransferencia' }); // Alias único
 
 
+// ================================
+// RELACIONES DEL LEDGER (partida doble)
+// ================================
+AsientoLedger.hasMany(MovimientoLedger, { foreignKey: 'asientoId', as: 'movimientos' });
+MovimientoLedger.belongsTo(AsientoLedger, { foreignKey: 'asientoId', as: 'asiento' });
+MovimientoLedger.belongsTo(CuentaLedger, { foreignKey: 'cuentaId', as: 'cuenta' });
+CuentaLedger.hasMany(MovimientoLedger, { foreignKey: 'cuentaId', as: 'movimientos' });
+CuentaLedger.hasOne(SaldoLedger, { foreignKey: 'cuentaId', as: 'saldoProyectado' });
+SaldoLedger.belongsTo(CuentaLedger, { foreignKey: 'cuentaId', as: 'cuenta' });
+
+
 
 module.exports = {
   sequelize,
@@ -314,5 +335,10 @@ module.exports = {
   Order,
   Trade,
   PriceCandle,
-  IdempotencyKey
+  IdempotencyKey,
+  // 🆕 LEDGER MODELS (partida doble)
+  CuentaLedger,
+  AsientoLedger,
+  MovimientoLedger,
+  SaldoLedger,
 };

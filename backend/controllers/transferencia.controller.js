@@ -2,6 +2,8 @@ const { Transferencia, Usuario, Criptomoneda, BalanceUsuario, Notificaciones } =
 const { sequelize } = require('../models/index.js');
 const AppError = require('../utils/AppError');
 const errorCodes = require('../utils/errorCodes');
+const { transferirInterno } = require('../services/ledger/operations');
+const money = require('../utils/money');
 
 // Create new transfer
 const createTransferencia = async (req, res) => {
@@ -177,42 +179,36 @@ const procesarTransferencia = async (req, res) => {
       throw new AppError(400, errorCodes.TRANSFER_RESOURCE_NOT_FOUND, 'Usuario destinatario no válido');
     }
 
-    // Re-check sender balance
-    const balanceRemitente = await BalanceUsuario.findOne({
-      where: {
-        userId: transferencia.usuarioRemitenteId,
-        criptomonedaId: transferencia.criptomonedaId,
-      },
-      transaction,
-    });
+    // Re-check sender balance. Read-flip (Plan 3/4 Paso A): lee del ledger via
+    // getByUserAndCrypto (devuelve objeto con balanceDisponible '0' si no hay cuenta).
+    const balanceRemitente = await BalanceUsuario.getByUserAndCrypto(
+      transferencia.usuarioRemitenteId,
+      transferencia.criptomonedaId,
+      { transaction }
+    );
 
-    const balanceDisponible = balanceRemitente ? parseFloat(balanceRemitente.balanceDisponible) : 0;
-    const cantidadTransferencia = parseFloat(transferencia.cantidad);
-
-    if (balanceDisponible < cantidadTransferencia) {
+    // Comparación decimal exacta con money.compare — nunca parseFloat sobre
+    // montos (regla money.js). getByUserAndCrypto siempre devuelve un objeto con
+    // balanceDisponible '0' si no hay cuenta. El guard real sigue siendo el FOR
+    // UPDATE anti-sobregiro de transferirInterno; este es el early-error.
+    if (money.compare(balanceRemitente.balanceDisponible, String(transferencia.cantidad)) < 0) {
       await transaction.rollback();
       throw new AppError(400, errorCodes.INSUFFICIENT_FUNDS, 'Fondos insuficientes para completar la transferencia');
     }
 
-    console.log(`Ejecutando transferencia: ${cantidadTransferencia} desde ${remitente.username} hacia ${destinatario.username}`);
+    console.log(`Ejecutando transferencia: ${transferencia.cantidad} desde ${remitente.username} hacia ${destinatario.username}`);
 
-    // Deduct from sender
-    await BalanceUsuario.updateBalance(
-      transferencia.usuarioRemitenteId,
-      transferencia.criptomonedaId,
-      -cantidadTransferencia,
-      'disponible',
-      transaction
-    );
-
-    // Credit to recipient
-    await BalanceUsuario.updateBalance(
-      transferencia.usuarioDestinatarioId,
-      transferencia.criptomonedaId,
-      cantidadTransferencia,
-      'disponible',
-      transaction
-    );
+    // Paso D: transferencia interna como UN asiento user↔user en el ledger
+    // (remitente disponible −A → destinatario disponible +A). Sin suspense
+    // (suma cero entre dos usuarios). Reemplaza los dos updateBalance (que
+    // posteaban funding+suspense por pata).
+    await transferirInterno({
+      remitenteId: transferencia.usuarioRemitenteId,
+      destinatarioId: transferencia.usuarioDestinatarioId,
+      criptomonedaId: transferencia.criptomonedaId,
+      cantidad: String(transferencia.cantidad),
+      referencia: `transferencia:${transferencia.id}`,
+    }, transaction);
 
     // Mark transfer complete
     transferencia.estado = 'completada';

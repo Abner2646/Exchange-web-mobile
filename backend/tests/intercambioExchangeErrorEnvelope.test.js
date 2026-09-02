@@ -29,6 +29,7 @@ jest.mock('../models/index.js', () => ({
   ParExchange: { findByPk: jest.fn() },
   BalanceUsuario: {
     findOne: jest.fn(),
+    getSaldoCompartimento: jest.fn(),
     updateBalance: jest.fn(),
   },
   WalletMaestra: {
@@ -118,7 +119,9 @@ describe('createOrder — known business error → canonical envelope', () => {
       limiteDiarioUsd: 99999,
     });
     IntercambioExchange.getDailyVolume.mockResolvedValue(0);
-    BalanceUsuario.findOne.mockResolvedValue(null); // no balance record
+    // Read-flip: el controller lee el saldo via getSaldoCompartimento (Task 9),
+    // que devuelve disponible:'0' cuando no hay fondos (insuficiente).
+    BalanceUsuario.getSaldoCompartimento.mockResolvedValue({ disponible: '0', bloqueado: '0', pendiente: '0' });
 
     const res = await request(buildApp())
       .post('/intercambioExchange')

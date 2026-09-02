@@ -554,10 +554,9 @@ Usuario.toggle2FA = async (id, nuevoEstado) => {
     const user = await Usuario.findByPk(id, {
       attributes: { exclude: ['passwordHash'] },
       include: [
-        {
-          association: 'balances',
-          include: ['criptomoneda']
-        },
+        // (Paso C: se quitó el include 'balances' — BalanceUsuario ya no es un
+        // modelo/asociación; los saldos se consultan por separado en GET
+        // /me/balances, respaldados por la proyección del ledger.)
         {
           association: 'valoracionesRecibidas',
           limit: 5,

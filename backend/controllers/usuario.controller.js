@@ -65,17 +65,10 @@ const inicializarUsuarioCompleto = async (usuario, transaction) => {
         direccion: nuevaDireccion
       });
 
-      const balanceInicial = await BalanceUsuario.create({
-        userId: usuario.id, // la entity usa `userId` (field user_id), no `usuarioId`
-        criptomonedaId: criptomoneda.id,
-        balanceDisponible: 0,
-        balanceBloqueado: 0
-      }, { transaction });
-
-      balancesCreados.push({
-        criptomoneda: criptomoneda.symbol,
-        balance: 0
-      });
+      // Write-flip (Paso B): el provisioning ya NO crea filas de balance en 0. En
+      // el ledger, saldo 0 == cuenta inexistente (las cuentas se crean lazy al
+      // primer movimiento real); getByUserId nunca listaba los ceros. Se conserva
+      // la generacion de direcciones de deposito (el verdadero entregable).
     }
 
     const mensajeBienvenida = `¡Bienvenido al Exchange! Tu cuenta ha sido creada exitosamente. 
@@ -275,7 +268,10 @@ const loginWithGoogle = async (req, res) => {
     const profile = {
       id: verified.googleId,
       displayName: verified.name,
-      emails: [{ value: verified.email }],
+      // verified:true here mirrors the passport profile shape; it's already
+      // guaranteed by the emailVerified gate above, and findOrCreateGoogleUser
+      // now enforces it as a single choke point (defense in depth).
+      emails: [{ value: verified.email, verified: verified.emailVerified }],
     };
     // Pass the transaction so the user row and provisioning are atomic: a failed
     // inicializarUsuarioCompleto rolls back the user too (no orphaned account).

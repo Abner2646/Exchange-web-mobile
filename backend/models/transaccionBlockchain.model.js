@@ -198,6 +198,18 @@ function createTransaccionBlockchainModel(sequelize) {
       };
 
       const nuevoDeposito = await TransaccionBlockchain.create(depositData, { transaction });
+
+      // Paso D: depósito detectado → acreditar en estado PENDIENTE en el ledger
+      // (external_onchain → funding:pendiente). Al confirmar, _acreditarDeposito
+      // lo mueve a disponible.
+      const { registrarDepositoPendiente } = require('../services/ledger/operations');
+      await registrarDepositoPendiente({
+        userId: data.userId,
+        criptomonedaId: data.criptomonedaId,
+        cantidad: String(data.cantidad),
+        referencia: `deposito-pend:${nuevoDeposito.id}`,
+      }, transaction);
+
       await transaction.commit();
 
       return await TransaccionBlockchain.getById(nuevoDeposito.id);
@@ -253,6 +265,21 @@ function createTransaccionBlockchainModel(sequelize) {
         await TransaccionBlockchain._acreditarDeposito(transaccion, transaction);
       }
 
+      // Paso D: si es un retiro confirmado on-chain, debitar los fondos bloqueados
+      // al mundo on-chain (funding:bloqueado → external_onchain). Se hace acá
+      // (confirmación), no en el broadcast: el reaper puede revertir un
+      // 'procesando' sin confirmar vía failWithdrawal (bloqueado→disponible), y si
+      // ya hubiéramos debitado a external eso quedaría inconsistente.
+      if (transaccion.tipo === 'retiro' && updateData.estado === 'confirmado' && transaccion.estado !== 'confirmado') {
+        const { marcarRetiroTransmitido } = require('../services/ledger/operations');
+        await marcarRetiroTransmitido({
+          userId: transaccion.userId,
+          criptomonedaId: transaccion.criptomonedaId,
+          cantidad: String(transaccion.cantidad),
+          referencia: `retiro:${transaccion.id}`,
+        }, transaction);
+      }
+
       await transaction.commit();
       return await TransaccionBlockchain.getById(id);
     } catch (error) {
@@ -272,7 +299,6 @@ function createTransaccionBlockchainModel(sequelize) {
     // sería circular (transaccionBlockchain.model.js se está cargando
     // *desde* models/index.js), pero para cuando esta función corre de
     // verdad (un request real) models/index.js ya terminó de inicializar.
-    const { BalanceUsuario } = require('./index');
     try {
       console.log(`🔧 DEBUG - Acreditando depósito:`, {
         transaccionId: transaccion.id,
@@ -282,53 +308,15 @@ function createTransaccionBlockchainModel(sequelize) {
         estado: transaccion.estado
       });
 
-      // Actualizar balance del usuario usando la entidad directa
-      const [balance] = await BalanceUsuario.findOrCreate({
-        where: {
-          userId: transaccion.userId,
-          criptomonedaId: transaccion.criptomonedaId
-        },
-        defaults: {
-          userId: transaccion.userId,
-          criptomonedaId: transaccion.criptomonedaId,
-          balanceDisponible: 0,
-          balanceBloqueado: 0
-        },
-        transaction
-      });
-
-      console.log(`🔧 DEBUG - Balance actual antes de acreditar:`, {
-        balanceId: balance.id,
-        balanceDisponible: balance.balanceDisponible,
-        balanceBloqueado: balance.balanceBloqueado
-      });
-
-      const nuevoBalance = money.add(String(balance.balanceDisponible), String(transaccion.cantidad));
-
-      console.log(`🔧 DEBUG - Nuevo balance calculado:`, {
-        balanceAnterior: balance.balanceDisponible,
-        cantidadDepositada: transaccion.cantidad,
-        nuevoBalance: nuevoBalance
-      });
-
-      // ✅ CORRECCIÓN CRÍTICA: Actualizar el balance correctamente
-      const [updatedRows] = await BalanceUsuario.update(
-        { balanceDisponible: nuevoBalance },
-        { 
-          where: { id: balance.id },
-          transaction,
-          returning: true // Para PostgreSQL, obtener el registro actualizado
-        }
-      );
-
-      console.log(`🔧 DEBUG - Balance actualizado, filas afectadas: ${updatedRows || 1}`);
-
-      // ✅ CORRECCIÓN: Verificar que el balance se actualizó correctamente
-      const balanceVerificacion = await BalanceUsuario.findByPk(balance.id, { transaction });
-      console.log(`🔧 DEBUG - Balance después de actualizar:`, {
-        balanceDisponible: balanceVerificacion.balanceDisponible,
-        balanceBloqueado: balanceVerificacion.balanceBloqueado
-      });
+      // Paso D: el depósito ya está en funding:pendiente (registrado al detectarse
+      // en createDeposit). Al confirmar, se mueve pendiente → disponible.
+      const { confirmarDeposito } = require('../services/ledger/operations');
+      await confirmarDeposito({
+        userId: transaccion.userId,
+        criptomonedaId: transaccion.criptomonedaId,
+        cantidad: String(transaccion.cantidad),
+        referencia: `deposito-conf:${transaccion.id}`,
+      }, transaction);
 
       // ✅ CORRECCIÓN: Marcar transacción como completada (no confirmada)
       await TransaccionBlockchain.update(
@@ -372,33 +360,11 @@ function createTransaccionBlockchainModel(sequelize) {
         throw new Error('Datos incompletos para crear retiro');
       }
 
-      // Verificar balance suficiente usando la entidad directa
-      const balance = await BalanceUsuario.findOne({
-        where: {
-          userId: data.userId,
-          criptomonedaId: data.criptomonedaId
-        },
-        transaction
-      });
-
-      if (!balance || money.compare(String(balance.balanceDisponible), String(data.cantidad)) < 0) {
-        throw new Error('Balance insuficiente para retiro. (Mensaje desde el model)');
-      }
-
-      // Bloquear balance
-      const nuevoBalanceDisponible = money.subtract(String(balance.balanceDisponible), String(data.cantidad));
-      const nuevoBalanceBloqueado = money.add(String(balance.balanceBloqueado), String(data.cantidad));
-
-      await BalanceUsuario.update(
-        { 
-          balanceDisponible: nuevoBalanceDisponible,
-          balanceBloqueado: nuevoBalanceBloqueado
-        },
-        { 
-          where: { id: balance.id },
-          transaction
-        }
-      );
+      // Write-flip (Paso B): bloquear via el metodo (postea disponible->bloqueado
+      // en el ledger; el guard de sobregiro del ledger rechaza si no alcanza). Su
+      // mensaje /insuficiente/ preserva la semantica de "Balance insuficiente para
+      // retiro" para el caller.
+      await BalanceUsuario.blockBalance(data.userId, data.criptomonedaId, String(data.cantidad), transaction);
 
       // Crear transacción de retiro
       const retiroData = {
@@ -492,55 +458,10 @@ function createTransaccionBlockchainModel(sequelize) {
     }
   };
 
-  TransaccionBlockchain.completeWithdrawal = async (id) => {
-    // Ver el comentario de _acreditarDeposito (Altos #10).
-    const { BalanceUsuario } = require('./index');
-    const transaction = await sequelize.transaction();
-
-    try {
-      const retiro = await TransaccionBlockchain.findByPk(id, { transaction });
-      
-      if (!retiro) {
-        throw new Error('Retiro no encontrado');
-      }
-
-      // Desbloquear balance (liberar los fondos ya enviados) usando la entidad directa
-      const balance = await BalanceUsuario.findOne({
-        where: {
-          userId: retiro.userId,
-          criptomonedaId: retiro.criptomonedaId
-        },
-        transaction
-      });
-
-      if (balance) {
-        const nuevoBalanceBloqueado = money.subtract(String(balance.balanceBloqueado), String(retiro.cantidad));
-
-        await BalanceUsuario.update(
-          { balanceBloqueado: money.compare(nuevoBalanceBloqueado, '0') < 0 ? '0' : nuevoBalanceBloqueado },
-          { 
-            where: { id: balance.id },
-            transaction
-          }
-        );
-      }
-
-      // Marcar como completado
-      await TransaccionBlockchain.update(
-        { estado: 'completado' },
-        { 
-          where: { id },
-          transaction
-        }
-      );
-
-      await transaction.commit();
-      return await TransaccionBlockchain.getById(id);
-    } catch (error) {
-      await transaction.rollback();
-      throw new Error(`Error al completar retiro: ${error.message}`);
-    }
-  };
+  // (Paso D: completeWithdrawal se eliminó — era código muerto sin callers. El
+  // débito de los fondos bloqueados al mundo on-chain ahora lo hace
+  // updateConfirmations al confirmarse el retiro, vía marcarRetiroTransmitido
+  // (funding:bloqueado → external_onchain), simétrico a _acreditarDeposito.)
 
   TransaccionBlockchain.failWithdrawal = async (id, razon) => {
     // Ver el comentario de _acreditarDeposito (Altos #10).
@@ -549,35 +470,24 @@ function createTransaccionBlockchainModel(sequelize) {
 
     try {
       const retiro = await TransaccionBlockchain.findByPk(id, { transaction });
-      
+
       if (!retiro) {
         throw new Error('Retiro no encontrado');
       }
 
-      // Revertir balance (devolver fondos al disponible) usando la entidad directa
-      const balance = await BalanceUsuario.findOne({
-        where: {
-          userId: retiro.userId,
-          criptomonedaId: retiro.criptomonedaId
-        },
-        transaction
-      });
-
-      if (balance) {
-        const nuevoBalanceDisponible = money.add(String(balance.balanceDisponible), String(retiro.cantidad));
-        const nuevoBalanceBloqueado = money.subtract(String(balance.balanceBloqueado), String(retiro.cantidad));
-
-        await BalanceUsuario.update(
-          {
-            balanceDisponible: nuevoBalanceDisponible,
-            balanceBloqueado: money.compare(nuevoBalanceBloqueado, '0') < 0 ? '0' : nuevoBalanceBloqueado
-          },
-          { 
-            where: { id: balance.id },
-            transaction
-          }
-        );
+      // Guard de estado (simétrico a markWithdrawalAsSent): solo se puede fallar
+      // un retiro que sigue 'pendiente' o 'procesando'. Fallar uno ya
+      // 'confirmado'/'completado' es peligroso: marcarRetiroTransmitido ya movió
+      // los fondos a external_onchain (salieron on-chain), y unblockBalance los
+      // devolvería a disponible consumiendo el bloqueado de OTRA reserva del
+      // mismo usuario → creación de dinero. Fallar uno ya 'fallido' duplicaría el
+      // desbloqueo. El reaper solo pasa filas 'procesando', así que no lo afecta.
+      if (retiro.estado !== 'pendiente' && retiro.estado !== 'procesando') {
+        throw new Error(`No se puede fallar un retiro en estado ${retiro.estado}`);
       }
+
+      // Write-flip (Paso B): retiro fallido → devolver bloqueado a disponible.
+      await BalanceUsuario.unblockBalance(retiro.userId, retiro.criptomonedaId, String(retiro.cantidad), transaction);
 
       // Marcar como fallido
       await TransaccionBlockchain.update(
@@ -751,10 +661,8 @@ function createTransaccionBlockchainModel(sequelize) {
         return { valid: false, message: 'Criptomoneda no encontrada o inactiva' };
       }
 
-      // Validar balance suficiente usando la entidad directa
-      const balance = await BalanceUsuario.findOne({
-        where: { userId, criptomonedaId }
-      });
+      // (Write-flip Paso B: se removio el findOne de balances_users que aca solo
+      // alimentaba validaciones comentadas — lectura muerta del path legacy.)
 
       // ESTO DE ACÁ ABAJO ESTÁ BIEN, AUNQUE NO TESTEADO, PERO POR AHORA SON VALIDACIONES INNECESARIAS
 

@@ -8,8 +8,8 @@
 //
 // Este test prueba que ese require lazy resuelve de verdad, en runtime,
 // al modelo real — no alcanza con "no explota al cargar", hay que probar
-// que _acreditarDeposito efectivamente escribe en la tabla balances_users
-// a través del grafo completo de asociaciones de models/index.js.
+// que _acreditarDeposito efectivamente acredita en el ledger (vía updateBalance)
+// a través del grafo completo de modelos de models/index.js.
 //
 // Postgres real a propósito: es justamente el orden de carga / resolución
 // de módulos lo que se está probando.
@@ -63,24 +63,25 @@ describeIfDb('transaccionBlockchain.model.js: require lazy de BalanceUsuario', (
     expect(source).not.toMatch(/require\(['"]\.\/entities\/balanceUsuario\.entity['"]\)/);
   });
 
-  test('_acreditarDeposito escribe de verdad en balances_users vía el modelo real de models/index.js', async () => {
+  test('_acreditarDeposito acredita de verdad en el ledger vía el modelo real de models/index.js', async () => {
     const user = await Usuario.create({ email: 'lazy@test.com', username: 'lazy_user', passwordHash: 'x', rol: 'normal' });
     const cripto = await Criptomoneda.create({ symbol: 'ETH', nombre: 'Ethereum', red: 'ethereum', decimales: 18 });
 
-    // id con formato UUID real (aunque no corresponda a ninguna fila) para
-    // que el UPDATE final de _acreditarDeposito no falle por tipo de dato
-    // — con un id no-UUID, ese UPDATE revienta y el catch de la función no
-    // hace rollback de la transacción, dejándola "aborted" en Postgres
-    // (bug preexistente, separado del que se está probando acá).
-    const transaction = await sequelize.transaction();
-    await TransaccionBlockchain._acreditarDeposito(
-      { id: '99999999-9999-4999-8999-999999999999', userId: user.id, criptomonedaId: cripto.id, cantidad: 1.5, estado: 'pendiente' },
-      transaction
-    );
-    await transaction.commit();
+    // Paso D: el depósito primero se acredita PENDIENTE (al detectarse), y
+    // _acreditarDeposito (al confirmar) mueve pendiente → disponible. Se prueba
+    // que el require lazy resuelve el modelo real y que la confirmación llega a la
+    // proyección Funding del ledger.
+    const { registrarDepositoPendiente } = require('../services/ledger/operations');
+    await registrarDepositoPendiente({ userId: user.id, criptomonedaId: cripto.id, cantidad: '1.50000000', referencia: `dep-pend:${user.id}` });
 
-    const balance = await BalanceUsuario.findOne({ where: { userId: user.id, criptomonedaId: cripto.id } });
-    expect(balance).not.toBeNull();
-    expect(parseFloat(balance.balanceDisponible)).toBe(1.5);
+    await TransaccionBlockchain._acreditarDeposito(
+      { id: '99999999-9999-4999-8999-999999999999', userId: user.id, criptomonedaId: cripto.id, cantidad: '1.50000000', estado: 'pendiente' },
+      null
+    );
+
+    const posting = require('../services/ledger/postingService');
+    const { PROPOSITOS } = require('../services/ledger/ledgerAccounts');
+    const disponible = await posting.getSaldoCuenta({ ownerId: user.id, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: cripto.id });
+    expect(disponible).toBe('1.50000000');
   });
 });

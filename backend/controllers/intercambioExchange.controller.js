@@ -1,10 +1,11 @@
 // controllers/intercambioExchange.controller.js
 
-const { IntercambioExchange, Usuario, ParExchange, BalanceUsuario, WalletMaestra, Criptomoneda, sequelize } = require('../models/index.js');
+const { IntercambioExchange, Usuario, ParExchange, BalanceUsuario, Criptomoneda, sequelize } = require('../models/index.js');
 const AppError = require('../utils/AppError');
 const errorCodes = require('../utils/errorCodes');
 const money = require('../utils/money');
 const { calculateSettlement } = require('../services/intercambioSettlement.service');
+const { liquidarSwap } = require('../services/ledger/operations');
 
 // Función auxiliar para validar fechas
 const isValidDate = (dateString) => {
@@ -37,10 +38,16 @@ const createOrder = async (req, res) => {
   try {
     const usuarioId = req.user.id;
     const { parId, tipo, cantidadBase } = req.body;
+    const compartimento = req.body.compartimento || 'funding';
 
     if (!parId || !tipo || !cantidadBase) {
       await transaction.rollback();
       throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'parId, tipo y cantidadBase son requeridos');
+    }
+
+    if (!['funding', 'spot'].includes(compartimento)) {
+      await transaction.rollback();
+      throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'Compartimento inválido (funding|spot)');
     }
 
     if (!isValidUUID(parId)) {
@@ -107,48 +114,23 @@ const createOrder = async (req, res) => {
     const criptoQuoteId = par.criptoQuoteId;
     let netAmount;
 
+    // Chequeo de suficiencia sobre la proyección del ledger (da el error code de
+    // dominio correcto). El anti-sobregiro atómico real es el FOR UPDATE de
+    // postTransaction dentro de liquidarSwap.
     if (tipo === 'compra') {
-      // Comprar: se paga en quote (requiredQuote = valor + comisión), se recibe base.
-      const balanceQuote = await BalanceUsuario.findOne({
-        where: { userId: usuarioId, criptomonedaId: criptoQuoteId },
-        transaction
-      });
-
-      if (!balanceQuote || money.compare(String(balanceQuote.balanceDisponible), requiredQuote) < 0) {
+      const balanceQuote = await BalanceUsuario.getSaldoCompartimento(usuarioId, criptoQuoteId, compartimento, { transaction });
+      if (money.compare(String(balanceQuote.disponible), requiredQuote) < 0) {
         await transaction.rollback();
         throw new AppError(400, errorCodes.EXCHANGE_INSUFFICIENT_BALANCE, 'Saldo insuficiente en moneda quote para realizar la operación');
       }
-
-      await BalanceUsuario.updateBalance(usuarioId, criptoQuoteId, money.multiply(requiredQuote, '-1'), 'disponible', transaction);
-      await BalanceUsuario.updateBalance(usuarioId, criptoBaseId, String(cantidadBase), 'disponible', transaction);
       netAmount = String(cantidadBase);
     } else {
-      // Vender: se paga en base, se recibe quote (netQuote = valor - comisión).
-      const balanceBase = await BalanceUsuario.findOne({
-        where: { userId: usuarioId, criptomonedaId: criptoBaseId },
-        transaction
-      });
-
-      if (!balanceBase || money.compare(String(balanceBase.balanceDisponible), String(cantidadBase)) < 0) {
+      const balanceBase = await BalanceUsuario.getSaldoCompartimento(usuarioId, criptoBaseId, compartimento, { transaction });
+      if (money.compare(String(balanceBase.disponible), String(cantidadBase)) < 0) {
         await transaction.rollback();
         throw new AppError(400, errorCodes.EXCHANGE_INSUFFICIENT_BALANCE, 'Saldo insuficiente en moneda base para realizar la operación');
       }
-
-      await BalanceUsuario.updateBalance(usuarioId, criptoBaseId, money.multiply(String(cantidadBase), '-1'), 'disponible', transaction);
       netAmount = netQuote;
-      await BalanceUsuario.updateBalance(usuarioId, criptoQuoteId, netQuote, 'disponible', transaction);
-    }
-
-    // La comisión siempre se cobra en la moneda quote, para los dos tipos de operación.
-    const walletMaestraQuote = await WalletMaestra.findOne({
-      where: { criptomonedaId: criptoQuoteId },
-      transaction
-    });
-
-    if (walletMaestraQuote) {
-      await WalletMaestra.addToBalance(walletMaestraQuote.id, comisionMonto, transaction);
-    } else {
-      console.warn(`No se encontró wallet maestra para ${par.criptoQuote.symbol}`);
     }
 
     const newOrder = await IntercambioExchange.create({
@@ -163,6 +145,23 @@ const createOrder = async (req, res) => {
       estado: 'completado',
       completedAt: new Date()
     }, { transaction });
+
+    // Paso D: liquidación rica en el ledger. Usuario ↔ treasury (inventario de la
+    // casa); la comisión (en quote) acredita fee_revenue. Reemplaza los
+    // updateBalance (funding+suspense) y el crédito a WalletMaestra.balanceTotal.
+    await liquidarSwap({
+      usuarioId,
+      criptoBaseId,
+      criptoQuoteId,
+      cantidadBase,
+      cantidadQuote,
+      comisionMonto,
+      requiredQuote,
+      netQuote,
+      tipo,
+      compartimento,
+      referencia: `swap:${newOrder.id}`,
+    }, transaction);
 
     await transaction.commit();
 
@@ -188,82 +187,9 @@ const createOrder = async (req, res) => {
   }
 };
 
-// TAMBIÉN CREAR FUNCIÓN PARA REVERTIR LA TRANSACCIÓN SI ES NECESARIO
-const revertLastExchange = async (intercambioId) => {
-  const transaction = await sequelize.transaction();
-
-  try {
-    const intercambio = await IntercambioExchange.findByPk(intercambioId, {
-      include: [
-        {
-          model: ParExchange,
-          include: [
-            { model: Criptomoneda, as: 'criptoBase' },
-            { model: Criptomoneda, as: 'criptoQuote' }
-          ]
-        }
-      ],
-      transaction
-    });
-
-    if (!intercambio) {
-      throw new Error('Intercambio no encontrado');
-    }
-
-    console.log(`Revirtiendo intercambio ${intercambioId}...`);
-
-    // Revertir las operaciones según el tipo
-    if (intercambio.tipo === 'compra') {
-      // Revertir compra: devolver quote, quitar base
-      await BalanceUsuario.updateBalance(
-        intercambio.usuarioId,
-        intercambio.ParExchange.criptoQuoteId,
-        intercambio.cantidadQuote + intercambio.comisionMonto,
-        'disponible',
-        transaction
-      );
-      await BalanceUsuario.updateBalance(
-        intercambio.usuarioId,
-        intercambio.ParExchange.criptoBaseId,
-        -intercambio.cantidadBase,
-        'disponible',
-        transaction
-      );
-    } else {
-      // Revertir venta: devolver base, quitar quote neto
-      await BalanceUsuario.updateBalance(
-        intercambio.usuarioId,
-        intercambio.ParExchange.criptoBaseId,
-        intercambio.cantidadBase,
-        'disponible',
-        transaction
-      );
-      await BalanceUsuario.updateBalance(
-        intercambio.usuarioId,
-        intercambio.ParExchange.criptoQuoteId,
-        -(intercambio.cantidadQuote - intercambio.comisionMonto),
-        'disponible',
-        transaction
-      );
-    }
-
-    // Marcar como revertido
-    await intercambio.update({
-      estado: 'revertido',
-      revertedAt: new Date()
-    }, { transaction });
-
-    await transaction.commit();
-    console.log('Intercambio revertido exitosamente');
-
-  } catch (error) {
-    if (!transaction.finished) {
-      await transaction.rollback();
-    }
-    console.error('Error revirtiendo intercambio:', error);
-    throw error;
-  }
-};
+// (Paso D: se eliminó revertLastExchange — código muerto no exportado ni ruteado
+// que aún usaba updateBalance con aritmética Number. Una reversión de swap, si se
+// necesitara, se haría con un asiento 'reverso' en el ledger.)
 
 // Calcular intercambio antes de ejecutar
 const calculateExchange = async (req, res) => {
@@ -374,22 +300,34 @@ const checkTransactionLimit = async (req, res) => {
 };
 
 // Obtener mis balances
+// Read-flip (write-flip Paso A): los saldos salen de la PROYECCION del ledger
+// (BalanceUsuario.getByUserId → compartimento Funding), no de balances_users. La
+// asociacion `criptomoneda` se re-adjunta por lookup (la proyeccion devuelve
+// objetos planos). Nota de contrato: ya no hay `id` de fila ni `updated_at`, y
+// las criptos sin movimiento en el ledger (saldo 0) no se listan — cambio de
+// contrato ya documentado en docs/frontend-rebuild/backend-contract-changes.md.
 const getMyBalances = async (req, res) => {
   const usuarioId = req.user.id;
 
-  const balances = await BalanceUsuario.findAll({
-    where: { userId: usuarioId },
-    include: [
-      {
-        model: Criptomoneda,
-        as: 'criptomoneda',
-        attributes: ['id', 'symbol', 'nombre', 'decimales']
-      }
-    ],
-    order: [['balanceDisponible', 'DESC']]
+  const balances = await BalanceUsuario.getByUserId(usuarioId);
+  const criptomonedas = await Criptomoneda.findAll({
+    where: { id: balances.map((b) => b.criptomonedaId) },
+    attributes: ['id', 'symbol', 'nombre', 'decimales']
   });
+  const criptoPorId = new Map(criptomonedas.map((c) => [c.id, c]));
 
-  res.json(balances);
+  const resultado = balances
+    .map((b) => ({
+      userId: b.userId,
+      criptomonedaId: b.criptomonedaId,
+      balanceDisponible: b.balanceDisponible,
+      balanceBloqueado: b.balanceBloqueado,
+      balancePendiente: b.balancePendiente, // Paso D: depósitos detectados sin confirmar
+      criptomoneda: criptoPorId.get(b.criptomonedaId) || null
+    }))
+    .sort((a, b) => money.compare(b.balanceDisponible, a.balanceDisponible));
+
+  res.json(resultado);
 };
 
 // Listar todos los intercambios (admin)

@@ -4,6 +4,12 @@ const app = require('../../app');
 const { sequelize, resetDb } = require('../helpers/db');
 const f = require('../helpers/factories');
 const { Order } = require('../../models');
+const posting = require('../../services/ledger/postingService');
+const recon = require('../../services/ledger/reconciliation');
+const { PROPOSITOS } = require('../../services/ledger/ledgerAccounts');
+
+const casa = (proposito, criptomonedaId) =>
+  posting.getSaldoCuenta({ ownerId: null, proposito, criptomonedaId });
 
 let idemSeq = 0;
 function placeOrder(user, { pair, side, orderType = 'limit', quantity, price }) {
@@ -30,7 +36,7 @@ describe('POST /api/trading/orders — create + lock (synchronous)', () => {
   test('buy limit with sufficient quote → 201, order created, quote balance locked', async () => {
     const { usdt, pair } = await seedPair();
     const user = await f.seedUser();
-    await f.seedBalance(user, usdt, '200');
+    await f.seedSpotBalance(user, usdt, '200'); // fondos en Spot para trading
 
     const res = await placeOrder(user, { pair, side: 'buy', quantity: 1, price: 100 });
 
@@ -40,28 +46,28 @@ describe('POST /api/trading/orders — create + lock (synchronous)', () => {
     // Locked = 1*100 = 100. The taker fee is charged from the BASE received at
     // settlement (Binance-style), not reserved in quote — so the lock matches what
     // settlement actually consumes (no stuck reserve). See balanceManager.
-    const bal = await f.getBalance(user, usdt);
-    expect(bal.balanceDisponible).toBe('100.00000000');   // 200 - 100
-    expect(bal.balanceBloqueado).toBe('100.00000000');
+    const bal = await f.getSpotBalance(user, usdt);
+    expect(bal.disponible).toBe('100.00000000');   // 200 - 100
+    expect(bal.bloqueado).toBe('100.00000000');
   });
 
   test('insufficient balance → 400 INSUFFICIENT_BALANCE, no order, balance untouched', async () => {
     const { usdt, pair } = await seedPair();
     const user = await f.seedUser();
-    await f.seedBalance(user, usdt, '10');   // < required 100
+    await f.seedSpotBalance(user, usdt, '10');   // < required 100
 
     const res = await placeOrder(user, { pair, side: 'buy', quantity: 1, price: 100 });
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('INSUFFICIENT_BALANCE');
     expect(await Order.count()).toBe(0);
-    expect((await f.getBalance(user, usdt)).balanceDisponible).toBe('10.00000000');
+    expect((await f.getSpotBalance(user, usdt)).disponible).toBe('10.00000000');
   });
 
   test('missing Idempotency-Key → 400', async () => {
     const { usdt, pair } = await seedPair();
     const user = await f.seedUser();
-    await f.seedBalance(user, usdt, '200');
+    await f.seedSpotBalance(user, usdt, '200');
 
     const res = await request(app)
       .post('/api/trading/orders')
@@ -104,8 +110,8 @@ describe('spot matching — service level (awaited)', () => {
 
     const seller = await f.seedUser();
     const buyer = await f.seedUser();
-    await f.seedBalance(seller, btc, '1');     // locks 1 BTC on sell
-    await f.seedBalance(buyer, usdt, '200');   // locks 100 on buy
+    await f.seedSpotBalance(seller, btc, '1');     // locks 1 BTC on sell (Spot)
+    await f.seedSpotBalance(buyer, usdt, '200');   // locks 100 on buy (Spot)
 
     await restingOrder(seller, { pair, side: 'sell', quantity: 1, price: 100 });
     const buyRes = await placeOrder(buyer, { pair, side: 'buy', quantity: 1, price: 100 });
@@ -117,20 +123,29 @@ describe('spot matching — service level (awaited)', () => {
     expect(await Trade.count()).toBe(1);
 
     // Seller: base blocked -> 0, quote available += 100 - maker fee 0.1 = 99.9
-    const sellerBtc = await f.getBalance(seller, btc);
-    const sellerUsdt = await f.getBalance(seller, usdt);
-    expect(sellerBtc.balanceBloqueado).toBe('0.00000000');
-    expect(sellerBtc.balanceDisponible).toBe('0.00000000');
-    expect(sellerUsdt.balanceDisponible).toBe('99.90000000');
+    const sellerBtc = await f.getSpotBalance(seller, btc);
+    const sellerUsdt = await f.getSpotBalance(seller, usdt);
+    expect(sellerBtc.bloqueado).toBe('0.00000000');
+    expect(sellerBtc.disponible).toBe('0.00000000');
+    expect(sellerUsdt.disponible).toBe('99.90000000');
 
     // Buyer: base available += 1 - taker fee 0.001 = 0.999; quote blocked 100 -> 0
     // fully consumed by the trade (no stuck fee reserve now that the lock matches
     // settlement); quote available stays at 100 (200 - 100 locked).
-    const buyerBtc = await f.getBalance(buyer, btc);
-    const buyerUsdt = await f.getBalance(buyer, usdt);
-    expect(buyerBtc.balanceDisponible).toBe('0.99900000');
-    expect(buyerUsdt.balanceDisponible).toBe('100.00000000');
-    expect(buyerUsdt.balanceBloqueado).toBe('0.00000000'); // FIXED: no stuck fee reserve
+    const buyerBtc = await f.getSpotBalance(buyer, btc);
+    const buyerUsdt = await f.getSpotBalance(buyer, usdt);
+    expect(buyerBtc.disponible).toBe('0.99900000');
+    expect(buyerUsdt.disponible).toBe('100.00000000');
+    expect(buyerUsdt.bloqueado).toBe('0.00000000'); // FIXED: no stuck fee reserve
+
+    // Paso D enrichment: both fees are now explicit in fee_revenue (taker fee in
+    // base, maker fee in quote), instead of vanishing implicitly.
+    expect(await casa(PROPOSITOS.FEE_REVENUE, btc.id)).toBe('0.00100000');  // taker 0.1% of 1
+    expect(await casa(PROPOSITOS.FEE_REVENUE, usdt.id)).toBe('0.10000000'); // maker 0.1% of 100
+
+    // The book closes: internal (projection==SUM) and external (net-zero per crypto).
+    expect((await recon.reconciliarInterno()).ok).toBe(true);
+    expect((await recon.reconciliarExterno()).ok).toBe(true);
   });
 
   test('partial fill: buy 0.4 against resting sell 1; sell partially_filled 0.6', async () => {
@@ -140,8 +155,8 @@ describe('spot matching — service level (awaited)', () => {
 
     const seller = await f.seedUser();
     const buyer = await f.seedUser();
-    await f.seedBalance(seller, btc, '1');
-    await f.seedBalance(buyer, usdt, '200');
+    await f.seedSpotBalance(seller, btc, '1');    // Spot for trading
+    await f.seedSpotBalance(buyer, usdt, '200');  // Spot for trading
 
     const sellId = await restingOrder(seller, { pair, side: 'sell', quantity: 1, price: 100 });
     const buyRes = await placeOrder(buyer, { pair, side: 'buy', quantity: 0.4, price: 100 });
@@ -157,10 +172,10 @@ describe('spot matching — service level (awaited)', () => {
     expect(buyOrder.status).toBe('filled');
 
     // Seller: base blocked -> 0.6, quote available += 40 - maker fee 0.04 = 39.96
-    expect((await f.getBalance(seller, btc)).balanceBloqueado).toBe('0.60000000');
-    expect((await f.getBalance(seller, usdt)).balanceDisponible).toBe('39.96000000');
+    expect((await f.getSpotBalance(seller, btc)).bloqueado).toBe('0.60000000');
+    expect((await f.getSpotBalance(seller, usdt)).disponible).toBe('39.96000000');
     // Buyer: base available += 0.4 - taker 0.0004 = 0.3996
-    expect((await f.getBalance(buyer, btc)).balanceDisponible).toBe('0.39960000');
+    expect((await f.getSpotBalance(buyer, btc)).disponible).toBe('0.39960000');
   });
 
   test('self-trade prevention: same user both sides does not match', async () => {
@@ -169,8 +184,8 @@ describe('spot matching — service level (awaited)', () => {
     const pair = await f.seedTradingPair({ base: btc, quote: usdt });
 
     const user = await f.seedUser();
-    await f.seedBalance(user, btc, '1');
-    await f.seedBalance(user, usdt, '200');
+    await f.seedSpotBalance(user, btc, '1');     // Spot for trading
+    await f.seedSpotBalance(user, usdt, '200');  // Spot for trading
 
     await restingOrder(user, { pair, side: 'sell', quantity: 1, price: 100 });
     const buyRes = await placeOrder(user, { pair, side: 'buy', quantity: 1, price: 100 });
@@ -186,10 +201,10 @@ describe('DELETE /api/trading/orders/:orderId — cancel releases locked balance
   test('cancelling a resting buy returns the locked quote to available', async () => {
     const { usdt, pair } = await seedPair();
     const user = await f.seedUser();
-    await f.seedBalance(user, usdt, '200');
+    await f.seedSpotBalance(user, usdt, '200'); // Spot for trading
 
     const orderId = await restingOrder(user, { pair, side: 'buy', quantity: 1, price: 100 });
-    expect((await f.getBalance(user, usdt)).balanceBloqueado).toBe('100.00000000');
+    expect((await f.getSpotBalance(user, usdt)).bloqueado).toBe('100.00000000');
 
     const res = await request(app)
       .delete(`/api/trading/orders/${orderId}`)
@@ -198,17 +213,17 @@ describe('DELETE /api/trading/orders/:orderId — cancel releases locked balance
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
 
-    const bal = await f.getBalance(user, usdt);
-    expect(bal.balanceDisponible).toBe('200.00000000'); // fully returned
-    expect(bal.balanceBloqueado).toBe('0.00000000');
+    const bal = await f.getSpotBalance(user, usdt);
+    expect(bal.disponible).toBe('200.00000000'); // fully returned
+    expect(bal.bloqueado).toBe('0.00000000');
     expect((await Order.findByPk(orderId)).status).toBe('cancelled');
   });
 
-  test('a different user cannot cancel someone else’s order', async () => {
+  test('a different user cannot cancel someone else\'s order', async () => {
     const { usdt, pair } = await seedPair();
     const owner = await f.seedUser();
     const stranger = await f.seedUser();
-    await f.seedBalance(owner, usdt, '200');
+    await f.seedSpotBalance(owner, usdt, '200'); // Spot for trading
 
     const orderId = await restingOrder(owner, { pair, side: 'buy', quantity: 1, price: 100 });
 
@@ -218,15 +233,15 @@ describe('DELETE /api/trading/orders/:orderId — cancel releases locked balance
 
     expect(res.status).toBe(400);
     expect((await Order.findByPk(orderId)).status).not.toBe('cancelled');
-    expect((await f.getBalance(owner, usdt)).balanceBloqueado).toBe('100.00000000'); // still locked
+    expect((await f.getSpotBalance(owner, usdt)).bloqueado).toBe('100.00000000'); // still locked
   });
 
   test('a filled order cannot be cancelled', async () => {
     const { btc, usdt, pair } = await seedPair();
     const seller = await f.seedUser();
     const buyer = await f.seedUser();
-    await f.seedBalance(seller, btc, '1');
-    await f.seedBalance(buyer, usdt, '200');
+    await f.seedSpotBalance(seller, btc, '1');    // Spot for trading
+    await f.seedSpotBalance(buyer, usdt, '200');  // Spot for trading
 
     await restingOrder(seller, { pair, side: 'sell', quantity: 1, price: 100 });
     const buyRes = await placeOrder(buyer, { pair, side: 'buy', quantity: 1, price: 100 });

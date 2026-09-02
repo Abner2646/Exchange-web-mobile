@@ -7,6 +7,17 @@ class UserService {
   // rolls back the user too, instead of leaving an orphaned, half-provisioned
   // account. The passport callback passes nothing → autocommit (unchanged).
   async findOrCreateGoogleUser(profile, transaction = null) {
+    // Security gate: Google must have verified this email. Without it, a validly
+    // handed profile for an unverified/alias email could link to (and take over)
+    // a pre-existing password account via the link-by-email branch below. This is
+    // the single choke point BOTH the REST endpoint (loginWithGoogle) and the
+    // passport callback funnel through, so the check lives here once — closing the
+    // passport path too. Legit Gmail logins always carry email_verified:true
+    // (passport-google-oauth20 exposes it as emails[0].verified).
+    if (!profile.emails?.[0]?.verified) {
+      throw new Error('El email de la cuenta de Google no está verificado');
+    }
+
     // Buscar por googleId
     let existingUser = await Usuario.findOne({
       where: { googleId: profile.id },

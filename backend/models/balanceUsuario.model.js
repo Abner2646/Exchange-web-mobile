@@ -1,247 +1,371 @@
 // models/balanceUsuario.js
 require('dotenv').config();
 
-const initBalanceUser = require('./entities/balanceUsuario.entity');
 const { Op } = require('sequelize');
 const money = require('../utils/money');
+const crypto = require('crypto');
+
+// Mapa compartimento→propósitos por estado. Fuente única para leer saldos por
+// compartimento desde la proyección del ledger. Spot no tiene 'pendiente'.
+// Valores deben coincidir con PROPOSITOS en services/ledger/ledgerAccounts.js —
+// el unit test balanceCompartimento.test.js los ancla contra ese módulo.
+// Require de ledgerAccounts es lazy (abajo en leerCompartimento) por el ciclo
+// models/index.js → ledgerAccounts → models/index.js; acá usamos los strings
+// directos para que el mapa exista sin ejecutar ningún require al cargar.
+const PROPOSITOS_POR_COMPARTIMENTO = {
+  funding: { disponible: 'funding:disponible', bloqueado: 'funding:bloqueado', pendiente: 'funding:pendiente' },
+  spot: { disponible: 'spot:disponible', bloqueado: 'spot:bloqueado', pendiente: null },
+};
+
+// Lee disponible/bloqueado/pendiente de un compartimento desde la proyección del
+// ledger. Require lazy de postingService por el ciclo models↔services/ledger.
+async function leerCompartimento(userId, criptomonedaId, compartimento, transaction = null) {
+  const { getSaldoCuenta } = require('../services/ledger/postingService');
+  const props = PROPOSITOS_POR_COMPARTIMENTO[compartimento];
+  if (!props) throw new Error(`Compartimento inválido: ${compartimento}`);
+  const disponible = await getSaldoCuenta({ ownerId: userId, proposito: props.disponible, criptomonedaId }, transaction);
+  const bloqueado = await getSaldoCuenta({ ownerId: userId, proposito: props.bloqueado, criptomonedaId }, transaction);
+  const pendiente = props.pendiente
+    ? await getSaldoCuenta({ ownerId: userId, proposito: props.pendiente, criptomonedaId }, transaction)
+    : '0';
+  return { disponible, bloqueado, pendiente };
+}
+
+// Plan 3 (read-flip): las lecturas de saldo salen de la PROYECCION del ledger
+// (compartimento Funding), no de balances_users. Requires lazy para evitar el
+// ciclo models<->services/ledger (este modulo lo carga models/index.js). El
+// mirror (Plan 2) mantiene paridad, asi que hoy los valores coinciden; el flip
+// prepara el terreno para dejar de escribir balances_users por-camino.
+async function leerFundingDesdeLedger(userId, criptomonedaId, transaction = null) {
+  const { getSaldoCuenta } = require('../services/ledger/postingService');
+  const { PROPOSITOS } = require('../services/ledger/ledgerAccounts');
+  const balanceDisponible = await getSaldoCuenta(
+    { ownerId: userId, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId }, transaction
+  );
+  const balanceBloqueado = await getSaldoCuenta(
+    { ownerId: userId, proposito: PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId }, transaction
+  );
+  // Paso D: estado PENDIENTE (depósitos detectados sin confirmar).
+  const balancePendiente = await getSaldoCuenta(
+    { ownerId: userId, proposito: PROPOSITOS.FUNDING_PENDIENTE, criptomonedaId }, transaction
+  );
+  return { balanceDisponible, balanceBloqueado, balancePendiente };
+}
+
+// Read-flip (write-flip Paso A/B): agrega la proyeccion Funding del ledger para
+// las lecturas de admin. Devuelve, por (usuario, cripto) con cuenta funding, el
+// disponible y bloqueado desde SaldoLedger. Require lazy por el ciclo
+// models<->services/ledger.
+async function agregarFundingLedger({ userId = null, criptomonedaId = null } = {}) {
+  const { CuentaLedger, SaldoLedger } = require('./index');
+  const { PROPOSITOS, HOUSE_OWNER_ID } = require('../services/ledger/ledgerAccounts');
+  const where = { proposito: [PROPOSITOS.FUNDING_DISPONIBLE, PROPOSITOS.FUNDING_BLOQUEADO, PROPOSITOS.FUNDING_PENDIENTE] };
+  if (userId) where.ownerId = userId;
+  else where.ownerId = { [Op.ne]: HOUSE_OWNER_ID }; // solo cuentas de usuario
+  if (criptomonedaId) where.criptomonedaId = criptomonedaId;
+
+  const cuentas = await CuentaLedger.findAll({
+    where,
+    include: [{ model: SaldoLedger, as: 'saldoProyectado', attributes: ['saldo'] }],
+  });
+
+  // Colapsar disponible/bloqueado/pendiente por (ownerId, criptomonedaId).
+  const porClave = new Map();
+  for (const c of cuentas) {
+    const clave = `${c.ownerId}:${c.criptomonedaId}`;
+    if (!porClave.has(clave)) {
+      porClave.set(clave, { userId: c.ownerId, criptomonedaId: c.criptomonedaId, balanceDisponible: '0', balanceBloqueado: '0', balancePendiente: '0' });
+    }
+    const entrada = porClave.get(clave);
+    const saldo = c.saldoProyectado ? String(c.saldoProyectado.saldo) : '0';
+    if (c.proposito === PROPOSITOS.FUNDING_DISPONIBLE) entrada.balanceDisponible = saldo;
+    else if (c.proposito === PROPOSITOS.FUNDING_BLOQUEADO) entrada.balanceBloqueado = saldo;
+    else entrada.balancePendiente = saldo;
+  }
+  return [...porClave.values()];
+}
 
 function createBalanceUserModel(sequelize) {
-  const BalanceUsuario = initBalanceUser(sequelize);
+  // Paso C: BalanceUsuario ya NO es un modelo Sequelize — la tabla balances_users
+  // se eliminó. Es una FACHADA de operaciones de saldo respaldada por el ledger de
+  // partida doble (los métodos postean/leen del ledger). Se conserva el nombre y
+  // la API estática para no tocar los ~40 call sites (swap/trading/P2P/depósitos/
+  // retiros); el rename a un servicio de saldos queda para Fase 6.2. `sequelize`
+  // se usa sólo para sequelize.models.Criptomoneda en reclamarBtcGratis.
+  const BalanceUsuario = {};
 
-  // Métodos de consulta básicos
-  BalanceUsuario.getById = async (id) => {
-    try {
-      const balance = await BalanceUsuario.findByPk(id);
-      return balance;
-    } catch (error) {
-      throw new Error(`Error al obtener balance por ID: ${error.message}`);
-    }
-  };
+  // getById se retiro en el write-flip (Paso B): leia balances_users por PK de
+  // fila, que no tiene analogo en el ledger (las cuentas son (dueño, proposito,
+  // cripto), no una fila por (usuario, cripto)). Era admin-only y sin tests.
 
+  // Plan 3 (read-flip): agrega desde la proyeccion del ledger las cuentas
+  // Funding del usuario (una entrada por cripto que tenga cuenta funding). Nota:
+  // a diferencia del viejo (que devolvia TODA fila de balances_users, incluidas
+  // las de saldo 0 que crea el provisioning), aca solo aparecen las criptos con
+  // movimiento en el ledger — el mirror saltea deltas en cero. Es un cambio de
+  // display aceptable (no listar saldos en 0). Devuelve objetos planos (sin la
+  // asociacion .criptomoneda, igual que el viejo findAll sin include).
   BalanceUsuario.getByUserId = async (userId) => {
     try {
-      const balances = await BalanceUsuario.findAll({
-        where: { userId }
+      const { CuentaLedger } = require('./index');
+      const { PROPOSITOS } = require('../services/ledger/ledgerAccounts');
+      const cuentas = await CuentaLedger.findAll({
+        where: { ownerId: userId, proposito: [PROPOSITOS.FUNDING_DISPONIBLE, PROPOSITOS.FUNDING_BLOQUEADO, PROPOSITOS.FUNDING_PENDIENTE] },
+        attributes: ['criptomonedaId'],
+        group: ['criptomonedaId'],
       });
+      const balances = [];
+      for (const c of cuentas) {
+        const { balanceDisponible, balanceBloqueado, balancePendiente } = await leerFundingDesdeLedger(userId, c.criptomonedaId);
+        balances.push({ userId, criptomonedaId: c.criptomonedaId, balanceDisponible, balanceBloqueado, balancePendiente });
+      }
       return balances;
     } catch (error) {
       throw new Error(`Error al obtener balances por usuario: ${error.message}`);
     }
   };
 
-  BalanceUsuario.getByUserAndCrypto = async (userId, criptomonedaId) => {
-    try {
-      const balance = await BalanceUsuario.findOne({
-        where: { 
-          userId,
-          criptomonedaId 
-        }
-      });
-      return balance;
-    } catch (error) {
-      throw new Error(`Error al obtener balance específico: ${error.message}`);
-    }
-  };
+  // getByUserAndCrypto se define mas abajo (una sola vez, leyendo del ledger).
 
+  // Read-flip (Paso B): lista desde la proyeccion Funding del ledger.
   BalanceUsuario.getAll = async (filters = {}) => {
     try {
-      const where = {};
-      
-      if (filters.userId) where.userId = filters.userId;
-      if (filters.criptomonedaId) where.criptomonedaId = filters.criptomonedaId;
+      let filas = await agregarFundingLedger({ userId: filters.userId, criptomonedaId: filters.criptomonedaId });
       if (filters.minBalance) {
-        where.balanceDisponible = { [Op.gte]: filters.minBalance };
+        filas = filas.filter((f) => money.compare(f.balanceDisponible, String(filters.minBalance)) >= 0);
       }
-
-      const balances = await BalanceUsuario.findAll({
-        where,
-        limit: filters.limit || 50,
-        offset: filters.offset || 0
-      });
-
-      return balances;
+      const offset = filters.offset || 0;
+      const limit = filters.limit || 50;
+      return filas.slice(offset, offset + limit);
     } catch (error) {
       throw new Error(`Error al obtener todos los balances: ${error.message}`);
     }
   };
 
   // Métodos de balance
-  BalanceUsuario.getTotalBalance = async (userId, criptomonedaId) => {
+  BalanceUsuario.getTotalBalance = async (userId, criptomonedaId, transaction = null) => {
     try {
-      const balance = await BalanceUsuario.findOne({
-        where: { userId, criptomonedaId }
-      });
-      
-      if (!balance) return { disponible: '0', bloqueado: '0', total: '0' };
-
-      const disponible = String(balance.balanceDisponible);
-      const bloqueado = String(balance.balanceBloqueado);
-
+      const { balanceDisponible, balanceBloqueado, balancePendiente } = await leerFundingDesdeLedger(userId, criptomonedaId, transaction);
       return {
-        disponible,
-        bloqueado,
-        total: money.add(disponible, bloqueado)
+        disponible: balanceDisponible,
+        bloqueado: balanceBloqueado,
+        pendiente: balancePendiente, // Paso D: depósitos detectados sin confirmar
+        // total = spendable + reserved; NO incluye pendiente (aún no confirmado).
+        total: money.add(balanceDisponible, balanceBloqueado)
       };
     } catch (error) {
       throw new Error(`Error al calcular balance total: ${error.message}`);
     }
   };
 
+  // Ajuste de saldo de una sola pata contra la cuenta 'suspense'. Tras el Paso D
+  // NINGÚN money-path real usa este método — todos postean asientos ricos
+  // (swap/trade/depósito/retiro/transferencia/P2P). El único caller vivo es el
+  // endpoint admin de ajuste manual de saldo (PUT /balances/user/:id/crypto/:id):
+  // 'suspense' es acá su rol contable LEGÍTIMO y permanente (cuenta de ajustes/no
+  // clasificados), no el placeholder transitorio de la migración. El guard de
+  // sobregiro vive en postTransaction (FOR UPDATE); su error /sobregiro/ se
+  // traduce al mensaje legacy /insuficiente/ del contrato.
   BalanceUsuario.updateBalance = async (userId, criptomonedaId, amount, type = 'disponible', transaction = null) => {
+    const { postTransaction } = require('../services/ledger/postingService');
+    const { PROPOSITOS } = require('../services/ledger/ledgerAccounts');
+    const proposito = type === 'disponible' ? PROPOSITOS.FUNDING_DISPONIBLE : PROPOSITOS.FUNDING_BLOQUEADO;
+    const monto = String(amount);
     try {
-      const [balance] = await BalanceUsuario.findOrCreate({
-        where: { userId, criptomonedaId },
-        defaults: {
-          userId,
-          criptomonedaId,
-          balanceDisponible: 0,
-          balanceBloqueado: 0
-        },
-        transaction
-      });
-
-      const field = type === 'disponible' ? 'balanceDisponible' : 'balanceBloqueado';
-      const currentBalance = String(balance[field] ?? 0);
-      const newBalance = money.add(currentBalance, String(amount));
-
-      if (money.compare(newBalance, '0') < 0) {
-        throw new Error(
-          `Balance insuficiente. ${type === 'disponible' ? 'Disponible' : 'Bloqueado'}: ${currentBalance}, ` +
-          `Operación: ${amount}, Resultado: ${newBalance}`
-        );
-      }
-
-      balance[field] = newBalance;
-      await balance.save({ transaction });
-
-      return balance;
+      await postTransaction({
+        tipo: 'ajuste_legacy',
+        referencia: `writeflip:${crypto.randomUUID()}`,
+        lineas: [
+          { ownerId: userId, proposito, criptomonedaId, monto },
+          { ownerId: null, proposito: PROPOSITOS.SUSPENSE, criptomonedaId, monto: money.subtract('0', monto) },
+        ],
+      }, transaction);
     } catch (error) {
+      if (/sobregiro/i.test(error.message)) {
+        throw new Error(`Error al actualizar balance: Balance insuficiente. ${type}`);
+      }
       throw new Error(`Error al actualizar balance: ${error.message}`);
     }
+    const { balanceDisponible, balanceBloqueado } = await leerFundingDesdeLedger(userId, criptomonedaId, transaction);
+    return { userId, criptomonedaId, balanceDisponible, balanceBloqueado };
   };
 
-  // 🆕 MÉTODO PARA OBTENER BALANCE EN TRANSACCIÓN
+  // Plan 3 (read-flip): lee de la PROYECCION del ledger (compartimento Funding).
+  // Contrato: devuelve un objeto {userId, criptomonedaId, balanceDisponible,
+  // balanceBloqueado} con '0' si la cuenta no existe — en un ledger "sin balance"
+  // == "0". Es equivalente al viejo null-si-no-hay-fila para los callers que
+  // chequean saldo: compare('0', monto>0) < 0 → insuficiente, igual que !balance.
+  // options.transaction se respeta (P2P/transferencia lo pasan).
   BalanceUsuario.getByUserAndCrypto = async (userId, criptomonedaId, options = {}) => {
     try {
-      const balance = await BalanceUsuario.findOne({
-        where: { userId, criptomonedaId },
-        ...options
-      });
-      return balance;
+      const { balanceDisponible, balanceBloqueado, balancePendiente } = await leerFundingDesdeLedger(userId, criptomonedaId, options.transaction);
+      return { userId, criptomonedaId, balanceDisponible, balanceBloqueado, balancePendiente };
     } catch (error) {
       throw new Error(`Error al obtener balance: ${error.message}`);
     }
   };
 
-  // Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #5): antes esto era
-  // findOne() + save() sin transacción ni lock — dos requests casi
-  // simultáneas podían leer el mismo balance, las dos pasar la validación,
-  // y las dos escribir (TOCTOU clásico, permitía bloquear más de lo
-  // disponible). Ahora el read+check+write pasa por un único SELECT ... FOR
-  // UPDATE: la segunda llamada concurrente espera a que la primera
-  // transacción termine y recién ahí lee el balance ya actualizado, en vez
-  // de correr en paralelo sobre el mismo dato viejo.
-  //
-  // `transaction` es opcional: si el caller ya tiene una abierta se suma a
-  // ella (mismo patrón que WalletMaestra.updateBalance); si no, abre y
-  // gestiona la suya.
-  BalanceUsuario.blockBalance = async (userId, criptomonedaId, amount, transaction = null) => {
-    const ownTransaction = !transaction;
-    const t = transaction || await sequelize.transaction();
-
+  // Lectura por compartimento (Spot activación): devuelve el saldo del
+  // compartimento pedido. Usada por el servicio de trading (spot) y el endpoint
+  // de transferencia entre compartimentos.
+  BalanceUsuario.getSaldoCompartimento = async (userId, criptomonedaId, compartimento, options = {}) => {
     try {
-      const balance = await BalanceUsuario.findOne({
-        where: { userId, criptomonedaId },
-        transaction: t,
-        lock: t.LOCK.UPDATE
-      });
-
-      if (!balance) {
-        throw new Error('Balance no encontrado');
-      }
-
-      const availableBalance = String(balance.balanceDisponible);
-      const amountToBlock = String(amount);
-
-      if (money.compare(availableBalance, amountToBlock) < 0) {
-        throw new Error('Balance disponible insuficiente para bloquear');
-      }
-
-      balance.balanceDisponible = money.subtract(availableBalance, amountToBlock);
-      balance.balanceBloqueado = money.add(String(balance.balanceBloqueado), amountToBlock);
-
-      await balance.save({ transaction: t });
-
-      if (ownTransaction) await t.commit();
-      return balance;
+      const { disponible, bloqueado, pendiente } = await leerCompartimento(userId, criptomonedaId, compartimento, options.transaction);
+      return { userId, criptomonedaId, compartimento, disponible, bloqueado, pendiente };
     } catch (error) {
-      if (ownTransaction) await t.rollback();
+      throw new Error(`Error al obtener saldo de compartimento: ${error.message}`);
+    }
+  };
+
+  // Chequeo rápido de suficiencia en un compartimento (early-error; el guard real
+  // sigue siendo el FOR UPDATE de postTransaction).
+  BalanceUsuario.hasAvailableEnCompartimento = async (userId, criptomonedaId, amount, compartimento, transaction = null) => {
+    try {
+      const { disponible } = await leerCompartimento(userId, criptomonedaId, compartimento, transaction);
+      return money.compare(disponible, String(amount)) >= 0;
+    } catch (error) {
+      throw new Error(`Error al verificar saldo de compartimento: ${error.message}`);
+    }
+  };
+
+  // Respuesta aditiva (decisión 1B): por cada cripto con cuenta en Funding o
+  // Spot, devuelve los totales de raíz (suma de ambos compartimentos, compatible
+  // con el frontend actual) + el desglose por compartimento.
+  // Spot no tiene 'pendiente'. Require lazy de PROPOSITOS y CuentaLedger para
+  // evitar el ciclo models/index.js → ledgerAccounts → models/index.js.
+  BalanceUsuario.getBalancesConCompartimentos = async (userId) => {
+    try {
+      const { CuentaLedger } = require('./index');
+      const { PROPOSITOS } = require('../services/ledger/ledgerAccounts');
+      // money.add usa toFixed() sin argumentos — strip trailing zeros cuando la
+      // suma es entera. Usamos Decimal.toFixed(8) para mantener la precisión de
+      // 8 decimales que el frontend espera (igual que getSaldoCuenta).
+      const Decimal = require('decimal.js');
+      const fmt8 = (x) => new Decimal(x).toFixed(8);
+      const sumar8 = (a, b) => new Decimal(a).plus(b).toFixed(8);
+      const todos = [
+        PROPOSITOS.FUNDING_DISPONIBLE, PROPOSITOS.FUNDING_BLOQUEADO, PROPOSITOS.FUNDING_PENDIENTE,
+        PROPOSITOS.SPOT_DISPONIBLE, PROPOSITOS.SPOT_BLOQUEADO,
+      ];
+      const cuentas = await CuentaLedger.findAll({
+        where: { ownerId: userId, proposito: todos },
+        attributes: ['criptomonedaId'],
+        group: ['criptomonedaId'],
+      });
+      const salida = [];
+      for (const c of cuentas) {
+        const funding = await leerCompartimento(userId, c.criptomonedaId, 'funding');
+        const spot = await leerCompartimento(userId, c.criptomonedaId, 'spot');
+        salida.push({
+          userId,
+          criptomonedaId: c.criptomonedaId,
+          balanceDisponible: sumar8(funding.disponible, spot.disponible),
+          balanceBloqueado: sumar8(funding.bloqueado, spot.bloqueado),
+          balancePendiente: fmt8(funding.pendiente), // sólo Funding tiene pendiente
+          compartimentos: {
+            funding: { disponible: fmt8(funding.disponible), bloqueado: fmt8(funding.bloqueado), pendiente: fmt8(funding.pendiente) },
+            spot: { disponible: fmt8(spot.disponible), bloqueado: fmt8(spot.bloqueado) },
+          },
+        });
+      }
+      return salida;
+    } catch (error) {
+      throw new Error(`Error al obtener balances con compartimentos: ${error.message}`);
+    }
+  };
+
+  // Lista las criptos con cuenta en el compartimento pedido (una entrada por
+  // cripto). Espejo de getByUserId pero scopeado a un compartimento.
+  BalanceUsuario.getByUserIdCompartimento = async (userId, compartimento) => {
+    try {
+      const { CuentaLedger } = require('./index');
+      const props = PROPOSITOS_POR_COMPARTIMENTO[compartimento];
+      if (!props) throw new Error(`Compartimento inválido: ${compartimento}`);
+      const propositos = [props.disponible, props.bloqueado, ...(props.pendiente ? [props.pendiente] : [])];
+      const cuentas = await CuentaLedger.findAll({
+        where: { ownerId: userId, proposito: propositos },
+        attributes: ['criptomonedaId'],
+        group: ['criptomonedaId'],
+      });
+      const salida = [];
+      for (const c of cuentas) {
+        const { disponible, bloqueado, pendiente } = await leerCompartimento(userId, c.criptomonedaId, compartimento);
+        salida.push({ criptomonedaId: c.criptomonedaId, disponible, bloqueado, pendiente });
+      }
+      return salida;
+    } catch (error) {
+      throw new Error(`Error al obtener balances de compartimento: ${error.message}`);
+    }
+  };
+
+  // Write-flip (Paso B): bloquear = dos patas de usuario (disponible -A,
+  // bloqueado +A). Suma cero sin suspense. El anti-sobregiro (Críticos #5) sigue
+  // vivo pero ahora es el FOR UPDATE de postTransaction sobre la fila de
+  // proyeccion (probado en ledgerPosting concurrency); ya no hay findOne+save
+  // sobre balances_users. `transaction` opcional: se pasa a postTransaction.
+  BalanceUsuario.blockBalance = async (userId, criptomonedaId, amount, transaction = null) => {
+    const { postTransaction } = require('../services/ledger/postingService');
+    const { PROPOSITOS } = require('../services/ledger/ledgerAccounts');
+    const monto = String(amount);
+    try {
+      await postTransaction({
+        tipo: 'reserva_orden',
+        referencia: `block:${crypto.randomUUID()}`,
+        lineas: [
+          { ownerId: userId, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId, monto: money.subtract('0', monto) },
+          { ownerId: userId, proposito: PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId, monto },
+        ],
+      }, transaction);
+    } catch (error) {
+      if (/sobregiro/i.test(error.message)) {
+        throw new Error('Error al bloquear balance: Balance disponible insuficiente para bloquear');
+      }
       throw new Error(`Error al bloquear balance: ${error.message}`);
     }
+    const { balanceDisponible, balanceBloqueado } = await leerFundingDesdeLedger(userId, criptomonedaId, transaction);
+    return { userId, criptomonedaId, balanceDisponible, balanceBloqueado };
   };
 
   BalanceUsuario.unblockBalance = async (userId, criptomonedaId, amount, transaction = null) => {
-    const ownTransaction = !transaction;
-    const t = transaction || await sequelize.transaction();
-
+    const { postTransaction } = require('../services/ledger/postingService');
+    const { PROPOSITOS } = require('../services/ledger/ledgerAccounts');
+    const monto = String(amount);
     try {
-      const balance = await BalanceUsuario.findOne({
-        where: { userId, criptomonedaId },
-        transaction: t,
-        lock: t.LOCK.UPDATE
-      });
-
-      if (!balance) {
-        throw new Error('Balance no encontrado');
-      }
-
-      const blockedBalance = String(balance.balanceBloqueado);
-      const amountToUnblock = String(amount);
-
-      if (money.compare(blockedBalance, amountToUnblock) < 0) {
-        throw new Error('Balance bloqueado insuficiente para desbloquear');
-      }
-
-      balance.balanceBloqueado = money.subtract(blockedBalance, amountToUnblock);
-      balance.balanceDisponible = money.add(String(balance.balanceDisponible), amountToUnblock);
-
-      await balance.save({ transaction: t });
-
-      if (ownTransaction) await t.commit();
-      return balance;
+      await postTransaction({
+        tipo: 'liberacion_reserva',
+        referencia: `unblock:${crypto.randomUUID()}`,
+        lineas: [
+          { ownerId: userId, proposito: PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId, monto: money.subtract('0', monto) },
+          { ownerId: userId, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId, monto },
+        ],
+      }, transaction);
     } catch (error) {
-      if (ownTransaction) await t.rollback();
+      if (/sobregiro/i.test(error.message)) {
+        throw new Error('Error al desbloquear balance: Balance bloqueado insuficiente para desbloquear');
+      }
       throw new Error(`Error al desbloquear balance: ${error.message}`);
     }
+    const { balanceDisponible, balanceBloqueado } = await leerFundingDesdeLedger(userId, criptomonedaId, transaction);
+    return { userId, criptomonedaId, balanceDisponible, balanceBloqueado };
   };
 
   // Métodos de validación
-  BalanceUsuario.hasAvailableBalance = async (userId, criptomonedaId, amount) => {
+  BalanceUsuario.hasAvailableBalance = async (userId, criptomonedaId, amount, transaction = null) => {
     try {
-      const balance = await BalanceUsuario.findOne({
-        where: { userId, criptomonedaId }
-      });
-
-      if (!balance) return false;
-
-      return money.compare(String(balance.balanceDisponible), String(amount)) >= 0;
+      const { balanceDisponible } = await leerFundingDesdeLedger(userId, criptomonedaId, transaction);
+      return money.compare(balanceDisponible, String(amount)) >= 0;
     } catch (error) {
       throw new Error(`Error al verificar balance disponible: ${error.message}`);
     }
   };
 
-  // Métodos administrativos
+  // Métodos administrativos (read-flip Paso B: agregan la proyeccion del ledger)
   BalanceUsuario.getUsersWithBalance = async (criptomonedaId, minAmount = 0) => {
     try {
-      const balances = await BalanceUsuario.findAll({
-        where: {
-          criptomonedaId,
-          balanceDisponible: { [Op.gt]: minAmount }
-        },
-        attributes: ['userId', 'balanceDisponible', 'balanceBloqueado']
-      });
-
-      return balances;
+      const filas = await agregarFundingLedger({ criptomonedaId });
+      return filas
+        .filter((f) => money.compare(f.balanceDisponible, String(minAmount)) > 0)
+        .map((f) => ({ userId: f.userId, balanceDisponible: f.balanceDisponible, balanceBloqueado: f.balanceBloqueado }));
     } catch (error) {
       throw new Error(`Error al obtener usuarios con balance: ${error.message}`);
     }
@@ -249,17 +373,18 @@ function createBalanceUserModel(sequelize) {
 
   BalanceUsuario.getBalanceStats = async () => {
     try {
-      const stats = await BalanceUsuario.findAll({
-        attributes: [
-          'criptomonedaId',
-          [sequelize.fn('COUNT', sequelize.col('id')), 'totalUsers'],
-          [sequelize.fn('SUM', sequelize.col('balance_disponible')), 'totalDisponible'],
-          [sequelize.fn('SUM', sequelize.col('balance_bloqueado')), 'totalBloqueado']
-        ],
-        group: ['criptomonedaId']
-      });
-
-      return stats;
+      const filas = await agregarFundingLedger();
+      const porCripto = new Map();
+      for (const f of filas) {
+        if (!porCripto.has(f.criptomonedaId)) {
+          porCripto.set(f.criptomonedaId, { criptomonedaId: f.criptomonedaId, totalUsers: 0, totalDisponible: '0', totalBloqueado: '0' });
+        }
+        const s = porCripto.get(f.criptomonedaId);
+        s.totalUsers += 1;
+        s.totalDisponible = money.add(s.totalDisponible, f.balanceDisponible);
+        s.totalBloqueado = money.add(s.totalBloqueado, f.balanceBloqueado);
+      }
+      return [...porCripto.values()];
     } catch (error) {
       throw new Error(`Error al obtener estadísticas de balance: ${error.message}`);
     }
@@ -268,13 +393,10 @@ function createBalanceUserModel(sequelize) {
   // Método para reclamar BTC (SOLO TESTNET - ELIMINAR EN PRODUCCIÓN)
   BalanceUsuario.reclamarBtcGratis = async (userId, transaction = null) => {
     try {
-      // 1. Verificar que el usuario NO tenga ningún balance existente
-      const balancesExistentes = await BalanceUsuario.findAll({
-        where: { userId }
-      });
-
-      // Si tiene algún balance con saldo > 0, no puede reclamar
-      const tieneSaldo = balancesExistentes.some(balance => {
+      // 1. Verificar que el usuario NO tenga ningún balance existente.
+      // Read-flip (Paso B): el "ya tiene saldo" sale de la proyeccion del ledger.
+      const balancesLedger = await BalanceUsuario.getByUserId(userId);
+      const tieneSaldo = balancesLedger.some(balance => {
         const total = money.add(String(balance.balanceDisponible), String(balance.balanceBloqueado));
         return money.compare(total, '0') > 0;
       });
@@ -295,14 +417,16 @@ function createBalanceUserModel(sequelize) {
         throw new Error('BTC no está disponible en el sistema');
       }
 
-      // 3. Agregar 1 BTC al usuario
-      const nuevoBalance = await BalanceUsuario.updateBalance(
-        userId, 
-        btc.id, 
-        1, 
-        'disponible',
-        transaction
-      );
+      // 3. Agregar 1 BTC al usuario — Paso D: el faucet entra desde el mundo
+      // on-chain (testnet) via external_onchain → funding:disponible, sin suspense.
+      const { acreditarFaucet } = require('../services/ledger/operations');
+      await acreditarFaucet({
+        userId,
+        criptomonedaId: btc.id,
+        cantidad: '1',
+        referencia: `faucet:${userId}:${btc.id}`,
+      }, transaction);
+      const nuevoBalance = await BalanceUsuario.getByUserAndCrypto(userId, btc.id, { transaction });
 
       return {
         success: true,
@@ -319,3 +443,4 @@ function createBalanceUserModel(sequelize) {
 }
 
 module.exports = createBalanceUserModel;
+module.exports.PROPOSITOS_POR_COMPARTIMENTO = PROPOSITOS_POR_COMPARTIMENTO;

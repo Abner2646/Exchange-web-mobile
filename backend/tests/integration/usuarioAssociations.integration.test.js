@@ -13,24 +13,16 @@
 require('../helpers/testEnv');
 const { sequelize, resetDb } = require('../helpers/db');
 const {
-  Usuario, BalanceUsuario, Criptomoneda, DireccionDeposito,
+  Usuario, Criptomoneda, DireccionDeposito,
   TransaccionBlockchain, WalletMaestra,
 } = require('../../models');
 
 beforeEach(async () => { await resetDb(); });
 afterAll(async () => { await sequelize.close(); });
 
-describe('Usuario associations -> balances / direccionesDeposito / transaccionesBlockchain', () => {
-  test("Usuario.include('balances') returns the real balance, not an empty array", async () => {
-    const user = await Usuario.create({ email: 'balances@test.com', username: 'balances_user', passwordHash: 'x', rol: 'normal' });
-    const cripto = await Criptomoneda.create({ symbol: 'BTC', nombre: 'Bitcoin', red: 'bitcoin', decimales: 8 });
-    await BalanceUsuario.create({ userId: user.id, criptomonedaId: cripto.id, balanceDisponible: 5, balanceBloqueado: 0 });
-
-    const withBalances = await Usuario.findByPk(user.id, { include: [{ association: 'balances' }] });
-
-    expect(withBalances.balances).toHaveLength(1);
-    expect(withBalances.balances[0].balanceDisponible).toBe('5.00000000');
-  });
+describe('Usuario associations -> direccionesDeposito / transaccionesBlockchain', () => {
+  // (Paso C: el test de Usuario.include('balances') se retiró — BalanceUsuario ya
+  // no es un modelo Sequelize; los saldos viven en el ledger, no en una asociación.)
 
   test("Usuario.include('direccionesDeposito') returns the real address", async () => {
     const user = await Usuario.create({ email: 'direcciones@test.com', username: 'direcciones_user', passwordHash: 'x', rol: 'normal' });

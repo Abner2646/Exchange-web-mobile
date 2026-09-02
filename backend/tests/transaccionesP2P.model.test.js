@@ -32,7 +32,7 @@ describe('TransaccionP2P.createTransaction — montoFiat y bloqueo exactos', () 
       criptomoneda: { symbol: 'BTC' }, monedaFiat: 'USD',
     });
     BalanceUsuario.getByUserAndCrypto = jest.fn().mockResolvedValue({ balanceDisponible: '5' });
-    BalanceUsuario.updateBalance = jest.fn().mockResolvedValue();
+    BalanceUsuario.blockBalance = jest.fn().mockResolvedValue();
     TransaccionP2P.create = jest.fn().mockResolvedValue({ id: 'tx1' });
     TransaccionP2P.getById = jest.fn().mockResolvedValue({ id: 'tx1' });
     Notificaciones.notifyBothParties = jest.fn().mockResolvedValue();
@@ -47,9 +47,8 @@ describe('TransaccionP2P.createTransaction — montoFiat y bloqueo exactos', () 
     expect(createArg.montoFiat).toBe('0.02');
     expect(createArg.cantidad).toBe('0.1');
 
-    // primer updateBalance: descuenta de 'disponible' un monto negativo exacto
-    const firstUpdate = BalanceUsuario.updateBalance.mock.calls[0];
-    expect(firstUpdate[2]).toBe('-0.1');
-    expect(firstUpdate[3]).toBe('disponible');
+    // Paso D: el bloqueo de fondos del vendedor delega en blockBalance (dos patas
+    // de usuario, sin suspense) con la cantidad exacta como string.
+    expect(BalanceUsuario.blockBalance).toHaveBeenCalledWith('v', 'crypto', '0.1', expect.anything());
   });
 });

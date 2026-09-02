@@ -12,8 +12,11 @@
     "utils/money.js",
     "services/intercambioSettlement.service.js",
     "services/trading/feeCalculator.service.js",
-    "services/trading/balanceManager.service.js"
+    "services/trading/balanceManager.service.js",
+    "services/ledger/operations.js"
   ],
   "reporters": ["html", "clear-text", "progress"],
+  "timeoutMS": 30000,
+  "_timeout_comment": "El jest-runner reinicia workers por mutante; el arranque (setupFiles + carga del grafo de models) puede exceder el timeout por defecto (5s) y marcar mutantes como timeout en vez de killed. 30s da holgura para que los tests corran y mueran limpio por aserción.",
   "thresholds": { "high": 80, "low": 60, "break": null }
 }

@@ -1,16 +1,20 @@
 // tests/transaccionBlockchain.model.test.js
 //
-// Fase 1 — precisión monetaria. Este modelo es el SETTLEMENT: acredita/debita
-// BalanceUsuario cuando un depósito/retiro on-chain cambia de estado, y lo hacía
-// con aritmética float directa (parseFloat(saldo) ± parseFloat(cantidad)),
-// saltándose los métodos exactos de BalanceUsuario. Los saldos son DECIMAL(28,8):
-// con money.js el crédito/débito es exacto y se guarda como string canónico.
+// Write-flip (Paso B) + Paso D. El settlement delega en operaciones de dominio
+// del ledger: acreditar depósito → confirmarDeposito (pendiente→disponible);
+// fallar retiro → unblockBalance. Este unit test verifica esa DELEGACION; el
+// resultado en el ledger se cubre en ledgerWriteFlip.integration.test.js.
 
 jest.mock('../models/entities/transaccionBlockchain.entity');
 jest.mock('../models/index', () => ({ BalanceUsuario: {} }));
+jest.mock('../services/ledger/operations', () => ({
+  confirmarDeposito: jest.fn(),
+  registrarDepositoPendiente: jest.fn(),
+}));
 
 const initTransaccionBlockchain = require('../models/entities/transaccionBlockchain.entity');
 const { BalanceUsuario } = require('../models/index');
+const { confirmarDeposito } = require('../services/ledger/operations');
 const createTransaccionBlockchainModel = require('../models/transaccionBlockchain.model');
 
 const fakeModel = {};
@@ -20,40 +24,46 @@ const TransaccionBlockchain = createTransaccionBlockchainModel(sequelize);
 
 beforeEach(() => jest.clearAllMocks());
 
-describe('_acreditarDeposito — acredita el depósito exacto', () => {
-  test('disponible 0.1 + cantidad 0.2 = "0.3", no 0.30000000000000004', async () => {
-    const balance = { id: 'b1', balanceDisponible: '0.1', balanceBloqueado: '0' };
-    BalanceUsuario.findOrCreate = jest.fn().mockResolvedValue([balance]);
-    BalanceUsuario.update = jest.fn().mockResolvedValue([1]);
-    BalanceUsuario.findByPk = jest.fn().mockResolvedValue(balance);
+describe('_acreditarDeposito — delega en confirmarDeposito (pendiente→disponible)', () => {
+  test('confirma el depósito por la cantidad exacta, en la transacción', async () => {
     TransaccionBlockchain.update = jest.fn().mockResolvedValue([1]);
     sequelize.models.Criptomoneda.findByPk.mockResolvedValue({ symbol: 'BTC' });
 
     const transaccion = { id: 't1', userId: 'u', criptomonedaId: 'c', cantidad: '0.2', estado: 'confirmado' };
     await TransaccionBlockchain._acreditarDeposito(transaccion, {});
 
-    const arg = BalanceUsuario.update.mock.calls[0][0];
-    expect(arg.balanceDisponible).toBe('0.3');
+    expect(confirmarDeposito).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'u', criptomonedaId: 'c', cantidad: '0.2', referencia: 'deposito-conf:t1' }),
+      {}
+    );
   });
 });
 
-describe('failWithdrawal — refunda el retiro exacto (disponible += / bloqueado -=)', () => {
-  test('disponible 0.2+0.1="0.3", bloqueado 0.3-0.1="0.2", sin error de coma', async () => {
+describe('failWithdrawal — delega en unblockBalance', () => {
+  test('devuelve la cantidad de bloqueado a disponible', async () => {
     sequelize.transaction.mockResolvedValue({ commit: jest.fn(), rollback: jest.fn() });
     TransaccionBlockchain.findByPk = jest.fn().mockResolvedValue({
-      userId: 'u', criptomonedaId: 'c', cantidad: '0.1',
+      userId: 'u', criptomonedaId: 'c', cantidad: '0.1', estado: 'procesando',
     });
-    BalanceUsuario.findOne = jest.fn().mockResolvedValue({
-      id: 'b1', balanceDisponible: '0.2', balanceBloqueado: '0.3',
-    });
-    BalanceUsuario.update = jest.fn().mockResolvedValue([1]);
+    BalanceUsuario.unblockBalance = jest.fn().mockResolvedValue({});
     TransaccionBlockchain.update = jest.fn().mockResolvedValue([1]);
     TransaccionBlockchain.getById = jest.fn().mockResolvedValue({ id: 'r1' });
 
     await TransaccionBlockchain.failWithdrawal('r1', 'razon');
 
-    const arg = BalanceUsuario.update.mock.calls[0][0];
-    expect(arg.balanceDisponible).toBe('0.3');
-    expect(arg.balanceBloqueado).toBe('0.2');
+    expect(BalanceUsuario.unblockBalance).toHaveBeenCalledWith('u', 'c', '0.1', expect.anything());
+  });
+
+  test('rechaza fallar un retiro ya confirmado (no crea dinero por doble-desbloqueo)', async () => {
+    const rollback = jest.fn();
+    sequelize.transaction.mockResolvedValue({ commit: jest.fn(), rollback });
+    TransaccionBlockchain.findByPk = jest.fn().mockResolvedValue({
+      userId: 'u', criptomonedaId: 'c', cantidad: '0.1', estado: 'confirmado',
+    });
+    BalanceUsuario.unblockBalance = jest.fn().mockResolvedValue({});
+
+    await expect(TransaccionBlockchain.failWithdrawal('r1', 'razon')).rejects.toThrow(/confirmado/);
+    expect(BalanceUsuario.unblockBalance).not.toHaveBeenCalled();
+    expect(rollback).toHaveBeenCalled();
   });
 });

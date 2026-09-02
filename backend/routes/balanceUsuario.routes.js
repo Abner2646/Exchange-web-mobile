@@ -14,6 +14,9 @@ const rateLimitMiddleware = require('../middleware/rateLimit.middleware.js');
 // GET /api/balances/my/balances - Obtener mis balances
 router.get('/my/balances', authenticateToken, balanceUserController.getMyBalances); // Bien
 
+// POST /api/balances/my/transfer - Transferir entre mis compartimentos (Funding↔Spot)
+router.post('/my/transfer', authenticateToken, balanceUserController.transferMisCompartimentos);
+
 // PUT /api/balances/user/:userId/crypto/:criptomonedaId - Actualizar balance
 router.put('/user/:userId/crypto/:criptomonedaId', authenticateToken, isAdmin, balanceUserController.updateBalance); // Bien
 // {"amount": 100}
@@ -32,8 +35,8 @@ router.get('/', authenticateToken, isAdmin, balanceUserController.getBalances); 
 // GET /api/balances/stats - Estadísticas de balances (admin)
 router.get('/stats', authenticateToken, isSuperAdmin, balanceUserController.getBalanceStats); // Bien
 
-// GET /api/balances/:id - Obtener balance por ID (admin)
-router.get('/:id', authenticateToken, isAdmin, balanceUserController.getBalanceById);
+// (GET /api/balances/:id retirado en el write-flip Paso B: lectura por PK de fila
+// de balances_users, sin analogo en el ledger.)
 
 // =============== RUTAS DE USUARIO AUTENTICADO ===============
 

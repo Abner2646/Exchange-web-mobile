@@ -179,6 +179,89 @@ improvement currently stays in "locked" until the order fully resolves — a
 separate residual-release gap tracked in the roadmap. Don't assume locked hits
 zero on a price-improved partial fill.
 
+### 9. Compartmentalized balances — additive shape + internal transfer (2026-09-02)
+
+**`GET /api/balances/my/balances` — additive per-compartment shape (non-breaking)**
+
+Each entry in the array preserves the **existing** root keys
+(`userId`, `criptomonedaId`, `balanceDisponible`, `balanceBloqueado`,
+`balancePendiente`) — names are unchanged, making this a truly non-breaking
+additive change. The root totals now represent the **sum of Funding + Spot**
+for that crypto. A new `compartimentos` sub-object with the per-compartment
+breakdown is added alongside:
+
+```json
+[
+  {
+    "userId":             "<uuid>",
+    "criptomonedaId":     "<uuid>",
+    "balanceDisponible":  "500.00000000",
+    "balanceBloqueado":   "0.00000000",
+    "balancePendiente":   "0.00000000",
+    "compartimentos": {
+      "funding": { "disponible": "300.00000000", "bloqueado": "0.00000000", "pendiente": "0.00000000" },
+      "spot":    { "disponible": "200.00000000", "bloqueado": "0.00000000" }
+    }
+  }
+]
+```
+
+Notes:
+- The change is **non-breaking and additive**: the existing root fields
+  `balanceDisponible`, `balanceBloqueado`, `balancePendiente`, and `userId` are
+  preserved with their original names. Their values now carry the consolidated
+  total across Funding and Spot (previously Funding-only). Clients reading those
+  fields keep working and will automatically see the combined balance. The
+  `compartimentos` sub-object is entirely new — existing clients that ignore
+  unknown fields are unaffected.
+- `pendiente` is a Funding-only concept (on-chain deposits detected but not yet
+  confirmed). Spot has no `pendiente` field.
+- All monetary values are 8-decimal canonical strings (see §2).
+- Entries only appear for cryptos with at least one ledger account (Funding or Spot).
+  An asset with no activity does not appear — treat a missing asset as `0` (see §3
+  of the "Expected upcoming" notes in the previous ledger migration entry).
+
+**`POST /api/balances/my/transfer` — internal Funding↔Spot transfer (new endpoint)**
+
+Self-service transfer between a user's own compartments:
+
+```
+POST /api/balances/my/transfer
+Authorization: Bearer <token>
+{ "criptomonedaId": "<uuid>", "cantidad": "200", "origen": "funding", "destino": "spot" }
+```
+
+- `origen` and `destino` must each be one of `funding` or `spot`, and must differ.
+- `cantidad` must be a positive amount (string preferred).
+- **200** on success: `{ "message": "...", "data": { "origen": "funding", "destino": "spot" } }`.
+- **400** if funds in `origen` are insufficient, if compartments are invalid/equal,
+  or if `cantidad` is missing/zero.
+- The ledger guard (double-entry FOR UPDATE) is the authoritative anti-overdraft
+  check; the endpoint also runs an early-error availability check before posting.
+
+**Swap `compartimento` param (landing in Task 9)**
+
+The swap endpoint will accept an optional `compartimento` parameter (default
+`"funding"`) to allow swapping from either compartment. Until Task 9 lands, swaps
+always read from `funding`. Do not hard-code `funding` on the client — use the
+field when available.
+
+**Behavior change: order-book trading now requires funds in Spot**
+
+Placing a trading order (buy or sell) now reserves funds from the **Spot**
+compartment, not Funding. A user whose balance is in Funding must first transfer
+to Spot (`POST /api/balances/my/transfer`) before trading. Withdrawals remain
+**Funding-only** — funds must be in Funding to withdraw.
+
+Summary of which operation reads from which compartment:
+
+| Operation | Reads from |
+|-----------|-----------|
+| Order-book buy / sell | Spot |
+| Withdrawal | Funding |
+| Swap (current) | Funding (Task 9 adds `compartimento` param) |
+| Internal transfer | User-chosen (`origen`/`destino`) |
+
 ---
 
 ## Expected upcoming contract changes (heads-up, not yet done)
@@ -190,10 +273,31 @@ doesn't hard-code assumptions that are about to change:
   catalog. Design error handling around `error.code` from day one.
 - **Quote-lock for swaps (Radar #11):** swap flow will likely gain a quote id +
   TTL, or a client-sent slippage tolerance. See §5.
-- **Compartmentalized balances / sub-wallets (Radar #10):** a single
-  balance-per-(user,crypto) may become several accounts (funding / spot /
-  futures / earn). Balance reads and transfer flows would gain a wallet/account
-  dimension. Don't hard-code "one balance per asset".
+- **Double-entry ledger + compartmentalized balances (Radar #1 + #10) — MIGRATION IN PROGRESS:**
+  the mutable `BalanceUsuario` is being replaced by an append-only double-entry
+  ledger as the source of truth (balances are now read from a ledger projection;
+  writes are being cut over path-by-path). Behavior is currently preserved
+  (parity-reconciled), with two live changes to note: (a) **balance listings no
+  longer include zero-balance entries** (a crypto the user has never funded simply
+  won't appear, instead of showing `0`); and (b) **balance-listing entries no
+  longer carry a per-row `id` or `updatedAt`** — an entry is keyed by its
+  `criptomoneda`/`criptomonedaId`, with `balanceDisponible`/`balanceBloqueado` as
+  canonical strings (never `parseFloat` them). Affects
+  `GET /api/intercambioExchange/me/balances` and the other balance-listing reads;
+  (c) **the user profile (`GET /api/usuario/me`, `getById`) no longer embeds a
+  `balances` array** — fetch balances from a balances endpoint
+  (`GET /api/balances/my/balances` or `/api/intercambioExchange/me/balances`)
+  instead; and (d) **balances now carry a `balancePendiente` field** (canonical
+  string): the **pending** state is live for deposits — an on-chain deposit shows
+  in `balancePendiente` from the moment it's detected until it confirms, then moves
+  to `balanceDisponible`. `getTotalBalance` gained a `pendiente` field; its `total`
+  is still `disponible + bloqueado` and does **not** include pending (unconfirmed).
+  Show pending deposits distinctly from spendable balance. Coming next: a single
+  balance-per-(user,crypto)
+  becomes several accounts (funding / spot / futures / earn) with available /
+  blocked / **pending** states, and internal transfer flows between them. Don't
+  hard-code "one balance per asset", and don't assume every listed asset has a row
+  — treat a missing asset as `0`.
 - **Business config moves to the DB (roadmap — admin-editable settings):**
   commissions, trading/swap pairs, limits — currently partly hardcoded/env — are
   expected to become admin-editable data. The client should read these from the
