@@ -38,10 +38,16 @@ const createOrder = async (req, res) => {
   try {
     const usuarioId = req.user.id;
     const { parId, tipo, cantidadBase } = req.body;
+    const compartimento = req.body.compartimento || 'funding';
 
     if (!parId || !tipo || !cantidadBase) {
       await transaction.rollback();
       throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'parId, tipo y cantidadBase son requeridos');
+    }
+
+    if (!['funding', 'spot'].includes(compartimento)) {
+      await transaction.rollback();
+      throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'Compartimento inválido (funding|spot)');
     }
 
     if (!isValidUUID(parId)) {
@@ -112,15 +118,15 @@ const createOrder = async (req, res) => {
     // dominio correcto). El anti-sobregiro atómico real es el FOR UPDATE de
     // postTransaction dentro de liquidarSwap.
     if (tipo === 'compra') {
-      const balanceQuote = await BalanceUsuario.getByUserAndCrypto(usuarioId, criptoQuoteId, { transaction });
-      if (money.compare(String(balanceQuote.balanceDisponible), requiredQuote) < 0) {
+      const balanceQuote = await BalanceUsuario.getSaldoCompartimento(usuarioId, criptoQuoteId, compartimento, { transaction });
+      if (money.compare(String(balanceQuote.disponible), requiredQuote) < 0) {
         await transaction.rollback();
         throw new AppError(400, errorCodes.EXCHANGE_INSUFFICIENT_BALANCE, 'Saldo insuficiente en moneda quote para realizar la operación');
       }
       netAmount = String(cantidadBase);
     } else {
-      const balanceBase = await BalanceUsuario.getByUserAndCrypto(usuarioId, criptoBaseId, { transaction });
-      if (money.compare(String(balanceBase.balanceDisponible), String(cantidadBase)) < 0) {
+      const balanceBase = await BalanceUsuario.getSaldoCompartimento(usuarioId, criptoBaseId, compartimento, { transaction });
+      if (money.compare(String(balanceBase.disponible), String(cantidadBase)) < 0) {
         await transaction.rollback();
         throw new AppError(400, errorCodes.EXCHANGE_INSUFFICIENT_BALANCE, 'Saldo insuficiente en moneda base para realizar la operación');
       }
@@ -153,6 +159,7 @@ const createOrder = async (req, res) => {
       requiredQuote,
       netQuote,
       tipo,
+      compartimento,
       referencia: `swap:${newOrder.id}`,
     }, transaction);
 

@@ -7,6 +7,7 @@ const { BalanceUsuario } = require('../../models');
 const recon = require('../../services/ledger/reconciliation');
 const { PROPOSITOS } = require('../../services/ledger/ledgerAccounts');
 const posting = require('../../services/ledger/postingService');
+const money = require('../../utils/money');
 
 installAuthHarness();
 
@@ -126,5 +127,42 @@ describe('GET /api/balances/my/balances es aditivo (totales = suma + desglose)',
     // spot compartimento: sin cuenta → getSaldoCuenta devuelve '0' → debe emitirse como '0.00000000'
     expect(fila.compartimentos.spot.disponible).toBe('0.00000000');
     expect(fila.compartimentos.spot.bloqueado).toBe('0.00000000');
+  });
+});
+
+// Task 9: swap endpoint acepta compartimento fuente (funding|spot).
+// BTC/USDT, precio 100, comision 1%. Compra 1 BTC desde Spot:
+//   cantidadQuote = 1 * 100    = 100
+//   comision      = 100 * 1%   = 1
+//   requiredQuote = 100 + 1    = 101
+describe('Swap respeta el compartimento origen', () => {
+  test("compartimento 'spot': debita/acredita Spot, Funding intacto", async () => {
+    const btc = await f.seedCripto('BTC');
+    const usdt = await f.seedCripto('USDT');
+    await f.seedWalletMaestra(btc);
+    await f.seedWalletMaestra(usdt);
+    const par = await f.seedPar({ base: btc, quote: usdt, precio: '100', comision: '1' });
+    const user = await f.seedUser({ email: 'swapspot@test.local', username: 'swapspot' });
+    await f.seedSpotBalance(user, usdt, '200'); // 200 USDT en Spot, cubre los 101 requeridos
+
+    const res = await request(app)
+      .post('/api/intercambioExchange/')
+      .set(f.authHeader(user))
+      .send({ parId: par.id, tipo: 'compra', cantidadBase: 1, compartimento: 'spot' });
+    expect(res.status).toBe(201);
+
+    // Recibió BTC en Spot (no en Funding)
+    const spotBtc = await BalanceUsuario.getSaldoCompartimento(user.id, btc.id, 'spot');
+    expect(money.compare(spotBtc.disponible, '0')).toBeGreaterThan(0);
+
+    // Pagó USDT desde Spot (200 - 101 = 99)
+    const spotUsdt = await BalanceUsuario.getSaldoCompartimento(user.id, usdt.id, 'spot');
+    expect(spotUsdt.disponible).toBe('99.00000000');
+
+    // Funding completamente intacto (cero en ambas criptos)
+    const fundingBtc = await BalanceUsuario.getSaldoCompartimento(user.id, btc.id, 'funding');
+    expect(fundingBtc.disponible).toBe('0');
+    const fundingUsdt = await BalanceUsuario.getSaldoCompartimento(user.id, usdt.id, 'funding');
+    expect(fundingUsdt.disponible).toBe('0');
   });
 });
