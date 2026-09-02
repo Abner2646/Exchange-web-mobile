@@ -63,6 +63,28 @@ async function seedBalance(user, cripto, monto) {
   });
 }
 
+// Siembra saldo directo en spot:disponible (apertura → spot). Para tests que
+// necesitan fondos ya en el compartimento de trading sin pasar por la transferencia.
+async function seedSpotBalance(user, cripto, monto) {
+  const { postTransaction } = require('../../services/ledger/postingService');
+  const { PROPOSITOS } = require('../../services/ledger/ledgerAccounts');
+  const cryptoMod = require('crypto');
+  return postTransaction({
+    tipo: 'apertura',
+    referencia: `seed-spot:${cryptoMod.randomUUID()}`,
+    lineas: [
+      { ownerId: null, proposito: PROPOSITOS.APERTURA, criptomonedaId: cripto.id, monto: `-${monto}` },
+      { ownerId: user.id, proposito: PROPOSITOS.SPOT_DISPONIBLE, criptomonedaId: cripto.id, monto: String(monto) },
+    ],
+  });
+}
+
+// Lee spot:disponible y spot:bloqueado desde la proyeccion del ledger. Para tests
+// que verifican balances del compartimento de trading.
+async function getSpotBalance(user, cripto) {
+  return BalanceUsuario.getSaldoCompartimento(user.id, cripto.id, 'spot');
+}
+
 // red 'test' sidesteps the network-specific xpub validation; the swap only
 // looks the wallet up by criptomonedaId to credit the commission (balanceTotal).
 async function seedWalletMaestra(cripto) {
@@ -101,5 +123,5 @@ async function seedTradingPair({ base, quote, makerFee = '0.1', takerFee = '0.1'
 
 module.exports = {
   seedUser, authTokenFor, authHeader, seedCripto, seedPar,
-  seedBalance, seedWalletMaestra, getBalance, seedTradingPair,
+  seedBalance, seedSpotBalance, seedWalletMaestra, getBalance, getSpotBalance, seedTradingPair,
 };

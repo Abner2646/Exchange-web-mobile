@@ -2,7 +2,8 @@
 const { BalanceUsuario, TradingPair } = require('../../models');
 const { sequelize } = require('../../models');
 const money = require('../../utils/money');
-const { liquidarTrade } = require('../ledger/operations');
+const crypto = require('crypto');
+const { liquidarTrade, reservarParaOrden, liberarReserva } = require('../ledger/operations');
 
 // Modelo de fee (alineado 2026-08-31, antes Radar #12a): el fee taker se cobra
 // del ASSET RECIBIDO al liquidar (compra → fee en base; venta → fee en quote),
@@ -16,13 +17,10 @@ class BalanceManagerService {
   /**
    * Bloquea balance para una orden de trading.
    *
-   * Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #5): `transaction` recibía
-   * el parámetro pero nunca lo reenviaba a hasAvailableBalance/blockBalance
-   * — era decorativo, la operación no era atómica. La validación de acá
-   * abajo (hasAvailableBalance) sigue siendo solo un chequeo rápido para dar
-   * un error temprano y amigable; la protección real contra condiciones de
-   * carrera vive ahora en BalanceUser.blockBalance (SELECT ... FOR UPDATE),
-   * a la que si se le pasa `transaction` se le suma.
+   * Repoint Spot (2026-09-02): usa reservarParaOrden (spot:disponible →
+   * spot:bloqueado) en vez de BalanceUsuario.blockBalance (Funding). El check
+   * rápido hasAvailableEnCompartimento también lee de Spot. El guard real contra
+   * condiciones de carrera sigue siendo el FOR UPDATE de postTransaction.
    */
   async lockBalanceForOrder(data, transaction = null) {
     const { userId, tradingPair, side, quantity, price } = data;
@@ -55,25 +53,21 @@ class BalanceManagerService {
         amountToLock = String(quantity);
       }
 
-      // Verificar que el usuario tenga balance suficiente
-      const hasBalance = await BalanceUsuario.hasAvailableBalance(
-        userId,
-        assetToLock,
-        amountToLock
+      // Verificar saldo disponible en Spot (early-error amigable).
+      const hasBalance = await BalanceUsuario.hasAvailableEnCompartimento(
+        userId, assetToLock, amountToLock, 'spot', transaction
       );
 
       if (!hasBalance) {
         return {
           success: false,
-          error: 'Balance insuficiente para crear la orden'
+          error: 'Balance insuficiente en Spot para crear la orden (transferí fondos a Spot)'
         };
       }
 
-      // Bloquear el balance (atómico: ver BalanceUser.blockBalance)
-      await BalanceUsuario.blockBalance(
-        userId,
-        assetToLock,
-        amountToLock,
+      // Reservar en Spot (atómico: FOR UPDATE dentro de postTransaction).
+      await reservarParaOrden(
+        { userId, criptomonedaId: assetToLock, cantidad: amountToLock, referencia: `reserva:${crypto.randomUUID()}` },
         transaction
       );
 
@@ -120,11 +114,9 @@ class BalanceManagerService {
         amountToUnlock = String(order.quantityRemaining);
       }
 
-      // Desbloquear el balance (atómico: ver BalanceUser.unblockBalance)
-      await BalanceUsuario.unblockBalance(
-        order.userId,
-        assetToUnlock,
-        amountToUnlock,
+      // Liberar la reserva en Spot.
+      await liberarReserva(
+        { userId: order.userId, criptomonedaId: assetToUnlock, cantidad: amountToUnlock, referencia: `liberacion:${crypto.randomUUID()}` },
         transaction
       );
 
@@ -149,9 +141,7 @@ class BalanceManagerService {
       const montoQuote = money.multiply(String(trade.quantity), String(trade.price));
 
       // Paso D: liquidación rica en el ledger (un asiento). Comprador↔vendedor
-      // (funding: bloqueado→disponible por cripto) + ambas comisiones a fee_revenue.
-      // Los saldos de usuario son idénticos al settlement previo; sólo se hace
-      // explícita la comisión (antes la absorbía suspense).
+      // (spot: bloqueado→disponible por cripto) + ambas comisiones a fee_revenue.
       await liquidarTrade({
         compradorId: trade.buyerId,
         vendedorId: trade.sellerId,
@@ -180,7 +170,7 @@ class BalanceManagerService {
   async checkSufficientBalance(userId, tradingPairId, side, quantity, price = null) {
     try {
       const tradingPair = await TradingPair.findByPk(tradingPairId);
-      
+
       if (!tradingPair) {
         return {
           sufficient: false,
@@ -199,25 +189,15 @@ class BalanceManagerService {
         amountNeeded = String(quantity);
       }
 
-      const balance = await BalanceUsuario.getByUserAndCrypto(userId, assetNeeded);
-
-      if (!balance) {
-        return {
-          sufficient: false,
-          error: 'No tienes balance en esta criptomoneda',
-          required: amountNeeded,
-          available: '0'
-        };
-      }
-
-      const available = String(balance.balanceDisponible);
+      const balance = await BalanceUsuario.getSaldoCompartimento(userId, assetNeeded, 'spot');
+      const available = String(balance.disponible);
       const sufficient = money.compare(available, amountNeeded) >= 0;
 
       return {
         sufficient,
         required: amountNeeded,
         available,
-        error: sufficient ? null : `Balance insuficiente. Requerido: ${amountNeeded}, Disponible: ${available}`
+        error: sufficient ? null : `Balance insuficiente en Spot. Requerido: ${amountNeeded}, Disponible: ${available}`
       };
 
     } catch (error) {
@@ -234,18 +214,9 @@ class BalanceManagerService {
    */
   async getTradingBalance(userId, criptomonedaId) {
     try {
-      const balance = await BalanceUsuario.getByUserAndCrypto(userId, criptomonedaId);
-
-      if (!balance) {
-        return {
-          available: '0',
-          locked: '0',
-          total: '0'
-        };
-      }
-
-      const available = String(balance.balanceDisponible);
-      const locked = String(balance.balanceBloqueado);
+      const balance = await BalanceUsuario.getSaldoCompartimento(userId, criptomonedaId, 'spot');
+      const available = String(balance.disponible);
+      const locked = String(balance.bloqueado);
 
       return {
         available,
@@ -263,11 +234,11 @@ class BalanceManagerService {
    */
   async getAllTradingBalances(userId) {
     try {
-      const balances = await BalanceUsuario.getByUserId(userId);
+      const balances = await BalanceUsuario.getByUserIdCompartimento(userId, 'spot');
 
       return balances.map(balance => {
-        const available = String(balance.balanceDisponible);
-        const locked = String(balance.balanceBloqueado);
+        const available = String(balance.disponible);
+        const locked = String(balance.bloqueado);
         return {
           criptomonedaId: balance.criptomonedaId,
           available,
