@@ -223,3 +223,23 @@ describe('transferirEntreCompartimentos mueve disponible entre compartimentos (m
     expect(postTransaction).not.toHaveBeenCalled();
   });
 });
+
+describe('reservarParaOrden / liberarReserva mueven disponible↔bloqueado en Spot', () => {
+  test('reservarParaOrden: spot:disponible −A → spot:bloqueado +A', async () => {
+    await reservarParaOrden({ userId: 'u', criptomonedaId: 'USDT', cantidad: '100', referencia: 'reserva:1' }, 'tx');
+    const [asiento, transaction] = postTransaction.mock.calls[0];
+    expect(transaction).toBe('tx');
+    expect(asiento.tipo).toBe('reserva_orden');
+    expect(asiento.referencia).toBe('reserva:1');
+    expect(asiento.lineas).toContainEqual({ ownerId: 'u', proposito: PROPOSITOS.SPOT_DISPONIBLE, criptomonedaId: 'USDT', monto: '-100' });
+    expect(asiento.lineas).toContainEqual({ ownerId: 'u', proposito: PROPOSITOS.SPOT_BLOQUEADO, criptomonedaId: 'USDT', monto: '100' });
+  });
+
+  test('liberarReserva: spot:bloqueado −A → spot:disponible +A', async () => {
+    await liberarReserva({ userId: 'u', criptomonedaId: 'USDT', cantidad: '100', referencia: 'liberacion:1' });
+    const asiento = postTransaction.mock.calls[0][0];
+    expect(asiento.tipo).toBe('liberacion_reserva');
+    expect(asiento.lineas).toContainEqual({ ownerId: 'u', proposito: PROPOSITOS.SPOT_BLOQUEADO, criptomonedaId: 'USDT', monto: '-100' });
+    expect(asiento.lineas).toContainEqual({ ownerId: 'u', proposito: PROPOSITOS.SPOT_DISPONIBLE, criptomonedaId: 'USDT', monto: '100' });
+  });
+});

@@ -210,8 +210,34 @@ async function transferirEntreCompartimentos({ userId, criptomonedaId, cantidad,
   return postTransaction({ tipo: 'transferencia_compartimento', referencia, descripcion: `Transferencia ${origen}→${destino}`, lineas }, transaction);
 }
 
+// Reserva de saldo para una orden del order book, dentro de Spot.
+// spot:disponible −A → spot:bloqueado +A. El anti-sobregiro lo da postTransaction.
+async function reservarParaOrden({ userId, criptomonedaId, cantidad, referencia }, transaction = null) {
+  const { postTransaction } = require('./postingService');
+  const { PROPOSITOS } = require('./ledgerAccounts');
+  const monto = String(cantidad);
+  const lineas = [
+    { ownerId: userId, proposito: PROPOSITOS.SPOT_DISPONIBLE, criptomonedaId, monto: money.subtract('0', monto) },
+    { ownerId: userId, proposito: PROPOSITOS.SPOT_BLOQUEADO, criptomonedaId, monto },
+  ];
+  return postTransaction({ tipo: 'reserva_orden', referencia, descripcion: 'Reserva de orden spot', lineas }, transaction);
+}
+
+// Libera una reserva de orden (cancelación / remanente). spot:bloqueado −A →
+// spot:disponible +A.
+async function liberarReserva({ userId, criptomonedaId, cantidad, referencia }, transaction = null) {
+  const { postTransaction } = require('./postingService');
+  const { PROPOSITOS } = require('./ledgerAccounts');
+  const monto = String(cantidad);
+  const lineas = [
+    { ownerId: userId, proposito: PROPOSITOS.SPOT_BLOQUEADO, criptomonedaId, monto: money.subtract('0', monto) },
+    { ownerId: userId, proposito: PROPOSITOS.SPOT_DISPONIBLE, criptomonedaId, monto },
+  ];
+  return postTransaction({ tipo: 'liberacion_reserva', referencia, descripcion: 'Liberación de reserva spot', lineas }, transaction);
+}
+
 module.exports = {
   liquidarSwap, liquidarTrade, marcarRetiroTransmitido,
   registrarDepositoPendiente, confirmarDeposito, transferirInterno, liquidarP2P,
-  acreditarFaucet, transferirEntreCompartimentos,
+  acreditarFaucet, transferirEntreCompartimentos, reservarParaOrden, liberarReserva,
 };
