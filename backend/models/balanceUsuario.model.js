@@ -5,6 +5,32 @@ const { Op } = require('sequelize');
 const money = require('../utils/money');
 const crypto = require('crypto');
 
+// Mapa compartimento→propósitos por estado. Fuente única para leer saldos por
+// compartimento desde la proyección del ledger. Spot no tiene 'pendiente'.
+// Valores deben coincidir con PROPOSITOS en services/ledger/ledgerAccounts.js —
+// el unit test balanceCompartimento.test.js los ancla contra ese módulo.
+// Require de ledgerAccounts es lazy (abajo en leerCompartimento) por el ciclo
+// models/index.js → ledgerAccounts → models/index.js; acá usamos los strings
+// directos para que el mapa exista sin ejecutar ningún require al cargar.
+const PROPOSITOS_POR_COMPARTIMENTO = {
+  funding: { disponible: 'funding:disponible', bloqueado: 'funding:bloqueado', pendiente: 'funding:pendiente' },
+  spot: { disponible: 'spot:disponible', bloqueado: 'spot:bloqueado', pendiente: null },
+};
+
+// Lee disponible/bloqueado/pendiente de un compartimento desde la proyección del
+// ledger. Require lazy de postingService por el ciclo models↔services/ledger.
+async function leerCompartimento(userId, criptomonedaId, compartimento, transaction = null) {
+  const { getSaldoCuenta } = require('../services/ledger/postingService');
+  const props = PROPOSITOS_POR_COMPARTIMENTO[compartimento];
+  if (!props) throw new Error(`Compartimento inválido: ${compartimento}`);
+  const disponible = await getSaldoCuenta({ ownerId: userId, proposito: props.disponible, criptomonedaId }, transaction);
+  const bloqueado = await getSaldoCuenta({ ownerId: userId, proposito: props.bloqueado, criptomonedaId }, transaction);
+  const pendiente = props.pendiente
+    ? await getSaldoCuenta({ ownerId: userId, proposito: props.pendiente, criptomonedaId }, transaction)
+    : '0';
+  return { disponible, bloqueado, pendiente };
+}
+
 // Plan 3 (read-flip): las lecturas de saldo salen de la PROYECCION del ledger
 // (compartimento Funding), no de balances_users. Requires lazy para evitar el
 // ciclo models<->services/ledger (este modulo lo carga models/index.js). El
@@ -179,6 +205,53 @@ function createBalanceUserModel(sequelize) {
     }
   };
 
+  // Lectura por compartimento (Spot activación): devuelve el saldo del
+  // compartimento pedido. Usada por el servicio de trading (spot) y el endpoint
+  // de transferencia entre compartimentos.
+  BalanceUsuario.getSaldoCompartimento = async (userId, criptomonedaId, compartimento, options = {}) => {
+    try {
+      const { disponible, bloqueado, pendiente } = await leerCompartimento(userId, criptomonedaId, compartimento, options.transaction);
+      return { userId, criptomonedaId, compartimento, disponible, bloqueado, pendiente };
+    } catch (error) {
+      throw new Error(`Error al obtener saldo de compartimento: ${error.message}`);
+    }
+  };
+
+  // Chequeo rápido de suficiencia en un compartimento (early-error; el guard real
+  // sigue siendo el FOR UPDATE de postTransaction).
+  BalanceUsuario.hasAvailableEnCompartimento = async (userId, criptomonedaId, amount, compartimento, transaction = null) => {
+    try {
+      const { disponible } = await leerCompartimento(userId, criptomonedaId, compartimento, transaction);
+      return money.compare(disponible, String(amount)) >= 0;
+    } catch (error) {
+      throw new Error(`Error al verificar saldo de compartimento: ${error.message}`);
+    }
+  };
+
+  // Lista las criptos con cuenta en el compartimento pedido (una entrada por
+  // cripto). Espejo de getByUserId pero scopeado a un compartimento.
+  BalanceUsuario.getByUserIdCompartimento = async (userId, compartimento) => {
+    try {
+      const { CuentaLedger } = require('./index');
+      const props = PROPOSITOS_POR_COMPARTIMENTO[compartimento];
+      if (!props) throw new Error(`Compartimento inválido: ${compartimento}`);
+      const propositos = [props.disponible, props.bloqueado, ...(props.pendiente ? [props.pendiente] : [])];
+      const cuentas = await CuentaLedger.findAll({
+        where: { ownerId: userId, proposito: propositos },
+        attributes: ['criptomonedaId'],
+        group: ['criptomonedaId'],
+      });
+      const salida = [];
+      for (const c of cuentas) {
+        const { disponible, bloqueado, pendiente } = await leerCompartimento(userId, c.criptomonedaId, compartimento);
+        salida.push({ criptomonedaId: c.criptomonedaId, disponible, bloqueado, pendiente });
+      }
+      return salida;
+    } catch (error) {
+      throw new Error(`Error al obtener balances de compartimento: ${error.message}`);
+    }
+  };
+
   // Write-flip (Paso B): bloquear = dos patas de usuario (disponible -A,
   // bloqueado +A). Suma cero sin suspense. El anti-sobregiro (Críticos #5) sigue
   // vivo pero ahora es el FOR UPDATE de postTransaction sobre la fila de
@@ -324,3 +397,4 @@ function createBalanceUserModel(sequelize) {
 }
 
 module.exports = createBalanceUserModel;
+module.exports.PROPOSITOS_POR_COMPARTIMENTO = PROPOSITOS_POR_COMPARTIMENTO;
