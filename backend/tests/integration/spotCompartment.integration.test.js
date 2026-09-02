@@ -105,4 +105,26 @@ describe('GET /api/balances/my/balances es aditivo (totales = suma + desglose)',
     expect(fila.compartimentos.funding.disponible).toBe('300.00000000');
     expect(fila.compartimentos.spot.disponible).toBe('200.00000000');
   });
+
+  test('caso mixto: solo funding — valores cero de spot deben tener 8 decimales', async () => {
+    const usdt = await f.seedCripto('USDT2');
+    const user = await f.seedUser({ email: 'mixto@test.local', username: 'mixto' });
+    await f.seedBalance(user, usdt, '300'); // funding:disponible; sin saldo spot
+
+    const res = await request(app).get('/api/balances/my/balances').set(f.authHeader(user));
+    expect(res.status).toBe(200);
+    const fila = res.body.find((b) => b.criptomonedaId === usdt.id);
+    expect(fila).toBeDefined();
+    // root: 300 funding + 0 spot = 300, siempre 8dp
+    expect(fila.disponible).toBe('300.00000000');
+    // funding compartimento: valor real, 8dp
+    expect(fila.compartimentos.funding.disponible).toBe('300.00000000');
+    expect(fila.compartimentos.funding.bloqueado).toBe('0.00000000');
+    expect(fila.compartimentos.funding.pendiente).toBe('0.00000000');
+    // root pendiente: 8dp (no bare '0')
+    expect(fila.pendiente).toBe('0.00000000');
+    // spot compartimento: sin cuenta → getSaldoCuenta devuelve '0' → debe emitirse como '0.00000000'
+    expect(fila.compartimentos.spot.disponible).toBe('0.00000000');
+    expect(fila.compartimentos.spot.bloqueado).toBe('0.00000000');
+  });
 });

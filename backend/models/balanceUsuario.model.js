@@ -241,6 +241,7 @@ function createBalanceUserModel(sequelize) {
       // suma es entera. Usamos Decimal.toFixed(8) para mantener la precisión de
       // 8 decimales que el frontend espera (igual que getSaldoCuenta).
       const Decimal = require('decimal.js');
+      const fmt8 = (x) => new Decimal(x).toFixed(8);
       const sumar8 = (a, b) => new Decimal(a).plus(b).toFixed(8);
       const todos = [
         PROPOSITOS.FUNDING_DISPONIBLE, PROPOSITOS.FUNDING_BLOQUEADO, PROPOSITOS.FUNDING_PENDIENTE,
@@ -259,10 +260,10 @@ function createBalanceUserModel(sequelize) {
           criptomonedaId: c.criptomonedaId,
           disponible: sumar8(funding.disponible, spot.disponible),
           bloqueado: sumar8(funding.bloqueado, spot.bloqueado),
-          pendiente: funding.pendiente, // sólo Funding tiene pendiente
+          pendiente: fmt8(funding.pendiente), // sólo Funding tiene pendiente
           compartimentos: {
-            funding: { disponible: funding.disponible, bloqueado: funding.bloqueado, pendiente: funding.pendiente },
-            spot: { disponible: spot.disponible, bloqueado: spot.bloqueado },
+            funding: { disponible: fmt8(funding.disponible), bloqueado: fmt8(funding.bloqueado), pendiente: fmt8(funding.pendiente) },
+            spot: { disponible: fmt8(spot.disponible), bloqueado: fmt8(spot.bloqueado) },
           },
         });
       }

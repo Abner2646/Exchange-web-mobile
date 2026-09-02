@@ -193,9 +193,9 @@ fields that are the **sum of Funding + Spot** for that crypto, plus a new
     "criptomonedaId": "<uuid>",
     "disponible":  "500.00000000",
     "bloqueado":   "0.00000000",
-    "pendiente":   "0",
+    "pendiente":   "0.00000000",
     "compartimentos": {
-      "funding": { "disponible": "300.00000000", "bloqueado": "0.00000000", "pendiente": "0" },
+      "funding": { "disponible": "300.00000000", "bloqueado": "0.00000000", "pendiente": "0.00000000" },
       "spot":    { "disponible": "200.00000000", "bloqueado": "0.00000000" }
     }
   }
