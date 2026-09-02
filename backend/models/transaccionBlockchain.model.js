@@ -470,9 +470,20 @@ function createTransaccionBlockchainModel(sequelize) {
 
     try {
       const retiro = await TransaccionBlockchain.findByPk(id, { transaction });
-      
+
       if (!retiro) {
         throw new Error('Retiro no encontrado');
+      }
+
+      // Guard de estado (simétrico a markWithdrawalAsSent): solo se puede fallar
+      // un retiro que sigue 'pendiente' o 'procesando'. Fallar uno ya
+      // 'confirmado'/'completado' es peligroso: marcarRetiroTransmitido ya movió
+      // los fondos a external_onchain (salieron on-chain), y unblockBalance los
+      // devolvería a disponible consumiendo el bloqueado de OTRA reserva del
+      // mismo usuario → creación de dinero. Fallar uno ya 'fallido' duplicaría el
+      // desbloqueo. El reaper solo pasa filas 'procesando', así que no lo afecta.
+      if (retiro.estado !== 'pendiente' && retiro.estado !== 'procesando') {
+        throw new Error(`No se puede fallar un retiro en estado ${retiro.estado}`);
       }
 
       // Write-flip (Paso B): retiro fallido → devolver bloqueado a disponible.
