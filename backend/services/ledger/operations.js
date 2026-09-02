@@ -171,7 +171,21 @@ async function liquidarP2P({ vendedorId, compradorId, criptomonedaId, cantidad, 
   return postTransaction({ tipo: 'liquidacion_p2p', referencia, descripcion: 'Liquidación P2P', lineas }, transaction);
 }
 
+// Faucet de testnet (regalo único, deshabilitado en producción): el cripto entra
+// desde el mundo on-chain (testnet) a disponible del usuario, como un depósito ya
+// confirmado. external_onchain −A → funding:disponible +A. Sin suspense.
+async function acreditarFaucet({ userId, criptomonedaId, cantidad, referencia }, transaction = null) {
+  const { postTransaction } = require('./postingService');
+  const { PROPOSITOS } = require('./ledgerAccounts');
+  const lineas = [
+    { ownerId: null, proposito: PROPOSITOS.EXTERNAL_ONCHAIN, criptomonedaId, monto: money.subtract('0', String(cantidad)) },
+    { ownerId: userId, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId, monto: String(cantidad) },
+  ];
+  return postTransaction({ tipo: 'deposito', referencia, descripcion: 'Faucet testnet', lineas }, transaction);
+}
+
 module.exports = {
   liquidarSwap, liquidarTrade, marcarRetiroTransmitido,
   registrarDepositoPendiente, confirmarDeposito, transferirInterno, liquidarP2P,
+  acreditarFaucet,
 };

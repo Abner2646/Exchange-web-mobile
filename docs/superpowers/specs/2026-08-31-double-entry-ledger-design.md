@@ -109,7 +109,7 @@ Read-model, **no** una segunda verdad (reconstruible desde los movimientos).
 | `external_onchain` (por cripto) | el "mundo on-chain". Un depósito debita acá y acredita al usuario; un retiro hace el inverso. Cierra el libro. |
 | `fee_revenue` (por cripto) | ingresos de la casa por comisiones. La comisión del usuario acredita acá. |
 | `treasury` (por cripto) | inventario propio del exchange; contraparte de los swaps (respaldado on-chain por custody). |
-| `suspense` (por cripto) | **transitoria**: contrapartida de las mutaciones legacy de una sola pata durante la migración. Se vacía al completar la migración. |
+| `suspense` (por cripto) | Contrapartida de asientos de una sola pata. Durante la migración fue el placeholder de las mutaciones legacy; **completada la migración (Paso D), su único uso vivo es el endpoint admin de ajuste manual de saldo** — rol contable legítimo y permanente (cuenta de ajustes/no clasificados). Los money-paths reales no la usan. |
 | `apertura` (por cripto) | cuenta génesis del backfill inicial (asientos de apertura que replican los saldos actuales). |
 
 **Reconciliación externa (§5.6):** `Σ pasivos-de-usuario == Σ cuentas-de-casa` (el libro cierra en cero) **y** el saldo on-chain real de las `WalletMaestra` **≥** lo que el ledger dice que la casa custodia. Un faltante se vuelve *detectable*.

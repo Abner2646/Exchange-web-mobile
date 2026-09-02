@@ -132,11 +132,14 @@ function createBalanceUserModel(sequelize) {
     }
   };
 
-  // Write-flip (Paso B): postea al ledger DIRECTO (compartimento Funding). Una
-  // sola pata de usuario + contrapartida en 'suspense' para cerrar en cero (misma
-  // logica que balanceMirror.espejar, ahora sin pasar por balances_users). El
-  // guard de sobregiro vive en postTransaction (FOR UPDATE sobre la proyeccion);
-  // se traduce su error /sobregiro/ al mensaje legacy /insuficiente/ del contrato.
+  // Ajuste de saldo de una sola pata contra la cuenta 'suspense'. Tras el Paso D
+  // NINGÚN money-path real usa este método — todos postean asientos ricos
+  // (swap/trade/depósito/retiro/transferencia/P2P). El único caller vivo es el
+  // endpoint admin de ajuste manual de saldo (PUT /balances/user/:id/crypto/:id):
+  // 'suspense' es acá su rol contable LEGÍTIMO y permanente (cuenta de ajustes/no
+  // clasificados), no el placeholder transitorio de la migración. El guard de
+  // sobregiro vive en postTransaction (FOR UPDATE); su error /sobregiro/ se
+  // traduce al mensaje legacy /insuficiente/ del contrato.
   BalanceUsuario.updateBalance = async (userId, criptomonedaId, amount, type = 'disponible', transaction = null) => {
     const { postTransaction } = require('../services/ledger/postingService');
     const { PROPOSITOS } = require('../services/ledger/ledgerAccounts');
@@ -295,14 +298,16 @@ function createBalanceUserModel(sequelize) {
         throw new Error('BTC no está disponible en el sistema');
       }
 
-      // 3. Agregar 1 BTC al usuario
-      const nuevoBalance = await BalanceUsuario.updateBalance(
-        userId, 
-        btc.id, 
-        1, 
-        'disponible',
-        transaction
-      );
+      // 3. Agregar 1 BTC al usuario — Paso D: el faucet entra desde el mundo
+      // on-chain (testnet) via external_onchain → funding:disponible, sin suspense.
+      const { acreditarFaucet } = require('../services/ledger/operations');
+      await acreditarFaucet({
+        userId,
+        criptomonedaId: btc.id,
+        cantidad: '1',
+        referencia: `faucet:${userId}:${btc.id}`,
+      }, transaction);
+      const nuevoBalance = await BalanceUsuario.getByUserAndCrypto(userId, btc.id, { transaction });
 
       return {
         success: true,

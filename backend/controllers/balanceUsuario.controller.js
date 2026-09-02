@@ -1,4 +1,6 @@
+const crypto = require('crypto');
 const { BalanceUsuario } = require('../models/index.js');
+const { transferirInterno } = require('../services/ledger/operations');
 
 // Listar balances
 const getBalances = async (req, res) => {
@@ -197,11 +199,14 @@ const transferBalance = async (req, res) => {
       return res.status(400).json({ error: 'Balance insuficiente para la transferencia' });
     }
 
-    // Restar del usuario origen
-    await BalanceUsuario.updateBalance(fromUserId, criptomonedaId, -amount, 'disponible');
-    
-    // Sumar al usuario destino
-    await BalanceUsuario.updateBalance(toUserId, criptomonedaId, amount, 'disponible');
+    // Paso D: transferencia admin como UN asiento user↔user (sin suspense).
+    await transferirInterno({
+      remitenteId: fromUserId,
+      destinatarioId: toUserId,
+      criptomonedaId,
+      cantidad: String(amount),
+      referencia: `admin-transfer:${crypto.randomUUID()}`,
+    });
 
     res.json({ message: 'Transferencia completada exitosamente' });
   } catch (error) {

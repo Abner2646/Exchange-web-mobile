@@ -12,6 +12,7 @@ const { PROPOSITOS } = require('../services/ledger/ledgerAccounts');
 const {
   liquidarSwap, liquidarTrade, marcarRetiroTransmitido,
   registrarDepositoPendiente, confirmarDeposito, transferirInterno, liquidarP2P,
+  acreditarFaucet,
 } = require('../services/ledger/operations');
 
 beforeEach(() => jest.clearAllMocks());
@@ -169,5 +170,19 @@ describe('liquidarP2P arma el asiento de la transacción P2P', () => {
     expect(asiento.lineas).toHaveLength(2);
     expect(asiento.lineas).toContainEqual({ ownerId: 'v', proposito: PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId: 'BTC', monto: '-0.5' });
     expect(asiento.lineas).toContainEqual({ ownerId: 'c', proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: 'BTC', monto: '0.5' });
+  });
+});
+
+describe('acreditarFaucet arma el asiento del faucet de testnet', () => {
+  test('external_onchain −A → funding:disponible +A (sin suspense)', async () => {
+    await acreditarFaucet({ userId: 'u', criptomonedaId: 'BTC', cantidad: '1', referencia: 'faucet:1' }, 'tx');
+
+    const [asiento, transaction] = postTransaction.mock.calls[0];
+    expect(transaction).toBe('tx');
+    expect(asiento.tipo).toBe('deposito');
+    expect(asiento.descripcion).toBe('Faucet testnet');
+    expect(asiento.lineas).toHaveLength(2);
+    expect(asiento.lineas).toContainEqual({ ownerId: null, proposito: PROPOSITOS.EXTERNAL_ONCHAIN, criptomonedaId: 'BTC', monto: '-1' });
+    expect(asiento.lineas).toContainEqual({ ownerId: 'u', proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: 'BTC', monto: '1' });
   });
 });
