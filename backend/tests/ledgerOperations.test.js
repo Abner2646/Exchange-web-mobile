@@ -243,3 +243,42 @@ describe('reservarParaOrden / liberarReserva mueven disponible↔bloqueado en Sp
     expect(asiento.lineas).toContainEqual({ ownerId: 'u', proposito: PROPOSITOS.SPOT_DISPONIBLE, criptomonedaId: 'USDT', monto: '100' });
   });
 });
+
+describe('liquidarSwap respeta el compartimento origen', () => {
+  test("compartimento 'spot': las patas del usuario van a spot:disponible", async () => {
+    await liquidarSwap({
+      usuarioId: 'u', criptoBaseId: 'BTC', criptoQuoteId: 'USDT',
+      cantidadBase: '3', cantidadQuote: '0.3', comisionMonto: '0.003',
+      requiredQuote: '0.303', netQuote: '0.297', tipo: 'compra',
+      compartimento: 'spot', referencia: 'swap:spot:1',
+    });
+    const { lineas } = postTransaction.mock.calls[0][0];
+    // patas del usuario en Spot…
+    expect(lineas).toContainEqual({ ownerId: 'u', proposito: PROPOSITOS.SPOT_DISPONIBLE, criptomonedaId: 'USDT', monto: '-0.303' });
+    expect(lineas).toContainEqual({ ownerId: 'u', proposito: PROPOSITOS.SPOT_DISPONIBLE, criptomonedaId: 'BTC', monto: '3' });
+    // …y ninguna pata de usuario en Funding.
+    expect(lineas.some((l) => l.proposito === PROPOSITOS.FUNDING_DISPONIBLE)).toBe(false);
+    // casa intacta.
+    expect(lineas).toContainEqual({ ownerId: null, proposito: PROPOSITOS.FEE_REVENUE, criptomonedaId: 'USDT', monto: '0.003' });
+  });
+
+  test('sin compartimento explícito, default = funding (comportamiento actual)', async () => {
+    await liquidarSwap({
+      usuarioId: 'u', criptoBaseId: 'BTC', criptoQuoteId: 'USDT',
+      cantidadBase: '3', cantidadQuote: '0.3', comisionMonto: '0.003',
+      requiredQuote: '0.303', netQuote: '0.297', tipo: 'compra', referencia: 'swap:def:1',
+    });
+    const { lineas } = postTransaction.mock.calls[0][0];
+    expect(lineas).toContainEqual({ ownerId: 'u', proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: 'BTC', monto: '3' });
+  });
+
+  test('compartimento desconocido → error, sin postear', async () => {
+    await expect(liquidarSwap({
+      usuarioId: 'u', criptoBaseId: 'BTC', criptoQuoteId: 'USDT',
+      cantidadBase: '3', cantidadQuote: '0.3', comisionMonto: '0.003',
+      requiredQuote: '0.303', netQuote: '0.297', tipo: 'compra',
+      compartimento: 'earn', referencia: 'swap:bad:1',
+    })).rejects.toThrow(/compartimento/i);
+    expect(postTransaction).not.toHaveBeenCalled();
+  });
+});

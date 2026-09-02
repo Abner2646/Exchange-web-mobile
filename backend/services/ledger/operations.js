@@ -11,8 +11,8 @@
 const money = require('../../utils/money');
 
 // Liquida un swap contra la casa. Un solo asiento, net-zero por cripto:
-//  - el usuario paga en una cripto y recibe en la otra (compartimento Funding —
-//    el compartimento Spot es una feature de producto separada),
+//  - el usuario paga en una cripto y recibe en la otra (compartimento a elección
+//    del usuario: funding por default, o spot),
 //  - la casa `treasury` es la contraparte de inventario (entrega/recibe el activo),
 //  - la comisión (en quote, igual que el modelo actual) acredita `fee_revenue`.
 // Mantiene idénticos los saldos del usuario respecto del modelo previo; sólo el
@@ -26,9 +26,14 @@ const money = require('../../utils/money');
 async function liquidarSwap({
   usuarioId, criptoBaseId, criptoQuoteId, cantidadBase,
   cantidadQuote, comisionMonto, requiredQuote, netQuote, tipo, referencia,
+  compartimento = 'funding',
 }, transaction = null) {
   const { postTransaction } = require('./postingService');
   const { PROPOSITOS } = require('./ledgerAccounts');
+  const propUsuario = DISPONIBLE_POR_COMPARTIMENTO[compartimento];
+  if (!propUsuario) {
+    throw new Error(`Compartimento inválido para swap: ${compartimento}`);
+  }
   const base = String(cantidadBase);
   const neg = (x) => money.subtract('0', String(x));
 
@@ -36,19 +41,19 @@ async function liquidarSwap({
   if (tipo === 'compra') {
     // Paga requiredQuote (valor+comisión) en quote, recibe cantidadBase en base.
     lineas = [
-      { ownerId: usuarioId, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: criptoQuoteId, monto: neg(requiredQuote) },
+      { ownerId: usuarioId, proposito: propUsuario, criptomonedaId: criptoQuoteId, monto: neg(requiredQuote) },
       { ownerId: null, proposito: PROPOSITOS.TREASURY, criptomonedaId: criptoQuoteId, monto: String(cantidadQuote) },
       { ownerId: null, proposito: PROPOSITOS.FEE_REVENUE, criptomonedaId: criptoQuoteId, monto: String(comisionMonto) },
       { ownerId: null, proposito: PROPOSITOS.TREASURY, criptomonedaId: criptoBaseId, monto: neg(base) },
-      { ownerId: usuarioId, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: criptoBaseId, monto: base },
+      { ownerId: usuarioId, proposito: propUsuario, criptomonedaId: criptoBaseId, monto: base },
     ];
   } else {
     // Paga cantidadBase en base, recibe netQuote (valor−comisión) en quote.
     lineas = [
-      { ownerId: usuarioId, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: criptoBaseId, monto: neg(base) },
+      { ownerId: usuarioId, proposito: propUsuario, criptomonedaId: criptoBaseId, monto: neg(base) },
       { ownerId: null, proposito: PROPOSITOS.TREASURY, criptomonedaId: criptoBaseId, monto: base },
       { ownerId: null, proposito: PROPOSITOS.TREASURY, criptomonedaId: criptoQuoteId, monto: neg(cantidadQuote) },
-      { ownerId: usuarioId, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: criptoQuoteId, monto: String(netQuote) },
+      { ownerId: usuarioId, proposito: propUsuario, criptomonedaId: criptoQuoteId, monto: String(netQuote) },
       { ownerId: null, proposito: PROPOSITOS.FEE_REVENUE, criptomonedaId: criptoQuoteId, monto: String(comisionMonto) },
     ];
   }
