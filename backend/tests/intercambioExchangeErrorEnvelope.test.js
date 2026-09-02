@@ -29,7 +29,6 @@ jest.mock('../models/index.js', () => ({
   ParExchange: { findByPk: jest.fn() },
   BalanceUsuario: {
     findOne: jest.fn(),
-    getByUserAndCrypto: jest.fn(),
     getSaldoCompartimento: jest.fn(),
     updateBalance: jest.fn(),
   },

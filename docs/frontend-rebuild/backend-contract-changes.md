@@ -183,17 +183,21 @@ zero on a price-improved partial fill.
 
 **`GET /api/balances/my/balances` — additive per-compartment shape (non-breaking)**
 
-Each entry in the array now carries root-level `disponible`/`bloqueado`/`pendiente`
-fields that are the **sum of Funding + Spot** for that crypto, plus a new
-`compartimentos` sub-object with the per-compartment breakdown:
+Each entry in the array preserves the **existing** root keys
+(`userId`, `criptomonedaId`, `balanceDisponible`, `balanceBloqueado`,
+`balancePendiente`) — names are unchanged, making this a truly non-breaking
+additive change. The root totals now represent the **sum of Funding + Spot**
+for that crypto. A new `compartimentos` sub-object with the per-compartment
+breakdown is added alongside:
 
 ```json
 [
   {
-    "criptomonedaId": "<uuid>",
-    "disponible":  "500.00000000",
-    "bloqueado":   "0.00000000",
-    "pendiente":   "0.00000000",
+    "userId":             "<uuid>",
+    "criptomonedaId":     "<uuid>",
+    "balanceDisponible":  "500.00000000",
+    "balanceBloqueado":   "0.00000000",
+    "balancePendiente":   "0.00000000",
     "compartimentos": {
       "funding": { "disponible": "300.00000000", "bloqueado": "0.00000000", "pendiente": "0.00000000" },
       "spot":    { "disponible": "200.00000000", "bloqueado": "0.00000000" }
@@ -203,10 +207,13 @@ fields that are the **sum of Funding + Spot** for that crypto, plus a new
 ```
 
 Notes:
-- The change is **additive**: the root `disponible`/`bloqueado`/`pendiente` fields
-  are now sums (not funding-only), and `compartimentos` is new. Clients that read
-  only the root fields keep working but will now see the combined balance across
-  both compartments.
+- The change is **non-breaking and additive**: the existing root fields
+  `balanceDisponible`, `balanceBloqueado`, `balancePendiente`, and `userId` are
+  preserved with their original names. Their values now carry the consolidated
+  total across Funding and Spot (previously Funding-only). Clients reading those
+  fields keep working and will automatically see the combined balance. The
+  `compartimentos` sub-object is entirely new — existing clients that ignore
+  unknown fields are unaffected.
 - `pendiente` is a Funding-only concept (on-chain deposits detected but not yet
   confirmed). Spot has no `pendiente` field.
 - All monetary values are 8-decimal canonical strings (see §2).

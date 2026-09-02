@@ -29,7 +29,7 @@ jest.mock('../models/index.js', () => ({
   IntercambioExchange: { create: jest.fn(), getDailyVolume: jest.fn() },
   Usuario: { findByPk: jest.fn() },
   ParExchange: { findByPk: jest.fn() },
-  BalanceUsuario: { getByUserAndCrypto: jest.fn(), getSaldoCompartimento: jest.fn() },
+  BalanceUsuario: { getSaldoCompartimento: jest.fn() },
   Criptomoneda: {},
   sequelize: { transaction: jest.fn() },
 }));

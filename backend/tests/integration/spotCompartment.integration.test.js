@@ -102,7 +102,7 @@ describe('GET /api/balances/my/balances es aditivo (totales = suma + desglose)',
     expect(res.status).toBe(200);
     const fila = res.body.find((b) => b.criptomonedaId === usdt.id);
     expect(fila).toBeDefined();
-    expect(fila.disponible).toBe('500.00000000'); // 300 + 200
+    expect(fila.balanceDisponible).toBe('500.00000000'); // 300 + 200
     expect(fila.compartimentos.funding.disponible).toBe('300.00000000');
     expect(fila.compartimentos.spot.disponible).toBe('200.00000000');
   });
@@ -117,13 +117,13 @@ describe('GET /api/balances/my/balances es aditivo (totales = suma + desglose)',
     const fila = res.body.find((b) => b.criptomonedaId === usdt.id);
     expect(fila).toBeDefined();
     // root: 300 funding + 0 spot = 300, siempre 8dp
-    expect(fila.disponible).toBe('300.00000000');
+    expect(fila.balanceDisponible).toBe('300.00000000');
     // funding compartimento: valor real, 8dp
     expect(fila.compartimentos.funding.disponible).toBe('300.00000000');
     expect(fila.compartimentos.funding.bloqueado).toBe('0.00000000');
     expect(fila.compartimentos.funding.pendiente).toBe('0.00000000');
     // root pendiente: 8dp (no bare '0')
-    expect(fila.pendiente).toBe('0.00000000');
+    expect(fila.balancePendiente).toBe('0.00000000');
     // spot compartimento: sin cuenta → getSaldoCuenta devuelve '0' → debe emitirse como '0.00000000'
     expect(fila.compartimentos.spot.disponible).toBe('0.00000000');
     expect(fila.compartimentos.spot.bloqueado).toBe('0.00000000');

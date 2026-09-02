@@ -257,10 +257,11 @@ function createBalanceUserModel(sequelize) {
         const funding = await leerCompartimento(userId, c.criptomonedaId, 'funding');
         const spot = await leerCompartimento(userId, c.criptomonedaId, 'spot');
         salida.push({
+          userId,
           criptomonedaId: c.criptomonedaId,
-          disponible: sumar8(funding.disponible, spot.disponible),
-          bloqueado: sumar8(funding.bloqueado, spot.bloqueado),
-          pendiente: fmt8(funding.pendiente), // sólo Funding tiene pendiente
+          balanceDisponible: sumar8(funding.disponible, spot.disponible),
+          balanceBloqueado: sumar8(funding.bloqueado, spot.bloqueado),
+          balancePendiente: fmt8(funding.pendiente), // sólo Funding tiene pendiente
           compartimentos: {
             funding: { disponible: fmt8(funding.disponible), bloqueado: fmt8(funding.bloqueado), pendiente: fmt8(funding.pendiente) },
             spot: { disponible: fmt8(spot.disponible), bloqueado: fmt8(spot.bloqueado) },
