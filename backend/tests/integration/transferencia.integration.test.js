@@ -3,6 +3,9 @@ const request = require('supertest');
 const { app, installAuthHarness } = require('../helpers/authHarness');
 const { Transferencia } = require('../../models');
 const f = require('../helpers/factories');
+const posting = require('../../services/ledger/postingService');
+const recon = require('../../services/ledger/reconciliation');
+const { PROPOSITOS } = require('../../services/ledger/ledgerAccounts');
 
 const h = installAuthHarness();
 
@@ -52,6 +55,11 @@ describe('POST /api/transferencia/ (create) → /:id/process', () => {
     expect((await f.getBalance(sender, crypto)).balanceDisponible).toBe('50.00000000');
     expect((await f.getBalance(recipient, crypto)).balanceDisponible).toBe('50.00000000');
     expect((await Transferencia.findByPk(transferId)).estado).toBe('completada');
+
+    // Paso D: la transferencia es un asiento user↔user sin suspense; el libro cierra.
+    expect(await posting.getSaldoCuenta({ ownerId: null, proposito: PROPOSITOS.SUSPENSE, criptomonedaId: crypto.id })).toBe('0');
+    expect((await recon.reconciliarInterno()).ok).toBe(true);
+    expect((await recon.reconciliarExterno()).ok).toBe(true);
   });
 
   test('create with insufficient funds → 400 INSUFFICIENT_FUNDS, no transfer created', async () => {

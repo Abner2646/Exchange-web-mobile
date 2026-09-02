@@ -206,22 +206,18 @@ function createTransferenciaModel(sequelize) {
         throw new Error('Usuario destinatario no válido');
       }
 
-      // Ejecutar la transferencia (restar del remitente, sumar al destinatario)
-      await BalanceUsuario.updateBalance(
-        transferencia.usuarioRemitenteId,
-        transferencia.criptomonedaId,
-        -transferencia.cantidad,
-        'disponible',
-        { transaction: t }
-      );
-
-      await BalanceUsuario.updateBalance(
-        transferencia.usuarioDestinatarioId,
-        transferencia.criptomonedaId,
-        transferencia.cantidad,
-        'disponible',
-        { transaction: t }
-      );
+      // Paso D: transferencia interna como UN asiento user↔user (sin suspense).
+      // (Nota: este método de modelo NO está cableado a ninguna ruta — el flujo
+      // vivo es el controller procesarTransferencia; se corrige igual para no
+      // dejar una duplicación con el bug de pasar { transaction } como 5º arg.)
+      const { transferirInterno } = require('../services/ledger/operations');
+      await transferirInterno({
+        remitenteId: transferencia.usuarioRemitenteId,
+        destinatarioId: transferencia.usuarioDestinatarioId,
+        criptomonedaId: transferencia.criptomonedaId,
+        cantidad: String(transferencia.cantidad),
+        referencia: `transferencia:${transferencia.id}`,
+      }, t);
 
       // Actualizar estado de la transferencia
       transferencia.estado = 'completada';

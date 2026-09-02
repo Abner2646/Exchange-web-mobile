@@ -142,7 +142,21 @@ async function confirmarDeposito({ userId, criptomonedaId, cantidad, referencia 
   return postTransaction({ tipo: 'deposito', referencia, descripcion: 'Depósito confirmado', lineas }, transaction);
 }
 
+// Transferencia interna user↔user (mismo compartimento Funding, misma cripto).
+// funding:disponible del remitente −A → funding:disponible del destinatario +A.
+// Sin contraparte de casa (suma cero entre dos usuarios) → NO usa suspense. El
+// anti-sobregiro del remitente lo da postTransaction (FOR UPDATE sobre la fila).
+async function transferirInterno({ remitenteId, destinatarioId, criptomonedaId, cantidad, referencia }, transaction = null) {
+  const { postTransaction } = require('./postingService');
+  const { PROPOSITOS } = require('./ledgerAccounts');
+  const lineas = [
+    { ownerId: remitenteId, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId, monto: money.subtract('0', String(cantidad)) },
+    { ownerId: destinatarioId, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId, monto: String(cantidad) },
+  ];
+  return postTransaction({ tipo: 'transferencia', referencia, descripcion: 'Transferencia interna', lineas }, transaction);
+}
+
 module.exports = {
   liquidarSwap, liquidarTrade, marcarRetiroTransmitido,
-  registrarDepositoPendiente, confirmarDeposito,
+  registrarDepositoPendiente, confirmarDeposito, transferirInterno,
 };

@@ -2,6 +2,7 @@ const { Transferencia, Usuario, Criptomoneda, BalanceUsuario, Notificaciones } =
 const { sequelize } = require('../models/index.js');
 const AppError = require('../utils/AppError');
 const errorCodes = require('../utils/errorCodes');
+const { transferirInterno } = require('../services/ledger/operations');
 
 // Create new transfer
 const createTransferencia = async (req, res) => {
@@ -195,23 +196,17 @@ const procesarTransferencia = async (req, res) => {
 
     console.log(`Ejecutando transferencia: ${cantidadTransferencia} desde ${remitente.username} hacia ${destinatario.username}`);
 
-    // Deduct from sender
-    await BalanceUsuario.updateBalance(
-      transferencia.usuarioRemitenteId,
-      transferencia.criptomonedaId,
-      -cantidadTransferencia,
-      'disponible',
-      transaction
-    );
-
-    // Credit to recipient
-    await BalanceUsuario.updateBalance(
-      transferencia.usuarioDestinatarioId,
-      transferencia.criptomonedaId,
-      cantidadTransferencia,
-      'disponible',
-      transaction
-    );
+    // Paso D: transferencia interna como UN asiento user↔user en el ledger
+    // (remitente disponible −A → destinatario disponible +A). Sin suspense
+    // (suma cero entre dos usuarios). Reemplaza los dos updateBalance (que
+    // posteaban funding+suspense por pata).
+    await transferirInterno({
+      remitenteId: transferencia.usuarioRemitenteId,
+      destinatarioId: transferencia.usuarioDestinatarioId,
+      criptomonedaId: transferencia.criptomonedaId,
+      cantidad: String(transferencia.cantidad),
+      referencia: `transferencia:${transferencia.id}`,
+    }, transaction);
 
     // Mark transfer complete
     transferencia.estado = 'completada';

@@ -11,7 +11,7 @@ const { postTransaction } = require('../services/ledger/postingService');
 const { PROPOSITOS } = require('../services/ledger/ledgerAccounts');
 const {
   liquidarSwap, liquidarTrade, marcarRetiroTransmitido,
-  registrarDepositoPendiente, confirmarDeposito,
+  registrarDepositoPendiente, confirmarDeposito, transferirInterno,
 } = require('../services/ledger/operations');
 
 beforeEach(() => jest.clearAllMocks());
@@ -137,5 +137,21 @@ describe('registrarDepositoPendiente / confirmarDeposito arman los asientos del 
     const { lineas } = asiento;
     expect(lineas).toContainEqual({ ownerId: 'u', proposito: PROPOSITOS.FUNDING_PENDIENTE, criptomonedaId: 'BTC', monto: '-1.5' });
     expect(lineas).toContainEqual({ ownerId: 'u', proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: 'BTC', monto: '1.5' });
+  });
+});
+
+describe('transferirInterno arma el asiento de la transferencia user↔user', () => {
+  test('remitente disponible −A → destinatario disponible +A (sin suspense)', async () => {
+    await transferirInterno({
+      remitenteId: 'from', destinatarioId: 'to', criptomonedaId: 'BTC', cantidad: '50', referencia: 'transferencia:1',
+    }, 'tx');
+
+    const [asiento, transaction] = postTransaction.mock.calls[0];
+    expect(transaction).toBe('tx');
+    expect(asiento.tipo).toBe('transferencia');
+    expect(asiento.descripcion).toBe('Transferencia interna');
+    expect(asiento.lineas).toHaveLength(2);
+    expect(asiento.lineas).toContainEqual({ ownerId: 'from', proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: 'BTC', monto: '-50' });
+    expect(asiento.lineas).toContainEqual({ ownerId: 'to', proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: 'BTC', monto: '50' });
   });
 });
