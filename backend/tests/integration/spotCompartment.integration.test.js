@@ -89,3 +89,20 @@ describe('POST /api/balances/my/transfer (Funding↔Spot)', () => {
     expect(res.status).toBe(400);
   });
 });
+
+describe('GET /api/balances/my/balances es aditivo (totales = suma + desglose)', () => {
+  test('suma funding+spot en la raíz y expone compartimentos', async () => {
+    const usdt = await f.seedCripto('USDT');
+    const user = await f.seedUser({ email: 'shape@test.local', username: 'shape' });
+    await f.seedBalance(user, usdt, '300');       // funding:disponible
+    await f.seedSpotBalance(user, usdt, '200');    // spot:disponible
+
+    const res = await request(app).get('/api/balances/my/balances').set(f.authHeader(user));
+    expect(res.status).toBe(200);
+    const fila = res.body.find((b) => b.criptomonedaId === usdt.id);
+    expect(fila).toBeDefined();
+    expect(fila.disponible).toBe('500.00000000'); // 300 + 200
+    expect(fila.compartimentos.funding.disponible).toBe('300.00000000');
+    expect(fila.compartimentos.spot.disponible).toBe('200.00000000');
+  });
+});

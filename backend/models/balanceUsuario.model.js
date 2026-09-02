@@ -228,6 +228,50 @@ function createBalanceUserModel(sequelize) {
     }
   };
 
+  // Respuesta aditiva (decisión 1B): por cada cripto con cuenta en Funding o
+  // Spot, devuelve los totales de raíz (suma de ambos compartimentos, compatible
+  // con el frontend actual) + el desglose por compartimento.
+  // Spot no tiene 'pendiente'. Require lazy de PROPOSITOS y CuentaLedger para
+  // evitar el ciclo models/index.js → ledgerAccounts → models/index.js.
+  BalanceUsuario.getBalancesConCompartimentos = async (userId) => {
+    try {
+      const { CuentaLedger } = require('./index');
+      const { PROPOSITOS } = require('../services/ledger/ledgerAccounts');
+      // money.add usa toFixed() sin argumentos — strip trailing zeros cuando la
+      // suma es entera. Usamos Decimal.toFixed(8) para mantener la precisión de
+      // 8 decimales que el frontend espera (igual que getSaldoCuenta).
+      const Decimal = require('decimal.js');
+      const sumar8 = (a, b) => new Decimal(a).plus(b).toFixed(8);
+      const todos = [
+        PROPOSITOS.FUNDING_DISPONIBLE, PROPOSITOS.FUNDING_BLOQUEADO, PROPOSITOS.FUNDING_PENDIENTE,
+        PROPOSITOS.SPOT_DISPONIBLE, PROPOSITOS.SPOT_BLOQUEADO,
+      ];
+      const cuentas = await CuentaLedger.findAll({
+        where: { ownerId: userId, proposito: todos },
+        attributes: ['criptomonedaId'],
+        group: ['criptomonedaId'],
+      });
+      const salida = [];
+      for (const c of cuentas) {
+        const funding = await leerCompartimento(userId, c.criptomonedaId, 'funding');
+        const spot = await leerCompartimento(userId, c.criptomonedaId, 'spot');
+        salida.push({
+          criptomonedaId: c.criptomonedaId,
+          disponible: sumar8(funding.disponible, spot.disponible),
+          bloqueado: sumar8(funding.bloqueado, spot.bloqueado),
+          pendiente: funding.pendiente, // sólo Funding tiene pendiente
+          compartimentos: {
+            funding: { disponible: funding.disponible, bloqueado: funding.bloqueado, pendiente: funding.pendiente },
+            spot: { disponible: spot.disponible, bloqueado: spot.bloqueado },
+          },
+        });
+      }
+      return salida;
+    } catch (error) {
+      throw new Error(`Error al obtener balances con compartimentos: ${error.message}`);
+    }
+  };
+
   // Lista las criptos con cuenta en el compartimento pedido (una entrada por
   // cripto). Espejo de getByUserId pero scopeado a un compartimento.
   BalanceUsuario.getByUserIdCompartimento = async (userId, compartimento) => {

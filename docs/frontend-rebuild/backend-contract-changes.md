@@ -179,6 +179,82 @@ improvement currently stays in "locked" until the order fully resolves — a
 separate residual-release gap tracked in the roadmap. Don't assume locked hits
 zero on a price-improved partial fill.
 
+### 9. Compartmentalized balances — additive shape + internal transfer (2026-09-02)
+
+**`GET /api/balances/my/balances` — additive per-compartment shape (non-breaking)**
+
+Each entry in the array now carries root-level `disponible`/`bloqueado`/`pendiente`
+fields that are the **sum of Funding + Spot** for that crypto, plus a new
+`compartimentos` sub-object with the per-compartment breakdown:
+
+```json
+[
+  {
+    "criptomonedaId": "<uuid>",
+    "disponible":  "500.00000000",
+    "bloqueado":   "0.00000000",
+    "pendiente":   "0",
+    "compartimentos": {
+      "funding": { "disponible": "300.00000000", "bloqueado": "0.00000000", "pendiente": "0" },
+      "spot":    { "disponible": "200.00000000", "bloqueado": "0.00000000" }
+    }
+  }
+]
+```
+
+Notes:
+- The change is **additive**: the root `disponible`/`bloqueado`/`pendiente` fields
+  are now sums (not funding-only), and `compartimentos` is new. Clients that read
+  only the root fields keep working but will now see the combined balance across
+  both compartments.
+- `pendiente` is a Funding-only concept (on-chain deposits detected but not yet
+  confirmed). Spot has no `pendiente` field.
+- All monetary values are 8-decimal canonical strings (see §2).
+- Entries only appear for cryptos with at least one ledger account (Funding or Spot).
+  An asset with no activity does not appear — treat a missing asset as `0` (see §3
+  of the "Expected upcoming" notes in the previous ledger migration entry).
+
+**`POST /api/balances/my/transfer` — internal Funding↔Spot transfer (new endpoint)**
+
+Self-service transfer between a user's own compartments:
+
+```
+POST /api/balances/my/transfer
+Authorization: Bearer <token>
+{ "criptomonedaId": "<uuid>", "cantidad": "200", "origen": "funding", "destino": "spot" }
+```
+
+- `origen` and `destino` must each be one of `funding` or `spot`, and must differ.
+- `cantidad` must be a positive amount (string preferred).
+- **200** on success: `{ "message": "...", "data": { "origen": "funding", "destino": "spot" } }`.
+- **400** if funds in `origen` are insufficient, if compartments are invalid/equal,
+  or if `cantidad` is missing/zero.
+- The ledger guard (double-entry FOR UPDATE) is the authoritative anti-overdraft
+  check; the endpoint also runs an early-error availability check before posting.
+
+**Swap `compartimento` param (landing in Task 9)**
+
+The swap endpoint will accept an optional `compartimento` parameter (default
+`"funding"`) to allow swapping from either compartment. Until Task 9 lands, swaps
+always read from `funding`. Do not hard-code `funding` on the client — use the
+field when available.
+
+**Behavior change: order-book trading now requires funds in Spot**
+
+Placing a trading order (buy or sell) now reserves funds from the **Spot**
+compartment, not Funding. A user whose balance is in Funding must first transfer
+to Spot (`POST /api/balances/my/transfer`) before trading. Withdrawals remain
+**Funding-only** — funds must be in Funding to withdraw.
+
+Summary of which operation reads from which compartment:
+
+| Operation | Reads from |
+|-----------|-----------|
+| Order-book buy / sell | Spot |
+| Withdrawal | Funding |
+| Swap (current) | Funding (Task 9 adds `compartimento` param) |
+| Internal transfer | User-chosen (`origen`/`destino`) |
+
 ---
 
 ## Expected upcoming contract changes (heads-up, not yet done)

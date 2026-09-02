@@ -37,11 +37,12 @@ const getBalanceByUserAndCrypto = async (req, res) => {
   }
 };
 
-// Obtener mis balances (usuario autenticado)
+// Obtener mis balances (usuario autenticado) — decisión 1B: respuesta aditiva
+// con totales de raíz (Funding + Spot) y desglose por compartimento.
 const getMyBalances = async (req, res) => {
   try {
-    const userId = req.user.id; // Asumiendo que viene del middleware de auth
-    const result = await BalanceUsuario.getByUserId(userId);
+    const userId = req.user.id;
+    const result = await BalanceUsuario.getBalancesConCompartimentos(userId);
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
