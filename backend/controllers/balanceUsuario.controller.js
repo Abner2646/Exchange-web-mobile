@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const { BalanceUsuario } = require('../models/index.js');
-const { transferirInterno } = require('../services/ledger/operations');
+const { transferirInterno, transferirEntreCompartimentos } = require('../services/ledger/operations');
+const money = require('../utils/money');
 
 // Listar balances
 const getBalances = async (req, res) => {
@@ -214,6 +215,42 @@ const transferBalance = async (req, res) => {
   }
 };
 
+// Transferencia del usuario autenticado entre sus compartimentos (Funding↔Spot).
+// Self-service: el userId sale del token, no del body.
+const transferMisCompartimentos = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { criptomonedaId, cantidad, origen, destino } = req.body;
+
+    const COMPARTIMENTOS = ['funding', 'spot'];
+    if (!criptomonedaId || !cantidad || money.compare(String(cantidad), '0') <= 0) {
+      return res.status(400).json({ error: 'Datos de transferencia incompletos' });
+    }
+    if (!COMPARTIMENTOS.includes(origen) || !COMPARTIMENTOS.includes(destino) || origen === destino) {
+      return res.status(400).json({ error: 'Compartimentos inválidos (usá funding/spot, distintos)' });
+    }
+
+    // Early-error de suficiencia (el guard real es el FOR UPDATE del ledger).
+    const alcanza = await BalanceUsuario.hasAvailableEnCompartimento(userId, criptomonedaId, cantidad, origen);
+    if (!alcanza) {
+      return res.status(400).json({ error: `Saldo insuficiente en ${origen} para transferir` });
+    }
+
+    await transferirEntreCompartimentos({
+      userId, criptomonedaId, cantidad: String(cantidad), origen, destino,
+      referencia: `compartimento:${crypto.randomUUID()}`,
+    });
+
+    res.json({ message: 'Transferencia entre compartimentos completada', data: { origen, destino } });
+  } catch (error) {
+    // /sobregiro/ del ledger (carrera) → 400 con mensaje de dominio.
+    if (/sobregiro/i.test(error.message)) {
+      return res.status(400).json({ error: 'Saldo insuficiente para transferir' });
+    }
+    res.status(400).json({ error: error.message });
+  }
+};
+
 module.exports = {
   getBalances,
   getBalancesByUser,
@@ -227,5 +264,6 @@ module.exports = {
   checkAvailableBalance,
   getUsersWithBalance,
   getBalanceStats,
-  transferBalance
+  transferBalance,
+  transferMisCompartimentos
 };

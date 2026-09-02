@@ -14,6 +14,9 @@ const rateLimitMiddleware = require('../middleware/rateLimit.middleware.js');
 // GET /api/balances/my/balances - Obtener mis balances
 router.get('/my/balances', authenticateToken, balanceUserController.getMyBalances); // Bien
 
+// POST /api/balances/my/transfer - Transferir entre mis compartimentos (Funding↔Spot)
+router.post('/my/transfer', authenticateToken, balanceUserController.transferMisCompartimentos);
+
 // PUT /api/balances/user/:userId/crypto/:criptomonedaId - Actualizar balance
 router.put('/user/:userId/crypto/:criptomonedaId', authenticateToken, isAdmin, balanceUserController.updateBalance); // Bien
 // {"amount": 100}
