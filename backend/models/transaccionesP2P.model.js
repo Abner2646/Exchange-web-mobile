@@ -78,22 +78,9 @@ TransaccionP2P.createTransaction = async (data) => {
       );
     }
 
-    // 🔒 BLOQUEAR FONDOS
-    await BalanceUsuario.updateBalance(
-      vendedorId,
-      criptomonedaId,
-      money.multiply(cantidadNum, '-1'),
-      'disponible',
-      transaction
-    );
-
-    await BalanceUsuario.updateBalance(
-      vendedorId,
-      criptomonedaId,
-      cantidadNum,
-      'bloqueado',
-      transaction
-    );
+    // 🔒 BLOQUEAR FONDOS — Paso D: blockBalance postea dos patas de usuario
+    // (disponible→bloqueado), sin suspense.
+    await BalanceUsuario.blockBalance(vendedorId, criptomonedaId, cantidadNum, transaction);
 
     const montoFiat = money.multiply(cantidadNum, String(precioUnitario));
 
@@ -166,25 +153,18 @@ TransaccionP2P.completeTransaction = async (id, usuarioId) => {
       );
     }
 
-    const { BalanceUsuario } = require('./index');
     const cantidad = String(transaccion.cantidad);
 
-    // 💸 TRANSFERIR FONDOS
-    await BalanceUsuario.updateBalance(
-      transaccion.vendedorId,
-      transaccion.criptomonedaId,
-      -cantidad,
-      'bloqueado',
-      transaction
-    );
-
-    await BalanceUsuario.updateBalance(
-      transaccion.compradorId,
-      transaccion.criptomonedaId,
+    // 💸 TRANSFERIR FONDOS — Paso D: un asiento P2P user↔user (cripto bloqueado
+    // del vendedor → disponible del comprador), sin suspense.
+    const { liquidarP2P } = require('../services/ledger/operations');
+    await liquidarP2P({
+      vendedorId: transaccion.vendedorId,
+      compradorId: transaccion.compradorId,
+      criptomonedaId: transaccion.criptomonedaId,
       cantidad,
-      'disponible',
-      transaction
-    );
+      referencia: `p2p:${transaccion.id}`,
+    }, transaction);
 
     await transaccion.update({
       estado: 'completada',
@@ -253,23 +233,10 @@ TransaccionP2P.cancelTransaction = async (id, usuarioId) => {
     const { BalanceUsuario } = require('./index');
     const cantidad = String(transaccion.cantidad);
 
-    // 🔓 DESBLOQUEAR FONDOS
+    // 🔓 DESBLOQUEAR FONDOS — Paso D: unblockBalance postea dos patas de usuario
+    // (bloqueado→disponible), sin suspense.
     if (transaccion.estado === 'iniciada' || transaccion.estado === 'pago_confirmado') {
-      await BalanceUsuario.updateBalance(
-        transaccion.vendedorId,
-        transaccion.criptomonedaId,
-        money.multiply(cantidad, '-1'),
-        'bloqueado',
-        transaction
-      );
-      
-      await BalanceUsuario.updateBalance(
-        transaccion.vendedorId,
-        transaccion.criptomonedaId,
-        cantidad,
-        'disponible',
-        transaction
-      );
+      await BalanceUsuario.unblockBalance(transaccion.vendedorId, transaccion.criptomonedaId, cantidad, transaction);
     }
 
     await transaccion.update({

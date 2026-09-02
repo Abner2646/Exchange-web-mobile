@@ -11,7 +11,7 @@ const { postTransaction } = require('../services/ledger/postingService');
 const { PROPOSITOS } = require('../services/ledger/ledgerAccounts');
 const {
   liquidarSwap, liquidarTrade, marcarRetiroTransmitido,
-  registrarDepositoPendiente, confirmarDeposito, transferirInterno,
+  registrarDepositoPendiente, confirmarDeposito, transferirInterno, liquidarP2P,
 } = require('../services/ledger/operations');
 
 beforeEach(() => jest.clearAllMocks());
@@ -153,5 +153,21 @@ describe('transferirInterno arma el asiento de la transferencia user↔user', ()
     expect(asiento.lineas).toHaveLength(2);
     expect(asiento.lineas).toContainEqual({ ownerId: 'from', proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: 'BTC', monto: '-50' });
     expect(asiento.lineas).toContainEqual({ ownerId: 'to', proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: 'BTC', monto: '50' });
+  });
+});
+
+describe('liquidarP2P arma el asiento de la transacción P2P', () => {
+  test('cripto bloqueado del vendedor → disponible del comprador (sin suspense)', async () => {
+    await liquidarP2P({
+      vendedorId: 'v', compradorId: 'c', criptomonedaId: 'BTC', cantidad: '0.5', referencia: 'p2p:1',
+    }, 'tx');
+
+    const [asiento, transaction] = postTransaction.mock.calls[0];
+    expect(transaction).toBe('tx');
+    expect(asiento.tipo).toBe('liquidacion_p2p');
+    expect(asiento.descripcion).toBe('Liquidación P2P');
+    expect(asiento.lineas).toHaveLength(2);
+    expect(asiento.lineas).toContainEqual({ ownerId: 'v', proposito: PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId: 'BTC', monto: '-0.5' });
+    expect(asiento.lineas).toContainEqual({ ownerId: 'c', proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: 'BTC', monto: '0.5' });
   });
 });

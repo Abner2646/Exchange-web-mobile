@@ -156,7 +156,22 @@ async function transferirInterno({ remitenteId, destinatarioId, criptomonedaId, 
   return postTransaction({ tipo: 'transferencia', referencia, descripcion: 'Transferencia interna', lineas }, transaction);
 }
 
+// Liquida una transacción P2P: el cripto BLOQUEADO del vendedor pasa a
+// DISPONIBLE del comprador (el pago fiat es off-platform). funding:bloqueado del
+// vendedor −A → funding:disponible del comprador +A. Sin fee ni contraparte de
+// casa (suma cero user↔user) → sin suspense. El bloqueo previo (blockBalance) y
+// la cancelación (unblockBalance) ya son de dos patas de usuario sin suspense.
+async function liquidarP2P({ vendedorId, compradorId, criptomonedaId, cantidad, referencia }, transaction = null) {
+  const { postTransaction } = require('./postingService');
+  const { PROPOSITOS } = require('./ledgerAccounts');
+  const lineas = [
+    { ownerId: vendedorId, proposito: PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId, monto: money.subtract('0', String(cantidad)) },
+    { ownerId: compradorId, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId, monto: String(cantidad) },
+  ];
+  return postTransaction({ tipo: 'liquidacion_p2p', referencia, descripcion: 'Liquidación P2P', lineas }, transaction);
+}
+
 module.exports = {
   liquidarSwap, liquidarTrade, marcarRetiroTransmitido,
-  registrarDepositoPendiente, confirmarDeposito, transferirInterno,
+  registrarDepositoPendiente, confirmarDeposito, transferirInterno, liquidarP2P,
 };
