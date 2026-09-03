@@ -33,25 +33,26 @@ async function reconciliarInterno(transaction = null) {
 // La suma la hace la DB agrupando por (cripto, dueño) en vez de traer TODOS los
 // movimientos a memoria (con el ledger creciendo, eso era un riesgo de OOM).
 async function reconciliarExterno(transaction = null) {
-  // Suma por cuenta en la DB (una fila por cuenta), y las cuentas con su (dueño,
-  // cripto). El split casa/usuarios y la agregación por cripto se hace en JS sobre
-  // O(cuentas) filas — nunca se traen los movimientos individuales. Cada cuenta
-  // del ledger es de una sola cripto, así que su suma pertenece a esa cripto.
-  const cuentas = await CuentaLedger.findAll({
-    attributes: ['id', 'ownerId', 'criptomonedaId'], raw: true, transaction,
-  });
+  // Suma en la DB agrupando por (cuenta, cripto DEL MOVIMIENTO) — nunca se traen
+  // los movimientos individuales. Se agrupa por criptomonedaId del movimiento (no
+  // el de la cuenta) a propósito: la reconciliación existe para cazar bugs de
+  // escritor, incluido uno que postee un movimiento con una cripto distinta a la
+  // de su cuenta; atribuir por la cripto de la cuenta ocultaría ese caso. El dueño
+  // (casa/usuario) se resuelve mapeando cuentaId→ownerId. Sólo aparecen las
+  // criptos con movimientos (igual que la versión previa por-movimiento).
+  const cuentas = await CuentaLedger.findAll({ attributes: ['id', 'ownerId'], raw: true, transaction });
+  const ownerMap = new Map(cuentas.map((c) => [c.id, c.ownerId]));
   const sumRows = await MovimientoLedger.findAll({
-    attributes: ['cuentaId', [fn('SUM', col('monto')), 'suma']],
-    group: ['cuentaId'], raw: true, transaction,
+    attributes: ['cuentaId', 'criptomonedaId', [fn('SUM', col('monto')), 'suma']],
+    group: ['cuentaId', 'criptomonedaId'], raw: true, transaction,
   });
-  const sumMap = new Map(sumRows.map((r) => [r.cuentaId, String(r.suma)]));
 
   const porCripto = {};
-  for (const cuenta of cuentas) {
-    const c = cuenta.criptomonedaId;
+  for (const r of sumRows) {
+    const c = r.criptomonedaId;
     if (!porCripto[c]) porCripto[c] = { usuarios: '0', casa: '0', neto: '0' };
-    const suma = sumMap.get(cuenta.id) || '0';
-    if (cuenta.ownerId === HOUSE_OWNER_ID) porCripto[c].casa = money.add(porCripto[c].casa, suma);
+    const suma = String(r.suma);
+    if (ownerMap.get(r.cuentaId) === HOUSE_OWNER_ID) porCripto[c].casa = money.add(porCripto[c].casa, suma);
     else porCripto[c].usuarios = money.add(porCripto[c].usuarios, suma);
   }
   let ok = true;

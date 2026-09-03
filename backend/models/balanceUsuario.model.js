@@ -106,6 +106,9 @@ function createBalanceUserModel(sequelize) {
   // asociacion .criptomoneda, igual que el viejo findAll sin include).
   BalanceUsuario.getByUserId = async (userId) => {
     try {
+      // Guard anti-fuga: agregarFundingLedger SIN userId devuelve TODOS los usuarios
+      // (es su modo admin). Acá el scope por-usuario es obligatorio.
+      if (!userId) return [];
       // agregarFundingLedger ya colapsa la proyección Funding por cripto en UNA
       // sola query (findAll + include saldoProyectado) y devuelve exactamente esta
       // forma {userId, criptomonedaId, balanceDisponible/Bloqueado/Pendiente}.
