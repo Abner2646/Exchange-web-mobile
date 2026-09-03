@@ -37,6 +37,16 @@ async function leerFundingDesdeLedger(userId, criptomonedaId, transaction = null
   return { balanceDisponible: disponible, balanceBloqueado: bloqueado, balancePendiente: pendiente };
 }
 
+// Error de saldo insuficiente que PRESERVA code 'SOBREGIRO'. block/unblock/
+// updateBalance traducen el SobregiroError de postTransaction a un mensaje legacy
+// (algunos callers matchean /insuficiente/), pero deben conservar el code para que
+// el controller lo mapee al envelope de dominio (BALANCE_INSUFFICIENT) sin regex.
+function errorSaldoInsuficiente(message) {
+  const e = new Error(message);
+  e.code = 'SOBREGIRO';
+  return e;
+}
+
 // Read-flip (write-flip Paso A/B): agrega la proyeccion Funding del ledger para
 // las lecturas de admin. Devuelve, por (usuario, cripto) con cuenta funding, el
 // disponible y bloqueado desde SaldoLedger. Require lazy por el ciclo
@@ -185,7 +195,7 @@ function createBalanceUserModel(sequelize) {
       }, transaction);
     } catch (error) {
       if (error.code === 'SOBREGIRO') {
-        throw new Error(`Error al actualizar balance: Balance insuficiente. ${type}`);
+        throw errorSaldoInsuficiente(`Error al actualizar balance: Balance insuficiente. ${type}`);
       }
       throw new Error(`Error al actualizar balance: ${error.message}`);
     }
@@ -331,7 +341,7 @@ function createBalanceUserModel(sequelize) {
       }, transaction);
     } catch (error) {
       if (error.code === 'SOBREGIRO') {
-        throw new Error('Error al bloquear balance: Balance disponible insuficiente para bloquear');
+        throw errorSaldoInsuficiente('Error al bloquear balance: Balance disponible insuficiente para bloquear');
       }
       throw new Error(`Error al bloquear balance: ${error.message}`);
     }
@@ -354,7 +364,7 @@ function createBalanceUserModel(sequelize) {
       }, transaction);
     } catch (error) {
       if (error.code === 'SOBREGIRO') {
-        throw new Error('Error al desbloquear balance: Balance bloqueado insuficiente para desbloquear');
+        throw errorSaldoInsuficiente('Error al desbloquear balance: Balance bloqueado insuficiente para desbloquear');
       }
       throw new Error(`Error al desbloquear balance: ${error.message}`);
     }
