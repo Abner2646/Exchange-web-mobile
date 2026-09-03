@@ -9,6 +9,61 @@ const { isAdmin } = require('../middleware/adminMiddleware.js');
 // Importa el controlador
 const valoracionController = require('../controllers/valoraciones.controller.js');
 
+/**
+ * @openapi
+ * /valoracion/me/received:
+ *   get: { tags: [Valoraciones (reputación)], summary: Mis valoraciones recibidas, responses: { 200: { description: Valoraciones } } }
+ * /valoracion/me/given:
+ *   get: { tags: [Valoraciones (reputación)], summary: Mis valoraciones dadas, responses: { 200: { description: Valoraciones } } }
+ * /valoracion/me/pending:
+ *   get: { tags: [Valoraciones (reputación)], summary: Transacciones pendientes de valorar, responses: { 200: { description: Pendientes } } }
+ * /valoracion/can-rate/{transaccionP2PId}/{usuarioEvaluadoId}:
+ *   get:
+ *     tags: [Valoraciones (reputación)]
+ *     summary: Verificar si puedo valorar una transacción
+ *     parameters:
+ *       - { in: path, name: transaccionP2PId, required: true, schema: { type: string, format: uuid } }
+ *       - { in: path, name: usuarioEvaluadoId, required: true, schema: { type: string, format: uuid } }
+ *     responses: { 200: { description: Resultado } }
+ * /valoracion/transaction/{transaccionP2PId}:
+ *   get: { tags: [Valoraciones (reputación)], summary: Valoraciones de una transacción, parameters: [{ in: path, name: transaccionP2PId, required: true, schema: { type: string, format: uuid } }], responses: { 200: { description: Valoraciones } } }
+ * /valoracion/user/{usuarioId}/stats:
+ *   get: { tags: [Valoraciones (reputación)], summary: Reputación de un usuario, parameters: [{ in: path, name: usuarioId, required: true, schema: { type: string, format: uuid } }], responses: { 200: { description: Stats } } }
+ * /valoracion/user/{usuarioId}/received:
+ *   get: { tags: [Valoraciones (reputación)], summary: Valoraciones recibidas por un usuario, parameters: [{ in: path, name: usuarioId, required: true, schema: { type: string, format: uuid } }], responses: { 200: { description: Valoraciones } } }
+ * /valoracion/user/{usuarioId}/given:
+ *   get: { tags: [Valoraciones (reputación)], summary: Valoraciones dadas por un usuario, parameters: [{ in: path, name: usuarioId, required: true, schema: { type: string, format: uuid } }], responses: { 200: { description: Valoraciones } } }
+ * /valoracion/users/{usuario1Id}/{usuario2Id}/summary:
+ *   get:
+ *     tags: [Valoraciones (reputación)]
+ *     summary: Resumen de valoraciones entre dos usuarios
+ *     parameters:
+ *       - { in: path, name: usuario1Id, required: true, schema: { type: string, format: uuid } }
+ *       - { in: path, name: usuario2Id, required: true, schema: { type: string, format: uuid } }
+ *     responses: { 200: { description: Resumen } }
+ * /valoracion/top-rated:
+ *   get: { tags: [Valoraciones (reputación)], summary: Top usuarios mejor valorados, responses: { 200: { description: Top } } }
+ * /valoracion:
+ *   get: { tags: [Valoraciones (reputación)], summary: Listar valoraciones (con filtros), responses: { 200: { description: Valoraciones } } }
+ *   post:
+ *     tags: [Valoraciones (reputación)]
+ *     summary: Crear una valoración
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { type: object, required: [transaccionP2PId, usuarioEvaluadoId, puntuacion], properties: { transaccionP2PId: { type: string, format: uuid }, usuarioEvaluadoId: { type: string, format: uuid }, puntuacion: { type: integer, minimum: 1, maximum: 5 }, comentario: { type: string } } }
+ *     responses: { 201: { description: Valoración creada }, 400: { $ref: '#/components/responses/BadRequest' } }
+ * /valoracion/batch:
+ *   post: { tags: [Valoraciones (reputación)], summary: Crear varias valoraciones (batch), responses: { 201: { description: Creadas } } }
+ * /valoracion/{id}:
+ *   get: { tags: [Valoraciones (reputación)], summary: Valoración por id, parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }], responses: { 200: { description: Valoración } } }
+ *   put: { tags: [Valoraciones (reputación)], summary: Actualizar una valoración, parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }], responses: { 200: { description: Actualizada } } }
+ *   delete: { tags: [Valoraciones (reputación)], summary: Eliminar una valoración, parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }], responses: { 200: { description: Eliminada } } }
+ * /valoracion/admin/stats:
+ *   get: { tags: [Valoraciones (reputación) - admin], summary: Estadísticas generales (admin), responses: { 200: { description: Stats } } }
+ */
+
 // --------------------- RUTAS ESPECÍFICAS DEL USUARIO --------------------- //
 
 // Obtener mis valoraciones recibidas
