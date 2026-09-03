@@ -175,7 +175,8 @@ function createBalanceUserModel(sequelize) {
   // endpoint admin de ajuste manual de saldo (PUT /balances/user/:id/crypto/:id):
   // 'suspense' es acá su rol contable LEGÍTIMO y permanente (cuenta de ajustes/no
   // clasificados), no el placeholder transitorio de la migración. El guard de
-  // sobregiro vive en postTransaction (FOR UPDATE); su error /sobregiro/ se
+  // sobregiro vive en postTransaction (FOR UPDATE); su SobregiroError (code
+  // 'SOBREGIRO') se
   // traduce al mensaje legacy /insuficiente/ del contrato.
   BalanceUsuario.updateBalance = async (userId, criptomonedaId, amount, type = 'disponible', transaction = null) => {
     const { postTransaction } = require('../services/ledger/postingService');
@@ -192,7 +193,7 @@ function createBalanceUserModel(sequelize) {
         ],
       }, transaction);
     } catch (error) {
-      if (/sobregiro/i.test(error.message)) {
+      if (error.code === 'SOBREGIRO') {
         throw new Error(`Error al actualizar balance: Balance insuficiente. ${type}`);
       }
       throw new Error(`Error al actualizar balance: ${error.message}`);
@@ -326,7 +327,7 @@ function createBalanceUserModel(sequelize) {
         ],
       }, transaction);
     } catch (error) {
-      if (/sobregiro/i.test(error.message)) {
+      if (error.code === 'SOBREGIRO') {
         throw new Error('Error al bloquear balance: Balance disponible insuficiente para bloquear');
       }
       throw new Error(`Error al bloquear balance: ${error.message}`);
@@ -349,7 +350,7 @@ function createBalanceUserModel(sequelize) {
         ],
       }, transaction);
     } catch (error) {
-      if (/sobregiro/i.test(error.message)) {
+      if (error.code === 'SOBREGIRO') {
         throw new Error('Error al desbloquear balance: Balance bloqueado insuficiente para desbloquear');
       }
       throw new Error(`Error al desbloquear balance: ${error.message}`);

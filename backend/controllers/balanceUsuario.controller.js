@@ -244,8 +244,9 @@ const transferMisCompartimentos = async (req, res) => {
 
     res.json({ message: 'Transferencia entre compartimentos completada', data: { origen, destino } });
   } catch (error) {
-    // /sobregiro/ del ledger (carrera) → 400 con mensaje de dominio.
-    if (/sobregiro/i.test(error.message)) {
+    // Sobregiro del ledger (carrera) → 400 con mensaje de dominio. Se distingue
+    // por code, no por regex sobre el mensaje.
+    if (error.code === 'SOBREGIRO') {
       return res.status(400).json({ error: 'Saldo insuficiente para transferir' });
     }
     res.status(400).json({ error: error.message });
