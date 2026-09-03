@@ -18,6 +18,192 @@ const tradingRateLimit = require('express-rate-limit')({
   message: 'Demasiadas solicitudes, intenta de nuevo más tarde'
 });
 
+// Anotaciones OpenAPI del dominio Trading (order book). Bloque único por archivo
+// (swagger-jsdoc lo parsea esté donde esté) para no tocar la lógica de las rutas,
+// que acá tienen cadenas de validadores express-validator. Al cambiar un endpoint,
+// actualizar su path acá.
+/**
+ * @openapi
+ * /trading/orders:
+ *   post:
+ *     tags: [Trading (order book)]
+ *     summary: Crear una orden (market/limit/stop). Money-path — requiere Idempotency-Key.
+ *     parameters:
+ *       - { in: header, name: Idempotency-Key, required: true, schema: { type: string, format: uuid } }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [tradingPairId, orderType, side, quantity]
+ *             properties:
+ *               tradingPairId: { type: string, format: uuid }
+ *               orderType: { type: string, enum: [market, limit, stop_limit, stop_market] }
+ *               side: { type: string, enum: [buy, sell] }
+ *               quantity: { type: number, example: 1.5 }
+ *               price: { type: number, example: 45000.5 }
+ *               stopPrice: { type: number }
+ *               timeInForce: { type: string, enum: [GTC, IOC, FOK] }
+ *               clientOrderId: { type: string }
+ *     responses:
+ *       201: { description: Orden creada }
+ *       400: { $ref: '#/components/responses/BadRequest' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ *   get:
+ *     tags: [Trading (order book)]
+ *     summary: Mis órdenes
+ *     responses: { 200: { description: Lista de órdenes }, 401: { $ref: '#/components/responses/Unauthorized' } }
+ * /trading/orders/active:
+ *   get:
+ *     tags: [Trading (order book)]
+ *     summary: Mis órdenes activas
+ *     responses: { 200: { description: Órdenes activas } }
+ * /trading/orders/{orderId}:
+ *   get:
+ *     tags: [Trading (order book)]
+ *     summary: Detalle de una orden
+ *     parameters: [{ in: path, name: orderId, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Orden }, 404: { $ref: '#/components/responses/BadRequest' } }
+ *   delete:
+ *     tags: [Trading (order book)]
+ *     summary: Cancelar una orden
+ *     parameters: [{ in: path, name: orderId, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Orden cancelada }, 400: { $ref: '#/components/responses/BadRequest' } }
+ * /trading/orderbook/{tradingPairId}:
+ *   get:
+ *     tags: [Trading (order book)]
+ *     summary: Order book de un par (público)
+ *     security: []
+ *     parameters: [{ in: path, name: tradingPairId, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Order book } }
+ * /trading/orderbook/{tradingPairId}/stats:
+ *   get:
+ *     tags: [Trading (order book)]
+ *     summary: Estadísticas del order book (público)
+ *     security: []
+ *     parameters: [{ in: path, name: tradingPairId, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Stats } }
+ * /trading/spread/{tradingPairId}:
+ *   get:
+ *     tags: [Trading (order book)]
+ *     summary: Spread de un par (público)
+ *     security: []
+ *     parameters: [{ in: path, name: tradingPairId, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Spread } }
+ * /trading/balance:
+ *   get:
+ *     tags: [Trading (order book)]
+ *     summary: Mi balance de trading (compartimento Spot)
+ *     responses: { 200: { description: Balance }, 401: { $ref: '#/components/responses/Unauthorized' } }
+ * /trading/trades/{tradingPairId}:
+ *   get:
+ *     tags: [Trading (order book)]
+ *     summary: Trades recientes de un par (público)
+ *     security: []
+ *     parameters: [{ in: path, name: tradingPairId, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Trades recientes } }
+ * /trading/trades/user/all:
+ *   get: { tags: [Trading (order book)], summary: Mis trades, responses: { 200: { description: Trades del usuario } } }
+ * /trading/trades/user/stats:
+ *   get: { tags: [Trading (order book)], summary: Estadísticas de mis trades, responses: { 200: { description: Stats } } }
+ * /trading/trades/detail/{tradeId}:
+ *   get:
+ *     tags: [Trading (order book)]
+ *     summary: Detalle de un trade
+ *     parameters: [{ in: path, name: tradeId, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Trade } }
+ * /trading/chart/{tradingPairId}:
+ *   get:
+ *     tags: [Trading (order book)]
+ *     summary: Datos de gráfico (velas) de un par (público)
+ *     security: []
+ *     parameters:
+ *       - { in: path, name: tradingPairId, required: true, schema: { type: string, format: uuid } }
+ *       - { in: query, name: interval, schema: { type: string, enum: [1m,5m,15m,30m,1h,4h,1d,1w] } }
+ *     responses: { 200: { description: Velas } }
+ * /trading/chart/{tradingPairId}/binance:
+ *   get:
+ *     tags: [Trading (order book)]
+ *     summary: Datos de gráfico desde Binance (público)
+ *     security: []
+ *     parameters: [{ in: path, name: tradingPairId, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Velas } }
+ * /trading/stats/{tradingPairId}:
+ *   get:
+ *     tags: [Trading (order book)]
+ *     summary: Estadísticas de un par (público)
+ *     security: []
+ *     parameters: [{ in: path, name: tradingPairId, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Stats } }
+ * /trading/volume:
+ *   get: { tags: [Trading (order book)], summary: Volumen global (público), security: [], responses: { 200: { description: Volumen } } }
+ * /trading/tickers:
+ *   get: { tags: [Trading (order book)], summary: Tickers (público), security: [], responses: { 200: { description: Tickers } } }
+ * /trading/summary:
+ *   get: { tags: [Trading (order book)], summary: Resumen de mi trading, responses: { 200: { description: Resumen } } }
+ * /trading/pairs:
+ *   get: { tags: [Trading (pares)], summary: Listar pares (público), security: [], responses: { 200: { description: Pares } } }
+ *   post:
+ *     tags: [Trading (pares) - admin]
+ *     summary: Crear un par de trading (super admin)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [symbol, baseAssetId, quoteAssetId]
+ *             properties:
+ *               symbol: { type: string, example: ETH/USDT }
+ *               baseAssetId: { type: string, format: uuid }
+ *               quoteAssetId: { type: string, format: uuid }
+ *               makerFeePercent: { type: number }
+ *               takerFeePercent: { type: number }
+ *     responses: { 201: { description: Par creado } }
+ * /trading/pairs/active:
+ *   get: { tags: [Trading (pares)], summary: Pares activos (público), security: [], responses: { 200: { description: Pares activos } } }
+ * /trading/pairs/top:
+ *   get: { tags: [Trading (pares)], summary: Top pares (público), security: [], responses: { 200: { description: Top pares } } }
+ * /trading/pairs/stats:
+ *   get: { tags: [Trading (pares)], summary: Estadísticas de pares (público), security: [], responses: { 200: { description: Stats } } }
+ * /trading/pairs/symbol/{symbol}:
+ *   get:
+ *     tags: [Trading (pares)]
+ *     summary: Par por símbolo (público)
+ *     security: []
+ *     parameters: [{ in: path, name: symbol, required: true, schema: { type: string } }]
+ *     responses: { 200: { description: Par } }
+ * /trading/pairs/{pairId}:
+ *   get:
+ *     tags: [Trading (pares)]
+ *     summary: Detalle de un par (público)
+ *     security: []
+ *     parameters: [{ in: path, name: pairId, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Par } }
+ *   put:
+ *     tags: [Trading (pares) - admin]
+ *     summary: Actualizar un par (super admin)
+ *     parameters: [{ in: path, name: pairId, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Par actualizado } }
+ * /trading/pairs/auto-create:
+ *   post:
+ *     tags: [Trading (pares) - admin]
+ *     summary: Auto-crear pares contra stablecoins/BTC/ETH (super admin)
+ *     responses: { 200: { description: Pares creados } }
+ * /trading/pairs/{pairId}/status:
+ *   patch:
+ *     tags: [Trading (pares) - admin]
+ *     summary: Cambiar el estado de un par (super admin)
+ *     parameters: [{ in: path, name: pairId, required: true, schema: { type: string, format: uuid } }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { type: object, required: [status], properties: { status: { type: string, enum: [active, paused, delisted] } } }
+ *     responses: { 200: { description: Estado actualizado } }
+ */
+
 // ================================
 // RUTAS DE ÓRDENES
 // ================================
