@@ -85,6 +85,25 @@ async function agregarFundingLedger({ userId = null, criptomonedaId = null } = {
   return [...porClave.values()];
 }
 
+// Lee la proyección del ledger de UN usuario en UNA sola query (findAll + include
+// saldoProyectado), evitando el N+1 de llamar getSaldoCuenta por (propósito,
+// cripto). Devuelve Map: criptomonedaId → { propósito → saldo (string canónico) }.
+// Scopeada a un usuario, así que la clave por-cripto no colisiona entre usuarios
+// (a diferencia de agregarFundingLedger, que puede ser multi-usuario).
+async function leerProyeccionUsuario(userId, propositos) {
+  const { CuentaLedger, SaldoLedger } = require('./index');
+  const cuentas = await CuentaLedger.findAll({
+    where: { ownerId: userId, proposito: propositos },
+    include: [{ model: SaldoLedger, as: 'saldoProyectado', attributes: ['saldo'] }],
+  });
+  const porCripto = new Map();
+  for (const c of cuentas) {
+    if (!porCripto.has(c.criptomonedaId)) porCripto.set(c.criptomonedaId, {});
+    porCripto.get(c.criptomonedaId)[c.proposito] = c.saldoProyectado ? String(c.saldoProyectado.saldo) : '0';
+  }
+  return porCripto;
+}
+
 function createBalanceUserModel(sequelize) {
   // Paso C: BalanceUsuario ya NO es un modelo Sequelize — la tabla balances_users
   // se eliminó. Es una FACHADA de operaciones de saldo respaldada por el ledger de
@@ -107,19 +126,11 @@ function createBalanceUserModel(sequelize) {
   // asociacion .criptomoneda, igual que el viejo findAll sin include).
   BalanceUsuario.getByUserId = async (userId) => {
     try {
-      const { CuentaLedger } = require('./index');
-      const { PROPOSITOS } = require('../services/ledger/ledgerAccounts');
-      const cuentas = await CuentaLedger.findAll({
-        where: { ownerId: userId, proposito: [PROPOSITOS.FUNDING_DISPONIBLE, PROPOSITOS.FUNDING_BLOQUEADO, PROPOSITOS.FUNDING_PENDIENTE] },
-        attributes: ['criptomonedaId'],
-        group: ['criptomonedaId'],
-      });
-      const balances = [];
-      for (const c of cuentas) {
-        const { balanceDisponible, balanceBloqueado, balancePendiente } = await leerFundingDesdeLedger(userId, c.criptomonedaId);
-        balances.push({ userId, criptomonedaId: c.criptomonedaId, balanceDisponible, balanceBloqueado, balancePendiente });
-      }
-      return balances;
+      // agregarFundingLedger ya colapsa la proyección Funding por cripto en UNA
+      // sola query (findAll + include saldoProyectado) y devuelve exactamente esta
+      // forma {userId, criptomonedaId, balanceDisponible/Bloqueado/Pendiente}.
+      // Antes esto hacía un group + N×leerFundingDesdeLedger (N+1, ~6N queries).
+      return await agregarFundingLedger({ userId });
     } catch (error) {
       throw new Error(`Error al obtener balances por usuario: ${error.message}`);
     }
@@ -235,35 +246,34 @@ function createBalanceUserModel(sequelize) {
   // evitar el ciclo models/index.js → ledgerAccounts → models/index.js.
   BalanceUsuario.getBalancesConCompartimentos = async (userId) => {
     try {
-      const { CuentaLedger } = require('./index');
-      const { PROPOSITOS } = require('../services/ledger/ledgerAccounts');
+      const { PROPOSITOS: P } = require('../services/ledger/ledgerAccounts');
       // Presentación a 8 decimales uniformes: money.add strippea trailing zeros
       // ('1' en vez de '1.00000000'), así que la suma+formato va por
       // money.format8 (único punto de esa regla de presentación).
       const fmt8 = (x) => money.format8(x);
       const sumar8 = (a, b) => money.format8(money.add(a, b));
-      const todos = [
-        PROPOSITOS.FUNDING_DISPONIBLE, PROPOSITOS.FUNDING_BLOQUEADO, PROPOSITOS.FUNDING_PENDIENTE,
-        PROPOSITOS.SPOT_DISPONIBLE, PROPOSITOS.SPOT_BLOQUEADO,
-      ];
-      const cuentas = await CuentaLedger.findAll({
-        where: { ownerId: userId, proposito: todos },
-        attributes: ['criptomonedaId'],
-        group: ['criptomonedaId'],
-      });
+      // UNA sola query para los 5 propósitos (antes: group + N×2 leerCompartimento,
+      // cada uno con 2-3 getSaldoCuenta → ~10N queries en el endpoint más llamado).
+      const porCripto = await leerProyeccionUsuario(userId, [
+        P.FUNDING_DISPONIBLE, P.FUNDING_BLOQUEADO, P.FUNDING_PENDIENTE,
+        P.SPOT_DISPONIBLE, P.SPOT_BLOQUEADO,
+      ]);
       const salida = [];
-      for (const c of cuentas) {
-        const funding = await leerCompartimento(userId, c.criptomonedaId, 'funding');
-        const spot = await leerCompartimento(userId, c.criptomonedaId, 'spot');
+      for (const [criptomonedaId, s] of porCripto) {
+        const fd = s[P.FUNDING_DISPONIBLE] || '0';
+        const fb = s[P.FUNDING_BLOQUEADO] || '0';
+        const fp = s[P.FUNDING_PENDIENTE] || '0';
+        const sd = s[P.SPOT_DISPONIBLE] || '0';
+        const sb = s[P.SPOT_BLOQUEADO] || '0';
         salida.push({
           userId,
-          criptomonedaId: c.criptomonedaId,
-          balanceDisponible: sumar8(funding.disponible, spot.disponible),
-          balanceBloqueado: sumar8(funding.bloqueado, spot.bloqueado),
-          balancePendiente: fmt8(funding.pendiente), // sólo Funding tiene pendiente
+          criptomonedaId,
+          balanceDisponible: sumar8(fd, sd),
+          balanceBloqueado: sumar8(fb, sb),
+          balancePendiente: fmt8(fp), // sólo Funding tiene pendiente
           compartimentos: {
-            funding: { disponible: fmt8(funding.disponible), bloqueado: fmt8(funding.bloqueado), pendiente: fmt8(funding.pendiente) },
-            spot: { disponible: fmt8(spot.disponible), bloqueado: fmt8(spot.bloqueado) },
+            funding: { disponible: fmt8(fd), bloqueado: fmt8(fb), pendiente: fmt8(fp) },
+            spot: { disponible: fmt8(sd), bloqueado: fmt8(sb) },
           },
         });
       }
