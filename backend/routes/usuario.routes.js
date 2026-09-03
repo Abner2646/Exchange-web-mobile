@@ -28,6 +28,196 @@ const { LoginSchema } = require('../schemas/login.schema');
 // Controlador
 const usuarioController = require('../controllers/usuario.controller.js');
 
+// Anotaciones OpenAPI del dominio Usuarios/Auth (bloque único por archivo). Los
+// flujos pre-login (register/login/forgot/reset/2fa-verify) son públicos
+// (security:[]); el resto requiere JWT; los de gestión son admin/super_admin.
+/**
+ * @openapi
+ * /usuario/register:
+ *   post:
+ *     tags: [Usuarios / Auth]
+ *     summary: Registro de usuario (devuelve token temporal para verificar email)
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, password, username]
+ *             properties:
+ *               email: { type: string, format: email }
+ *               password: { type: string, format: password }
+ *               username: { type: string }
+ *     responses: { 201: { description: Registrado (token temporal) }, 400: { $ref: '#/components/responses/BadRequest' } }
+ * /usuario/login:
+ *   post:
+ *     tags: [Usuarios / Auth]
+ *     summary: Login paso 1 (credenciales; puede requerir 2FA)
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, password]
+ *             properties:
+ *               email: { type: string, format: email }
+ *               password: { type: string, format: password }
+ *     responses: { 200: { description: JWT, o requires2FA + temporalToken }, 400: { $ref: '#/components/responses/BadRequest' } }
+ * /usuario/login/google:
+ *   post:
+ *     tags: [Usuarios / Auth]
+ *     summary: Login con Google (verifica un id_token server-side)
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { type: object, required: [idToken], properties: { idToken: { type: string } } }
+ *     responses: { 200: { description: JWT }, 401: { $ref: '#/components/responses/Unauthorized' } }
+ * /usuario/logout:
+ *   post: { tags: [Usuarios / Auth], summary: Cerrar sesión, responses: { 200: { description: OK } } }
+ * /usuario/verify-email:
+ *   post:
+ *     tags: [Usuarios / Auth]
+ *     summary: Verificar email con código (usa el token temporal)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { type: object, required: [codigo], properties: { codigo: { type: string } } }
+ *     responses: { 200: { description: Email verificado }, 400: { $ref: '#/components/responses/BadRequest' } }
+ * /usuario/resend-verification-email:
+ *   post: { tags: [Usuarios / Auth], summary: Reenviar código de verificación de email, responses: { 200: { description: Reenviado } } }
+ * /usuario/forgot-password:
+ *   post:
+ *     tags: [Usuarios / Auth]
+ *     summary: Solicitar código de recuperación de contraseña (anti-enumeración)
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { type: object, required: [email], properties: { email: { type: string, format: email } } }
+ *     responses: { 200: { description: Si el email existe, se envió un código } }
+ * /usuario/verify-reset-code:
+ *   post:
+ *     tags: [Usuarios / Auth]
+ *     summary: Verificar el código de recuperación
+ *     security: []
+ *     responses: { 200: { description: Código válido }, 400: { $ref: '#/components/responses/BadRequest' } }
+ * /usuario/reset-password:
+ *   post:
+ *     tags: [Usuarios / Auth]
+ *     summary: Resetear la contraseña con el código verificado
+ *     security: []
+ *     responses: { 200: { description: Contraseña actualizada }, 400: { $ref: '#/components/responses/BadRequest' } }
+ * /usuario/verify-2fa:
+ *   post:
+ *     tags: [Usuarios / Auth]
+ *     summary: Verificar el código 2FA durante el login
+ *     security: []
+ *     responses: { 200: { description: JWT }, 400: { $ref: '#/components/responses/BadRequest' } }
+ * /usuario/resend-2fa:
+ *   post: { tags: [Usuarios / Auth], summary: Reenviar el código 2FA, security: [], responses: { 200: { description: Reenviado } } }
+ * /usuario/me/2fa-toggle:
+ *   patch: { tags: [Usuarios / Perfil], summary: Activar/desactivar 2FA, responses: { 200: { description: OK } } }
+ * /usuario/me:
+ *   get: { tags: [Usuarios / Perfil], summary: Mi perfil, responses: { 200: { description: Perfil }, 401: { $ref: '#/components/responses/Unauthorized' } } }
+ *   put:
+ *     tags: [Usuarios / Perfil]
+ *     summary: Actualizar mi perfil (username, país)
+ *     responses: { 200: { description: Perfil actualizado }, 400: { $ref: '#/components/responses/BadRequest' } }
+ * /usuario/me/change-password:
+ *   patch:
+ *     tags: [Usuarios / Perfil]
+ *     summary: Cambiar mi contraseña
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { type: object, required: [currentPassword, newPassword], properties: { currentPassword: { type: string }, newPassword: { type: string } } }
+ *     responses: { 200: { description: Contraseña cambiada }, 400: { $ref: '#/components/responses/BadRequest' } }
+ * /usuario/me/kyc-request:
+ *   post: { tags: [Usuarios / Perfil], summary: Solicitar verificación KYC, responses: { 200: { description: Solicitud creada } } }
+ * /usuario/me/daily-volume:
+ *   get: { tags: [Usuarios / Perfil], summary: Mi volumen diario, responses: { 200: { description: Volumen } } }
+ * /usuario/search:
+ *   get:
+ *     tags: [Usuarios / Perfil]
+ *     summary: Buscar usuarios
+ *     parameters: [{ in: query, name: q, schema: { type: string } }]
+ *     responses: { 200: { description: Resultados } }
+ * /usuario/public/{id}:
+ *   get:
+ *     tags: [Usuarios / Perfil]
+ *     summary: Perfil público de un usuario
+ *     security: []
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Perfil público } }
+ * /usuario:
+ *   get: { tags: [Usuarios - admin], summary: Listar usuarios (admin), responses: { 200: { description: Usuarios } } }
+ * /usuario/{id}:
+ *   get:
+ *     tags: [Usuarios / Perfil]
+ *     summary: Usuario por id (admin ve perfil completo; usuario normal, público)
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Usuario }, 404: { $ref: '#/components/responses/BadRequest' } }
+ *   delete:
+ *     tags: [Usuarios - admin]
+ *     summary: Eliminar usuario (super admin)
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Eliminado } }
+ * /usuario/{id}/status:
+ *   patch:
+ *     tags: [Usuarios - admin]
+ *     summary: Actualizar estado de un usuario (admin)
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Estado actualizado } }
+ * /usuario/{id}/role:
+ *   patch:
+ *     tags: [Usuarios - admin]
+ *     summary: Actualizar rol de un usuario (super admin)
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Rol actualizado } }
+ * /usuario/{id}/kyc:
+ *   patch:
+ *     tags: [Usuarios - admin]
+ *     summary: Actualizar KYC de un usuario (admin)
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: KYC actualizado } }
+ * /usuario/{id}/daily-limit:
+ *   patch:
+ *     tags: [Usuarios - admin]
+ *     summary: Actualizar el límite diario de un usuario (admin)
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Límite actualizado } }
+ * /usuario/{id}/reputation:
+ *   patch:
+ *     tags: [Usuarios - admin]
+ *     summary: Actualizar la reputación de un usuario (admin)
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Reputación actualizada } }
+ * /usuario/{id}/daily-volume:
+ *   get:
+ *     tags: [Usuarios - admin]
+ *     summary: Volumen diario de un usuario (admin)
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Volumen } }
+ * /usuario/{id}/transaction-limit:
+ *   get:
+ *     tags: [Usuarios - admin]
+ *     summary: Verificar el límite de transacción de un usuario (admin)
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Límite } }
+ * /usuario/admin/stats:
+ *   get: { tags: [Usuarios - admin], summary: Estadísticas de usuarios (admin), responses: { 200: { description: Stats } } }
+ * /usuario/admin/deactivate-inactive:
+ *   post: { tags: [Usuarios - admin], summary: Desactivar usuarios inactivos (admin), responses: { 200: { description: Desactivados } } }
+ */
+
 // =====================================================================
 // RUTAS DE AUTENTICACIÓN
 // =====================================================================
