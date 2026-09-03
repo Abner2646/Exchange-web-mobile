@@ -183,7 +183,7 @@ middleware approach is the industry standard and what the roadmap specifies; the
 transactional version is noted as future hardening and pairs naturally with the
 double-entry ledger (Radar #1).
 
-## Transactional hardening — CLOSED for 4 of 5 endpoints (2026-09-03)
+## Transactional hardening — CLOSED for all 5 endpoints (2026-09-03)
 
 The crash-post-commit window above is now closed on the success path by
 `idempotency.finalizeInTransaction(req, transaction, statusCode, body)`: a
@@ -207,8 +207,14 @@ and asserts the row is durably `completed`):
   hook run inside its tx (and `getById` takes an optional tx so the stored/replayed
   body matches the live one).
 
-**Deferred: `trading.createOrder`.** This endpoint is NOT transactional today
-(balance lock, order creation, and fire-and-forget matching are separate steps —
-tracked debt, Radar #12). There is no single transaction to attach the finalize
-to. Hardening it transactionally requires first making it transactional; it
-therefore stays a documented known-gap until that Radar #12 work lands.
+- **trading.createOrder** — order creation was made transactional in the same
+  pass: the Spot balance lock (`balanceManager.lockBalanceForOrder`, which already
+  accepted an optional tx) and `Order.create` now run in one controller-owned
+  transaction (fixing the Críticos #5 residual: balance locked without an order if
+  `Order.create` failed), and the key is finalized inside it. The reload with
+  relations happens in-tx so the stored/replayed body matches the live one.
+  **Still deferred (Radar #12b):** matching remains fire-and-forget AFTER commit —
+  the order+lock are now durable and atomic, but a crash before matching still
+  leaves the order unmatched. That is a separate durability concern (make matching
+  awaited/queued) and would pull in the matching engine (Fase 6.4); out of scope
+  here on purpose.

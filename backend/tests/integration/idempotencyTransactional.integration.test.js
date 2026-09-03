@@ -157,3 +157,35 @@ describe('transactional idempotency — createWithdrawal (model static, POST /tr
     expect(row.responseBody).not.toBeNull();
   });
 });
+
+describe('transactional idempotency — trading.createOrder (POST /trading/orders)', () => {
+  const tradingController = require('../../controllers/trading.controller');
+
+  // The order-creation money move (lock Spot balance + create the Order row) is
+  // made atomic in one controller-owned tx (fixing the Críticos #5 residual:
+  // balance locked without order if Order.create fails), and the idempotency key
+  // is completed inside that same tx. Matching stays fire-and-forget AFTER commit
+  // (Radar #12b, deferred).
+  test('completed row is committed inside the order-creation tx (survives a missing finish handler)', async () => {
+    const btc = await f.seedCripto('BTC');
+    const usdt = await f.seedCripto('USDT');
+    const pair = await f.seedTradingPair({ base: btc, quote: usdt });
+    const user = await f.seedUser();
+    await f.seedSpotBalance(user, usdt, '200');
+    const { where, _idempotency } = await claim(user.id, 'trading-key-1');
+
+    const req = {
+      user: { id: user.id },
+      body: { tradingPairId: pair.id, orderType: 'limit', side: 'buy', quantity: 1, price: 100 },
+      _idempotency,
+    };
+    const res = resNoFinish();
+
+    await tradingController.createOrder(req, res);
+
+    expect(res.statusCode).toBe(201);
+    const row = await IdempotencyKey.findOne({ where });
+    expect(row.status).toBe('completed');
+    expect(row.responseStatusCode).toBe(201);
+  });
+});
