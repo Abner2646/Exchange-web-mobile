@@ -48,7 +48,19 @@ until migrated. Treat the envelope above as the **target contract** — build th
 client error handling around it, and report any endpoint that doesn't conform.
 
 Migrated controllers (envelope guaranteed): `trading`, `transaccionBlockchain`,
-`intercambioExchange`, `ofertaP2P`, `transaccionesP2P`, `transferencia`.
+`intercambioExchange`, `ofertaP2P`, `transaccionesP2P`, `transferencia`,
+`balanceUsuario` (2026-09-03).
+
+**`balanceUsuario` migration (2026-09-03) — error shape change on the balance
+endpoints.** All `/api/balances/*` endpoints now return the canonical
+`{ error: { code, message } }` envelope instead of the previous `{ error: "<raw
+message>" }` (which leaked internal Sequelize/JS messages on unexpected errors).
+Business error codes: `BALANCE_INVALID_INPUT` (bad/missing params, invalid
+compartments) and `BALANCE_INSUFFICIENT` (not enough available balance, incl. the
+Funding↔Spot self-transfer and admin ops). Unexpected errors are now a sanitized
+`500 INTERNAL_ERROR` (no raw message). **Exception:** the testnet faucet
+`PUT /api/balances/reclamarBTC` keeps its own `{ success, ... }` envelope (it is
+disabled in production).
 
 ### 2. Monetary values are canonical strings, not numbers
 
