@@ -1,9 +1,10 @@
 const crypto = require('crypto');
-const { BalanceUsuario } = require('../models/index.js');
+const { BalanceUsuario, sequelize } = require('../models/index.js');
 const { transferirInterno, transferirEntreCompartimentos } = require('../services/ledger/operations');
 const money = require('../utils/money');
 const AppError = require('../utils/AppError');
 const errorCodes = require('../utils/errorCodes');
+const idempotency = require('../middleware/idempotency.middleware');
 
 // Este controller usa el envelope canónico { error: { code, message } } vía
 // AppError + el errorHandler central (las rutas envuelven cada handler en
@@ -202,16 +203,24 @@ const transferMisCompartimentos = async (req, res) => {
     throw new AppError(400, errorCodes.BALANCE_INSUFFICIENT, `Saldo insuficiente en ${origen} para transferir`);
   }
 
+  // Transacción propia del controller: la mueve el ledger (que acepta la tx) y,
+  // en la misma tx, se completa la key de idempotencia (hardening anti-doble-gasto)
+  // → el asiento y el 'completed' commitean atómicamente.
+  const transaction = await sequelize.transaction();
   try {
     await transferirEntreCompartimentos({
       userId, criptomonedaId, cantidad: String(cantidad), origen, destino,
       referencia: `compartimento:${crypto.randomUUID()}`,
-    });
+    }, transaction);
+    const responseBody = { message: 'Transferencia entre compartimentos completada', data: { origen, destino } };
+    await idempotency.finalizeInTransaction(req, transaction, 200, responseBody);
+    await transaction.commit();
+    res.json(responseBody);
   } catch (error) {
+    if (!transaction.finished) await transaction.rollback();
     // Sobregiro del ledger (carrera) → 400 de dominio; el resto se sanitiza.
     throw mapSobregiro(error, 'Saldo insuficiente para transferir');
   }
-  res.json({ message: 'Transferencia entre compartimentos completada', data: { origen, destino } });
 };
 
 module.exports = {

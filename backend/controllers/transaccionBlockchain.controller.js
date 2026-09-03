@@ -11,6 +11,7 @@ const BlockchainJobManager = require('../jobs/blockchain.jobs');
 const AppError = require('../utils/AppError');
 const errorCodes = require('../utils/errorCodes');
 const money = require('../utils/money');
+const idempotency = require('../middleware/idempotency.middleware');
 
 class TransaccionBlockchainController {
   // =================== ENDPOINTS PARA USUARIOS ===================
@@ -84,21 +85,29 @@ class TransaccionBlockchainController {
       throw new AppError(400, errorCodes.WITHDRAWAL_INVALID_ADDRESS, 'Dirección de destino inválida');
     }
 
-    // Crear retiro
-    const retiro = await TransaccionBlockchain.createWithdrawal({
+    // Crear retiro. El body se arma UNA vez dentro del hook `finalize` (que corre
+    // en la tx del retiro) y se envía verbatim, así el response y el que se guarda
+    // para replay de idempotencia son idénticos.
+    let responseBody;
+    await TransaccionBlockchain.createWithdrawal({
       userId,
       criptomonedaId,
       cantidad: parseFloat(cantidad),
       direccionDestino,
       confirmacionesRequeridas: validation.criptomoneda.red === 'bitcoin' ? 6 :
                                  validation.criptomoneda.red === 'ethereum' ? 12 : 6
+    }, {
+      // Hardening anti-doble-gasto: completa la key de idempotencia dentro de la
+      // tx del retiro → el bloqueo de fondos, el alta de la fila y el 'completed'
+      // commitean atómicamente. Cierra la ventana crash-post-commit que permitía
+      // re-bloquear fondos + crear un segundo retiro vía el reclaim de 90s.
+      finalize: async (transaction, retiro) => {
+        responseBody = { success: true, message: 'Retiro creado exitosamente', data: retiro };
+        await idempotency.finalizeInTransaction(req, transaction, 201, responseBody);
+      }
     });
 
-    res.status(201).json({
-      success: true,
-      message: 'Retiro creado exitosamente',
-      data: retiro
-    });
+    res.status(201).json(responseBody);
   }
 
   // GET /api/transactions/balances - Obtener balances del usuario

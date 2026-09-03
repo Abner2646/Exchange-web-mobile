@@ -6,6 +6,7 @@ const errorCodes = require('../utils/errorCodes');
 const money = require('../utils/money');
 const { calculateSettlement } = require('../services/intercambioSettlement.service');
 const { liquidarSwap } = require('../services/ledger/operations');
+const idempotency = require('../middleware/idempotency.middleware');
 
 // Función auxiliar para validar fechas
 const isValidDate = (dateString) => {
@@ -171,9 +172,7 @@ const createOrder = async (req, res) => {
       referencia: `swap:${newOrder.id}`,
     }, transaction);
 
-    await transaction.commit();
-
-    res.status(201).json({
+    const responseBody = {
       message: 'Intercambio realizado exitosamente',
       data: {
         ...newOrder.toJSON(),
@@ -181,7 +180,16 @@ const createOrder = async (req, res) => {
         comisionCalculada: comisionMonto,
         netAmount
       }
-    });
+    };
+    // Hardening anti-doble-gasto: marca la key de idempotencia como completada
+    // DENTRO de esta transacción, para que commitee atómicamente con la
+    // liquidación. Cierra la ventana en la que un crash tras el commit dejaba la
+    // fila en 'in_progress' y el reclaim de 90s re-ejecutaba el swap.
+    await idempotency.finalizeInTransaction(req, transaction, 201, responseBody);
+
+    await transaction.commit();
+
+    res.status(201).json(responseBody);
   } catch (error) {
     // If this is an operational AppError that already triggered rollback above,
     // just rethrow so asyncHandler forwards it to the central error handler.

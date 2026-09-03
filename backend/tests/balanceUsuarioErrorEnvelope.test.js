@@ -11,6 +11,13 @@ jest.mock('../models/index.js', () => ({
     hasAvailableEnCompartimento: jest.fn(),
     updateBalance: jest.fn(),
   },
+  // transferMisCompartimentos ahora es dueño de su transacción (hardening
+  // idempotencia transaccional): la crea, la pasa al ledger y completa la key en
+  // la misma tx. El fake basta para los caminos de error de este archivo (la tx
+  // se abre y luego se hace rollback).
+  sequelize: {
+    transaction: jest.fn(async () => ({ finished: false, commit: jest.fn(), rollback: jest.fn() })),
+  },
 }));
 jest.mock('../services/ledger/operations', () => ({
   transferirInterno: jest.fn(),

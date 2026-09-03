@@ -29,6 +29,11 @@ async function persistResult(where, statusCode, body) {
 }
 
 function runClaimed(req, res, next, where) {
+  // Expose the claim context so a controller can finalize the key inside its own
+  // DB transaction (see finalizeInTransaction). Absent when the middleware did
+  // not claim (replay/short-circuit) — controllers must guard accordingly.
+  req._idempotency = { where, finalized: false };
+
   // Capture the controller's JSON response so we can store/replay it.
   let capturedBody;
   const originalJson = res.json.bind(res);
@@ -38,12 +43,34 @@ function runClaimed(req, res, next, where) {
   };
 
   res.on('finish', () => {
+    // If the controller already wrote `completed` inside its transaction (success
+    // path), skip: re-writing here would be the post-commit window this hardening
+    // closes. The 4xx-cache and 5xx-release paths still run through here.
+    if (req._idempotency && req._idempotency.finalized) return;
     persistResult(where, res.statusCode, capturedBody).catch((e) => {
       console.error('idempotency: failed to persist result:', e);
     });
   });
 
   next();
+}
+
+// Transactional finalize (double-spend hardening). A money-path controller calls
+// this INSIDE its own DB transaction, right before commit, so that "money moved"
+// and "idempotency key completed" commit atomically. Without it, the key was only
+// marked completed after commit (on the response `finish` event): if the process
+// died in that window, the row stayed `in_progress` and the 90s stale-reclaim
+// would re-execute an operation that had actually committed — a double-spend.
+// No-op when the middleware did not claim (e.g. controller unit tests without the
+// middleware, or a replay that short-circuited before the controller).
+async function finalizeInTransaction(req, transaction, statusCode, body) {
+  const ctx = req._idempotency;
+  if (!ctx) return;
+  await IdempotencyKey.update(
+    { status: 'completed', responseStatusCode: statusCode, responseBody: body === undefined ? null : body },
+    { where: ctx.where, transaction }
+  );
+  ctx.finalized = true;
 }
 
 async function handle(req, res, next) {
@@ -101,5 +128,7 @@ async function idempotency(req, res, next) {
     next(err);
   }
 }
+
+idempotency.finalizeInTransaction = finalizeInTransaction;
 
 module.exports = idempotency;
