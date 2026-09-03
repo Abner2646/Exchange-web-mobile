@@ -763,10 +763,14 @@ const getMyDepositAddresses = async (req, res) => {
   }
 };
 
+// Forma UNIFICADA (2026-09-03): misma respuesta compartimentada que
+// /balances/my/balances y /intercambioExchange/me/balances (getBalancesConCompartimentos:
+// totales de raíz Funding+Spot + desglose + objeto criptomoneda). Antes era
+// funding-only. Cambio de contrato documentado en el contract doc.
 const getMyBalances = async (req, res) => {
   try {
     const userId = req.user.id;
-    const balances = await BalanceUsuario.getByUserId(userId);
+    const balances = await BalanceUsuario.getBalancesConCompartimentos(userId);
     res.json(balances);
   } catch (error) {
     res.status(500).json({ error: error.message });

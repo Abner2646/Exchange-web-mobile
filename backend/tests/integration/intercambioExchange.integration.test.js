@@ -78,6 +78,11 @@ describe('POST /api/intercambioExchange (swap) — buy', () => {
     expect(res.status).toBe(200);
     const usdtEntry = res.body.find((b) => b.criptomoneda.symbol === 'USDT');
     expect(usdtEntry.balanceDisponible).toBe('0.69700000');
+    // Forma unificada (2026-09-03): este endpoint ahora expone el desglose por
+    // compartimento, igual que /balances/my/balances. Sin saldo Spot → funding
+    // == total.
+    expect(usdtEntry.compartimentos.funding.disponible).toBe('0.69700000');
+    expect(usdtEntry.compartimentos.spot.disponible).toBe('0.00000000');
   });
 
   // Paso C: /me/balances lee la proyección del ledger (balances_users ya no
