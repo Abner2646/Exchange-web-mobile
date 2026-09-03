@@ -4,24 +4,16 @@ require('dotenv').config();
 const { Op } = require('sequelize');
 const money = require('../utils/money');
 const crypto = require('crypto');
-
-// Mapa compartimento→propósitos por estado. Fuente única para leer saldos por
-// compartimento desde la proyección del ledger. Spot no tiene 'pendiente'.
-// Valores deben coincidir con PROPOSITOS en services/ledger/ledgerAccounts.js —
-// el unit test balanceCompartimento.test.js los ancla contra ese módulo.
-// Require de ledgerAccounts es lazy (abajo en leerCompartimento) por el ciclo
-// models/index.js → ledgerAccounts → models/index.js; acá usamos los strings
-// directos para que el mapa exista sin ejecutar ningún require al cargar.
-const PROPOSITOS_POR_COMPARTIMENTO = {
-  funding: { disponible: 'funding:disponible', bloqueado: 'funding:bloqueado', pendiente: 'funding:pendiente' },
-  spot: { disponible: 'spot:disponible', bloqueado: 'spot:bloqueado', pendiente: null },
-};
+// Registro único compartimento→propósito (fuente de verdad en ledgerAccounts).
+// ledgerAccounts ya NO requiere models al cargar (su require de models es lazy),
+// así que importar COMPARTIMENTOS acá al tope no dispara el ciclo models↔ledger.
+const { COMPARTIMENTOS } = require('../services/ledger/ledgerAccounts');
 
 // Lee disponible/bloqueado/pendiente de un compartimento desde la proyección del
 // ledger. Require lazy de postingService por el ciclo models↔services/ledger.
 async function leerCompartimento(userId, criptomonedaId, compartimento, transaction = null) {
   const { getSaldoCuenta } = require('../services/ledger/postingService');
-  const props = PROPOSITOS_POR_COMPARTIMENTO[compartimento];
+  const props = COMPARTIMENTOS[compartimento];
   if (!props) throw new Error(`Compartimento inválido: ${compartimento}`);
   const disponible = await getSaldoCuenta({ ownerId: userId, proposito: props.disponible, criptomonedaId }, transaction);
   const bloqueado = await getSaldoCuenta({ ownerId: userId, proposito: props.bloqueado, criptomonedaId }, transaction);
@@ -31,25 +23,13 @@ async function leerCompartimento(userId, criptomonedaId, compartimento, transact
   return { disponible, bloqueado, pendiente };
 }
 
-// Plan 3 (read-flip): las lecturas de saldo salen de la PROYECCION del ledger
-// (compartimento Funding), no de balances_users. Requires lazy para evitar el
-// ciclo models<->services/ledger (este modulo lo carga models/index.js). El
-// mirror (Plan 2) mantiene paridad, asi que hoy los valores coinciden; el flip
-// prepara el terreno para dejar de escribir balances_users por-camino.
+// Lectura del compartimento Funding con las claves legacy balance* que esperan
+// sus callers (getTotalBalance/getByUserAndCrypto/block/unblock/updateBalance/
+// hasAvailableBalance). Es un alias delgado sobre leerCompartimento('funding')
+// — antes duplicaba los tres getSaldoCuenta a mano.
 async function leerFundingDesdeLedger(userId, criptomonedaId, transaction = null) {
-  const { getSaldoCuenta } = require('../services/ledger/postingService');
-  const { PROPOSITOS } = require('../services/ledger/ledgerAccounts');
-  const balanceDisponible = await getSaldoCuenta(
-    { ownerId: userId, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId }, transaction
-  );
-  const balanceBloqueado = await getSaldoCuenta(
-    { ownerId: userId, proposito: PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId }, transaction
-  );
-  // Paso D: estado PENDIENTE (depósitos detectados sin confirmar).
-  const balancePendiente = await getSaldoCuenta(
-    { ownerId: userId, proposito: PROPOSITOS.FUNDING_PENDIENTE, criptomonedaId }, transaction
-  );
-  return { balanceDisponible, balanceBloqueado, balancePendiente };
+  const { disponible, bloqueado, pendiente } = await leerCompartimento(userId, criptomonedaId, 'funding', transaction);
+  return { balanceDisponible: disponible, balanceBloqueado: bloqueado, balancePendiente: pendiente };
 }
 
 // Read-flip (write-flip Paso A/B): agrega la proyeccion Funding del ledger para
@@ -288,7 +268,7 @@ function createBalanceUserModel(sequelize) {
   // cripto). Espejo de getByUserId pero scopeado a un compartimento.
   BalanceUsuario.getByUserIdCompartimento = async (userId, compartimento) => {
     try {
-      const props = PROPOSITOS_POR_COMPARTIMENTO[compartimento];
+      const props = COMPARTIMENTOS[compartimento];
       if (!props) throw new Error(`Compartimento inválido: ${compartimento}`);
       const propositos = [props.disponible, props.bloqueado, ...(props.pendiente ? [props.pendiente] : [])];
       // UNA sola query (antes: group + N×leerCompartimento con 2-3 getSaldoCuenta).
@@ -453,4 +433,3 @@ function createBalanceUserModel(sequelize) {
 }
 
 module.exports = createBalanceUserModel;
-module.exports.PROPOSITOS_POR_COMPARTIMENTO = PROPOSITOS_POR_COMPARTIMENTO;

@@ -29,8 +29,8 @@ async function liquidarSwap({
   compartimento = 'funding',
 }, transaction = null) {
   const { postTransaction } = require('./postingService');
-  const { PROPOSITOS } = require('./ledgerAccounts');
-  const propUsuario = DISPONIBLE_POR_COMPARTIMENTO[compartimento];
+  const { PROPOSITOS, COMPARTIMENTOS } = require('./ledgerAccounts');
+  const propUsuario = COMPARTIMENTOS[compartimento]?.disponible;
   if (!propUsuario) {
     throw new Error(`Compartimento inválido para swap: ${compartimento}`);
   }
@@ -182,21 +182,17 @@ async function acreditarFaucet({ userId, criptomonedaId, cantidad, referencia },
   return postTransaction({ tipo: 'deposito', referencia, descripcion: 'Faucet testnet', lineas }, transaction);
 }
 
-// Mapa compartimento→propósito del estado 'disponible'. Único punto de verdad
-// para las operaciones que mueven saldo disponible entre compartimentos.
-const DISPONIBLE_POR_COMPARTIMENTO = {
-  funding: 'funding:disponible',
-  spot: 'spot:disponible',
-};
-
 // Transferencia interna del MISMO usuario entre compartimentos (Funding↔Spot),
 // misma cripto. Un asiento net-zero: {origen}:disponible −A → {destino}:disponible
 // +A. Sin contraparte de casa (no cambia el patrimonio, sólo su ubicación). El
 // anti-sobregiro del origen lo da postTransaction (FOR UPDATE sobre la fila).
+// El propósito 'disponible' de cada compartimento sale del registro único
+// COMPARTIMENTOS (ledgerAccounts), no de un mapa local.
 async function transferirEntreCompartimentos({ userId, criptomonedaId, cantidad, origen, destino, referencia }, transaction = null) {
   const { postTransaction } = require('./postingService');
-  const propOrigen = DISPONIBLE_POR_COMPARTIMENTO[origen];
-  const propDestino = DISPONIBLE_POR_COMPARTIMENTO[destino];
+  const { COMPARTIMENTOS } = require('./ledgerAccounts');
+  const propOrigen = COMPARTIMENTOS[origen]?.disponible;
+  const propDestino = COMPARTIMENTOS[destino]?.disponible;
   if (!propOrigen || !propDestino || origen === destino) {
     throw new Error(`Compartimentos inválidos para transferencia: ${origen} → ${destino}`);
   }

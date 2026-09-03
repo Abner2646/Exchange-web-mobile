@@ -1,11 +1,10 @@
-// Unit sin-DB: fija el mapa compartimento→propósitos que usa la fachada de saldos
-// para leer del ledger. Cazar acá un typo de propósito evita leer la cuenta
-// equivocada en producción.
-const { PROPOSITOS_POR_COMPARTIMENTO } = require('../models/balanceUsuario.model');
-const { PROPOSITOS } = require('../services/ledger/ledgerAccounts');
+// Unit sin-DB: fija el registro único compartimento→propósitos (COMPARTIMENTOS en
+// ledgerAccounts) que usan la fachada de saldos y las operaciones del ledger.
+// Cazar acá un typo de propósito evita leer/postear la cuenta equivocada.
+const { COMPARTIMENTOS, PROPOSITOS } = require('../services/ledger/ledgerAccounts');
 
 test('funding mapea a disponible/bloqueado/pendiente', () => {
-  expect(PROPOSITOS_POR_COMPARTIMENTO.funding).toEqual({
+  expect(COMPARTIMENTOS.funding).toEqual({
     disponible: PROPOSITOS.FUNDING_DISPONIBLE,
     bloqueado: PROPOSITOS.FUNDING_BLOQUEADO,
     pendiente: PROPOSITOS.FUNDING_PENDIENTE,
@@ -13,7 +12,7 @@ test('funding mapea a disponible/bloqueado/pendiente', () => {
 });
 
 test('spot mapea a disponible/bloqueado (sin pendiente)', () => {
-  expect(PROPOSITOS_POR_COMPARTIMENTO.spot).toEqual({
+  expect(COMPARTIMENTOS.spot).toEqual({
     disponible: PROPOSITOS.SPOT_DISPONIBLE,
     bloqueado: PROPOSITOS.SPOT_BLOQUEADO,
     pendiente: null,
