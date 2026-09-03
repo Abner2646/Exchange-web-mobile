@@ -9,6 +9,99 @@ const { isAdmin } = require('../middleware/adminMiddleware.js');
 const asyncHandler = require('../utils/asyncHandler');
 const ofertaP2PController = require('../controllers/ofertaP2P.controller.js');
 
+/**
+ * @openapi
+ * /ofertaP2P/compatible:
+ *   get: { tags: [P2P ofertas], summary: Buscar ofertas compatibles, responses: { 200: { description: Ofertas } } }
+ * /ofertaP2P/search:
+ *   get:
+ *     tags: [P2P ofertas]
+ *     summary: Buscar ofertas por término
+ *     parameters: [{ in: query, name: q, schema: { type: string } }]
+ *     responses: { 200: { description: Ofertas } }
+ * /ofertaP2P/tipo/{tipo}:
+ *   get:
+ *     tags: [P2P ofertas]
+ *     summary: Ofertas por tipo (compra/venta)
+ *     parameters: [{ in: path, name: tipo, required: true, schema: { type: string, enum: [compra, venta] } }]
+ *     responses: { 200: { description: Ofertas } }
+ * /ofertaP2P/criptomoneda/{criptomonedaId}:
+ *   get:
+ *     tags: [P2P ofertas]
+ *     summary: Ofertas por cripto
+ *     parameters: [{ in: path, name: criptomonedaId, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Ofertas } }
+ * /ofertaP2P:
+ *   get: { tags: [P2P ofertas], summary: Listar ofertas (con filtros), responses: { 200: { description: Ofertas } } }
+ *   post:
+ *     tags: [P2P ofertas]
+ *     summary: Crear una oferta P2P
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [tipo, criptomonedaId, cantidad, precio]
+ *             properties:
+ *               tipo: { type: string, enum: [compra, venta] }
+ *               criptomonedaId: { type: string, format: uuid }
+ *               cantidad: { type: number }
+ *               precio: { type: number }
+ *     responses: { 201: { description: Oferta creada }, 400: { $ref: '#/components/responses/BadRequest' } }
+ * /ofertaP2P/activas:
+ *   get: { tags: [P2P ofertas], summary: Ofertas activas, responses: { 200: { description: Ofertas activas } } }
+ * /ofertaP2P/me/ofertas:
+ *   get: { tags: [P2P ofertas], summary: Mis ofertas, responses: { 200: { description: Mis ofertas } } }
+ * /ofertaP2P/{id}:
+ *   get:
+ *     tags: [P2P ofertas]
+ *     summary: Obtener una oferta por id
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Oferta }, 404: { $ref: '#/components/responses/BadRequest' } }
+ *   put:
+ *     tags: [P2P ofertas]
+ *     summary: Actualizar una oferta
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Oferta actualizada } }
+ *   delete:
+ *     tags: [P2P ofertas]
+ *     summary: Desactivar una oferta
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Oferta desactivada } }
+ * /ofertaP2P/{id}/toggle:
+ *   patch:
+ *     tags: [P2P ofertas]
+ *     summary: Activar/desactivar mi oferta
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: OK } }
+ * /ofertaP2P/{id}/can-accept:
+ *   get:
+ *     tags: [P2P ofertas]
+ *     summary: Verificar si puedo aceptar una oferta
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Resultado } }
+ * /ofertaP2P/{id}/metodos-pago:
+ *   post:
+ *     tags: [P2P ofertas]
+ *     summary: Agregar métodos de pago a una oferta
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Métodos agregados } }
+ *   delete:
+ *     tags: [P2P ofertas]
+ *     summary: Quitar métodos de pago de una oferta
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Métodos quitados } }
+ * /ofertaP2P/admin/stats:
+ *   get: { tags: [P2P ofertas - admin], summary: Estadísticas de ofertas (admin), responses: { 200: { description: Stats } } }
+ * /ofertaP2P/{id}/status:
+ *   patch:
+ *     tags: [P2P ofertas - admin]
+ *     summary: Cambiar el estado de una oferta (admin)
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Estado actualizado } }
+ */
+
 // --------------------- PUBLIC / SEARCH ROUTES ---------------------
 
 // Find compatible offers
