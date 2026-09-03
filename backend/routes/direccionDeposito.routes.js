@@ -11,6 +11,42 @@ const direccionDepositoController = require('../controllers/direccionDeposito.co
 const { authenticateToken, requireEmailVerified } = require('../middleware/authMiddleware.js');
 const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
 
+/**
+ * @openapi
+ * /direccionDeposito:
+ *   get: { tags: [Direcciones de depósito], summary: Mis direcciones de depósito, responses: { 200: { description: Direcciones }, 401: { $ref: '#/components/responses/Unauthorized' } } }
+ *   post:
+ *     tags: [Direcciones de depósito]
+ *     summary: Crear mi(s) dirección(es) de depósito
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object, properties: { crearParaTodasLasCriptos: { type: boolean }, walletMaestrId: { type: string, format: uuid } } }
+ *     responses: { 201: { description: Dirección(es) creada(s) } }
+ * /direccionDeposito/user/me:
+ *   get: { tags: [Direcciones de depósito], summary: Mis direcciones (email verificado), responses: { 200: { description: Direcciones } } }
+ * /direccionDeposito/user/me/crypto/{criptomonedaId}:
+ *   get:
+ *     tags: [Direcciones de depósito]
+ *     summary: Mi dirección para una cripto (email verificado)
+ *     parameters: [{ in: path, name: criptomonedaId, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Dirección } }
+ * /direccionDeposito/user/{userId}:
+ *   get:
+ *     tags: [Direcciones de depósito - admin]
+ *     summary: Direcciones de un usuario (admin)
+ *     parameters: [{ in: path, name: userId, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Direcciones } }
+ * /direccionDeposito/user/{userId}/crypto/{criptomonedaId}:
+ *   get:
+ *     tags: [Direcciones de depósito - admin]
+ *     summary: Dirección de un usuario para una cripto (admin)
+ *     parameters:
+ *       - { in: path, name: userId, required: true, schema: { type: string, format: uuid } }
+ *       - { in: path, name: criptomonedaId, required: true, schema: { type: string, format: uuid } }
+ *     responses: { 200: { description: Dirección } }
+ */
+
 // --------------------- RUTAS CRUD BÁSICAS --------------------- //
 
 // Obtener mis direcciones de depósito
