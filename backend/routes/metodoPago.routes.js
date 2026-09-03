@@ -9,6 +9,61 @@ const metodoPagoController = require('../controllers/metodoPago.controller.js');
 const { authenticateToken} = require('../middleware/authMiddleware.js');
 const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
 
+/**
+ * @openapi
+ * /metodoPago:
+ *   get: { tags: [Métodos de pago], summary: Listar métodos de pago, responses: { 200: { description: Métodos } } }
+ *   post:
+ *     tags: [Métodos de pago - admin]
+ *     summary: Crear un método de pago (super admin)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { type: object, required: [nombre], properties: { nombre: { type: string, example: Mercado Pago }, descripcion: { type: string }, activo: { type: boolean } } }
+ *     responses: { 201: { description: Creado } }
+ * /metodoPago/{id}:
+ *   get:
+ *     tags: [Métodos de pago]
+ *     summary: Método de pago por id
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Método }, 404: { $ref: '#/components/responses/BadRequest' } }
+ *   put:
+ *     tags: [Métodos de pago - admin]
+ *     summary: Actualizar un método de pago (super admin)
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Actualizado } }
+ *   delete:
+ *     tags: [Métodos de pago - admin]
+ *     summary: Eliminar un método de pago (super admin)
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Eliminado } }
+ * /metodoPago/search/query:
+ *   get: { tags: [Métodos de pago], summary: Buscar métodos, parameters: [{ in: query, name: q, schema: { type: string } }], responses: { 200: { description: Resultados } } }
+ * /metodoPago/name/{nombre}:
+ *   get:
+ *     tags: [Métodos de pago]
+ *     summary: Método por nombre
+ *     parameters: [{ in: path, name: nombre, required: true, schema: { type: string } }]
+ *     responses: { 200: { description: Método } }
+ * /metodoPago/status/active:
+ *   get: { tags: [Métodos de pago], summary: Métodos activos, responses: { 200: { description: Activos } } }
+ * /metodoPago/status/inactive:
+ *   get: { tags: [Métodos de pago - admin], summary: Métodos inactivos (super admin), responses: { 200: { description: Inactivos } } }
+ * /metodoPago/{id}/check-active:
+ *   get:
+ *     tags: [Métodos de pago]
+ *     summary: Verificar si un método está activo
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Estado } }
+ * /metodoPago/{id}/validate:
+ *   get:
+ *     tags: [Métodos de pago]
+ *     summary: Validar un método de pago para uso
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Válido } }
+ */
+
 // --------------------- RUTAS CRUD BÁSICAS --------------------- //
 
 // Obtener todos los métodos de pago
