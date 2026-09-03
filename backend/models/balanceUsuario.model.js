@@ -12,15 +12,20 @@ const { COMPARTIMENTOS } = require('../services/ledger/ledgerAccounts');
 // Lee disponible/bloqueado/pendiente de un compartimento desde la proyección del
 // ledger. Require lazy de postingService por el ciclo models↔services/ledger.
 async function leerCompartimento(userId, criptomonedaId, compartimento, transaction = null) {
-  const { getSaldoCuenta } = require('../services/ledger/postingService');
   const props = COMPARTIMENTOS[compartimento];
   if (!props) throw new Error(`Compartimento inválido: ${compartimento}`);
-  const disponible = await getSaldoCuenta({ ownerId: userId, proposito: props.disponible, criptomonedaId }, transaction);
-  const bloqueado = await getSaldoCuenta({ ownerId: userId, proposito: props.bloqueado, criptomonedaId }, transaction);
-  const pendiente = props.pendiente
-    ? await getSaldoCuenta({ ownerId: userId, proposito: props.pendiente, criptomonedaId }, transaction)
-    : '0';
-  return { disponible, bloqueado, pendiente };
+  const propositos = [props.disponible, props.bloqueado, ...(props.pendiente ? [props.pendiente] : [])];
+  // UNA query para los propósitos de este compartimento+cripto (antes: 2-3
+  // getSaldoCuenta, cada uno 2 findOne → hasta 6 round-trips). Colapsa todas las
+  // lecturas single-crypto (getTotalBalance/getByUserAndCrypto/block/unblock/
+  // hasAvailable...) que pasan por acá.
+  const porCripto = await leerProyeccionUsuario(userId, propositos, { criptomonedaId, transaction });
+  const s = porCripto.get(criptomonedaId) || {};
+  return {
+    disponible: s[props.disponible] || '0',
+    bloqueado: s[props.bloqueado] || '0',
+    pendiente: props.pendiente ? (s[props.pendiente] || '0') : '0',
+  };
 }
 
 // Lectura del compartimento Funding con las claves legacy balance* que esperan
@@ -70,11 +75,14 @@ async function agregarFundingLedger({ userId = null, criptomonedaId = null } = {
 // cripto). Devuelve Map: criptomonedaId → { propósito → saldo (string canónico) }.
 // Scopeada a un usuario, así que la clave por-cripto no colisiona entre usuarios
 // (a diferencia de agregarFundingLedger, que puede ser multi-usuario).
-async function leerProyeccionUsuario(userId, propositos) {
+async function leerProyeccionUsuario(userId, propositos, { criptomonedaId = null, transaction = null } = {}) {
   const { CuentaLedger, SaldoLedger } = require('./index');
+  const where = { ownerId: userId, proposito: propositos };
+  if (criptomonedaId) where.criptomonedaId = criptomonedaId;
   const cuentas = await CuentaLedger.findAll({
-    where: { ownerId: userId, proposito: propositos },
+    where,
     include: [{ model: SaldoLedger, as: 'saldoProyectado', attributes: ['saldo'] }],
+    transaction,
   });
   const porCripto = new Map();
   for (const c of cuentas) {
