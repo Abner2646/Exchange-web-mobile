@@ -223,6 +223,26 @@ Notes:
   An asset with no activity does not appear — treat a missing asset as `0` (see §3
   of the "Expected upcoming" notes in the previous ledger migration entry).
 
+**Unified "my balances" shape across all three endpoints (2026-09-03) — BREAKING for two of them**
+
+The three "my balances" endpoints now return the **same** compartmentalized shape
+above, each entry additionally carrying a `criptomoneda` object
+(`{ id, symbol, nombre, red, decimales }`):
+
+- `GET /api/balances/my/balances` — was already this shape; now also includes
+  `criptomoneda` (additive).
+- `GET /api/intercambioExchange/me/balances` — **BREAKING**: was Funding-only flat
+  (`balanceDisponible/Bloqueado/Pendiente` + `criptomoneda`, sorted by available
+  desc). Now returns the consolidated root totals + `compartimentos` breakdown.
+  Ordering is **no longer guaranteed** (sort client-side if needed).
+- `GET /api/usuario/.../my-balances` — **BREAKING**: was Funding-only flat with no
+  `criptomoneda` object. Now the unified shape.
+
+Rationale: one source of truth for "my balances" (the frontend is being rebuilt,
+so the break is acceptable now and cheap to absorb). Clients should read the root
+totals for a consolidated view and `compartimentos.{funding,spot}` for the
+per-wallet breakdown.
+
 **`POST /api/balances/my/transfer` — internal Funding↔Spot transfer (new endpoint)**
 
 Self-service transfer between a user's own compartments:

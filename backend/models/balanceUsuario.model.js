@@ -261,6 +261,18 @@ function createBalanceUserModel(sequelize) {
           },
         });
       }
+      // Enriquecer con el objeto criptomoneda (una query) para que ésta sea la
+      // forma unificada de "mis balances" que consumen los 3 endpoints (balances/
+      // intercambio/usuario), sin que cada controller re-adjunte la asociación.
+      if (salida.length > 0) {
+        const { Criptomoneda } = require('./index');
+        const cripts = await Criptomoneda.findAll({
+          where: { id: salida.map((s) => s.criptomonedaId) },
+          attributes: ['id', 'symbol', 'nombre', 'red', 'decimales'],
+        });
+        const porId = new Map(cripts.map((c) => [c.id, c]));
+        for (const s of salida) s.criptomoneda = porId.get(s.criptomonedaId) || null;
+      }
       return salida;
     } catch (error) {
       throw new Error(`Error al obtener balances con compartimentos: ${error.message}`);

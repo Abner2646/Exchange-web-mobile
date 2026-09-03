@@ -307,35 +307,16 @@ const checkTransactionLimit = async (req, res) => {
   });
 };
 
-// Obtener mis balances
-// Read-flip (write-flip Paso A): los saldos salen de la PROYECCION del ledger
-// (BalanceUsuario.getByUserId → compartimento Funding), no de balances_users. La
-// asociacion `criptomoneda` se re-adjunta por lookup (la proyeccion devuelve
-// objetos planos). Nota de contrato: ya no hay `id` de fila ni `updated_at`, y
-// las criptos sin movimiento en el ledger (saldo 0) no se listan — cambio de
-// contrato ya documentado en docs/frontend-rebuild/backend-contract-changes.md.
+// Obtener mis balances — forma UNIFICADA (2026-09-03): los tres endpoints de
+// "mis balances" (balances/intercambio/usuario) devuelven la misma forma aditiva
+// compartimentada de getBalancesConCompartimentos (totales de raíz Funding+Spot +
+// desglose por compartimento + objeto `criptomoneda`). Antes este endpoint era
+// funding-only y re-adjuntaba la cripto a mano. Cambio de contrato documentado en
+// docs/frontend-rebuild/backend-contract-changes.md. El orden no está garantizado.
 const getMyBalances = async (req, res) => {
   const usuarioId = req.user.id;
-
-  const balances = await BalanceUsuario.getByUserId(usuarioId);
-  const criptomonedas = await Criptomoneda.findAll({
-    where: { id: balances.map((b) => b.criptomonedaId) },
-    attributes: ['id', 'symbol', 'nombre', 'decimales']
-  });
-  const criptoPorId = new Map(criptomonedas.map((c) => [c.id, c]));
-
-  const resultado = balances
-    .map((b) => ({
-      userId: b.userId,
-      criptomonedaId: b.criptomonedaId,
-      balanceDisponible: b.balanceDisponible,
-      balanceBloqueado: b.balanceBloqueado,
-      balancePendiente: b.balancePendiente, // Paso D: depósitos detectados sin confirmar
-      criptomoneda: criptoPorId.get(b.criptomonedaId) || null
-    }))
-    .sort((a, b) => money.compare(b.balanceDisponible, a.balanceDisponible));
-
-  res.json(resultado);
+  const balances = await BalanceUsuario.getBalancesConCompartimentos(usuarioId);
+  res.json(balances);
 };
 
 // Listar todos los intercambios (admin)
