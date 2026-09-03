@@ -83,7 +83,15 @@ app.get('/health', (req, res) => {
 
 // Documentación OpenAPI interactiva. La UI en /api-docs; el spec crudo en
 // /api-docs.json (para generar clientes / importar en Postman). Ver config/swagger.js.
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openapiSpec, { customSiteTitle: 'Crypto Exchange API' }));
+// El CSP por defecto de helmet (script-src/style-src 'self') bloquea los estilos/
+// scripts inline de Swagger UI → la UI se vería rota en un browser real. El helmet
+// global (arriba) ya seteó el header, así que hay que REMOVERLO acá (setear
+// contentSecurityPolicy:false no lo borra). Se quita SOLO en esta página
+// (contenido first-party de confianza); el CSP estricto del resto de la API queda.
+app.use('/api-docs',
+  (req, res, next) => { res.removeHeader('Content-Security-Policy'); next(); },
+  swaggerUi.serve,
+  swaggerUi.setup(openapiSpec, { customSiteTitle: 'Crypto Exchange API' }));
 app.get('/api-docs.json', (req, res) => res.json(openapiSpec));
 
 app.use('*', (req, res) => {
