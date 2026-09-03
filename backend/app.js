@@ -11,8 +11,10 @@ if (!process.env.JWT_SECRET) {
   throw new Error('JWT_SECRET no configurado');
 }
 
+const swaggerUi = require('swagger-ui-express');
 const configurePassport = require('./config/passport.config');
 const apiRoutes = require('./routes');
+const openapiSpec = require('./config/swagger');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -78,6 +80,11 @@ app.use('/api', apiRoutes);
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK', timestamp: new Date().toISOString(), uptime: process.uptime() });
 });
+
+// Documentación OpenAPI interactiva. La UI en /api-docs; el spec crudo en
+// /api-docs.json (para generar clientes / importar en Postman). Ver config/swagger.js.
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openapiSpec, { customSiteTitle: 'Crypto Exchange API' }));
+app.get('/api-docs.json', (req, res) => res.json(openapiSpec));
 
 app.use('*', (req, res) => {
   res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found' } });

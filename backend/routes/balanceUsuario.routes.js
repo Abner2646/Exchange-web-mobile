@@ -13,9 +13,59 @@ const idempotency = require('../middleware/idempotency.middleware');
 const asyncHandler = require('../utils/asyncHandler');
 
 // =============== ÚTILES POR AHORA ===============
+/**
+ * @openapi
+ * /balances/my/balances:
+ *   get:
+ *     tags: [Balances]
+ *     summary: Mis balances (forma compartimentada aditiva)
+ *     description: >
+ *       Por cada cripto con cuenta, devuelve los totales de raíz (Funding + Spot),
+ *       el desglose por compartimento y el objeto criptomoneda.
+ *     responses:
+ *       200:
+ *         description: Lista de balances del usuario autenticado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items: { $ref: '#/components/schemas/BalanceEntry' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ */
 // GET /api/balances/my/balances - Obtener mis balances
 router.get('/my/balances', authenticateToken, asyncHandler(balanceUserController.getMyBalances));
 
+/**
+ * @openapi
+ * /balances/my/transfer:
+ *   post:
+ *     tags: [Balances]
+ *     summary: Transferir entre mis compartimentos (Funding↔Spot)
+ *     description: Self-service (el userId sale del token). Requiere header Idempotency-Key.
+ *     parameters:
+ *       - in: header
+ *         name: Idempotency-Key
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: Clave de idempotencia (una por intención de transferencia).
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [criptomonedaId, cantidad, origen, destino]
+ *             properties:
+ *               criptomonedaId: { type: string, format: uuid }
+ *               cantidad: { $ref: '#/components/schemas/MoneyString' }
+ *               origen: { type: string, enum: [funding, spot] }
+ *               destino: { type: string, enum: [funding, spot] }
+ *     responses:
+ *       200:
+ *         description: Transferencia entre compartimentos completada
+ *       400: { $ref: '#/components/responses/BadRequest' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ */
 // POST /api/balances/my/transfer - Transferir entre mis compartimentos (Funding↔Spot)
 // Money-path → idempotencia obligatoria (mismo patrón que swap/withdraw/transferencia).
 // idempotency NO se envuelve en asyncHandler (maneja sus propios errores vía next).

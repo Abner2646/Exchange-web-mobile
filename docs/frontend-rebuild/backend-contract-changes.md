@@ -13,6 +13,14 @@
 > a field, an enum value, an endpoint path/method — add an entry here in the same
 > commit. If it doesn't touch the client contract, it doesn't belong here.
 >
+> **Also update the OpenAPI annotations.** The API is documented with OpenAPI /
+> Swagger (interactive UI at `/api-docs`, raw spec at `/api-docs.json`), generated
+> from `@openapi` JSDoc annotations that live **above each route** in
+> `backend/routes/*.js`. On any endpoint create/change/delete, update its
+> `@openapi` annotation **in the same commit** — an un-annotated endpoint simply
+> does not appear in the spec. Setup: `backend/config/swagger.js`; regression
+> guard: `backend/tests/openapiSpec.test.js`.
+>
 > Audience: whoever rebuilds the frontend. Written as "what the contract is now
 > and what you must handle", not as internal planning (that lives in the
 > gitignored `ROADMAP.md`).
