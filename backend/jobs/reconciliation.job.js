@@ -6,12 +6,16 @@
 const recon = require('../services/ledger/reconciliation');
 const { runReconciliationCheck } = require('../services/ledger/reconciliationAlarm');
 
-const FREQUENCY_MS = Number(process.env.RECONCILIATION_INTERVAL_MS) || 15 * 60 * 1000; // 15 min
+// Clamp a un valor positivo: un env negativo/no-numérico cae al default (evita
+// setInterval(-1) → tight-loop).
+const parsedInterval = Number(process.env.RECONCILIATION_INTERVAL_MS);
+const FREQUENCY_MS = parsedInterval > 0 ? parsedInterval : 15 * 60 * 1000; // 15 min
 
 class ReconciliationJob {
   constructor() {
     this.interval = null;
     this.isRunning = false;
+    this.checking = false; // guard de re-entrancy (un pase escanea todo el ledger)
     this.lastRunAt = null;
     this.lastOk = null;
   }
@@ -31,6 +35,13 @@ class ReconciliationJob {
   }
 
   async run() {
+    // Si el pase anterior sigue corriendo (ledger grande, scan lento) NO apilar
+    // otro — evita corridas solapadas que agotarían el pool de conexiones.
+    if (this.checking) {
+      console.warn('[reconciliation] pase anterior aún en curso, se saltea este tick');
+      return;
+    }
+    this.checking = true;
     try {
       const res = await runReconciliationCheck({
         reconciliarInterno: recon.reconciliarInterno,
@@ -40,6 +51,8 @@ class ReconciliationJob {
       this.lastRunAt = new Date();
     } catch (error) {
       console.error('❌ Reconciliation Job error:', error.message);
+    } finally {
+      this.checking = false;
     }
   }
 

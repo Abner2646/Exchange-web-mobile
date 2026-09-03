@@ -43,6 +43,19 @@ test('el libro no cierra en cero (externo) → ok false y alarma', async () => {
   expect(logger.error).toHaveBeenCalledTimes(1);
 });
 
+test('si una reconciliación tira, la otra igual corre y ambas se evalúan (no se enmascara)', async () => {
+  const logger = fakeLogger();
+  const res = await runReconciliationCheck({
+    reconciliarInterno: async () => { throw new Error('DB caída'); },
+    reconciliarExterno: async () => ({ ok: false, porCripto: { btc: { neto: '1' } } }),
+    logger,
+  });
+  expect(res.ok).toBe(false);
+  // alarma por AMBOS: el throw del interno y el desbalance del externo
+  expect(logger.error).toHaveBeenCalledTimes(2);
+  expect(res.interno.error).toMatch(/DB caída/);
+});
+
 test('devuelve los resultados crudos de ambas reconciliaciones', async () => {
   const interno = { ok: true, discrepancias: [] };
   const externo = { ok: true, porCripto: { eth: { usuarios: '0', casa: '0', neto: '0' } } };
