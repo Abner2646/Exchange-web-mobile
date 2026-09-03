@@ -9,6 +9,28 @@ const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
 // Importa el controlador
 const notificacionController = require('../controllers/notificaciones.controller.js');
 
+/**
+ * @openapi
+ * /notificaciones/me:
+ *   get: { tags: [Notificaciones], summary: Mis notificaciones, responses: { 200: { description: Notificaciones }, 401: { $ref: '#/components/responses/Unauthorized' } } }
+ * /notificaciones/me/unread-count:
+ *   get: { tags: [Notificaciones], summary: Contador de no leídas, responses: { 200: { description: Contador } } }
+ * /notificaciones/me/unread-count/by-type:
+ *   get: { tags: [Notificaciones], summary: Contador de no leídas por tipo, responses: { 200: { description: Contadores } } }
+ * /notificaciones/me/mark-all-read:
+ *   patch: { tags: [Notificaciones], summary: Marcar todas como leídas, responses: { 200: { description: OK } } }
+ * /notificaciones/me/{id}/mark-read:
+ *   patch: { tags: [Notificaciones], summary: Marcar una notificación como leída, parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }], responses: { 200: { description: OK } } }
+ * /notificaciones/me/{id}/mark-unread:
+ *   patch: { tags: [Notificaciones], summary: Marcar una notificación como no leída, parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }], responses: { 200: { description: OK } } }
+ * /notificaciones/me/read:
+ *   delete: { tags: [Notificaciones], summary: Eliminar todas mis notificaciones leídas, responses: { 200: { description: OK } } }
+ * /notificaciones/{id}/read:
+ *   patch: { tags: [Notificaciones], summary: Marcar como leída, parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }], responses: { 200: { description: OK } } }
+ * /notificaciones/{id}/unread:
+ *   patch: { tags: [Notificaciones], summary: Marcar como no leída, parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }], responses: { 200: { description: OK } } }
+ */
+
 // --------------------- RUTAS ESPECÍFICAS DEL USUARIO --------------------- //
 
 // Obtener mis notificaciones

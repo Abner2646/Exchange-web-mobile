@@ -9,6 +9,39 @@ const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
 // Importa el controlador de wallets maestras
 const walletMaestraController = require('../controllers/walletMaestra.controller.js');
 
+/**
+ * @openapi
+ * /walletMaestra:
+ *   get: { tags: [Wallets maestras (super admin)], summary: Listar wallets maestras, responses: { 200: { description: Wallets }, 401: { $ref: '#/components/responses/Unauthorized' } } }
+ *   post: { tags: [Wallets maestras (super admin)], summary: Crear una wallet maestra HD, responses: { 201: { description: Wallet creada } } }
+ * /walletMaestra/{id}:
+ *   get:
+ *     tags: [Wallets maestras (super admin)]
+ *     summary: Wallet maestra por id
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Wallet }, 404: { $ref: '#/components/responses/BadRequest' } }
+ * /walletMaestra/status/active:
+ *   get: { tags: [Wallets maestras (super admin)], summary: Wallets activas, responses: { 200: { description: Wallets } } }
+ * /walletMaestra/balances/distribution:
+ *   get: { tags: [Wallets maestras (super admin)], summary: Distribución detallada de fondos, responses: { 200: { description: Distribución } } }
+ * /walletMaestra/treasury/metrics:
+ *   get: { tags: [Wallets maestras (super admin)], summary: Métricas de tesorería, responses: { 200: { description: Métricas } } }
+ * /walletMaestra/dashboard/overview:
+ *   get: { tags: [Wallets maestras (super admin)], summary: Dashboard de wallets, responses: { 200: { description: Dashboard } } }
+ * /walletMaestra/admin/stats:
+ *   get: { tags: [Wallets maestras (super admin)], summary: Estadísticas de wallets, responses: { 200: { description: Stats } } }
+ * /walletMaestra/admin/export:
+ *   get: { tags: [Wallets maestras (super admin)], summary: Exportar wallets a CSV, responses: { 200: { description: CSV } } }
+ * /walletMaestra/admin/health:
+ *   get: { tags: [Wallets maestras (super admin)], summary: Health check del sistema de wallets, responses: { 200: { description: Estado } } }
+ * /walletMaestra/internal/active-by-crypto/{criptomonedaId}:
+ *   get:
+ *     tags: [Wallets maestras (super admin)]
+ *     summary: Wallet activa por cripto (servicios internos)
+ *     parameters: [{ in: path, name: criptomonedaId, required: true, schema: { type: string, format: uuid } }]
+ *     responses: { 200: { description: Wallet } }
+ */
+
 // =================== RUTAS CRUD BÁSICAS ===================
 
 // Obtener todas las wallets maestras (solo admin)

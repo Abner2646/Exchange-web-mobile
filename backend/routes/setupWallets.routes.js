@@ -4,6 +4,20 @@ const setupController = require('../controllers/setupWallets.controller');
 const { authenticateToken } = require('../middleware/authMiddleware');
 const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware');
 
+/**
+ * @openapi
+ * /setupWallets/status:
+ *   get: { tags: [Setup wallets (super admin)], summary: Estado del setup inicial de wallets, responses: { 200: { description: Estado }, 401: { $ref: '#/components/responses/Unauthorized' } } }
+ * /setupWallets/initialize:
+ *   post:
+ *     tags: [Setup wallets (super admin)]
+ *     summary: Ejecutar el setup inicial de wallets maestras (BTC/ETH/BNB)
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema: { type: object, properties: { force: { type: boolean, description: "PELIGROSO — recrea, puede romper ids preexistentes" } } }
+ *     responses: { 200: { description: Setup ejecutado } }
+ */
 // 1. VERIFICAR ESTADO DEL SETUP
 // Fix 2026-08-19 (AUDITORIA_BACKEND.md Altos #5): faltaba authenticateToken
 // antes de isSuperAdmin — isSuperAdmin requiere req.user (lo documenta su

@@ -9,6 +9,70 @@ const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
 // Importa el controlador de relaciones oferta-método de pago
 const ofertaMetodoPagoController = require('../controllers/ofertaMetodoPago.controller.js');
 
+/**
+ * @openapi
+ * /ofertaMetodoPago:
+ *   get: { tags: [Oferta↔Método de pago], summary: Listar relaciones oferta-método, responses: { 200: { description: Relaciones } } }
+ *   post: { tags: [Oferta↔Método de pago], summary: Crear una relación oferta-método, responses: { 201: { description: Creada } } }
+ * /ofertaMetodoPago/{id}:
+ *   get: { tags: [Oferta↔Método de pago], summary: Relación por id, parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }], responses: { 200: { description: Relación } } }
+ *   delete: { tags: [Oferta↔Método de pago], summary: Eliminar relación por id, parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }], responses: { 200: { description: Eliminada } } }
+ * /ofertaMetodoPago/oferta/{ofertaId}/metodo/{metodoPagoId}:
+ *   delete:
+ *     tags: [Oferta↔Método de pago]
+ *     summary: Eliminar una relación específica (oferta+método)
+ *     parameters:
+ *       - { in: path, name: ofertaId, required: true, schema: { type: string, format: uuid } }
+ *       - { in: path, name: metodoPagoId, required: true, schema: { type: string, format: uuid } }
+ *     responses: { 200: { description: Eliminada } }
+ * /ofertaMetodoPago/oferta/{ofertaId}/metodos:
+ *   get: { tags: [Oferta↔Método de pago], summary: Métodos de pago de una oferta (público), security: [], parameters: [{ in: path, name: ofertaId, required: true, schema: { type: string, format: uuid } }], responses: { 200: { description: Métodos } } }
+ * /ofertaMetodoPago/oferta/{ofertaId}/completo:
+ *   get: { tags: [Oferta↔Método de pago], summary: Relaciones completas de una oferta (público), security: [], parameters: [{ in: path, name: ofertaId, required: true, schema: { type: string, format: uuid } }], responses: { 200: { description: Relaciones } } }
+ * /ofertaMetodoPago/oferta/{ofertaId}/summary:
+ *   get: { tags: [Oferta↔Método de pago], summary: Resumen de una oferta (público), security: [], parameters: [{ in: path, name: ofertaId, required: true, schema: { type: string, format: uuid } }], responses: { 200: { description: Resumen } } }
+ * /ofertaMetodoPago/oferta/{ofertaId}/available:
+ *   get: { tags: [Oferta↔Método de pago], summary: Métodos disponibles para una oferta, parameters: [{ in: path, name: ofertaId, required: true, schema: { type: string, format: uuid } }], responses: { 200: { description: Métodos } } }
+ * /ofertaMetodoPago/oferta/{ofertaId}/validate-setup:
+ *   get: { tags: [Oferta↔Método de pago], summary: Validar el setup de una oferta, parameters: [{ in: path, name: ofertaId, required: true, schema: { type: string, format: uuid } }], responses: { 200: { description: Resultado } } }
+ * /ofertaMetodoPago/metodo/{metodoPagoId}/ofertas:
+ *   get: { tags: [Oferta↔Método de pago], summary: Ofertas que usan un método (público), security: [], parameters: [{ in: path, name: metodoPagoId, required: true, schema: { type: string, format: uuid } }], responses: { 200: { description: Ofertas } } }
+ * /ofertaMetodoPago/oferta/{ofertaId}/add-multiple:
+ *   post: { tags: [Oferta↔Método de pago], summary: Agregar varios métodos a una oferta, parameters: [{ in: path, name: ofertaId, required: true, schema: { type: string, format: uuid } }], responses: { 200: { description: OK } } }
+ * /ofertaMetodoPago/oferta/{ofertaId}/remove-multiple:
+ *   post: { tags: [Oferta↔Método de pago], summary: Quitar varios métodos de una oferta, parameters: [{ in: path, name: ofertaId, required: true, schema: { type: string, format: uuid } }], responses: { 200: { description: OK } } }
+ * /ofertaMetodoPago/oferta/{ofertaId}/replace-all:
+ *   put: { tags: [Oferta↔Método de pago], summary: Reemplazar todos los métodos de una oferta, parameters: [{ in: path, name: ofertaId, required: true, schema: { type: string, format: uuid } }], responses: { 200: { description: OK } } }
+ * /ofertaMetodoPago/clone-metodos:
+ *   post: { tags: [Oferta↔Método de pago], summary: Clonar métodos de una oferta a otra, responses: { 200: { description: OK } } }
+ * /ofertaMetodoPago/check/{ofertaId}/{metodoPagoId}:
+ *   get:
+ *     tags: [Oferta↔Método de pago]
+ *     summary: Verificar si existe una relación (público)
+ *     security: []
+ *     parameters:
+ *       - { in: path, name: ofertaId, required: true, schema: { type: string, format: uuid } }
+ *       - { in: path, name: metodoPagoId, required: true, schema: { type: string, format: uuid } }
+ *     responses: { 200: { description: Existe o no } }
+ * /ofertaMetodoPago/validate/{ofertaId}/{metodoPagoId}:
+ *   get:
+ *     tags: [Oferta↔Método de pago]
+ *     summary: Validar compatibilidad oferta-método (público)
+ *     security: []
+ *     parameters:
+ *       - { in: path, name: ofertaId, required: true, schema: { type: string, format: uuid } }
+ *       - { in: path, name: metodoPagoId, required: true, schema: { type: string, format: uuid } }
+ *     responses: { 200: { description: Compatible o no } }
+ * /ofertaMetodoPago/dashboard/overview:
+ *   get: { tags: [Oferta↔Método de pago - admin], summary: Dashboard de relaciones (super admin), responses: { 200: { description: Dashboard } } }
+ * /ofertaMetodoPago/dashboard/usage-metrics:
+ *   get: { tags: [Oferta↔Método de pago - admin], summary: Métricas de uso (super admin), responses: { 200: { description: Métricas } } }
+ * /ofertaMetodoPago/admin/stats:
+ *   get: { tags: [Oferta↔Método de pago - admin], summary: Estadísticas (super admin), responses: { 200: { description: Stats } } }
+ * /ofertaMetodoPago/admin/export:
+ *   get: { tags: [Oferta↔Método de pago - admin], summary: Exportar a CSV (super admin), responses: { 200: { description: CSV } } }
+ */
+
 // --------------------- RUTAS CRUD BÁSICAS --------------------- //
 
 // Obtener todas las relaciones oferta-método de pago
