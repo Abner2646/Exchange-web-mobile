@@ -82,6 +82,8 @@ These endpoints now **require** an `Idempotency-Key` request header and return
 - `POST /trading/orders`
 - `POST /transaccionBlockchain/withdraw`
 - `POST /transferencia/`
+- `POST /intercambioExchange/` (swap execution) — added with the ledger/Spot work
+- `POST /balances/my/transfer` (Funding↔Spot transfer) — added with the Spot compartment
 
 Client responsibilities:
 - Generate a UUID per user-intent (one per "submit"), send it as

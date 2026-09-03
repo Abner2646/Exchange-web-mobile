@@ -92,7 +92,15 @@ const createOrder = async (req, res) => {
       throw new AppError(400, errorCodes.EXCHANGE_PAIR_NO_PRICE, 'El par no tiene un precio válido configurado');
     }
 
-    const usuario = await Usuario.findByPk(usuarioId, { transaction });
+    // FOR UPDATE sobre la fila del usuario: serializa la sección crítica del
+    // límite diario (AML) POR USUARIO. Sin este lock, dos swaps concurrentes del
+    // mismo usuario leen el mismo getDailyVolume y ambos pasan → el volumen
+    // combinado excede limiteDiarioUsd (Radar #12d). Con el lock, el segundo swap
+    // espera al commit del primero y re-lee el volumen ya incluyéndolo. Es
+    // per-usuario (distintos usuarios lockean filas distintas, sin contención) y
+    // se toma ANTES de los locks de saldo del ledger (orden consistente → sin
+    // deadlock). El anti-sobregiro del ledger no cubre este agregado.
+    const usuario = await Usuario.findByPk(usuarioId, { transaction, lock: transaction.LOCK.UPDATE });
     if (!usuario || !usuario.activo) {
       await transaction.rollback();
       throw new AppError(404, errorCodes.EXCHANGE_USER_NOT_FOUND, 'Usuario no encontrado o inactivo');

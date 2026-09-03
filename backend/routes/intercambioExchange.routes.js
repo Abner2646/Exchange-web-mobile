@@ -6,6 +6,7 @@ const router = express.Router();
 const intercambioController = require('../controllers/intercambioExchange.controller');
 const { authenticateToken, requireEmailVerified } = require('../middleware/authMiddleware');
 const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware');
+const idempotency = require('../middleware/idempotency.middleware');
 const asyncHandler = require('../utils/asyncHandler');
 
 // ================================
@@ -34,8 +35,10 @@ Query params:
 // ================================
 router.use(authenticateToken, requireEmailVerified);
 
-//Crear un intercambio
-router.post('/', asyncHandler(intercambioController.createOrder));
+//Crear un intercambio (swap). Money-path → idempotencia obligatoria (mismo
+// patrón que createOrder de trading / withdraw / transferencia). El middleware
+// no se envuelve en asyncHandler: maneja sus propios errores vía next(err).
+router.post('/', idempotency, asyncHandler(intercambioController.createOrder));
 /*
 {
   "parId": "123e4567-e89b-12d3-a456-426614174000",

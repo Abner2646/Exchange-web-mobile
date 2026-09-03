@@ -87,7 +87,8 @@ const PAR_ID = '11111111-1111-1111-1111-111111111111';
 const USER_ID = 'user-1';
 
 function setupCommonMocks({ limiteDiarioUsd = 1000000, dailyVolume = 0 } = {}) {
-  const transaction = { commit: jest.fn(), rollback: jest.fn() };
+  // LOCK: createOrder toma un FOR UPDATE sobre la fila de Usuario (límite diario).
+  const transaction = { commit: jest.fn(), rollback: jest.fn(), LOCK: { UPDATE: 'UPDATE' } };
   sequelize.transaction.mockResolvedValue(transaction);
 
   ParExchange.findByPk.mockResolvedValue({

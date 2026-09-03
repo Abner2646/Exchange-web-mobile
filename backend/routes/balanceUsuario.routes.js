@@ -9,13 +9,15 @@ const balanceUserController = require('../controllers/balanceUsuario.controller'
 const { authenticateToken } = require('../middleware/authMiddleware.js');
 const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
 const rateLimitMiddleware = require('../middleware/rateLimit.middleware.js');
+const idempotency = require('../middleware/idempotency.middleware');
 
 // =============== ÚTILES POR AHORA ===============
 // GET /api/balances/my/balances - Obtener mis balances
 router.get('/my/balances', authenticateToken, balanceUserController.getMyBalances); // Bien
 
 // POST /api/balances/my/transfer - Transferir entre mis compartimentos (Funding↔Spot)
-router.post('/my/transfer', authenticateToken, balanceUserController.transferMisCompartimentos);
+// Money-path → idempotencia obligatoria (mismo patrón que swap/withdraw/transferencia).
+router.post('/my/transfer', authenticateToken, idempotency, balanceUserController.transferMisCompartimentos);
 
 // PUT /api/balances/user/:userId/crypto/:criptomonedaId - Actualizar balance
 router.put('/user/:userId/crypto/:criptomonedaId', authenticateToken, isAdmin, balanceUserController.updateBalance); // Bien

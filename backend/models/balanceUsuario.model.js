@@ -4,24 +4,16 @@ require('dotenv').config();
 const { Op } = require('sequelize');
 const money = require('../utils/money');
 const crypto = require('crypto');
-
-// Mapa compartimento→propósitos por estado. Fuente única para leer saldos por
-// compartimento desde la proyección del ledger. Spot no tiene 'pendiente'.
-// Valores deben coincidir con PROPOSITOS en services/ledger/ledgerAccounts.js —
-// el unit test balanceCompartimento.test.js los ancla contra ese módulo.
-// Require de ledgerAccounts es lazy (abajo en leerCompartimento) por el ciclo
-// models/index.js → ledgerAccounts → models/index.js; acá usamos los strings
-// directos para que el mapa exista sin ejecutar ningún require al cargar.
-const PROPOSITOS_POR_COMPARTIMENTO = {
-  funding: { disponible: 'funding:disponible', bloqueado: 'funding:bloqueado', pendiente: 'funding:pendiente' },
-  spot: { disponible: 'spot:disponible', bloqueado: 'spot:bloqueado', pendiente: null },
-};
+// Registro único compartimento→propósito (fuente de verdad en ledgerAccounts).
+// ledgerAccounts ya NO requiere models al cargar (su require de models es lazy),
+// así que importar COMPARTIMENTOS acá al tope no dispara el ciclo models↔ledger.
+const { COMPARTIMENTOS } = require('../services/ledger/ledgerAccounts');
 
 // Lee disponible/bloqueado/pendiente de un compartimento desde la proyección del
 // ledger. Require lazy de postingService por el ciclo models↔services/ledger.
 async function leerCompartimento(userId, criptomonedaId, compartimento, transaction = null) {
   const { getSaldoCuenta } = require('../services/ledger/postingService');
-  const props = PROPOSITOS_POR_COMPARTIMENTO[compartimento];
+  const props = COMPARTIMENTOS[compartimento];
   if (!props) throw new Error(`Compartimento inválido: ${compartimento}`);
   const disponible = await getSaldoCuenta({ ownerId: userId, proposito: props.disponible, criptomonedaId }, transaction);
   const bloqueado = await getSaldoCuenta({ ownerId: userId, proposito: props.bloqueado, criptomonedaId }, transaction);
@@ -31,25 +23,13 @@ async function leerCompartimento(userId, criptomonedaId, compartimento, transact
   return { disponible, bloqueado, pendiente };
 }
 
-// Plan 3 (read-flip): las lecturas de saldo salen de la PROYECCION del ledger
-// (compartimento Funding), no de balances_users. Requires lazy para evitar el
-// ciclo models<->services/ledger (este modulo lo carga models/index.js). El
-// mirror (Plan 2) mantiene paridad, asi que hoy los valores coinciden; el flip
-// prepara el terreno para dejar de escribir balances_users por-camino.
+// Lectura del compartimento Funding con las claves legacy balance* que esperan
+// sus callers (getTotalBalance/getByUserAndCrypto/block/unblock/updateBalance/
+// hasAvailableBalance). Es un alias delgado sobre leerCompartimento('funding')
+// — antes duplicaba los tres getSaldoCuenta a mano.
 async function leerFundingDesdeLedger(userId, criptomonedaId, transaction = null) {
-  const { getSaldoCuenta } = require('../services/ledger/postingService');
-  const { PROPOSITOS } = require('../services/ledger/ledgerAccounts');
-  const balanceDisponible = await getSaldoCuenta(
-    { ownerId: userId, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId }, transaction
-  );
-  const balanceBloqueado = await getSaldoCuenta(
-    { ownerId: userId, proposito: PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId }, transaction
-  );
-  // Paso D: estado PENDIENTE (depósitos detectados sin confirmar).
-  const balancePendiente = await getSaldoCuenta(
-    { ownerId: userId, proposito: PROPOSITOS.FUNDING_PENDIENTE, criptomonedaId }, transaction
-  );
-  return { balanceDisponible, balanceBloqueado, balancePendiente };
+  const { disponible, bloqueado, pendiente } = await leerCompartimento(userId, criptomonedaId, 'funding', transaction);
+  return { balanceDisponible: disponible, balanceBloqueado: bloqueado, balancePendiente: pendiente };
 }
 
 // Read-flip (write-flip Paso A/B): agrega la proyeccion Funding del ledger para
@@ -85,6 +65,25 @@ async function agregarFundingLedger({ userId = null, criptomonedaId = null } = {
   return [...porClave.values()];
 }
 
+// Lee la proyección del ledger de UN usuario en UNA sola query (findAll + include
+// saldoProyectado), evitando el N+1 de llamar getSaldoCuenta por (propósito,
+// cripto). Devuelve Map: criptomonedaId → { propósito → saldo (string canónico) }.
+// Scopeada a un usuario, así que la clave por-cripto no colisiona entre usuarios
+// (a diferencia de agregarFundingLedger, que puede ser multi-usuario).
+async function leerProyeccionUsuario(userId, propositos) {
+  const { CuentaLedger, SaldoLedger } = require('./index');
+  const cuentas = await CuentaLedger.findAll({
+    where: { ownerId: userId, proposito: propositos },
+    include: [{ model: SaldoLedger, as: 'saldoProyectado', attributes: ['saldo'] }],
+  });
+  const porCripto = new Map();
+  for (const c of cuentas) {
+    if (!porCripto.has(c.criptomonedaId)) porCripto.set(c.criptomonedaId, {});
+    porCripto.get(c.criptomonedaId)[c.proposito] = c.saldoProyectado ? String(c.saldoProyectado.saldo) : '0';
+  }
+  return porCripto;
+}
+
 function createBalanceUserModel(sequelize) {
   // Paso C: BalanceUsuario ya NO es un modelo Sequelize — la tabla balances_users
   // se eliminó. Es una FACHADA de operaciones de saldo respaldada por el ledger de
@@ -107,19 +106,14 @@ function createBalanceUserModel(sequelize) {
   // asociacion .criptomoneda, igual que el viejo findAll sin include).
   BalanceUsuario.getByUserId = async (userId) => {
     try {
-      const { CuentaLedger } = require('./index');
-      const { PROPOSITOS } = require('../services/ledger/ledgerAccounts');
-      const cuentas = await CuentaLedger.findAll({
-        where: { ownerId: userId, proposito: [PROPOSITOS.FUNDING_DISPONIBLE, PROPOSITOS.FUNDING_BLOQUEADO, PROPOSITOS.FUNDING_PENDIENTE] },
-        attributes: ['criptomonedaId'],
-        group: ['criptomonedaId'],
-      });
-      const balances = [];
-      for (const c of cuentas) {
-        const { balanceDisponible, balanceBloqueado, balancePendiente } = await leerFundingDesdeLedger(userId, c.criptomonedaId);
-        balances.push({ userId, criptomonedaId: c.criptomonedaId, balanceDisponible, balanceBloqueado, balancePendiente });
-      }
-      return balances;
+      // Guard anti-fuga: agregarFundingLedger SIN userId devuelve TODOS los usuarios
+      // (es su modo admin). Acá el scope por-usuario es obligatorio.
+      if (!userId) return [];
+      // agregarFundingLedger ya colapsa la proyección Funding por cripto en UNA
+      // sola query (findAll + include saldoProyectado) y devuelve exactamente esta
+      // forma {userId, criptomonedaId, balanceDisponible/Bloqueado/Pendiente}.
+      // Antes esto hacía un group + N×leerFundingDesdeLedger (N+1, ~6N queries).
+      return await agregarFundingLedger({ userId });
     } catch (error) {
       throw new Error(`Error al obtener balances por usuario: ${error.message}`);
     }
@@ -164,7 +158,8 @@ function createBalanceUserModel(sequelize) {
   // endpoint admin de ajuste manual de saldo (PUT /balances/user/:id/crypto/:id):
   // 'suspense' es acá su rol contable LEGÍTIMO y permanente (cuenta de ajustes/no
   // clasificados), no el placeholder transitorio de la migración. El guard de
-  // sobregiro vive en postTransaction (FOR UPDATE); su error /sobregiro/ se
+  // sobregiro vive en postTransaction (FOR UPDATE); su SobregiroError (code
+  // 'SOBREGIRO') se
   // traduce al mensaje legacy /insuficiente/ del contrato.
   BalanceUsuario.updateBalance = async (userId, criptomonedaId, amount, type = 'disponible', transaction = null) => {
     const { postTransaction } = require('../services/ledger/postingService');
@@ -177,11 +172,11 @@ function createBalanceUserModel(sequelize) {
         referencia: `writeflip:${crypto.randomUUID()}`,
         lineas: [
           { ownerId: userId, proposito, criptomonedaId, monto },
-          { ownerId: null, proposito: PROPOSITOS.SUSPENSE, criptomonedaId, monto: money.subtract('0', monto) },
+          { ownerId: null, proposito: PROPOSITOS.SUSPENSE, criptomonedaId, monto: money.negate(monto) },
         ],
       }, transaction);
     } catch (error) {
-      if (/sobregiro/i.test(error.message)) {
+      if (error.code === 'SOBREGIRO') {
         throw new Error(`Error al actualizar balance: Balance insuficiente. ${type}`);
       }
       throw new Error(`Error al actualizar balance: ${error.message}`);
@@ -235,36 +230,34 @@ function createBalanceUserModel(sequelize) {
   // evitar el ciclo models/index.js → ledgerAccounts → models/index.js.
   BalanceUsuario.getBalancesConCompartimentos = async (userId) => {
     try {
-      const { CuentaLedger } = require('./index');
-      const { PROPOSITOS } = require('../services/ledger/ledgerAccounts');
-      // money.add usa toFixed() sin argumentos — strip trailing zeros cuando la
-      // suma es entera. Usamos Decimal.toFixed(8) para mantener la precisión de
-      // 8 decimales que el frontend espera (igual que getSaldoCuenta).
-      const Decimal = require('decimal.js');
-      const fmt8 = (x) => new Decimal(x).toFixed(8);
-      const sumar8 = (a, b) => new Decimal(a).plus(b).toFixed(8);
-      const todos = [
-        PROPOSITOS.FUNDING_DISPONIBLE, PROPOSITOS.FUNDING_BLOQUEADO, PROPOSITOS.FUNDING_PENDIENTE,
-        PROPOSITOS.SPOT_DISPONIBLE, PROPOSITOS.SPOT_BLOQUEADO,
-      ];
-      const cuentas = await CuentaLedger.findAll({
-        where: { ownerId: userId, proposito: todos },
-        attributes: ['criptomonedaId'],
-        group: ['criptomonedaId'],
-      });
+      const { PROPOSITOS: P } = require('../services/ledger/ledgerAccounts');
+      // Presentación a 8 decimales uniformes: money.add strippea trailing zeros
+      // ('1' en vez de '1.00000000'), así que la suma+formato va por
+      // money.format8 (único punto de esa regla de presentación).
+      const fmt8 = (x) => money.format8(x);
+      const sumar8 = (a, b) => money.format8(money.add(a, b));
+      // UNA sola query para los 5 propósitos (antes: group + N×2 leerCompartimento,
+      // cada uno con 2-3 getSaldoCuenta → ~10N queries en el endpoint más llamado).
+      const porCripto = await leerProyeccionUsuario(userId, [
+        P.FUNDING_DISPONIBLE, P.FUNDING_BLOQUEADO, P.FUNDING_PENDIENTE,
+        P.SPOT_DISPONIBLE, P.SPOT_BLOQUEADO,
+      ]);
       const salida = [];
-      for (const c of cuentas) {
-        const funding = await leerCompartimento(userId, c.criptomonedaId, 'funding');
-        const spot = await leerCompartimento(userId, c.criptomonedaId, 'spot');
+      for (const [criptomonedaId, s] of porCripto) {
+        const fd = s[P.FUNDING_DISPONIBLE] || '0';
+        const fb = s[P.FUNDING_BLOQUEADO] || '0';
+        const fp = s[P.FUNDING_PENDIENTE] || '0';
+        const sd = s[P.SPOT_DISPONIBLE] || '0';
+        const sb = s[P.SPOT_BLOQUEADO] || '0';
         salida.push({
           userId,
-          criptomonedaId: c.criptomonedaId,
-          balanceDisponible: sumar8(funding.disponible, spot.disponible),
-          balanceBloqueado: sumar8(funding.bloqueado, spot.bloqueado),
-          balancePendiente: fmt8(funding.pendiente), // sólo Funding tiene pendiente
+          criptomonedaId,
+          balanceDisponible: sumar8(fd, sd),
+          balanceBloqueado: sumar8(fb, sb),
+          balancePendiente: fmt8(fp), // sólo Funding tiene pendiente
           compartimentos: {
-            funding: { disponible: fmt8(funding.disponible), bloqueado: fmt8(funding.bloqueado), pendiente: fmt8(funding.pendiente) },
-            spot: { disponible: fmt8(spot.disponible), bloqueado: fmt8(spot.bloqueado) },
+            funding: { disponible: fmt8(fd), bloqueado: fmt8(fb), pendiente: fmt8(fp) },
+            spot: { disponible: fmt8(sd), bloqueado: fmt8(sb) },
           },
         });
       }
@@ -278,19 +271,19 @@ function createBalanceUserModel(sequelize) {
   // cripto). Espejo de getByUserId pero scopeado a un compartimento.
   BalanceUsuario.getByUserIdCompartimento = async (userId, compartimento) => {
     try {
-      const { CuentaLedger } = require('./index');
-      const props = PROPOSITOS_POR_COMPARTIMENTO[compartimento];
+      const props = COMPARTIMENTOS[compartimento];
       if (!props) throw new Error(`Compartimento inválido: ${compartimento}`);
       const propositos = [props.disponible, props.bloqueado, ...(props.pendiente ? [props.pendiente] : [])];
-      const cuentas = await CuentaLedger.findAll({
-        where: { ownerId: userId, proposito: propositos },
-        attributes: ['criptomonedaId'],
-        group: ['criptomonedaId'],
-      });
+      // UNA sola query (antes: group + N×leerCompartimento con 2-3 getSaldoCuenta).
+      const porCripto = await leerProyeccionUsuario(userId, propositos);
       const salida = [];
-      for (const c of cuentas) {
-        const { disponible, bloqueado, pendiente } = await leerCompartimento(userId, c.criptomonedaId, compartimento);
-        salida.push({ criptomonedaId: c.criptomonedaId, disponible, bloqueado, pendiente });
+      for (const [criptomonedaId, s] of porCripto) {
+        salida.push({
+          criptomonedaId,
+          disponible: s[props.disponible] || '0',
+          bloqueado: s[props.bloqueado] || '0',
+          pendiente: props.pendiente ? (s[props.pendiente] || '0') : '0',
+        });
       }
       return salida;
     } catch (error) {
@@ -312,12 +305,12 @@ function createBalanceUserModel(sequelize) {
         tipo: 'reserva_orden',
         referencia: `block:${crypto.randomUUID()}`,
         lineas: [
-          { ownerId: userId, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId, monto: money.subtract('0', monto) },
+          { ownerId: userId, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId, monto: money.negate(monto) },
           { ownerId: userId, proposito: PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId, monto },
         ],
       }, transaction);
     } catch (error) {
-      if (/sobregiro/i.test(error.message)) {
+      if (error.code === 'SOBREGIRO') {
         throw new Error('Error al bloquear balance: Balance disponible insuficiente para bloquear');
       }
       throw new Error(`Error al bloquear balance: ${error.message}`);
@@ -335,12 +328,12 @@ function createBalanceUserModel(sequelize) {
         tipo: 'liberacion_reserva',
         referencia: `unblock:${crypto.randomUUID()}`,
         lineas: [
-          { ownerId: userId, proposito: PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId, monto: money.subtract('0', monto) },
+          { ownerId: userId, proposito: PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId, monto: money.negate(monto) },
           { ownerId: userId, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId, monto },
         ],
       }, transaction);
     } catch (error) {
-      if (/sobregiro/i.test(error.message)) {
+      if (error.code === 'SOBREGIRO') {
         throw new Error('Error al desbloquear balance: Balance bloqueado insuficiente para desbloquear');
       }
       throw new Error(`Error al desbloquear balance: ${error.message}`);
@@ -443,4 +436,3 @@ function createBalanceUserModel(sequelize) {
 }
 
 module.exports = createBalanceUserModel;
-module.exports.PROPOSITOS_POR_COMPARTIMENTO = PROPOSITOS_POR_COMPARTIMENTO;

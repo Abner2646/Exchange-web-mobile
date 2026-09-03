@@ -71,11 +71,13 @@ function buildApp() {
   return app;
 }
 
-/** Fake Sequelize transaction that records commit/rollback calls. */
+/** Fake Sequelize transaction that records commit/rollback calls. Incluye LOCK
+ *  porque createOrder toma un FOR UPDATE sobre la fila de Usuario (límite diario). */
 function makeFakeTx() {
   return {
     commit: jest.fn().mockResolvedValue(undefined),
     rollback: jest.fn().mockResolvedValue(undefined),
+    LOCK: { UPDATE: 'UPDATE' },
   };
 }
 

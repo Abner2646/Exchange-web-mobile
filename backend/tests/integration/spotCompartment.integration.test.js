@@ -9,6 +9,10 @@ const { PROPOSITOS } = require('../../services/ledger/ledgerAccounts');
 const posting = require('../../services/ledger/postingService');
 const money = require('../../utils/money');
 
+// Swap y transferencia Funding↔Spot son money-path → exigen Idempotency-Key.
+let idem = 0;
+const idemKey = () => `idem-${Date.now()}-${idem++}`;
+
 installAuthHarness();
 
 describe('Trading reserva y lee en el compartimento Spot', () => {
@@ -57,6 +61,7 @@ describe('POST /api/balances/my/transfer (Funding↔Spot)', () => {
     const res = await request(app)
       .post('/api/balances/my/transfer')
       .set(f.authHeader(user))
+      .set('Idempotency-Key', idemKey())
       .send({ criptomonedaId: usdt.id, cantidad: '200', origen: 'funding', destino: 'spot' });
     expect(res.status).toBe(200);
 
@@ -74,6 +79,7 @@ describe('POST /api/balances/my/transfer (Funding↔Spot)', () => {
     const res = await request(app)
       .post('/api/balances/my/transfer')
       .set(f.authHeader(user))
+      .set('Idempotency-Key', idemKey())
       .send({ criptomonedaId: usdt.id, cantidad: '200', origen: 'funding', destino: 'spot' });
     expect(res.status).toBe(400);
     expect((await BalanceUsuario.getSaldoCompartimento(user.id, usdt.id, 'funding')).disponible).toBe('10.00000000');
@@ -86,6 +92,7 @@ describe('POST /api/balances/my/transfer (Funding↔Spot)', () => {
     const res = await request(app)
       .post('/api/balances/my/transfer')
       .set(f.authHeader(user))
+      .set('Idempotency-Key', idemKey())
       .send({ criptomonedaId: usdt.id, cantidad: '1', origen: 'funding', destino: 'funding' });
     expect(res.status).toBe(400);
   });
@@ -148,6 +155,7 @@ describe('Swap respeta el compartimento origen', () => {
     const res = await request(app)
       .post('/api/intercambioExchange/')
       .set(f.authHeader(user))
+      .set('Idempotency-Key', idemKey())
       .send({ parId: par.id, tipo: 'compra', cantidadBase: 1, compartimento: 'spot' });
     expect(res.status).toBe(201);
 
@@ -164,5 +172,25 @@ describe('Swap respeta el compartimento origen', () => {
     expect(fundingBtc.disponible).toBe('0');
     const fundingUsdt = await BalanceUsuario.getSaldoCompartimento(user.id, usdt.id, 'funding');
     expect(fundingUsdt.disponible).toBe('0');
+  });
+});
+
+describe('getByUserIdCompartimento — lista por cripto scopeada a un compartimento', () => {
+  test('spot: una entrada por cripto con cuenta spot; funding no aparece', async () => {
+    const usdt = await f.seedCripto('USDT');
+    const btc = await f.seedCripto('BTC');
+    const user = await f.seedUser({ email: 'listspot@test.local', username: 'listspot' });
+    await f.seedSpotBalance(user, usdt, '150');
+    await f.seedSpotBalance(user, btc, '2');
+    await f.seedBalance(user, usdt, '999'); // funding: no debe influir en la lista spot
+
+    const filas = await BalanceUsuario.getByUserIdCompartimento(user.id, 'spot');
+    expect(filas).toHaveLength(2); // sólo las cripto con cuenta spot
+    const u = filas.find((r) => r.criptomonedaId === usdt.id);
+    const b = filas.find((r) => r.criptomonedaId === btc.id);
+    expect(u.disponible).toBe('150.00000000');
+    expect(u.bloqueado).toBe('0');
+    expect(u.pendiente).toBe('0'); // spot no tiene pendiente
+    expect(b.disponible).toBe('2.00000000');
   });
 });

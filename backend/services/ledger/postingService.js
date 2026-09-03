@@ -2,6 +2,17 @@ const money = require('../../utils/money');
 const { sequelize, CuentaLedger, AsientoLedger, MovimientoLedger, SaldoLedger } = require('../../models');
 const { resolveAccount, isCuentaUsuario, HOUSE_OWNER_ID } = require('./ledgerAccounts');
 
+// Error tipado de sobregiro. Los callers lo distinguen por `code === 'SOBREGIRO'`
+// (no por regex sobre el mensaje, que se rompe en silencio si el texto cambia)
+// para traducirlo al mensaje de dominio /insuficiente/ del contrato.
+class SobregiroError extends Error {
+  constructor(proposito, saldo, monto) {
+    super(`Sobregiro en cuenta ${proposito}: saldo ${saldo}, movimiento ${monto}`);
+    this.name = 'SobregiroError';
+    this.code = 'SOBREGIRO';
+  }
+}
+
 // Invariante de partida doble: dentro de un asiento, la suma con signo de los
 // montos debe dar 0 POR CADA cripto (un swap cruza dos criptos y cada una
 // cuadra sola).
@@ -56,7 +67,7 @@ async function postTransaction({ tipo, referencia, descripcion = null, asientoRe
       }
       const nuevo = money.add(String(saldo.saldo), String(linea.monto));
       if (isCuentaUsuario(cuenta) && money.compare(nuevo, '0') < 0) {
-        throw new Error(`Sobregiro en cuenta ${cuenta.proposito}: saldo ${saldo.saldo}, movimiento ${linea.monto}`);
+        throw new SobregiroError(cuenta.proposito, saldo.saldo, linea.monto);
       }
       saldo.saldo = nuevo;
       await saldo.save({ transaction: t });
@@ -78,4 +89,4 @@ async function getSaldoCuenta({ ownerId, proposito, criptomonedaId }, transactio
   return saldo ? String(saldo.saldo) : '0';
 }
 
-module.exports = { validarSumaCero, postTransaction, getSaldoCuenta };
+module.exports = { validarSumaCero, postTransaction, getSaldoCuenta, SobregiroError };
