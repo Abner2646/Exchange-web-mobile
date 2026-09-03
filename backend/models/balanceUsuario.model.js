@@ -287,19 +287,19 @@ function createBalanceUserModel(sequelize) {
   // cripto). Espejo de getByUserId pero scopeado a un compartimento.
   BalanceUsuario.getByUserIdCompartimento = async (userId, compartimento) => {
     try {
-      const { CuentaLedger } = require('./index');
       const props = PROPOSITOS_POR_COMPARTIMENTO[compartimento];
       if (!props) throw new Error(`Compartimento inválido: ${compartimento}`);
       const propositos = [props.disponible, props.bloqueado, ...(props.pendiente ? [props.pendiente] : [])];
-      const cuentas = await CuentaLedger.findAll({
-        where: { ownerId: userId, proposito: propositos },
-        attributes: ['criptomonedaId'],
-        group: ['criptomonedaId'],
-      });
+      // UNA sola query (antes: group + N×leerCompartimento con 2-3 getSaldoCuenta).
+      const porCripto = await leerProyeccionUsuario(userId, propositos);
       const salida = [];
-      for (const c of cuentas) {
-        const { disponible, bloqueado, pendiente } = await leerCompartimento(userId, c.criptomonedaId, compartimento);
-        salida.push({ criptomonedaId: c.criptomonedaId, disponible, bloqueado, pendiente });
+      for (const [criptomonedaId, s] of porCripto) {
+        salida.push({
+          criptomonedaId,
+          disponible: s[props.disponible] || '0',
+          bloqueado: s[props.bloqueado] || '0',
+          pendiente: props.pendiente ? (s[props.pendiente] || '0') : '0',
+        });
       }
       return salida;
     } catch (error) {

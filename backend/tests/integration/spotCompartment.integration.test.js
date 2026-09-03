@@ -174,3 +174,23 @@ describe('Swap respeta el compartimento origen', () => {
     expect(fundingUsdt.disponible).toBe('0');
   });
 });
+
+describe('getByUserIdCompartimento — lista por cripto scopeada a un compartimento', () => {
+  test('spot: una entrada por cripto con cuenta spot; funding no aparece', async () => {
+    const usdt = await f.seedCripto('USDT');
+    const btc = await f.seedCripto('BTC');
+    const user = await f.seedUser({ email: 'listspot@test.local', username: 'listspot' });
+    await f.seedSpotBalance(user, usdt, '150');
+    await f.seedSpotBalance(user, btc, '2');
+    await f.seedBalance(user, usdt, '999'); // funding: no debe influir en la lista spot
+
+    const filas = await BalanceUsuario.getByUserIdCompartimento(user.id, 'spot');
+    expect(filas).toHaveLength(2); // sólo las cripto con cuenta spot
+    const u = filas.find((r) => r.criptomonedaId === usdt.id);
+    const b = filas.find((r) => r.criptomonedaId === btc.id);
+    expect(u.disponible).toBe('150.00000000');
+    expect(u.bloqueado).toBe('0');
+    expect(u.pendiente).toBe('0'); // spot no tiene pendiente
+    expect(b.disponible).toBe('2.00000000');
+  });
+});

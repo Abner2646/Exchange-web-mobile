@@ -1,18 +1,26 @@
+const { fn, col } = require('sequelize');
 const money = require('../../utils/money');
 const { CuentaLedger, MovimientoLedger, SaldoLedger } = require('../../models');
 const { HOUSE_OWNER_ID } = require('./ledgerAccounts');
 
 // Interno: para toda cuenta, la proyeccion (SaldoLedger) debe ser igual a la
 // suma de sus movimientos. Si difiere, la proyeccion se desincronizo (bug).
+// La suma la hace la DB (SUM ... GROUP BY cuentaId) en vez de traer cada
+// movimiento a memoria y sumarlo en JS (antes: 1 + 2N queries; ahora: 3).
 async function reconciliarInterno(transaction = null) {
-  const cuentas = await CuentaLedger.findAll({ transaction });
+  const cuentas = await CuentaLedger.findAll({ attributes: ['id'], raw: true, transaction });
+  const sumRows = await MovimientoLedger.findAll({
+    attributes: ['cuentaId', [fn('SUM', col('monto')), 'suma']],
+    group: ['cuentaId'], raw: true, transaction,
+  });
+  const saldoRows = await SaldoLedger.findAll({ attributes: ['cuentaId', 'saldo'], raw: true, transaction });
+  const sumMap = new Map(sumRows.map((r) => [r.cuentaId, String(r.suma)]));
+  const saldoMap = new Map(saldoRows.map((r) => [r.cuentaId, String(r.saldo)]));
+
   const discrepancias = [];
   for (const cuenta of cuentas) {
-    const movimientos = await MovimientoLedger.findAll({ where: { cuentaId: cuenta.id }, transaction });
-    let suma = '0';
-    for (const m of movimientos) suma = money.add(suma, String(m.monto));
-    const proy = await SaldoLedger.findOne({ where: { cuentaId: cuenta.id }, transaction });
-    const proyeccion = proy ? String(proy.saldo) : '0';
+    const suma = sumMap.get(cuenta.id) || '0';
+    const proyeccion = saldoMap.get(cuenta.id) || '0';
     if (money.compare(proyeccion, suma) !== 0) {
       discrepancias.push({ cuentaId: cuenta.id, proyeccion, suma });
     }
@@ -22,18 +30,29 @@ async function reconciliarInterno(transaction = null) {
 
 // Externo: por cada cripto, la suma de TODOS los movimientos (usuarios + casa)
 // debe dar 0 — el libro cierra. Se reporta usuarios vs casa por transparencia.
+// La suma la hace la DB agrupando por (cripto, dueño) en vez de traer TODOS los
+// movimientos a memoria (con el ledger creciendo, eso era un riesgo de OOM).
 async function reconciliarExterno(transaction = null) {
-  const movimientos = await MovimientoLedger.findAll({
-    include: [{ model: CuentaLedger, as: 'cuenta', attributes: ['ownerId'] }],
-    transaction,
+  // Suma por cuenta en la DB (una fila por cuenta), y las cuentas con su (dueño,
+  // cripto). El split casa/usuarios y la agregación por cripto se hace en JS sobre
+  // O(cuentas) filas — nunca se traen los movimientos individuales. Cada cuenta
+  // del ledger es de una sola cripto, así que su suma pertenece a esa cripto.
+  const cuentas = await CuentaLedger.findAll({
+    attributes: ['id', 'ownerId', 'criptomonedaId'], raw: true, transaction,
   });
+  const sumRows = await MovimientoLedger.findAll({
+    attributes: ['cuentaId', [fn('SUM', col('monto')), 'suma']],
+    group: ['cuentaId'], raw: true, transaction,
+  });
+  const sumMap = new Map(sumRows.map((r) => [r.cuentaId, String(r.suma)]));
+
   const porCripto = {};
-  for (const m of movimientos) {
-    const c = m.criptomonedaId;
+  for (const cuenta of cuentas) {
+    const c = cuenta.criptomonedaId;
     if (!porCripto[c]) porCripto[c] = { usuarios: '0', casa: '0', neto: '0' };
-    const esCasa = m.cuenta.ownerId === HOUSE_OWNER_ID;
-    if (esCasa) porCripto[c].casa = money.add(porCripto[c].casa, String(m.monto));
-    else porCripto[c].usuarios = money.add(porCripto[c].usuarios, String(m.monto));
+    const suma = sumMap.get(cuenta.id) || '0';
+    if (cuenta.ownerId === HOUSE_OWNER_ID) porCripto[c].casa = money.add(porCripto[c].casa, suma);
+    else porCripto[c].usuarios = money.add(porCripto[c].usuarios, suma);
   }
   let ok = true;
   for (const c of Object.keys(porCripto)) {
