@@ -15,6 +15,25 @@ jest.mock('../models', () => ({
 
 const { TransaccionBlockchain } = require('../models');
 const EthereumService = require('../services/blockchain/ethereum.service');
+const { ETHEREUM_PROFILES } = require('../config/networks/evm');
+
+// Fase 3: el service toma su identidad de red del NetworkProfile inyectado (un
+// chainClient fake evita el ethers.Wallet real / claves por env).
+describe('ethereum.service — NetworkProfile inyectado', () => {
+  const fakeChain = { provider: null, wallet: null };
+  test('mainnet → chainId 1, red ethereum', () => {
+    const s = new EthereumService({ profile: ETHEREUM_PROFILES.mainnet, chainClient: fakeChain });
+    expect(s.chainId).toBe(1);
+    expect(s.actualNetwork).toBe('ethereum');
+    expect(s.isTestnet).toBe(false);
+  });
+  test('testnet → sepolia, chainId 11155111', () => {
+    const s = new EthereumService({ profile: ETHEREUM_PROFILES.testnet, chainClient: fakeChain });
+    expect(s.chainId).toBe(11155111);
+    expect(s.actualNetwork).toBe('sepolia');
+    expect(s.isTestnet).toBe(true);
+  });
+});
 
 describe('ethereum.calculateTransactionFee — fee de gas exacto como string', () => {
   test('21000 gas @ 20 gwei = 0.00042 ETH (no Number)', () => {

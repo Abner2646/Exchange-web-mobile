@@ -4,19 +4,25 @@ const { ethers } = require('ethers');
 const { TransaccionBlockchain, DireccionDeposito, Criptomoneda, BlockchainState } = require('../../models');
 const money = require('../../utils/money');
 const EthersEvmClient = require('./ethersEvmClient');
+const { bscNetworkProfile } = require('../../config/networks/evm');
 
 class BscService {
+  // Fase 3: identidad de red desde el NetworkProfile inyectable (default por env,
+  // preservando `isTestnet = BSC_NETWORK==='testnet' || NODE_ENV!=='production'`).
   constructor(opts = {}) {
     try {
-      this.isTestnet = process.env.BSC_NETWORK === 'testnet' || process.env.NODE_ENV !== 'production';
+      const profile = opts.profile || bscNetworkProfile();
+      this.profile = profile;
+      this.isTestnet = profile.env === 'testnet';
 
       // Chain-client seam: injected in tests, built from env in prod. BSC is EVM,
-      // so it reuses the same EvmChainClient port/adapter as Ethereum.
+      // so it reuses the same EvmChainClient port/adapter as Ethereum. Los secretos
+      // (rpc url, private key) siguen en env; el perfil nombra qué key por entorno.
       if (opts.chainClient) {
         this.chain = opts.chainClient;
       } else {
-        const rpcUrl = this.isTestnet ? process.env.BSC_TESTNET_RPC_URL : process.env.BSC_RPC_URL;
-        const privateKey = this.isTestnet ? process.env.BNB_TESTNET_PRIVATE_KEY : process.env.BNB_PRIVATE_KEY;
+        const rpcUrl = process.env[profile.rpcUrlEnv];
+        const privateKey = process.env[profile.privateKeyEnv];
         if (!rpcUrl || !privateKey) {
           throw new Error(`Configuración BSC incompleta para ${this.isTestnet ? 'testnet' : 'mainnet'}`);
         }
@@ -27,10 +33,10 @@ class BscService {
       // scan, confirmations). Real adapter exposes them; a fake leaves them null.
       this.provider = this.chain.provider || null;
       this.wallet = this.chain.wallet || null;
-      this.network = 'bsc';
-      this.actualNetwork = this.isTestnet ? 'bsc-testnet' : 'bsc';
-      this.chainId = this.isTestnet ? 97 : 56; // BSC Testnet : BSC Mainnet
-      this.requiredConfirmations = parseInt(process.env.BSC_REQUIRED_CONFIRMATIONS) || 6;
+      this.network = profile.chain;               // 'bsc'
+      this.actualNetwork = profile.actualNetwork; // 'bsc-testnet' | 'bsc'
+      this.chainId = profile.chainId;
+      this.requiredConfirmations = parseInt(process.env.BSC_REQUIRED_CONFIRMATIONS) || profile.requiredConfirmations;
       this.hasApiKey = !!process.env.ETHERSCAN_API_KEY;
       
       console.log(`BSC Service inicializado - Red: ${this.actualNetwork} (chainId: ${this.chainId}) - API: ${this.hasApiKey ? 'Disponible' : 'No disponible'}`);
