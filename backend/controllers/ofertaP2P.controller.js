@@ -1,6 +1,7 @@
 const { OfertaP2P } = require('../models/index.js');
 const AppError = require('../utils/AppError');
 const errorCodes = require('../utils/errorCodes');
+const authz = require('../utils/authz');
 
 // No Sequelize transactions are opened in this controller — no rollback handling needed.
 
@@ -146,7 +147,7 @@ const deleteOferta = async (req, res) => {
   const oferta = await OfertaP2P.findByPk(id);
   if (!oferta) throw new AppError(404, errorCodes.OFFER_NOT_FOUND, 'Offer not found');
 
-  if (oferta.usuarioId !== usuarioId && req.user.rol !== 'admin') {
+  if (!authz.canAccessResource(req.user, oferta.usuarioId)) {
     throw new AppError(403, errorCodes.OFFER_FORBIDDEN, 'You do not have permission to delete this offer');
   }
 

@@ -12,6 +12,7 @@ const AppError = require('../utils/AppError');
 const errorCodes = require('../utils/errorCodes');
 const money = require('../utils/money');
 const idempotency = require('../middleware/idempotency.middleware');
+const authz = require('../utils/authz');
 
 class TransaccionBlockchainController {
   // =================== ENDPOINTS PARA USUARIOS ===================
@@ -41,7 +42,6 @@ class TransaccionBlockchainController {
   async getTransaction(req, res) {
     const { id } = req.params;
     const userId = req.user.id;
-    const userRole = req.user.rol;
 
     const transaccion = await TransaccionBlockchain.getById(id);
 
@@ -50,7 +50,7 @@ class TransaccionBlockchainController {
     }
 
     // Solo el propietario o admin puede ver la transacción
-    if (transaccion.userId !== userId && !['admin', 'super_admin'].includes(userRole)) {
+    if (!authz.canAccessResource(req.user, transaccion.userId)) {
       throw new AppError(403, errorCodes.TRANSACTION_FORBIDDEN, 'No autorizado para ver esta transacción');
     }
 
@@ -200,7 +200,7 @@ class TransaccionBlockchainController {
 
   // GET /api/admin/transactions - Obtener todas las transacciones (admin)
   async getAllTransactions(req, res) {
-    if (!['admin', 'super_admin'].includes(req.user.rol)) {
+    if (!authz.isAdmin(req.user)) {
       throw new AppError(403, errorCodes.ADMIN_FORBIDDEN, 'No autorizado');
     }
 
@@ -228,7 +228,7 @@ class TransaccionBlockchainController {
 
   // GET /api/admin/transactions/pending - Obtener transacciones pendientes
   async getPendingTransactions(req, res) {
-    if (!['admin', 'super_admin'].includes(req.user.rol)) {
+    if (!authz.isAdmin(req.user)) {
       throw new AppError(403, errorCodes.ADMIN_FORBIDDEN, 'No autorizado');
     }
 
@@ -247,7 +247,7 @@ class TransaccionBlockchainController {
 
   // POST /api/admin/transactions/:id/approve - Aprobar transacción
   async approveTransaction(req, res) {
-    if (!['admin', 'super_admin'].includes(req.user.rol)) {
+    if (!authz.isAdmin(req.user)) {
       throw new AppError(403, errorCodes.ADMIN_FORBIDDEN, 'No autorizado');
     }
 
@@ -284,7 +284,7 @@ class TransaccionBlockchainController {
 
   // POST /api/admin/transactions/:id/reject - Rechazar transacción
   async rejectTransaction(req, res) {
-    if (!['admin', 'super_admin'].includes(req.user.rol)) {
+    if (!authz.isAdmin(req.user)) {
       throw new AppError(403, errorCodes.ADMIN_FORBIDDEN, 'No autorizado');
     }
 
@@ -316,7 +316,7 @@ class TransaccionBlockchainController {
 
   // GET /api/admin/transactions/stats - Estadísticas de transacciones
   async getTransactionStats(req, res) {
-    if (!['admin', 'super_admin'].includes(req.user.rol)) {
+    if (!authz.isAdmin(req.user)) {
       throw new AppError(403, errorCodes.ADMIN_FORBIDDEN, 'No autorizado');
     }
 
@@ -337,7 +337,7 @@ class TransaccionBlockchainController {
 
   // POST /api/system/scan-deposits - Escanear depósitos manualmente
   async scanDeposits(req, res) {
-    if (!['admin', 'super_admin'].includes(req.user.rol)) {
+    if (!authz.isAdmin(req.user)) {
       throw new AppError(403, errorCodes.ADMIN_FORBIDDEN, 'No autorizado');
     }
 
@@ -352,7 +352,7 @@ class TransaccionBlockchainController {
 
   // POST /api/system/process-withdrawals - Procesar retiros manualmente
   async processWithdrawals(req, res) {
-    if (!['admin', 'super_admin'].includes(req.user.rol)) {
+    if (!authz.isAdmin(req.user)) {
       throw new AppError(403, errorCodes.ADMIN_FORBIDDEN, 'No autorizado');
     }
 
@@ -367,7 +367,7 @@ class TransaccionBlockchainController {
 
   // POST /api/system/update-confirmations - Actualizar confirmaciones manualmente
   async updateConfirmations(req, res) {
-    if (!['admin', 'super_admin'].includes(req.user.rol)) {
+    if (!authz.isAdmin(req.user)) {
       throw new AppError(403, errorCodes.ADMIN_FORBIDDEN, 'No autorizado');
     }
 
@@ -382,7 +382,7 @@ class TransaccionBlockchainController {
 
   // GET /api/system/blockchain-status - Estado de los servicios blockchain
   async getBlockchainStatus(req, res) {
-    if (!['admin', 'super_admin'].includes(req.user.rol)) {
+    if (!authz.isAdmin(req.user)) {
       throw new AppError(403, errorCodes.ADMIN_FORBIDDEN, 'No autorizado');
     }
 
@@ -440,9 +440,8 @@ class TransaccionBlockchainController {
 
     // Solo el propietario o admin puede ver la transacción
     const userId = req.user.id;
-    const userRole = req.user.rol;
 
-    if (transaccion.userId !== userId && !['admin', 'super_admin'].includes(userRole)) {
+    if (!authz.canAccessResource(req.user, transaccion.userId)) {
       throw new AppError(403, errorCodes.TRANSACTION_FORBIDDEN, 'No autorizado para ver esta transacción');
     }
 

@@ -8,6 +8,7 @@ const { Order, TradingPair, Trade, sequelize } = require('../models');
 const AppError = require('../utils/AppError');
 const errorCodes = require('../utils/errorCodes');
 const idempotency = require('../middleware/idempotency.middleware');
+const authz = require('../utils/authz');
 
 class TradingController {
 
@@ -293,7 +294,7 @@ class TradingController {
       // nunca existe (authMiddleware setea req.user.rol) — la condición
       // "o sos admin" nunca se cumplía, ningún admin podía ver órdenes
       // ajenas pese a que el código aparentaba permitirlo.
-      const isAdmin = ['admin', 'super_admin'].includes(req.user.rol);
+      const isAdmin = authz.isAdmin(req.user);
       if (order.userId !== userId && !isAdmin) {
         return res.status(403).json({ 
           success: false,

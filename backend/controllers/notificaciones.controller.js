@@ -1,5 +1,6 @@
 // controllers/notificaciones.controller.js
 const { Notificaciones } = require('../models/index.js');
+const authz = require('../utils/authz');
 
 // Listar notificaciones con filtros (admin)
 const getNotificaciones = async (req, res) => {
@@ -23,7 +24,7 @@ const getNotificacionById = async (req, res) => {
     }
 
     // Verificar que el usuario tenga acceso a esta notificación
-    if (req.user.rol !== 'admin' && result.usuarioId !== req.user.id) {
+    if (!authz.canAccessResource(req.user, result.usuarioId)) {
       return res.status(403).json({ error: 'No tienes permiso para ver esta notificación' });
     }
 
@@ -71,7 +72,7 @@ const createBulkNotificaciones = async (req, res) => {
 const deleteNotificacion = async (req, res) => {
   try {
     const { id } = req.params;
-    const usuarioId = req.user.rol === 'admin' ? null : req.user.id;
+    const usuarioId = authz.isAdmin(req.user) ? null : req.user.id;
 
     const deleted = await Notificaciones.deleteNotification(id, usuarioId);
     
@@ -126,7 +127,7 @@ const getUnreadCountByType = async (req, res) => {
 const markAsRead = async (req, res) => {
   try {
     const { id } = req.params;
-    const usuarioId = req.user.rol === 'admin' ? null : req.user.id;
+    const usuarioId = authz.isAdmin(req.user) ? null : req.user.id;
 
     const updated = await Notificaciones.markAsRead(id, usuarioId);
     
@@ -144,7 +145,7 @@ const markAsRead = async (req, res) => {
 const markAsUnread = async (req, res) => {
   try {
     const { id } = req.params;
-    const usuarioId = req.user.rol === 'admin' ? null : req.user.id;
+    const usuarioId = authz.isAdmin(req.user) ? null : req.user.id;
 
     const updated = await Notificaciones.markAsUnread(id, usuarioId);
     

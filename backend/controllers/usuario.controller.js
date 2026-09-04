@@ -4,6 +4,7 @@ const { Op } = require('sequelize');
 const { sequelize } = require('../models/index.js');
 const emailService = require('../services/email.service.js');
 const userService = require('../services/user.service');
+const authz = require('../utils/authz');
 
 // Función helper para generar dirección única
 const generarDireccionDerivada = async (walletMaestra, usuarioId, derivationIndex) => {
@@ -126,7 +127,7 @@ const getUsuarioById = async (req, res) => {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    if (req.user.rol === 'normal' && req.user.id !== id) {
+    if (!authz.canAccessResource(req.user, id)) {
       const publicProfile = {
         id: result.id,
         username: result.username,
@@ -871,7 +872,7 @@ const regenerateDepositAddress = async (req, res) => {
   try {
     const { userId, criptomonedaId } = req.body;
     
-    if (req.user.rol !== 'admin' && req.user.rol !== 'super_admin') {
+    if (!authz.isAdmin(req.user)) {
       return res.status(403).json({ error: 'Solo administradores pueden regenerar direcciones' });
     }
     
@@ -963,7 +964,7 @@ const completeUserInitialization = async (req, res) => {
   try {
     const { userId } = req.params;
     
-    if (req.user.rol !== 'admin' && req.user.rol !== 'super_admin' && req.user.id !== userId) {
+    if (!authz.canAccessResource(req.user, userId)) {
       return res.status(403).json({ error: 'Sin permisos para completar esta inicialización' });
     }
     

@@ -23,10 +23,11 @@ Legend — **State**: ✅ implemented · 🟡 partial · 🔴 gap.
 - 🟡 To confirm: `saltRounds` value (target ≥ 12) and any server-side password-strength policy.
 
 ## 3. Authorization — 🟡
-- Role-based guards: `requireRole`, `adminMiddleware.isAdmin/isSuperAdmin`; money-path ownership checks (P2P, transfers) enforced in controllers.
+- **Centralized policy layer (Fase 4.3, 2026-09-04):** `utils/authz.js` — `isAdmin`/`isSuperAdmin`/`owns`/`canAccessResource`, hierarchy-aware (normal < admin < super_admin), unit-tested (`tests/authz.test.js`). The scattered inline role checks across ~10 controllers (`req.user.rol !== 'admin'`, `['admin','super_admin'].includes(...)`) now delegate to it — this also fixed real inconsistencies (several sites treated `super_admin`, or the `Usuario` role, incorrectly).
+- Route-level guards: `requireRole`, `adminMiddleware.isAdmin/isSuperAdmin`; money-path ownership checks (P2P, transfers) in controllers.
 - Admin-route authorization bypass fixed and pinned — Fase 0 Críticos #7, `tests/intercambioExchangeAdminAuthz.test.js`.
-- `requireKYC` / `requireActiveAccount` exist as scaffolding for Fase 4.7 (not yet wired) — `authMiddleware.js:107-120`.
-- 🔴 Gaps: authorization is scattered across controllers (no centralized policy layer — Fase 4.3); no least-privilege separation for operators/services (Fase 4.9).
+- `requireKYC` / `requireActiveAccount` scaffolding for Fase 4.7 (not yet wired) — `authMiddleware.js:107-120`.
+- 🔴 Remaining: consolidate the two role helpers (`authz.js` + `adminMiddleware`) so the middleware also uses `authz`; no privileged-access review; no least-privilege for operators/services (Fase 4.9).
 
 ## 4. Transport & HTTP headers — 🟡
 - `helmet()` security headers — `app.js:50`.

@@ -26,7 +26,7 @@ Evidence cites `backend-security-baseline.md` (§N) and/or `file:line`.
 | 500.4 | CISO / governance / senior-body reporting | ⚪ | Solo project — no CISO/board | Design-reference only; note the intended owner role |
 | 500.5 | Vulnerability mgmt & penetration testing (annual) | 🟡 | Automated tests + mutation testing on money modules; `/security-review` available. No formal pentest / periodic vuln scans | Add dependency scanning (npm audit in CI) + a documented pentest pass pre-mainnet |
 | 500.6 | Audit trail | 🔴 | `LogAdmin`/`LogTransaccion` removed (Fase 0); double-entry ledger is an append-only **money** trail only — baseline §12 | Immutable audit trail for admin/sensitive actions (Radar #3) |
-| 500.7 | Access privileges & management (least privilege, periodic review) | 🟡 | Role-based authz (`requireRole`, `isAdmin`), money-path ownership checks — baseline §3; no privileged-access review, authz scattered | Centralized policy layer (§4.3); least-privilege per service (§4.9) |
+| 500.7 | Access privileges & management (least privilege, periodic review) | 🟡 | **Centralized authz policy layer `utils/authz.js` (§4.3, hierarchy-aware, unit-tested)** adopted across controllers — baseline §3; still no privileged-access review | Consolidate with `adminMiddleware`; least-privilege per service (§4.9); privileged-access review |
 | 500.8 | Application security (secure SDLC) | 🟡 | Input validation (Joi/express-validator), sanitized error envelope, idempotency, TDD/CI — baseline §6,7,8 | Converge validation; SAST in CI; security tests as controls land |
 | 500.9 | Risk assessment (periodic) | 🔴 | None formal | Document a risk assessment feeding the control priorities |
 | 500.10 | Cybersecurity personnel | ⚪ | Solo project | Design-reference only |

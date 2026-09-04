@@ -5,6 +5,7 @@ const errorCodes = require('../utils/errorCodes');
 const { transferirInterno } = require('../services/ledger/operations');
 const money = require('../utils/money');
 const idempotency = require('../middleware/idempotency.middleware');
+const authz = require('../utils/authz');
 
 // Create new transfer
 const createTransferencia = async (req, res) => {
@@ -316,7 +317,7 @@ const getTransferenciaById = async (req, res) => {
   // Verify user has access to this transfer
   if (transferencia.usuarioRemitenteId !== usuarioId &&
       transferencia.usuarioDestinatarioId !== usuarioId &&
-      req.user.rol === 'normal') {
+      !authz.isAdmin(req.user)) {
     throw new AppError(403, errorCodes.TRANSFER_FORBIDDEN, 'No tienes permiso para ver esta transferencia');
   }
 

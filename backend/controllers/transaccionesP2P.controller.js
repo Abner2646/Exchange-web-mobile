@@ -6,6 +6,7 @@ const { Op } = require('sequelize');
 const { TransaccionP2P, Criptomoneda, Usuario } = require('../models/index.js');
 const AppError = require('../utils/AppError');
 const errorCodes = require('../utils/errorCodes');
+const authz = require('../utils/authz');
 
 // No controller-level Sequelize transactions in this file.
 // The model methods (createTransaction, confirmPayment, completeTransaction,
@@ -70,7 +71,7 @@ const getTransaccionById = async (req, res) => {
 
   // Verify the requesting user has access to this transaction
   const usuarioId = req.user.id;
-  if (req.user.rol !== 'admin' &&
+  if (!authz.isAdmin(req.user) &&
       result.compradorId !== usuarioId &&
       result.vendedorId !== usuarioId) {
     throw new AppError(403, errorCodes.P2P_TX_FORBIDDEN, 'You do not have permission to view this transaction');
@@ -280,7 +281,7 @@ const getUserVolume = async (req, res) => {
   const { period = '30d' } = req.query;
 
   // Non-admin users can only view their own volume
-  if (req.user.rol !== 'admin' && usuarioId !== req.user.id) {
+  if (!authz.canAccessResource(req.user, usuarioId)) {
     throw new AppError(403, errorCodes.P2P_TX_FORBIDDEN, 'You do not have permission to view this volume');
   }
 
@@ -338,7 +339,7 @@ const forceStatusChange = async (req, res) => {
   const { estado, motivo } = req.body;
 
   // Only admin can force status changes
-  if (req.user.rol !== 'admin') {
+  if (!authz.isAdmin(req.user)) {
     throw new AppError(403, errorCodes.P2P_TX_ADMIN_REQUIRED, 'Only administrators can force status changes');
   }
 
