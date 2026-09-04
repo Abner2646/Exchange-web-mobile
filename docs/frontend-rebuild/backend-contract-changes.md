@@ -70,6 +70,20 @@ Funding↔Spot self-transfer and admin ops). Unexpected errors are now a sanitiz
 `PUT /api/balances/reclamarBTC` keeps its own `{ success, ... }` envelope (it is
 disabled in production).
 
+**`transaccionesP2P` envelope completed (2026-09-03) — state-machine & create
+rejections are now typed 4xx, not 500.** The P2P transaction controller only
+translated its own controller-level checks; the business errors thrown by the
+model's state machine and by `createTransaction` leaked as a sanitized `500`.
+They now return the canonical envelope with a proper status:
+- `POST /api/transaccionP2P/` (accept offer): `P2P_TX_OFFER_INACTIVE`,
+  `P2P_TX_AMOUNT_OUT_OF_RANGE`, `P2P_TX_INSUFFICIENT_FUNDS` (seller funds) — all `400`;
+  `P2P_TX_OFFER_NOT_FOUND` (`404`), `P2P_TX_OWN_OFFER` (`400`).
+- `PATCH /api/transaccionP2P/{id}/confirm-payment|complete|cancel`:
+  `P2P_TX_INVALID_STATE` (`400`, wrong state transition — e.g. cancel after
+  complete, complete before confirm), `P2P_TX_FORBIDDEN` (`403`, only the
+  buyer confirms / only the seller completes / only a participant cancels),
+  `P2P_TX_NOT_FOUND` (`404`). Success responses are unchanged.
+
 ### 2. Monetary values are canonical strings, not numbers
 
 All money that comes **out** of money-path reads is now a **canonical decimal

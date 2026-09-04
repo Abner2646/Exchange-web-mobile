@@ -14,6 +14,47 @@ const errorCodes = require('../utils/errorCodes');
 // The controller simply calls the model method; if it throws, asyncHandler
 // forwards the error to the central handler. No rollback needed here.
 
+// Traduce los errores de negocio que lanzan los métodos del modelo (plain Error
+// con mensaje en español, incl. la máquina de estados) al envelope canónico
+// AppError, para que un rechazo de regla de negocio devuelva su 4xx tipado y no
+// un 500 sanitizado (mismo patrón que transferencia.controller.cancelarTransferencia).
+// Lo desconocido se re-lanza tal cual → el handler central lo sanitiza a 500
+// (guardrail: no filtrar internals). El match es por fragmento estable del mensaje;
+// los AppError ya tipados (los que lanza este controller) pasan sin tocar.
+function mapP2PModelError(error) {
+  if (error instanceof AppError) return error;
+  const msg = error.message || '';
+  // Autorización (rol/participante) → 403
+  if (msg.includes('Solo el comprador') || msg.includes('Solo el vendedor') || msg.includes('No tienes permiso')) {
+    return new AppError(403, errorCodes.P2P_TX_FORBIDDEN, 'No tenés permiso para esta operación sobre la transacción');
+  }
+  // No encontrado → 404 (oferta vs transacción)
+  if (msg.includes('Oferta no encontrada')) {
+    return new AppError(404, errorCodes.P2P_TX_OFFER_NOT_FOUND, 'Oferta no encontrada');
+  }
+  if (msg.includes('Transacción no encontrada')) {
+    return new AppError(404, errorCodes.P2P_TX_NOT_FOUND, 'Transacción no encontrada');
+  }
+  // Reglas de negocio en la creación → 400
+  if (msg.includes('no está activa')) {
+    return new AppError(400, errorCodes.P2P_TX_OFFER_INACTIVE, 'La oferta no está activa');
+  }
+  if (msg.includes('fuera del rango')) {
+    return new AppError(400, errorCodes.P2P_TX_AMOUNT_OUT_OF_RANGE, 'La cantidad está fuera del rango permitido por la oferta');
+  }
+  if (msg.includes('Fondos insuficientes') || msg.includes('no tiene balance')) {
+    return new AppError(400, errorCodes.P2P_TX_INSUFFICIENT_FUNDS, 'El vendedor no tiene fondos suficientes para la transacción');
+  }
+  if (msg.includes('mismo usuario')) {
+    return new AppError(400, errorCodes.P2P_TX_OWN_OFFER, 'El comprador y el vendedor no pueden ser el mismo usuario');
+  }
+  // Transiciones de la máquina de estados → 400
+  if (msg.includes('No se puede') || msg.includes('ya está cancelada')) {
+    return new AppError(400, errorCodes.P2P_TX_INVALID_STATE, 'La transacción no está en un estado válido para esta operación');
+  }
+  return error;
+}
+
 // List transactions with filters
 const getTransacciones = async (req, res) => {
   const filters = { ...req.query };
@@ -84,7 +125,14 @@ const createTransaccion = async (req, res) => {
 
   // Model opens and manages its own Sequelize transaction internally;
   // on any failure it rolls back and re-throws — no rollback needed here.
-  const nuevaTransaccion = await TransaccionP2P.createTransaction(transaccionData);
+  // Business errors (inactive offer, amount out of range, insufficient seller
+  // funds) are translated to their typed 4xx envelope; unknown → sanitized 500.
+  let nuevaTransaccion;
+  try {
+    nuevaTransaccion = await TransaccionP2P.createTransaction(transaccionData);
+  } catch (error) {
+    throw mapP2PModelError(error);
+  }
 
   res.status(201).json({
     message: 'Transacción iniciada exitosamente. Los fondos han sido bloqueados.',
@@ -110,7 +158,12 @@ const confirmPayment = async (req, res) => {
   const { id } = req.params;
   const usuarioId = req.user.id;
 
-  const updated = await TransaccionP2P.confirmPayment(id, usuarioId);
+  let updated;
+  try {
+    updated = await TransaccionP2P.confirmPayment(id, usuarioId);
+  } catch (error) {
+    throw mapP2PModelError(error);
+  }
   res.json({
     message: 'Pago confirmado exitosamente',
     data: updated
@@ -123,7 +176,12 @@ const completeTransaction = async (req, res) => {
   const { id } = req.params;
   const usuarioId = req.user.id;
 
-  const updated = await TransaccionP2P.completeTransaction(id, usuarioId);
+  let updated;
+  try {
+    updated = await TransaccionP2P.completeTransaction(id, usuarioId);
+  } catch (error) {
+    throw mapP2PModelError(error);
+  }
   res.json({
     message: 'Transacción completada exitosamente',
     data: updated
@@ -136,7 +194,12 @@ const cancelTransaction = async (req, res) => {
   const { id } = req.params;
   const usuarioId = req.user.id;
 
-  const updated = await TransaccionP2P.cancelTransaction(id, usuarioId);
+  let updated;
+  try {
+    updated = await TransaccionP2P.cancelTransaction(id, usuarioId);
+  } catch (error) {
+    throw mapP2PModelError(error);
+  }
   res.json({
     message: 'Transacción cancelada exitosamente',
     data: updated
