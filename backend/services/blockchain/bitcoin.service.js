@@ -7,23 +7,25 @@ const { TransaccionBlockchain, DireccionDeposito, Criptomoneda, BlockchainState 
 const tinysecp = require('tiny-secp256k1');
 const ECPairFactory = ECPair.ECPairFactory(tinysecp);
 const money = require('../../utils/money');
+const { bitcoinNetworkProfile } = require('../../config/networks/bitcoin');
 
 class BitcoinService {
-  constructor() {
-    this.networkName = process.env.BITCOIN_NETWORK || 'testnet3';
-    this.network = this.networkName === 'mainnet' 
-      ? bitcoin.networks.bitcoin 
-      : bitcoin.networks.testnet;
-    
-    this.requiredConfirmations = parseInt(process.env.BTC_REQUIRED_CONFIRMATIONS) || 3;
+  // Fase 3: el NetworkProfile (qué significa testnet/mainnet para BTC) se INYECTA
+  // en vez de leer `isTestnet`/env desde adentro. Default = perfil seleccionado por
+  // BITCOIN_NETWORK, así `new BitcoinService()` mantiene el comportamiento previo;
+  // los tests pueden inyectar un perfil de testnet/mainnet aislado.
+  constructor(profile = bitcoinNetworkProfile()) {
+    this.profile = profile;
+    this.networkName = profile.networkName;
+    this.network = profile.bitcoinjsNetwork;
+
+    // Params operacionales overridables por env, con el default del perfil/red.
+    this.requiredConfirmations = parseInt(process.env.BTC_REQUIRED_CONFIRMATIONS) || profile.minConfirmations;
     this.feePerByte = parseInt(process.env.BTC_FEE_PER_BYTE) || 10;
-    
-    this.baseUrl = this.networkName === 'mainnet'
-      ? 'https://api.blockcypher.com/v1/btc/main'
-      : 'https://api.blockcypher.com/v1/btc/test3';
-    
+
+    this.baseUrl = profile.explorerBaseUrl;
     this.apiToken = process.env.BLOCKCYPHER_TOKEN ? `?token=${process.env.BLOCKCYPHER_TOKEN}` : '';
-    
+
     console.log(`Bitcoin Service inicializado - Red: ${this.networkName}`);
     this.initializeMasterWallet();
   }

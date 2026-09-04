@@ -16,8 +16,30 @@ jest.mock('../models', () => ({
 
 const { TransaccionBlockchain } = require('../models');
 const BitcoinService = require('../services/blockchain/bitcoin.service');
+const bitcoin = require('bitcoinjs-lib');
+const { BITCOIN_PROFILES } = require('../config/networks/bitcoin');
 
 const svc = new BitcoinService();
+
+// Fase 3: el service consume el NetworkProfile INYECTADO (red, explorador,
+// confirmaciones) en vez de leer env desde adentro — mismo mecanismo que permite
+// aislar testnet/mainnet en tests y, más adelante, inyectar un provider fake.
+describe('bitcoin.service — NetworkProfile inyectado', () => {
+  test('mainnet profile → red bitcoin, explorador main', () => {
+    const s = new BitcoinService(BITCOIN_PROFILES.mainnet);
+    expect(s.network).toBe(bitcoin.networks.bitcoin);
+    expect(s.networkName).toBe('mainnet');
+    expect(s.baseUrl).toContain('/btc/main');
+    expect(s.requiredConfirmations).toBe(3);
+  });
+
+  test('testnet profile → red testnet, explorador test3', () => {
+    const s = new BitcoinService(BITCOIN_PROFILES.testnet);
+    expect(s.network).toBe(bitcoin.networks.testnet);
+    expect(s.networkName).toBe('testnet3');
+    expect(s.baseUrl).toContain('/btc/test3');
+  });
+});
 
 describe('bitcoin.btcToSatoshis — conversión exacta a satoshis (sin perder polvo)', () => {
   test('0.29 BTC = 29000000 satoshis (float+floor daría 28999999)', () => {
