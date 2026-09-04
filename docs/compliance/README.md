@@ -28,7 +28,7 @@ The specific, current control text for each is filled in **only after verificati
 |---|---|---|
 | **FinCEN / BSA-AML** (federal, MSB) | KYC/CIP, transaction monitoring, SAR/CTR, recordkeeping, Travel Rule (31 CFR 1010.410(f)) | §4.7 KYC, §4.8 AML |
 | **NYDFS BitLicense** (23 NYCRR Part 200) | Virtual-currency regime + custody guidance (segregation of customer assets, sub-custody) | §4.2 key management, custodial model |
-| **NYDFS Cybersecurity** (23 NYCRR Part 500) | Access control, MFA, encryption, CISO, pentesting, audit trails, incident response, third-party risk — the most prescriptive, checklist-like technical standard | §4.1–§4.6 (technical backbone) |
+| **NYDFS Cybersecurity** (23 NYCRR Part 500) | Access control, MFA, encryption, CISO, pentesting, audit trails, incident response, third-party risk — the most prescriptive, checklist-like technical standard | §4.1–§4.6 (technical backbone) — **mapped: [`nydfs-part500-mapping.md`](./nydfs-part500-mapping.md)** |
 
 **Optional later layer:** SOC 2 as an extra signal once the regulatory mapping matures — not core.
 
@@ -49,4 +49,4 @@ Per `ROADMAP.md` §4.0, two things must happen before a single control row is wr
 1. **Verify the current regulatory text** — NYDFS Part 500 (Second Amendment, Nov 2023, with staggered 2024–2025 compliance dates) and current FinCEN/NYDFS guidance. **Do not write from memory; the regulation changes.** Use verified sources and cite them. This produces the concrete control list (especially the Part 500 checklist, the technical backbone).
 2. ✅ **DONE (2026-09-04)** — **Survey the real backend security posture**: `docs/compliance/backend-security-baseline.md` inventories 12 domains (auth, password storage, authz, transport, rate limiting, input validation, error sanitization, idempotency, money correctness, secrets, custodial key management, audit trail) with `file:line`/test evidence and per-domain state (✅/🟡/🔴). That file is the source for the `Evidence` column and the initial `gap` rows here.
 
-Remaining: prerequisite **(1)** — verify the current Part 500 / FinCEN control text against sources, then write the control rows citing the baseline as evidence. Until (1) is done, this file stays a scaffold on purpose — populating control rows from memory would defeat its audit-grade point.
+Prerequisite **(1)** — in progress: the **NYDFS Part 500** control rows are mapped against verified section structure (Second Amendment, Nov 2023) in [`nydfs-part500-mapping.md`](./nydfs-part500-mapping.md), citing the baseline as evidence. **Remaining pillars:** FinCEN BSA/AML (KYC/CIP, monitoring, SAR/CTR, Travel Rule) and NYDFS Part 200 custody — one mapping file each, same format, next. (Official DFS PDF blocks automated fetch → exact sub-requirement wording to re-verify against the official text before any formal use.)
