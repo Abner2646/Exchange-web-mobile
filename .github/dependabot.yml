@@ -1,0 +1,22 @@
+# Dependabot — automated dependency update PRs (Fase 4.6: cheap, high-value).
+# Weekly PRs grouped to avoid noise; security updates come through as they land.
+version: 2
+updates:
+  # Backend Node dependencies (the active codebase).
+  - package-ecosystem: "npm"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels: ["dependencies"]
+    groups:
+      # One PR per week for routine minor/patch bumps instead of many.
+      backend-minor-patch:
+        update-types: ["minor", "patch"]
+
+  # Keep the GitHub Actions used in CI up to date too.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels: ["dependencies", "ci"]
