@@ -43,10 +43,14 @@ function runClaimed(req, res, next, where) {
   };
 
   res.on('finish', () => {
-    // If the controller already wrote `completed` inside its transaction (success
-    // path), skip: re-writing here would be the post-commit window this hardening
-    // closes. The 4xx-cache and 5xx-release paths still run through here.
-    if (req._idempotency && req._idempotency.finalized) return;
+    // If the controller wrote `completed` inside its transaction AND the response
+    // is a success (2xx), skip: re-writing here would be the post-commit window
+    // this hardening closes. But `finalized` is set BEFORE commit — if the commit
+    // itself fails, the response is a 5xx and the in-tx `completed` write rolled
+    // back with the money, so we must NOT skip: fall through so the 5xx path
+    // releases the key (persistResult destroys it) instead of leaving it stuck
+    // `in_progress` for the 90s stale window. The 4xx-cache path also runs here.
+    if (req._idempotency && req._idempotency.finalized && res.statusCode < 500) return;
     persistResult(where, res.statusCode, capturedBody).catch((e) => {
       console.error('idempotency: failed to persist result:', e);
     });

@@ -604,7 +604,7 @@ Usuario.toggle2FA = async (id, nuevoEstado) => {
 
     const { count, rows } = await Usuario.findAndCountAll({
       where,
-      attributes: { exclude: ['passwordHash', 'kycData', 'taxId'] },
+      attributes: { exclude: ['passwordHash', 'kycData', 'taxId', 'nombreLegal', 'fechaNacimiento'] },
       order: [[orderBy, orderDirection]],
       limit: parseInt(limit),
       offset
