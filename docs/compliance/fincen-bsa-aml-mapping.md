@@ -44,8 +44,8 @@
 |---|---|---|
 | Immutable audit trail (admin + money actions) | 🔴 | Ledger covers money; admin-action trail removed in Fase 0 (Radar #3) |
 | Ledger as AML query substrate (append-only) | ✅ | `services/ledger/` — monitoring rules become queries over postings, not fragile balance reconstructions |
-| Jurisdiction data model (country/state, tax id) | 🔴 | Not on `Usuario` yet (Radar #14 / §4.7) — add before real users |
-| Case queue + account risk flags (no auto-fund action) | 🟡 | **Designed** in [`aml-signal-catalog.md`](./aml-signal-catalog.md): `CasoAml` queue + `Usuario.nivelRiesgoAml`/`revisionAmlPendiente` (risk flag never exposed to the user — tipping-off; lands with Radar #14). Build with the admin panel (§7.8) |
+| Jurisdiction data model (country/state, tax id) | 🟡 | **Modeled on `Usuario` (Radar #14):** `pais` (existed) + `estado`, `taxId`, `nombreLegal`, `fechaNacimiento` (CIP set), `nivelKyc` tier. `taxId` is sensitive (excluded from bulk listing). Verification provider integration = §4.7 |
+| Case queue + account risk flags (no auto-fund action) | 🟡 | **Account risk flag now MODELED** (Radar #14): `Usuario.nivelRiesgoAml`/`revisionAmlPendiente`, **never serialized** (`toJSON` strips them — tipping-off), readable only in code for admin tooling. `CasoAml` case queue designed in [`aml-signal-catalog.md`](./aml-signal-catalog.md), built with the admin panel (§7.8) |
 
 ## Reading
 

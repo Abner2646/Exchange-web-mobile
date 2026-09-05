@@ -1,6 +1,18 @@
 const { DataTypes, Model } = require('sequelize');
 
 class Usuario extends Model {
+  // Serialización segura: los flags de riesgo AML NUNCA salen en una respuesta
+  // (ni al propio usuario — tipping-off). El campo sigue legible en código
+  // (`user.nivelRiesgoAml`) para el tooling admin; solo se elimina del JSON.
+  // Radar #14 + §4.8. (El PII sensible —taxId/DOB/nombreLegal— sí lo ve su dueño;
+  // a terceros se les da el perfil público curado, no la instancia completa.)
+  toJSON() {
+    const values = { ...this.get() };
+    delete values.nivelRiesgoAml;
+    delete values.revisionAmlPendiente;
+    return values;
+  }
+
   // Método para generar código de recuperación de 6 dígitos
   async generarCodigoRecuperacion() {
     const codigo = Math.floor(100000 + Math.random() * 900000).toString(); // 6 dígitos
@@ -235,6 +247,62 @@ function initUsuario(sequelize) {
       type: DataTypes.DATE,
       allowNull: true,
       field: 'ultimo_login'
+    },
+
+    // ── Radar #14: identidad/perfil por capas ────────────────────────────────
+    // Display name editable (nickname), SEPARADO del `username` de login (único,
+    // inmutable). Nullable → el front cae a `username` para mostrar si está vacío.
+    displayName: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'display_name'
+    },
+    // Perfil KYC (CIP / FinCEN §4.7). PII sensible — no se expone a terceros.
+    nombreLegal: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'nombre_legal'
+    },
+    fechaNacimiento: {
+      type: DataTypes.DATEONLY,
+      allowNull: true,
+      field: 'fecha_nacimiento'
+    },
+    estado: { // provincia/estado; el país ya vive en `pais`
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    taxId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'tax_id'
+    },
+    // Preferencias (Fase 7.3): locale/idioma por defecto.
+    locale: {
+      type: DataTypes.STRING(10),
+      allowNull: true
+    },
+    // Estado de cuenta: tier KYC (complementa el boolean `kycVerificado`).
+    nivelKyc: {
+      type: DataTypes.ENUM('ninguno', 'basico', 'completo'),
+      allowNull: false,
+      defaultValue: 'ninguno',
+      field: 'nivel_kyc'
+    },
+    // Flag de riesgo AML (Radar #14 + §4.8). NUNCA se expone —ni al propio usuario
+    // (tipping-off)—: lo borra `toJSON` de toda serialización; solo tooling admin
+    // lo lee vía el atributo. Ver docs/compliance/aml-signal-catalog.md.
+    nivelRiesgoAml: {
+      type: DataTypes.ENUM('bajo', 'medio', 'alto'),
+      allowNull: false,
+      defaultValue: 'bajo',
+      field: 'nivel_riesgo_aml'
+    },
+    revisionAmlPendiente: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      field: 'revision_aml_pendiente'
     }
   }, {
     sequelize,

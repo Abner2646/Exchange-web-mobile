@@ -320,6 +320,30 @@ Summary of which operation reads from which compartment:
 
 ---
 
+### 10. User model — layered identity + profile fields (2026-09-05, Radar #14)
+
+The `Usuario` model gained layered identity/profile fields (additive, all nullable
+or defaulted — non-breaking):
+
+- **Login vs display split:** `username` is the **unique, immutable** login handle;
+  **`displayName`** is a separate **editable, non-unique** nickname to show (falls
+  back to `username` when empty). Build profile/registration UIs around this split.
+- **Profile / KYC (CIP set):** `nombreLegal`, `fechaNacimiento` (date), `estado`
+  (province/state; `pais` already existed), `taxId`. **Sensitive** — only the owner
+  (and admin) sees them; `taxId` is excluded from admin bulk listings.
+- **Preferences:** `locale`.
+- **Account status:** `nivelKyc` (`ninguno`|`basico`|`completo`, default `ninguno`;
+  complements the existing `kycVerificado` boolean).
+- **Never exposed:** the AML risk flag (`nivelRiesgoAml`, `revisionAmlPendiente`) is
+  **stripped from every response** (`Usuario.toJSON`) — the frontend never receives
+  it. Don't build UI around it.
+
+**Not yet wired (upcoming slices):** the profile-edit endpoint (edit `displayName`,
+not `username`) and the **email-change flow** (sensitive action: re-verify the new
+email + notify the old + 2FA + a post-change withdrawal cooldown).
+
+---
+
 ## Expected upcoming contract changes (heads-up, not yet done)
 
 These are tracked in `ROADMAP.md`; listed here so the rebuild anticipates them and
