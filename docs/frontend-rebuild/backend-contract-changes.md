@@ -338,9 +338,15 @@ or defaulted — non-breaking):
   **stripped from every response** (`Usuario.toJSON`) — the frontend never receives
   it. Don't build UI around it.
 
-**Not yet wired (upcoming slices):** the profile-edit endpoint (edit `displayName`,
-not `username`) and the **email-change flow** (sensitive action: re-verify the new
-email + notify the old + 2FA + a post-change withdrawal cooldown).
+**Profile edit is live:** the existing profile-update endpoint now edits
+`displayName`, `pais`, `estado`, `locale` — **`username` is immutable** (removed
+from the editable whitelist) and the whitelist blocks any mass-assignment
+(`rol`, limits, KYC/AML fields are not user-editable). KYC identity fields
+(`nombreLegal`/`fechaNacimiento`/`taxId`) are set by the KYC flow (§4.7), not free
+profile edit.
+
+**Not yet wired (upcoming slice):** the **email-change flow** (sensitive action:
+re-verify the new email + notify the old + 2FA + a post-change withdrawal cooldown).
 
 ---
 
