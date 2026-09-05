@@ -29,11 +29,15 @@ const request = require('supertest');
 const { Usuario } = require('../models');
 const BlockchainJobManager = require('../jobs/blockchain.jobs');
 const transaccionBlockchainRoutes = require('../routes/transaccionBlockchain.routes');
+const errorHandler = require('../middleware/errorHandler');
 
 function buildApp() {
   const app = express();
   app.use(express.json());
   app.use('/transaccionBlockchain', transaccionBlockchainRoutes);
+  // requireOperatorMFA (Fase 4.9) rechaza vía next(AppError) → el envelope lo
+  // produce el handler central.
+  app.use(errorHandler);
   return app;
 }
 
@@ -57,8 +61,8 @@ describe('POST /transaccionBlockchain/system/process-withdrawals', () => {
     expect(BlockchainJobManager.runWithdrawalProcessJob).not.toHaveBeenCalled();
   });
 
-  test('un admin sí puede, y la ruta llama al job real (no a un método inexistente)', async () => {
-    Usuario.findByPk.mockResolvedValue({ id: 'admin1', activo: true, rol: 'admin', emailVerificado: true });
+  test('un admin CON 2FA sí puede, y la ruta llama al job real (no a un método inexistente)', async () => {
+    Usuario.findByPk.mockResolvedValue({ id: 'admin1', activo: true, rol: 'admin', emailVerificado: true, dosFactoresActivado: true });
 
     const res = await request(app)
       .post('/transaccionBlockchain/system/process-withdrawals')
@@ -66,5 +70,17 @@ describe('POST /transaccionBlockchain/system/process-withdrawals', () => {
 
     expect(res.status).toBe(200);
     expect(BlockchainJobManager.runWithdrawalProcessJob).toHaveBeenCalledTimes(1);
+  });
+
+  test('un admin SIN 2FA no puede (Fase 4.9: MFA obligatorio para operadores)', async () => {
+    Usuario.findByPk.mockResolvedValue({ id: 'admin2', activo: true, rol: 'admin', emailVerificado: true, dosFactoresActivado: false });
+
+    const res = await request(app)
+      .post('/transaccionBlockchain/system/process-withdrawals')
+      .set('Authorization', `Bearer ${tokenFor('admin2')}`);
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('OPERATOR_MFA_REQUIRED');
+    expect(BlockchainJobManager.runWithdrawalProcessJob).not.toHaveBeenCalled();
   });
 });
