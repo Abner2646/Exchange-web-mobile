@@ -36,6 +36,9 @@ const initAsientoLedger = require('./entities/asientoLedger.entity');
 const initMovimientoLedger = require('./entities/movimientoLedger.entity');
 const initSaldoLedger = require('./entities/saldoLedger.entity');
 
+// Config de negocio (Radar #13)
+const initConfiguracionNegocio = require('./entities/configuracionNegocio.entity');
+
 
 
 // Connecting to the database
@@ -84,6 +87,7 @@ const CuentaLedger = initCuentaLedger(sequelize);
 const AsientoLedger = initAsientoLedger(sequelize);
 const MovimientoLedger = initMovimientoLedger(sequelize);
 const SaldoLedger = initSaldoLedger(sequelize);
+const ConfiguracionNegocio = initConfiguracionNegocio(sequelize);
 
 // (Write-flip Paso B: el shim CDC balanceMirror se eliminó — todas las escrituras
 // de dinero postean al ledger DIRECTO vía updateBalance/blockBalance/unblockBalance
@@ -341,4 +345,5 @@ module.exports = {
   AsientoLedger,
   MovimientoLedger,
   SaldoLedger,
+  ConfiguracionNegocio,
 };

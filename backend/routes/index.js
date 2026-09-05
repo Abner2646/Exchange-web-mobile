@@ -20,10 +20,12 @@ const tradingRoutes = require('./trading.routes');
 const usuarioRoutes = require('./usuario.routes.js')
 const valoracionRoutes = require('./valoraciones.routes.js')
 const walletMaestraRoutes = require('./walletMaestra.routes.js')
+const configuracionNegocioRoutes = require('./configuracionNegocio.routes.js')
 
 // Derive routes
 router.use('/auth', authRoutes)
 router.use('/balances', balanceUsuarioRoutes)
+router.use('/config', configuracionNegocioRoutes)
 router.use('/criptomoneda', criptomonedaRoutes)
 router.use('/direccionDeposito', direccionDepositoRoutes)
 router.use('/intercambioExchange', intercambioExchangeRoutes)

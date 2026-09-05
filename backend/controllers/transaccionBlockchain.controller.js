@@ -13,6 +13,7 @@ const errorCodes = require('../utils/errorCodes');
 const money = require('../utils/money');
 const idempotency = require('../middleware/idempotency.middleware');
 const authz = require('../utils/authz');
+const businessConfig = require('../services/config/businessConfig');
 
 class TransaccionBlockchainController {
   // =================== ENDPOINTS PARA USUARIOS ===================
@@ -88,14 +89,21 @@ class TransaccionBlockchainController {
     // Crear retiro. El body se arma UNA vez dentro del hook `finalize` (que corre
     // en la tx del retiro) y se envía verbatim, así el response y el que se guarda
     // para replay de idempotencia son idénticos.
+    // Confirmaciones requeridas: config de negocio (Radar #13), con el default
+    // previo como fallback (sin fila sembrada, comportamiento idéntico). Editable
+    // desde /config por un operador (clave `confirmaciones.<red>`).
+    const red = validation.criptomoneda.red;
+    const confirmacionesRequeridas = await businessConfig.getNumber(
+      `confirmaciones.${red}`, red === 'ethereum' ? 12 : 6
+    );
+
     let responseBody;
     await TransaccionBlockchain.createWithdrawal({
       userId,
       criptomonedaId,
       cantidad: parseFloat(cantidad),
       direccionDestino,
-      confirmacionesRequeridas: validation.criptomoneda.red === 'bitcoin' ? 6 :
-                                 validation.criptomoneda.red === 'ethereum' ? 12 : 6
+      confirmacionesRequeridas
     }, {
       // Hardening anti-doble-gasto: completa la key de idempotencia dentro de la
       // tx del retiro → el bloqueo de fondos, el alta de la fila y el 'completed'
