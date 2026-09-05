@@ -26,7 +26,7 @@ The specific, current control text for each is filled in **only after verificati
 
 | Pillar | What it governs | Lands in |
 |---|---|---|
-| **FinCEN / BSA-AML** (federal, MSB) | KYC/CIP, transaction monitoring, SAR/CTR, recordkeeping, Travel Rule (31 CFR 1010.410(f)) | §4.7 KYC, §4.8 AML — **mapped: [`fincen-bsa-aml-mapping.md`](./fincen-bsa-aml-mapping.md)** |
+| **FinCEN / BSA-AML** (federal, MSB) | KYC/CIP, transaction monitoring, SAR/CTR, recordkeeping, Travel Rule (31 CFR 1010.410(f)) | §4.7 KYC, §4.8 AML — **mapped: [`fincen-bsa-aml-mapping.md`](./fincen-bsa-aml-mapping.md)**; AML signals **[`aml-signal-catalog.md`](./aml-signal-catalog.md)** |
 | **NYDFS BitLicense** (23 NYCRR Part 200) | Virtual-currency regime + custody guidance (segregation of customer assets, sub-custody) | §4.2 key management, custodial model — **mapped: [`nydfs-part200-custody-mapping.md`](./nydfs-part200-custody-mapping.md)** |
 | **NYDFS Cybersecurity** (23 NYCRR Part 500) | Access control, MFA, encryption, CISO, pentesting, audit trails, incident response, third-party risk — the most prescriptive, checklist-like technical standard | §4.1–§4.6 (technical backbone) — **mapped: [`nydfs-part500-mapping.md`](./nydfs-part500-mapping.md)** |
 

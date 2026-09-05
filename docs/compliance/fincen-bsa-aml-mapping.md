@@ -31,7 +31,7 @@
 |---|---|---|---|
 | MSB registration (FinCEN Form 107, renew ~2 yrs) | ⚪ | Not operating as a registered MSB | N/A while portfolio |
 | Customer identification (CIP/KYC/KYB) | 🔴 | Scaffolding only (above) | §4.7 KYC |
-| Transaction monitoring | 🟡 | Per-user **daily USD limit** enforced under `FOR UPDATE` (AML-adjacent volume control) — `intercambioExchange.controller` daily-limit check (Radar #12d); no behavioral monitoring / red-flag rules | Rule-based monitoring → case queue + account risk flags (§4.8), querying the ledger |
+| Transaction monitoring | 🟡 | Per-user **daily USD limit** enforced under `FOR UPDATE` (AML-adjacent volume control) — `intercambioExchange.controller` daily-limit check (Radar #12d). **Signal catalog documented** ([`aml-signal-catalog.md`](./aml-signal-catalog.md)): 6 explicit rules (S1–S6) as queries over the append-only ledger, with the risk-flag + case-queue design | Build the engine (on-event/job) + case queue (admin panel, Fase 7.8) when activated |
 | SAR — suspicious activity (FinCEN Form 111, ≥ $2,000) | 🔴/⚪ | No filing (portfolio posture) | Design: a **case queue + risk flag**, human review, not auto-action on funds (§4.8) |
 | CTR — currency transactions > $10,000 (Form 112) | ⚪ | Largely N/A: crypto-only, no fiat cash handling | Note for any future fiat on/off-ramp |
 | Recordkeeping | 🟡 | Double-entry **ledger is an append-only record of all money movements** (`services/ledger/`) — baseline §9,12; retention policy not formalized | Formal retention + immutable admin/action trail (Radar #3) |
@@ -45,7 +45,7 @@
 | Immutable audit trail (admin + money actions) | 🔴 | Ledger covers money; admin-action trail removed in Fase 0 (Radar #3) |
 | Ledger as AML query substrate (append-only) | ✅ | `services/ledger/` — monitoring rules become queries over postings, not fragile balance reconstructions |
 | Jurisdiction data model (country/state, tax id) | 🔴 | Not on `Usuario` yet (Radar #14 / §4.7) — add before real users |
-| Case queue + account risk flags (no auto-fund action) | 🔴 | Design intent (§4.8, admin panel §7.8) |
+| Case queue + account risk flags (no auto-fund action) | 🟡 | **Designed** in [`aml-signal-catalog.md`](./aml-signal-catalog.md): `CasoAml` queue + `Usuario.nivelRiesgoAml`/`revisionAmlPendiente` (risk flag never exposed to the user — tipping-off; lands with Radar #14). Build with the admin panel (§7.8) |
 
 ## Reading
 
