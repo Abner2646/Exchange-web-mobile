@@ -4,9 +4,11 @@ const orderValidator = require('../services/trading/orderValidator.service');
 const balanceManager = require('../services/trading/balanceManager.service');
 const feeCalculator = require('../services/trading/feeCalculator.service');
 const tradeExecutor = require('../services/trading/tradeExecutor.service');
-const { Order, TradingPair, Trade } = require('../models');
+const { Order, TradingPair, Trade, sequelize } = require('../models');
 const AppError = require('../utils/AppError');
 const errorCodes = require('../utils/errorCodes');
+const idempotency = require('../middleware/idempotency.middleware');
+const authz = require('../utils/authz');
 
 class TradingController {
 
@@ -69,20 +71,7 @@ class TradingController {
       throw new AppError(400, errorCodes.INSUFFICIENT_BALANCE, balanceCheck.error);
     }
 
-    // 4. Bloquear balance
-    const balanceLocked = await balanceManager.lockBalanceForOrder({
-      userId,
-      tradingPair,
-      side,
-      quantity,
-      price: orderType === 'market' ? null : price
-    });
-
-    if (!balanceLocked.success) {
-      throw new AppError(400, errorCodes.INSUFFICIENT_BALANCE, balanceLocked.error);
-    }
-
-    // 5. Calcular fee
+    // 4. Calcular fee (cálculo/lectura, antes de abrir la transacción)
     const feeData = await feeCalculator.calculateOrderFee({
       tradingPairId,
       side,
@@ -91,26 +80,73 @@ class TradingController {
       orderType
     });
 
-    // 6. Crear orden
-    const order = await Order.create({
-      userId,
-      tradingPairId,
-      orderType,
-      side,
-      quantity,
-      quantityRemaining: quantity,
-      price: orderType === 'limit' ? price : null,
-      stopPrice,
-      timeInForce,
-      status: 'pending',
-      tradingType: 'spot',
-      feePercent: feeData.feePercent,
-      feeCurrency: feeData.feeCurrency,
-      clientOrderId,
-      leverage: 1
-    });
+    // 5. Reserva de balance + alta de la orden en UNA transacción del controller.
+    // Antes eran dos operaciones autocommit (lock y después Order.create): si el
+    // create fallaba, el balance quedaba bloqueado sin orden (residual de Críticos
+    // #5, deuda documentada). Ahora ambas commitean/rollbackean juntas, y en la
+    // misma tx se completa la key de idempotencia (hardening anti-doble-gasto: el
+    // body se arma acá y se envía verbatim para que el replay devuelva lo mismo).
+    const transaction = await sequelize.transaction();
+    let order;
+    let responseBody;
+    try {
+      const balanceLocked = await balanceManager.lockBalanceForOrder({
+        userId,
+        tradingPair,
+        side,
+        quantity,
+        price: orderType === 'market' ? null : price
+      }, transaction);
 
-    // 7. Intentar matching inmediato (asíncrono)
+      if (!balanceLocked.success) {
+        await transaction.rollback();
+        throw new AppError(400, errorCodes.INSUFFICIENT_BALANCE, balanceLocked.error);
+      }
+
+      order = await Order.create({
+        userId,
+        tradingPairId,
+        orderType,
+        side,
+        quantity,
+        quantityRemaining: quantity,
+        price: orderType === 'limit' ? price : null,
+        stopPrice,
+        timeInForce,
+        status: 'pending',
+        tradingType: 'spot',
+        feePercent: feeData.feePercent,
+        feeCurrency: feeData.feeCurrency,
+        clientOrderId,
+        leverage: 1
+      }, { transaction });
+
+      // Recargar con relaciones DENTRO de la tx → el body guardado para replay es
+      // idéntico al enviado.
+      const createdOrder = await Order.findByPk(order.id, {
+        include: [{
+          model: TradingPair,
+          as: 'tradingPair',
+          include: [
+            { association: 'baseAsset' },
+            { association: 'quoteAsset' }
+          ]
+        }],
+        transaction
+      });
+
+      responseBody = { success: true, order: createdOrder, message: 'Orden creada exitosamente' };
+      await idempotency.finalizeInTransaction(req, transaction, 201, responseBody);
+
+      await transaction.commit();
+    } catch (error) {
+      if (!transaction.finished) await transaction.rollback();
+      throw error;
+    }
+
+    // 6. Matching inmediato — fire-and-forget DESPUÉS del commit (la orden ya está
+    // creada y el balance bloqueado atómicamente). La durabilidad del matching ante
+    // un crash (hoy sin await/garantía) sigue como deuda aparte (Radar #12b).
     orderBookService.matchOrder(order.id)
       .then(matchResult => {
         // Emitir evento WebSocket si está disponible
@@ -133,23 +169,7 @@ class TradingController {
         console.error('Error en matching asíncrono:', err);
       });
 
-    // 8. Recargar orden con relaciones
-    const createdOrder = await Order.findByPk(order.id, {
-      include: [{
-        model: TradingPair,
-        as: 'tradingPair',
-        include: [
-          { association: 'baseAsset' },
-          { association: 'quoteAsset' }
-        ]
-      }]
-    });
-
-    res.status(201).json({
-      success: true,
-      order: createdOrder,
-      message: 'Orden creada exitosamente'
-    });
+    res.status(201).json(responseBody);
   }
 
   /**
@@ -274,7 +294,7 @@ class TradingController {
       // nunca existe (authMiddleware setea req.user.rol) — la condición
       // "o sos admin" nunca se cumplía, ningún admin podía ver órdenes
       // ajenas pese a que el código aparentaba permitirlo.
-      const isAdmin = ['admin', 'super_admin'].includes(req.user.rol);
+      const isAdmin = authz.isAdmin(req.user);
       if (order.userId !== userId && !isAdmin) {
         return res.status(403).json({ 
           success: false,

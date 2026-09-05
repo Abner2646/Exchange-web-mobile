@@ -70,6 +70,20 @@ Funding↔Spot self-transfer and admin ops). Unexpected errors are now a sanitiz
 `PUT /api/balances/reclamarBTC` keeps its own `{ success, ... }` envelope (it is
 disabled in production).
 
+**`transaccionesP2P` envelope completed (2026-09-03) — state-machine & create
+rejections are now typed 4xx, not 500.** The P2P transaction controller only
+translated its own controller-level checks; the business errors thrown by the
+model's state machine and by `createTransaction` leaked as a sanitized `500`.
+They now return the canonical envelope with a proper status:
+- `POST /api/transaccionP2P/` (accept offer): `P2P_TX_OFFER_INACTIVE`,
+  `P2P_TX_AMOUNT_OUT_OF_RANGE`, `P2P_TX_INSUFFICIENT_FUNDS` (seller funds) — all `400`;
+  `P2P_TX_OFFER_NOT_FOUND` (`404`), `P2P_TX_OWN_OFFER` (`400`).
+- `PATCH /api/transaccionP2P/{id}/confirm-payment|complete|cancel`:
+  `P2P_TX_INVALID_STATE` (`400`, wrong state transition — e.g. cancel after
+  complete, complete before confirm), `P2P_TX_FORBIDDEN` (`403`, only the
+  buyer confirms / only the seller completes / only a participant cancels),
+  `P2P_TX_NOT_FOUND` (`404`). Success responses are unchanged.
+
 ### 2. Monetary values are canonical strings, not numbers
 
 All money that comes **out** of money-path reads is now a **canonical decimal
@@ -303,6 +317,36 @@ Summary of which operation reads from which compartment:
 | Withdrawal | Funding |
 | Swap (current) | Funding (Task 9 adds `compartimento` param) |
 | Internal transfer | User-chosen (`origen`/`destino`) |
+
+---
+
+### 10. User model — layered identity + profile fields (2026-09-05, Radar #14)
+
+The `Usuario` model gained layered identity/profile fields (additive, all nullable
+or defaulted — non-breaking):
+
+- **Login vs display split:** `username` is the **unique, immutable** login handle;
+  **`displayName`** is a separate **editable, non-unique** nickname to show (falls
+  back to `username` when empty). Build profile/registration UIs around this split.
+- **Profile / KYC (CIP set):** `nombreLegal`, `fechaNacimiento` (date), `estado`
+  (province/state; `pais` already existed), `taxId`. **Sensitive** — only the owner
+  (and admin) sees them; `taxId` is excluded from admin bulk listings.
+- **Preferences:** `locale`.
+- **Account status:** `nivelKyc` (`ninguno`|`basico`|`completo`, default `ninguno`;
+  complements the existing `kycVerificado` boolean).
+- **Never exposed:** the AML risk flag (`nivelRiesgoAml`, `revisionAmlPendiente`) is
+  **stripped from every response** (`Usuario.toJSON`) — the frontend never receives
+  it. Don't build UI around it.
+
+**Profile edit is live:** the existing profile-update endpoint now edits
+`displayName`, `pais`, `estado`, `locale` — **`username` is immutable** (removed
+from the editable whitelist) and the whitelist blocks any mass-assignment
+(`rol`, limits, KYC/AML fields are not user-editable). KYC identity fields
+(`nombreLegal`/`fechaNacimiento`/`taxId`) are set by the KYC flow (§4.7), not free
+profile edit.
+
+**Not yet wired (upcoming slice):** the **email-change flow** (sensitive action:
+re-verify the new email + notify the old + 2FA + a post-change withdrawal cooldown).
 
 ---
 

@@ -10,6 +10,7 @@ const { authenticateToken } = require('../middleware/authMiddleware.js');
 const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
 const rateLimitMiddleware = require('../middleware/rateLimit.middleware.js');
 const idempotency = require('../middleware/idempotency.middleware');
+const requireOperatorMFA = require('../middleware/operatorMFA.middleware');
 const asyncHandler = require('../utils/asyncHandler');
 
 // =============== ÚTILES POR AHORA ===============
@@ -72,7 +73,7 @@ router.get('/my/balances', authenticateToken, asyncHandler(balanceUserController
 router.post('/my/transfer', authenticateToken, idempotency, asyncHandler(balanceUserController.transferMisCompartimentos));
 
 // PUT /api/balances/user/:userId/crypto/:criptomonedaId - Actualizar balance
-router.put('/user/:userId/crypto/:criptomonedaId', authenticateToken, isAdmin, asyncHandler(balanceUserController.updateBalance));
+router.put('/user/:userId/crypto/:criptomonedaId', authenticateToken, isAdmin, requireOperatorMFA, asyncHandler(balanceUserController.updateBalance));
 // {"amount": 100}
 
 // PUT /api/reclamarBTC - Faucet de testnet (una sola vez por usuario, ver
@@ -110,13 +111,13 @@ router.get('/user/:userId/crypto/:criptomonedaId/check', authenticateToken, isAd
 // =============== RUTAS DE MODIFICACIÓN (admin) ===============
 
 // POST /api/balances/user/:userId/crypto/:criptomonedaId/block - Bloquear balance
-router.post('/user/:userId/crypto/:criptomonedaId/block', authenticateToken, isAdmin, asyncHandler(balanceUserController.blockBalance));
+router.post('/user/:userId/crypto/:criptomonedaId/block', authenticateToken, isAdmin, requireOperatorMFA, asyncHandler(balanceUserController.blockBalance));
 
 // POST /api/balances/user/:userId/crypto/:criptomonedaId/unblock - Desbloquear balance
-router.post('/user/:userId/crypto/:criptomonedaId/unblock', authenticateToken, isAdmin, asyncHandler(balanceUserController.unblockBalance));
+router.post('/user/:userId/crypto/:criptomonedaId/unblock', authenticateToken, isAdmin, requireOperatorMFA, asyncHandler(balanceUserController.unblockBalance));
 
 // POST /api/balances/transfer - Transferir balance entre usuarios
-router.post('/transfer', authenticateToken, isAdmin, asyncHandler(balanceUserController.transferBalance));
+router.post('/transfer', authenticateToken, isAdmin, requireOperatorMFA, asyncHandler(balanceUserController.transferBalance));
 
 // RUTAS POR CRIPTOMONEDA
 // GET /api/balances/crypto/:criptomonedaId/users - Usuarios con balance en una crypto

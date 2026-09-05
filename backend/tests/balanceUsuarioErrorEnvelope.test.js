@@ -11,6 +11,13 @@ jest.mock('../models/index.js', () => ({
     hasAvailableEnCompartimento: jest.fn(),
     updateBalance: jest.fn(),
   },
+  // transferMisCompartimentos ahora es dueño de su transacción (hardening
+  // idempotencia transaccional): la crea, la pasa al ledger y completa la key en
+  // la misma tx. El fake basta para los caminos de error de este archivo (la tx
+  // se abre y luego se hace rollback).
+  sequelize: {
+    transaction: jest.fn(async () => ({ finished: false, commit: jest.fn(), rollback: jest.fn() })),
+  },
 }));
 jest.mock('../services/ledger/operations', () => ({
   transferirInterno: jest.fn(),
@@ -22,6 +29,9 @@ jest.mock('../middleware/authMiddleware.js', () => ({
 jest.mock('../middleware/adminMiddleware.js', () => ({ isAdmin: (_q, _s, n) => n(), isSuperAdmin: (_q, _s, n) => n() }));
 jest.mock('../middleware/rateLimit.middleware.js', () => ({ general: (_q, _s, n) => n(), withdrawal: (_q, _s, n) => n() }));
 jest.mock('../middleware/idempotency.middleware', () => (_q, _s, n) => n());
+// requireOperatorMFA (Fase 4.9) se testea en operatorMFA.test.js; acá se saltea
+// para probar el envelope de error del controller, no el guard de MFA.
+jest.mock('../middleware/operatorMFA.middleware', () => (_q, _s, n) => n());
 
 const { BalanceUsuario } = require('../models/index.js');
 const errorHandler = require('../middleware/errorHandler');

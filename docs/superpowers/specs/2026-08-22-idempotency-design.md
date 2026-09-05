@@ -182,3 +182,39 @@ each operation's own DB transaction (invasive; touches every controller). The
 middleware approach is the industry standard and what the roadmap specifies; the
 transactional version is noted as future hardening and pairs naturally with the
 double-entry ledger (Radar #1).
+
+## Transactional hardening — CLOSED for all 5 endpoints (2026-09-03)
+
+The crash-post-commit window above is now closed on the success path by
+`idempotency.finalizeInTransaction(req, transaction, statusCode, body)`: a
+money-path controller calls it INSIDE its own DB transaction, right before
+commit, so "money moved" and "key = completed" commit atomically. The middleware
+stashes the claim context on `req._idempotency` (set in `runClaimed`); the
+`finish` handler skips its post-commit write when `finalized` is set, so the
+4xx-cache and 5xx-release paths are unchanged (business errors roll back → no
+money moved → no atomicity needed; only the 2xx success path is made atomic).
+
+Wired (each proven with a TDD integration test that drives the controller with a
+res mock that never emits `finish` — i.e. simulating a crash right after commit —
+and asserts the row is durably `completed`):
+
+- **swap** (`intercambioExchange.createOrder`) — owns its tx; finalize before commit.
+- **createTransferencia** — owns its tx; finalize before commit.
+- **transferMisCompartimentos** (Funding↔Spot) — refactored to own a tx, threaded
+  into `transferirEntreCompartimentos`, finalize before commit.
+- **createWithdrawal** — the money move lives in the model static
+  `TransaccionBlockchain.createWithdrawal`, which now takes an optional `finalize`
+  hook run inside its tx (and `getById` takes an optional tx so the stored/replayed
+  body matches the live one).
+
+- **trading.createOrder** — order creation was made transactional in the same
+  pass: the Spot balance lock (`balanceManager.lockBalanceForOrder`, which already
+  accepted an optional tx) and `Order.create` now run in one controller-owned
+  transaction (fixing the Críticos #5 residual: balance locked without an order if
+  `Order.create` failed), and the key is finalized inside it. The reload with
+  relations happens in-tx so the stored/replayed body matches the live one.
+  **Still deferred (Radar #12b):** matching remains fire-and-forget AFTER commit —
+  the order+lock are now durable and atomic, but a crash before matching still
+  leaves the order unmatched. That is a separate durability concern (make matching
+  awaited/queued) and would pull in the matching engine (Fase 6.4); out of scope
+  here on purpose.

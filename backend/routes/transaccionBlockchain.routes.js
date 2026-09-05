@@ -11,6 +11,7 @@ const rateLimitMiddleware = require('../middleware/rateLimit.middleware');
 const { joiValidate } = require('../middleware/joiValidate.middleware');
 const transaccionBlockchainSchema = require('../schemas/transaccionBlockchain.schema');
 const idempotency = require('../middleware/idempotency.middleware');
+const requireOperatorMFA = require('../middleware/operatorMFA.middleware');
 const asyncHandler = require('../utils/asyncHandler');
 
 // =================== RUTAS PÚBLICAS (con auth) ===================
@@ -99,9 +100,10 @@ router.get('/deposit-address/:criptomonedaId', /*validationMiddleware.validateUU
  *     summary: Escanear depósitos on-chain manualmente (admin)
  *     responses:
  *       200: { description: Scan disparado }
+ *       403: { description: Operador sin 2FA activado (Fase 4.9) }
  *       401: { $ref: '#/components/responses/Unauthorized' }
  */
-router.post('/system/scan-deposits', requireRole(['admin', 'super_admin']), rateLimitMiddleware.system, asyncHandler(transaccionBlockchainController.scanDeposits.bind(transaccionBlockchainController)));
+router.post('/system/scan-deposits', requireRole(['admin', 'super_admin']), requireOperatorMFA, rateLimitMiddleware.system, asyncHandler(transaccionBlockchainController.scanDeposits.bind(transaccionBlockchainController)));
 
 /**
  * @openapi
@@ -111,8 +113,9 @@ router.post('/system/scan-deposits', requireRole(['admin', 'super_admin']), rate
  *     summary: Procesar la cola de retiros manualmente (admin)
  *     responses:
  *       200: { description: Procesamiento disparado }
+ *       403: { description: Operador sin 2FA activado (Fase 4.9) }
  */
-router.post('/system/process-withdrawals', requireRole(['admin', 'super_admin']), rateLimitMiddleware.system, asyncHandler(transaccionBlockchainController.processWithdrawals.bind(transaccionBlockchainController)));
+router.post('/system/process-withdrawals', requireRole(['admin', 'super_admin']), requireOperatorMFA, rateLimitMiddleware.system, asyncHandler(transaccionBlockchainController.processWithdrawals.bind(transaccionBlockchainController)));
 
 /**
  * @openapi
@@ -122,8 +125,9 @@ router.post('/system/process-withdrawals', requireRole(['admin', 'super_admin'])
  *     summary: Actualizar confirmaciones on-chain manualmente (admin)
  *     responses:
  *       200: { description: Confirmaciones actualizadas }
+ *       403: { description: Operador sin 2FA activado (Fase 4.9) }
  */
-router.post('/system/update-confirmations', requireRole(['admin', 'super_admin']), rateLimitMiddleware.system, asyncHandler(transaccionBlockchainController.updateConfirmations.bind(transaccionBlockchainController)));
+router.post('/system/update-confirmations', requireRole(['admin', 'super_admin']), requireOperatorMFA, rateLimitMiddleware.system, asyncHandler(transaccionBlockchainController.updateConfirmations.bind(transaccionBlockchainController)));
 
 // GET /api/system/blockchain-status - Estado de servicios (comentada)
 //router.get('/system/blockchain-status',  ...);

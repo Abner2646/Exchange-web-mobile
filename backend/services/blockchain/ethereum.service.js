@@ -4,15 +4,22 @@ const { ethers } = require('ethers');
 const { TransaccionBlockchain, DireccionDeposito, Criptomoneda, BlockchainState } = require('../../models');
 const money = require('../../utils/money');
 const EthersEvmClient = require('./ethersEvmClient');
+const { ethereumNetworkProfile } = require('../../config/networks/evm');
 
 class EthereumService {
+  // Fase 3: la identidad de red (chainId, nombre, confirmaciones, qué env keys de
+  // RPC/clave usar) viene del NetworkProfile inyectable en vez de leer NODE_ENV y
+  // armar chainId/nombre acá. Default = perfil por env (comportamiento previo).
   constructor(opts = {}) {
-    this.isTestnet = process.env.NODE_ENV !== 'production';
+    const profile = opts.profile || ethereumNetworkProfile();
+    this.profile = profile;
+    this.isTestnet = profile.env === 'testnet';
 
-    // Chain-client seam: injected in tests, built from env in prod.
+    // Chain-client seam: injected in tests, built from env in prod. Los secretos
+    // (rpc url, private key) siguen en env; el perfil nombra qué key por entorno.
     this.chain = opts.chainClient || new EthersEvmClient({
-      rpcUrl: this.isTestnet ? process.env.ETHEREUM_SEPOLIA_RPC_URL : process.env.ETHEREUM_RPC_URL,
-      privateKey: this.isTestnet ? process.env.ETH_SEPOLIA_PRIVATE_KEY : process.env.ETH_PRIVATE_KEY,
+      rpcUrl: process.env[profile.rpcUrlEnv],
+      privateKey: process.env[profile.privateKeyEnv],
     });
 
     // Legacy ethers handles for the not-yet-migrated paths (token withdrawal,
@@ -21,10 +28,10 @@ class EthereumService {
     this.provider = this.chain.provider || null;
     this.wallet = this.chain.wallet || null;
 
-    this.network = 'ethereum';
-    this.actualNetwork = this.isTestnet ? 'sepolia' : 'ethereum';
-    this.chainId = this.isTestnet ? 11155111 : 1; // Sepolia : Mainnet
-    this.requiredConfirmations = parseInt(process.env.ETH_REQUIRED_CONFIRMATIONS) || 12;
+    this.network = profile.chain;               // 'ethereum'
+    this.actualNetwork = profile.actualNetwork; // 'sepolia' | 'ethereum'
+    this.chainId = profile.chainId;
+    this.requiredConfirmations = parseInt(process.env.ETH_REQUIRED_CONFIRMATIONS) || profile.requiredConfirmations;
     this.hasApiKey = !!process.env.ETHERSCAN_API_KEY;
     
     console.log(`Ethereum Service inicializado - Red: ${this.actualNetwork} (chainId: ${this.chainId}) - API: ${this.hasApiKey ? 'Disponible' : 'No disponible'}`);

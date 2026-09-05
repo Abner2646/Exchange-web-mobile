@@ -6,6 +6,7 @@ const router = Router();
 // Middleware
 const { authenticateToken, requireEmailVerified } = require('../middleware/authMiddleware.js');
 const { isAdmin } = require('../middleware/adminMiddleware.js');
+const requireOperatorMFA = require('../middleware/operatorMFA.middleware');
 const asyncHandler = require('../utils/asyncHandler');
 
 // <--------- Este símbolo son las rutas que nos sirven posta
@@ -145,7 +146,7 @@ router.get('/admin/stats', authenticateToken, isAdmin, asyncHandler(transaccionP
 router.post('/admin/check-timeouts', authenticateToken, isAdmin, asyncHandler(transaccionP2PController.checkTimeouts));
 
 // Forzar cambio de estado (solo admin) - para casos excepcionales
-router.patch('/:id/force-status', authenticateToken, isAdmin, asyncHandler(transaccionP2PController.forceStatusChange));
+router.patch('/:id/force-status', authenticateToken, isAdmin, requireOperatorMFA, asyncHandler(transaccionP2PController.forceStatusChange));
 
 // Obtener volumen de usuario específico (solo admin)
 router.get('/admin/user/:usuarioId/volume', authenticateToken, isAdmin, asyncHandler(transaccionP2PController.getUserVolume));

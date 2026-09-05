@@ -2,6 +2,7 @@
 const { Trade, TradingPair, Order, PriceCandle, Criptomoneda } = require('../models');
 const { Op } = require('sequelize');
 const axios = require('axios');
+const authz = require('../utils/authz');
 
 class TradesController {
 
@@ -441,8 +442,8 @@ class TradesController {
 
       // Verificar que el usuario sea parte del trade (o sea admin)
       // Fix 2026-08-19 (AUDITORIA_BACKEND.md Altos #4): req.user.isAdmin
-      // nunca existe (authMiddleware setea req.user.rol).
-      const isAdmin = ['admin', 'super_admin'].includes(req.user.rol);
+      // nunca existe (authMiddleware setea req.user.rol). Fase 4.3: vía authz.
+      const isAdmin = authz.isAdmin(req.user);
       if (trade.buyerId !== userId && trade.sellerId !== userId && !isAdmin) {
         return res.status(403).json({
           success: false,

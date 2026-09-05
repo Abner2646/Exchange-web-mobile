@@ -9,7 +9,7 @@ function createTransaccionBlockchainModel(sequelize) {
 
   // =================== MÉTODOS DE CONSULTA BÁSICOS ===================
   
-  TransaccionBlockchain.getById = async (id) => {
+  TransaccionBlockchain.getById = async (id, transaction = null) => {
     try {
       const transaccion = await TransaccionBlockchain.findByPk(id, {
         include: [
@@ -29,7 +29,8 @@ function createTransaccionBlockchainModel(sequelize) {
             attributes: ['id', 'email', 'username'],
             required: false
           }
-        ]
+        ],
+        transaction
       });
       return transaccion;
     } catch (error) {
@@ -348,7 +349,13 @@ function createTransaccionBlockchainModel(sequelize) {
 
   // =================== MÉTODOS PARA RETIROS ===================
 
-  TransaccionBlockchain.createWithdrawal = async (data) => {
+  // `finalize` (opcional): hook que corre DENTRO de la transacción del retiro,
+  // después de crear la fila y antes del commit, recibiendo (transaction, retiro).
+  // Lo usa el controller para completar la key de idempotencia en la misma tx
+  // (hardening anti-doble-gasto): el bloqueo de fondos + el alta del retiro + el
+  // 'completed' de la key commitean atómicamente. Sin el hook (otros callers) el
+  // comportamiento es el de antes.
+  TransaccionBlockchain.createWithdrawal = async (data, { finalize } = {}) => {
     // Ver el comentario de _acreditarDeposito sobre por qué este require
     // es lazy (Altos #10).
     const { BalanceUsuario } = require('./index');
@@ -377,9 +384,14 @@ function createTransaccionBlockchainModel(sequelize) {
       };
 
       const nuevoRetiro = await TransaccionBlockchain.create(retiroData, { transaction });
-      await transaction.commit();
+      // Lectura enriquecida DENTRO de la tx: así el body que el caller almacena en
+      // la key (para replay) es idéntico al que devuelve/serializa la respuesta.
+      const retiro = await TransaccionBlockchain.getById(nuevoRetiro.id, transaction);
 
-      return await TransaccionBlockchain.getById(nuevoRetiro.id);
+      if (finalize) await finalize(transaction, retiro);
+
+      await transaction.commit();
+      return retiro;
     } catch (error) {
       await transaction.rollback();
       throw new Error(`Error al crear retiro: ${error.message}`);

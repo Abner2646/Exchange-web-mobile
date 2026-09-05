@@ -15,6 +15,25 @@ jest.mock('../models', () => ({
 
 const { TransaccionBlockchain } = require('../models');
 const BscService = require('../services/blockchain/bsc.service');
+const { BSC_PROFILES } = require('../config/networks/evm');
+
+// Fase 3: identidad de red desde el NetworkProfile inyectado (chainClient fake
+// evita el ethers.Wallet real y el chequeo de rpc/clave por env).
+describe('bsc.service — NetworkProfile inyectado', () => {
+  const fakeChain = { provider: null, wallet: null };
+  test('mainnet → chainId 56, red bsc', () => {
+    const s = new BscService({ profile: BSC_PROFILES.mainnet, chainClient: fakeChain });
+    expect(s.chainId).toBe(56);
+    expect(s.actualNetwork).toBe('bsc');
+    expect(s.isTestnet).toBe(false);
+  });
+  test('testnet → bsc-testnet, chainId 97', () => {
+    const s = new BscService({ profile: BSC_PROFILES.testnet, chainClient: fakeChain });
+    expect(s.chainId).toBe(97);
+    expect(s.actualNetwork).toBe('bsc-testnet');
+    expect(s.isTestnet).toBe(true);
+  });
+});
 
 describe('bsc.calculateTransactionFee — fee de gas exacto como string', () => {
   test('21000 gas @ 5 gwei = 0.000105 BNB (no Number)', () => {

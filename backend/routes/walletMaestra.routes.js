@@ -5,6 +5,7 @@ const router = Router();
 // Middleware
 const { authenticateToken } = require('../middleware/authMiddleware.js');
 const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
+const requireOperatorMFA = require('../middleware/operatorMFA.middleware');
 
 // Importa el controlador de wallets maestras
 const walletMaestraController = require('../controllers/walletMaestra.controller.js');
@@ -51,7 +52,7 @@ router.get('/', authenticateToken, isSuperAdmin, walletMaestraController.getWall
 router.get('/:id', authenticateToken, isSuperAdmin, walletMaestraController.getWalletMaestraById); //Bien
 
 // Crear nueva wallet maestra HD (solo super admin)
-router.post('/', authenticateToken, isSuperAdmin, walletMaestraController.createWalletMaestra);
+router.post('/', authenticateToken, isSuperAdmin, requireOperatorMFA, walletMaestraController.createWalletMaestra);
 
 // =================== RUTAS DE BÚSQUEDA Y CONSULTA ===================
 

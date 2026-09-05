@@ -4,6 +4,8 @@ const AppError = require('../utils/AppError');
 const errorCodes = require('../utils/errorCodes');
 const { transferirInterno } = require('../services/ledger/operations');
 const money = require('../utils/money');
+const idempotency = require('../middleware/idempotency.middleware');
+const authz = require('../utils/authz');
 
 // Create new transfer
 const createTransferencia = async (req, res) => {
@@ -85,9 +87,7 @@ const createTransferencia = async (req, res) => {
       console.error('Error enviando email de verificación:', emailError);
     }
 
-    await transaction.commit();
-
-    res.status(201).json({
+    const responseBody = {
       message: 'Transferencia creada. Revisa tu email para el código de verificación.',
       data: {
         id: transferencia.id,
@@ -97,7 +97,14 @@ const createTransferencia = async (req, res) => {
         estado: transferencia.estado,
         expiracionCodigo: transferencia.expiracionCodigo,
       },
-    });
+    };
+    // Hardening anti-doble-gasto: completa la key de idempotencia dentro de esta
+    // transacción → commitea atómicamente con el registro de la transferencia.
+    await idempotency.finalizeInTransaction(req, transaction, 201, responseBody);
+
+    await transaction.commit();
+
+    res.status(201).json(responseBody);
   } catch (error) {
     // Roll back only when the transaction is still open (i.e., we have not
     // already called rollback inside a known-error branch above).
@@ -310,7 +317,7 @@ const getTransferenciaById = async (req, res) => {
   // Verify user has access to this transfer
   if (transferencia.usuarioRemitenteId !== usuarioId &&
       transferencia.usuarioDestinatarioId !== usuarioId &&
-      req.user.rol === 'normal') {
+      !authz.isAdmin(req.user)) {
     throw new AppError(403, errorCodes.TRANSFER_FORBIDDEN, 'No tienes permiso para ver esta transferencia');
   }
 

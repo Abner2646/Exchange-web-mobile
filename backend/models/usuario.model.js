@@ -604,7 +604,7 @@ Usuario.toggle2FA = async (id, nuevoEstado) => {
 
     const { count, rows } = await Usuario.findAndCountAll({
       where,
-      attributes: { exclude: ['passwordHash', 'kycData'] },
+      attributes: { exclude: ['passwordHash', 'kycData', 'taxId', 'nombreLegal', 'fechaNacimiento'] },
       order: [[orderBy, orderDirection]],
       limit: parseInt(limit),
       offset
@@ -686,7 +686,12 @@ Usuario.toggle2FA = async (id, nuevoEstado) => {
       throw new Error('Usuario no encontrado');
     }
 
-    const allowedFields = ['username', 'pais'];
+    // Radar #14: `username` es el handle de login — INMUTABLE por self-service
+    // (no está en la whitelist). El nombre mostrado editable es `displayName`. Los
+    // campos de identidad KYC (nombreLegal/fechaNacimiento/taxId) se setean por el
+    // flujo de KYC (§4.7), no por edición libre de perfil. La whitelist además
+    // corta cualquier mass-assignment (rol, límites, flag AML no son editables acá).
+    const allowedFields = ['displayName', 'pais', 'estado', 'locale'];
     const updateData = {};
 
     Object.keys(data).forEach(key => {
@@ -694,20 +699,6 @@ Usuario.toggle2FA = async (id, nuevoEstado) => {
         updateData[key] = data[key];
       }
     });
-
-    if (updateData.username && updateData.username !== user.username) {
-      const existingUser = await Usuario.findOne({
-        where: { 
-          username: updateData.username.toLowerCase(),
-          id: { [Op.ne]: id }
-        }
-      });
-
-      if (existingUser) {
-        throw new Error('Username ya está en uso');
-      }
-      updateData.username = updateData.username.toLowerCase();
-    }
 
     await user.update(updateData);
     const token = user.generateUpdatedJWT();

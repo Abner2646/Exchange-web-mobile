@@ -1,5 +1,6 @@
 const { Valoracion, sequelize } = require('../models/index.js');
 const { Op } = require('sequelize');
+const authz = require('../utils/authz');
 
 // Listar valoraciones con filtros
 const getValoraciones = async (req, res) => {
@@ -83,7 +84,7 @@ const deleteValoracion = async (req, res) => {
     }
 
     // Solo admin o el evaluador (dentro de un tiempo límite) pueden eliminar
-    const canDelete = req.user.rol === 'admin' || 
+    const canDelete = authz.isAdmin(req.user) ||
                      (valoracion.usuarioEvaluadorId === usuarioId && 
                       new Date() - new Date(valoracion.created_at) < 24 * 60 * 60 * 1000); // 24 horas
 

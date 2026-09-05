@@ -130,6 +130,56 @@ test('non-unique DB error on create routes to next(err)', async () => {
   expect(next).toHaveBeenCalledWith(dbErr);
 });
 
+test('success path: controller finalizes in-transaction; finish handler does not double-write', async () => {
+  const { req, res } = mockReqRes({ key: 'k1' });
+  IdempotencyKey.create.mockResolvedValue({});
+  const fakeTx = { id: 'tx-1' };
+  let finalizePromise;
+  const next = () => {
+    finalizePromise = (async () => {
+      await idempotency.finalizeInTransaction(req, fakeTx, 201, { ok: true });
+      res.status(201).json({ ok: true });
+    })();
+  };
+  await idempotency(req, res, next);
+  await finalizePromise;
+
+  // Written exactly once, inside the controller's transaction. The finish handler
+  // must NOT write a second time (that post-commit write is the double-spend window).
+  expect(IdempotencyKey.update).toHaveBeenCalledTimes(1);
+  expect(IdempotencyKey.update).toHaveBeenCalledWith(
+    expect.objectContaining({ status: 'completed', responseStatusCode: 201, responseBody: { ok: true } }),
+    expect.objectContaining({ where: { userId: 'user-1', idempotencyKey: 'k1' }, transaction: fakeTx })
+  );
+  expect(IdempotencyKey.destroy).not.toHaveBeenCalled();
+});
+
+test('finalize then a 5xx (commit failure) releases the key, does not leave it in_progress', async () => {
+  const { req, res } = mockReqRes({ key: 'k1' });
+  IdempotencyKey.create.mockResolvedValue({});
+  const fakeTx = { id: 'tx-1' };
+  let finalizePromise;
+  const next = () => {
+    finalizePromise = (async () => {
+      await idempotency.finalizeInTransaction(req, fakeTx, 201, { ok: true }); // marca finalized
+      res.status(500).json({ error: 'commit failed' }); // pero el commit falló → 5xx
+    })();
+  };
+  await idempotency(req, res, next);
+  await finalizePromise;
+
+  // El write in-tx de `completed` rolleó con el commit fallido; como la respuesta
+  // es 5xx, el finish handler NO saltea: libera la key (destroy) para reintento
+  // inmediato, en vez de dejarla trabada 90s.
+  expect(IdempotencyKey.destroy).toHaveBeenCalledWith({ where: { userId: 'user-1', idempotencyKey: 'k1' } });
+});
+
+test('finalizeInTransaction is a no-op when the middleware did not claim (req has no idempotency context)', async () => {
+  const req = { user: { id: 'user-1' } };
+  await idempotency.finalizeInTransaction(req, { id: 'tx-1' }, 201, { ok: true });
+  expect(IdempotencyKey.update).not.toHaveBeenCalled();
+});
+
 test('stale in-progress (>90s) is reclaimed and runs the controller', async () => {
   const { req, res } = mockReqRes({ key: 'k1' });
   IdempotencyKey.create.mockRejectedValue(uniqueError());
