@@ -29,6 +29,9 @@ jest.mock('../middleware/authMiddleware.js', () => ({
 jest.mock('../middleware/adminMiddleware.js', () => ({ isAdmin: (_q, _s, n) => n(), isSuperAdmin: (_q, _s, n) => n() }));
 jest.mock('../middleware/rateLimit.middleware.js', () => ({ general: (_q, _s, n) => n(), withdrawal: (_q, _s, n) => n() }));
 jest.mock('../middleware/idempotency.middleware', () => (_q, _s, n) => n());
+// requireOperatorMFA (Fase 4.9) se testea en operatorMFA.test.js; acá se saltea
+// para probar el envelope de error del controller, no el guard de MFA.
+jest.mock('../middleware/operatorMFA.middleware', () => (_q, _s, n) => n());
 
 const { BalanceUsuario } = require('../models/index.js');
 const errorHandler = require('../middleware/errorHandler');

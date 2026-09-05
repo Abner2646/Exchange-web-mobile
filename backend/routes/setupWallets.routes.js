@@ -3,6 +3,7 @@ const router = express.Router();
 const setupController = require('../controllers/setupWallets.controller');
 const { authenticateToken } = require('../middleware/authMiddleware');
 const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware');
+const requireOperatorMFA = require('../middleware/operatorMFA.middleware');
 
 /**
  * @openapi
@@ -26,7 +27,7 @@ const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware');
 router.get('/status', authenticateToken, isSuperAdmin, setupController.checkSetupStatus);
 
 // 2. EJECUTAR SETUP INICIAL (BTC generada, ETH desde .env, BNB generada)
-router.post('/initialize', authenticateToken, isSuperAdmin, setupController.executeCompleteSetup);
+router.post('/initialize', authenticateToken, isSuperAdmin, requireOperatorMFA, setupController.executeCompleteSetup);
 // JSON opcionales: Para forzar recreación: {"force": true} //PELIGROSO! Podría romper los ids de criptomonedas y wallets preexistentes.
 
 module.exports = router;
