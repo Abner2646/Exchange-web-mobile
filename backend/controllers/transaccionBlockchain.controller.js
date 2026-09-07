@@ -66,6 +66,15 @@ class TransaccionBlockchainController {
     const userId = req.user.id;
     const { criptomonedaId, cantidad, direccionDestino } = req.body;
 
+    // Cooldown de retiros tras un cambio de email reciente (Radar #14, anti
+    // account-takeover): mientras esté vigente, no se crean retiros. Fail-fast,
+    // antes de cualquier validación de red.
+    const solicitante = await Usuario.findByPk(userId, { attributes: ['cooldownRetiroHasta'] });
+    if (solicitante && solicitante.cooldownRetiroHasta && new Date() < solicitante.cooldownRetiroHasta) {
+      throw new AppError(403, errorCodes.WITHDRAWAL_COOLDOWN,
+        'Retiros temporalmente bloqueados tras un cambio de email reciente. Intentá más tarde.');
+    }
+
     // Validar retiro
     const validation = await TransaccionBlockchain.validateWithdrawal(
       userId,

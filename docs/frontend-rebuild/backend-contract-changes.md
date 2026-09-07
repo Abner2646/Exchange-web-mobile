@@ -345,8 +345,18 @@ from the editable whitelist) and the whitelist blocks any mass-assignment
 (`nombreLegal`/`fechaNacimiento`/`taxId`) are set by the KYC flow (§4.7), not free
 profile edit.
 
-**Not yet wired (upcoming slice):** the **email-change flow** (sensitive action:
-re-verify the new email + notify the old + 2FA + a post-change withdrawal cooldown).
+**Email-change flow is live (sensitive action):**
+- `POST /api/usuario/me/email-change` — body `{ nuevoEmail, passwordActual }`. Re-auths
+  with the current password, checks the new email is free, and sends a confirmation
+  **code to the new email**. Errors: `400/401 EMAIL_CHANGE_INVALID`.
+- `POST /api/usuario/me/email-change/confirm` — body `{ codigo }`. Validates the code,
+  updates the email (marks it verified), **notifies the old email**, and sets a
+  **withdrawal cooldown** (`cooldownRetiroHasta`, duration = business config
+  `cooldown_retiro_cambio_email_horas`, default 24h). Returns a fresh `token`.
+- During the cooldown, `POST /api/transaccionBlockchain/withdraw` returns
+  `403 WITHDRAWAL_COOLDOWN`.
+
+(Full 2FA step-up for 2FA-enabled operators pairs with the §4.9 step-up infra — Fase 5.)
 
 ---
 

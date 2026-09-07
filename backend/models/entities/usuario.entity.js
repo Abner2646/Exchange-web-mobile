@@ -303,6 +303,33 @@ function initUsuario(sequelize) {
       allowNull: false,
       defaultValue: false,
       field: 'revision_aml_pendiente'
+    },
+
+    // ── Radar #14: cambio de email (acción sensible) ─────────────────────────
+    // Email nuevo pendiente de confirmar + su código (enviado AL email nuevo para
+    // probar control). Separados de codigoVerificacionEmail (verificación inicial)
+    // para no pisar estados.
+    emailPendiente: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'email_pendiente'
+    },
+    codigoCambioEmail: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'codigo_cambio_email'
+    },
+    codigoCambioEmailExpiracion: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'codigo_cambio_email_expiracion'
+    },
+    // Cooldown de retiros: tras un cambio de email (o de credenciales sensibles)
+    // los retiros se bloquean hasta este instante — mitiga account-takeover.
+    cooldownRetiroHasta: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'cooldown_retiro_hasta'
     }
   }, {
     sequelize,

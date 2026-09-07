@@ -5,6 +5,7 @@ const router = Router();
 // Middleware de autenticación y autorización
 const { authenticateToken } = require('../middleware/authMiddleware.js');
 const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
+const asyncHandler = require('../utils/asyncHandler');
 
 // Rate Limiters
 const {
@@ -384,10 +385,57 @@ router.put('/me',
  * Rate Limit: 3 intentos/hora por usuario
  * Parámetros: currentPassword, newPassword
  */
-router.patch('/me/change-password', 
+router.patch('/me/change-password',
   authenticateToken,
   changePasswordLimiter,
   usuarioController.changePassword
+);
+
+/**
+ * @openapi
+ * /usuario/me/email-change:
+ *   post:
+ *     tags: [Usuario]
+ *     summary: Solicitar cambio de email (acción sensible — re-auth + código al email nuevo)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [nuevoEmail, passwordActual]
+ *             properties:
+ *               nuevoEmail: { type: string, format: email }
+ *               passwordActual: { type: string }
+ *     responses:
+ *       200: { description: Código enviado al email nuevo }
+ *       400: { $ref: '#/components/responses/BadRequest' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ * /usuario/me/email-change/confirm:
+ *   post:
+ *     tags: [Usuario]
+ *     summary: Confirmar el cambio de email con el código (setea cooldown de retiros)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [codigo]
+ *             properties:
+ *               codigo: { type: string }
+ *     responses:
+ *       200: { description: Email actualizado; retiros en cooldown temporal }
+ *       400: { $ref: '#/components/responses/BadRequest' }
+ */
+router.post('/me/email-change',
+  authenticateToken,
+  changePasswordLimiter,
+  asyncHandler(usuarioController.requestEmailChange)
+);
+router.post('/me/email-change/confirm',
+  authenticateToken,
+  asyncHandler(usuarioController.confirmEmailChange)
 );
 
 /**

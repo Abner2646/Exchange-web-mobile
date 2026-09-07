@@ -5,6 +5,24 @@ const { sequelize } = require('../models/index.js');
 const emailService = require('../services/email.service.js');
 const userService = require('../services/user.service');
 const authz = require('../utils/authz');
+const AppError = require('../utils/AppError');
+const errorCodes = require('../utils/errorCodes');
+
+// Traduce los errores de negocio (Error plano) de los métodos de cambio de email
+// del modelo al envelope canónico AppError; lo desconocido se re-lanza (500 sanit).
+function mapEmailChangeError(error) {
+  if (error instanceof AppError) return error;
+  const msg = error.message || '';
+  if (msg.includes('Contraseña actual incorrecta')) {
+    return new AppError(401, errorCodes.EMAIL_CHANGE_INVALID, 'Contraseña actual incorrecta');
+  }
+  if (msg.includes('OAuth') || msg.includes('inválido') || msg.includes('en uso') ||
+      msg.includes('igual al actual') || msg.includes('pendiente') ||
+      msg.includes('incorrecto') || msg.includes('expiró')) {
+    return new AppError(400, errorCodes.EMAIL_CHANGE_INVALID, msg);
+  }
+  return error;
+}
 
 // Función helper para generar dirección única
 const generarDireccionDerivada = async (walletMaestra, usuarioId, derivationIndex) => {
@@ -590,6 +608,54 @@ const changePassword = async (req, res) => {
   }
 };
 
+// Radar #14 — cambio de email (acción sensible). Paso 1: solicitar. Re-auth con
+// la contraseña actual; se envía un código AL email nuevo (seam). Se usa
+// asyncHandler → errores tipados vía el handler central (envelope canónico).
+const requestEmailChange = async (req, res) => {
+  const { nuevoEmail, passwordActual } = req.body;
+  if (!nuevoEmail || !passwordActual) {
+    throw new AppError(400, errorCodes.EMAIL_CHANGE_INVALID, 'nuevoEmail y passwordActual son requeridos');
+  }
+  let result;
+  try {
+    result = await Usuario.requestEmailChange(req.user.id, nuevoEmail, passwordActual);
+  } catch (error) {
+    throw mapEmailChangeError(error);
+  }
+  // Enviar el código al email NUEVO (prueba de control). Fallo no fatal.
+  try {
+    await req.app.locals.emailService.enviarCodigoCambioEmail(result.emailPendiente, result.codigo);
+  } catch (e) {
+    console.error('Error enviando código de cambio de email:', e);
+  }
+  res.json({ message: 'Te enviamos un código al email nuevo para confirmar el cambio.' });
+};
+
+// Paso 2: confirmar con el código enviado al email nuevo. Notifica al email viejo
+// (anti-ATO) y deja el cooldown de retiros seteado (lo hace el modelo).
+const confirmEmailChange = async (req, res) => {
+  const { codigo } = req.body;
+  if (!codigo) {
+    throw new AppError(400, errorCodes.EMAIL_CHANGE_INVALID, 'codigo es requerido');
+  }
+  let result;
+  try {
+    result = await Usuario.confirmEmailChange(req.user.id, codigo);
+  } catch (error) {
+    throw mapEmailChangeError(error);
+  }
+  // Notificar al email VIEJO que el email cambió. Fallo no fatal.
+  try {
+    await req.app.locals.emailService.notificarCambioEmail(result.emailViejo, result.user.email);
+  } catch (e) {
+    console.error('Error notificando cambio de email al email anterior:', e);
+  }
+  res.json({
+    message: 'Email actualizado. Por seguridad, los retiros quedan bloqueados por un período tras el cambio.',
+    token: result.token,
+  });
+};
+
 const getPublicProfile = async (req, res) => {
   try {
     const { id } = req.params;
@@ -1025,6 +1091,8 @@ module.exports = {
   getMyProfile,
   getPublicProfile,
   changePassword,
+  requestEmailChange,
+  confirmEmailChange,
   
   // Métodos de wallets y balances
   getMyDepositAddresses,

@@ -737,6 +737,78 @@ Usuario.toggle2FA = async (id, nuevoEstado) => {
     return { user, token };
   };
 
+  // Radar #14 — cambio de email (acción sensible). Paso 1: SOLICITAR.
+  // Re-auth con la contraseña actual + valida que el email nuevo esté libre
+  // (case-insensitive); genera un código y lo deja pendiente. El envío del código
+  // AL email nuevo lo hace el controller (seam de email). Devuelve el código y el
+  // email normalizado para que el controller lo mande al destino nuevo.
+  Usuario.requestEmailChange = async (id, nuevoEmail, currentPassword) => {
+    const user = await Usuario.findByPk(id);
+    if (!user) throw new Error('Usuario no encontrado');
+    if (!user.passwordHash) throw new Error('Usuario de OAuth no puede cambiar el email por esta vía');
+
+    const valid = await bcrypt.compare(currentPassword || '', user.passwordHash);
+    if (!valid) throw new Error('Contraseña actual incorrecta');
+
+    const email = String(nuevoEmail || '').trim().toLowerCase();
+    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      throw new Error('Email nuevo inválido');
+    }
+    if (email === user.email.toLowerCase()) {
+      throw new Error('El email nuevo es igual al actual');
+    }
+    const existente = await Usuario.findOne({ where: { email }, attributes: ['id'] });
+    if (existente) throw new Error('El email ya está en uso');
+
+    const codigo = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiracion = new Date(Date.now() + 15 * 60 * 1000); // 15 min
+    await user.update({
+      emailPendiente: email,
+      codigoCambioEmail: codigo,
+      codigoCambioEmailExpiracion: expiracion,
+    });
+    return { codigo, emailPendiente: email };
+  };
+
+  // Paso 2: CONFIRMAR con el código enviado al email nuevo. Actualiza el email, lo
+  // marca verificado, limpia el pendiente, y setea el COOLDOWN de retiros (duración
+  // = config de negocio Radar #13, default 24h). Devuelve el email viejo para que
+  // el controller lo NOTIFIQUE (anti account-takeover).
+  Usuario.confirmEmailChange = async (id, codigo) => {
+    const user = await Usuario.findByPk(id);
+    if (!user) throw new Error('Usuario no encontrado');
+    if (!user.emailPendiente || !user.codigoCambioEmail) {
+      throw new Error('No hay un cambio de email pendiente');
+    }
+    if (user.codigoCambioEmail !== String(codigo)) {
+      throw new Error('Código de cambio de email incorrecto');
+    }
+    if (!user.codigoCambioEmailExpiracion || new Date() > user.codigoCambioEmailExpiracion) {
+      throw new Error('El código de cambio de email expiró');
+    }
+    // Carrera: el email pudo tomarse entre solicitar y confirmar.
+    const email = user.emailPendiente;
+    const existente = await Usuario.findOne({ where: { email }, attributes: ['id'] });
+    if (existente && existente.id !== id) throw new Error('El email ya está en uso');
+
+    const emailViejo = user.email;
+    const businessConfig = require('../services/config/businessConfig');
+    const horas = await businessConfig.getNumber('cooldown_retiro_cambio_email_horas', 24);
+    const cooldownHasta = new Date(Date.now() + horas * 60 * 60 * 1000);
+
+    await user.update({
+      email,
+      emailVerificado: true,
+      emailPendiente: null,
+      codigoCambioEmail: null,
+      codigoCambioEmailExpiracion: null,
+      cooldownRetiroHasta: cooldownHasta,
+    });
+    const token = user.generateUpdatedJWT();
+
+    return { user, emailViejo, token };
+  };
+
   // Métodos relacionados con KYC existentes
   Usuario.updateKYC = async (id, kycData, verified = false) => {
     const user = await Usuario.findByPk(id);
