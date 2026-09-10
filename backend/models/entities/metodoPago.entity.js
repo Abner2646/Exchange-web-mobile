@@ -17,7 +17,7 @@ function initMetodoPago(sequelize) {
       type: DataTypes.TEXT,
       allowNull: true
     },
-    activo: {
+    active: {
       type: DataTypes.BOOLEAN,
       defaultValue: true
     }

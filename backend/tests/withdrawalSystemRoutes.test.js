@@ -3,12 +3,12 @@
 // Cubre AUDITORIA_BACKEND.md Críticos #8: las rutas /system/process-withdrawals
 // (y scan-deposits, update-confirmations) estaban comentadas. Ahora que
 // llaman a algo real (BlockchainJobManager), confirma que están montadas y
-// protegidas por rol de admin.
+// protegidas por role de admin.
 
 process.env.JWT_SECRET = 'test-secret';
 
 jest.mock('../models', () => ({
-  Usuario: { findByPk: jest.fn() },
+  User: { findByPk: jest.fn() },
   TransaccionBlockchain: {},
   Criptomoneda: {},
   BalanceUsuario: {},
@@ -26,7 +26,7 @@ jest.mock('../services/blockchain', () => ({}));
 const jwt = require('jsonwebtoken');
 const express = require('express');
 const request = require('supertest');
-const { Usuario } = require('../models');
+const { User } = require('../models');
 const BlockchainJobManager = require('../jobs/blockchain.jobs');
 const transaccionBlockchainRoutes = require('../routes/transaccionBlockchain.routes');
 const errorHandler = require('../middleware/errorHandler');
@@ -51,7 +51,7 @@ describe('POST /transaccionBlockchain/system/process-withdrawals', () => {
   beforeEach(() => jest.clearAllMocks());
 
   test('un usuario normal no puede disparar el procesamiento de retiros', async () => {
-    Usuario.findByPk.mockResolvedValue({ id: 'u1', activo: true, rol: 'usuario', emailVerificado: true });
+    User.findByPk.mockResolvedValue({ id: 'u1', active: true, role: 'usuario', emailVerified: true });
 
     const res = await request(app)
       .post('/transaccionBlockchain/system/process-withdrawals')
@@ -62,7 +62,7 @@ describe('POST /transaccionBlockchain/system/process-withdrawals', () => {
   });
 
   test('un admin CON 2FA sí puede, y la ruta llama al job real (no a un método inexistente)', async () => {
-    Usuario.findByPk.mockResolvedValue({ id: 'admin1', activo: true, rol: 'admin', emailVerificado: true, dosFactoresActivado: true });
+    User.findByPk.mockResolvedValue({ id: 'admin1', active: true, role: 'admin', emailVerified: true, twoFactorEnabled: true });
 
     const res = await request(app)
       .post('/transaccionBlockchain/system/process-withdrawals')
@@ -73,7 +73,7 @@ describe('POST /transaccionBlockchain/system/process-withdrawals', () => {
   });
 
   test('un admin SIN 2FA no puede (Fase 4.9: MFA obligatorio para operadores)', async () => {
-    Usuario.findByPk.mockResolvedValue({ id: 'admin2', activo: true, rol: 'admin', emailVerificado: true, dosFactoresActivado: false });
+    User.findByPk.mockResolvedValue({ id: 'admin2', active: true, role: 'admin', emailVerified: true, twoFactorEnabled: false });
 
     const res = await request(app)
       .post('/transaccionBlockchain/system/process-withdrawals')

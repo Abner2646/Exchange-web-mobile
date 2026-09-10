@@ -1,12 +1,12 @@
-// controllers/usuario.controller.js
-const { Usuario, Criptomoneda, WalletMaestra, DireccionDeposito, BalanceUsuario, Notificaciones } = require('../models/index.js');
+// controllers/user.controller.js
+const { User, Criptomoneda, WalletMaestra, DireccionDeposito, BalanceUsuario, Notificaciones } = require('../../models/index.js');
 const { Op } = require('sequelize');
-const { sequelize } = require('../models/index.js');
-const emailService = require('../services/email.service.js');
-const userService = require('../services/user.service');
-const authz = require('../utils/authz');
-const AppError = require('../utils/AppError');
-const errorCodes = require('../utils/errorCodes');
+const { sequelize } = require('../../models/index.js');
+const emailService = require('../../services/email.service.js');
+const userService = require('./user.service');
+const authz = require('../../utils/authz');
+const AppError = require('../../utils/AppError');
+const errorCodes = require('../../utils/errorCodes');
 
 // Traduce los errores de negocio (Error plano) de los métodos de cambio de email
 // del modelo al envelope canónico AppError; lo desconocido se re-lanza (500 sanit).
@@ -76,7 +76,7 @@ const inicializarUsuarioCompleto = async (usuario, transaction) => {
         walletMaestraId: walletMaestra.id,
         direccion: nuevaDireccion,
         derivationIndex: derivationIndex,
-        activa: true
+        active: true
       }, { transaction });
 
       direccionesCreadas.push({
@@ -99,7 +99,7 @@ Para comenzar a operar:
 2. Realiza tu primer depósito
 3. ¡Comienza a intercambiar!`;
     
-    const {Notificaciones} = require('../models/index.js');
+    const {Notificaciones} = require('../../models/index.js');
     await Notificaciones.createNotification({
       usuarioId: usuario.id,
       tipo: 'sistema',
@@ -128,7 +128,7 @@ Para comenzar a operar:
 const getUsuarios = async (req, res) => {
   try {
     const filters = { ...req.query };
-    const result = await Usuario.getAll(filters);
+    const result = await User.getAll(filters);
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -139,7 +139,7 @@ const getUsuarios = async (req, res) => {
 const getUsuarioById = async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await Usuario.getById(id);
+    const result = await User.getById(id);
     
     if (!result) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
@@ -149,9 +149,9 @@ const getUsuarioById = async (req, res) => {
       const publicProfile = {
         id: result.id,
         username: result.username,
-        reputacionPromedio: result.reputacionPromedio,
-        totalValoraciones: result.totalValoraciones,
-        kycVerificado: result.kycVerificado,
+        averageRating: result.averageRating,
+        totalRatings: result.totalRatings,
+        kycVerified: result.kycVerified,
         created_at: result.created_at
       };
       return res.json(publicProfile);
@@ -169,7 +169,7 @@ const registerUsuario = async (req, res) => {
   
   try {
     const userData = req.body;
-    const { user, codigoVerificacion } = await Usuario.createWithPassword(userData);
+    const { user, codigoVerificacion } = await User.createWithPassword(userData);
     
     // Generar JWT NORMAL (no temporal)
     const jwt = require('jsonwebtoken');
@@ -178,13 +178,13 @@ const registerUsuario = async (req, res) => {
         id: user.id,
         email: user.email,
         username: user.username,
-        rol: user.rol,
-        emailVerificado: false, // ⚠️ Importante: marca como NO verificado
-        kycVerificado: user.kycVerificado,
-        activo: user.activo,
-        reputacionPromedio: user.reputacionPromedio,
-        pais: user.pais,
-        dosFactoresActivado: false
+        role: user.role,
+        emailVerified: false, // ⚠️ Importante: marca como NO verificado
+        kycVerified: user.kycVerified,
+        active: user.active,
+        averageRating: user.averageRating,
+        country: user.country,
+        twoFactorEnabled: false
       },
       process.env.JWT_SECRET,
       { 
@@ -215,8 +215,8 @@ const registerUsuario = async (req, res) => {
         id: user.id,
         email: user.email,
         username: user.username,
-        rol: user.rol,
-        emailVerificado: user.emailVerificado
+        role: user.role,
+        emailVerified: user.emailVerified
       },
       token, // Token normal (no temporal)
       requiresEmailVerification: true
@@ -235,9 +235,9 @@ const registerUsuario = async (req, res) => {
 const loginUsuario = async (req, res) => {
   try {
     const { emailOrUsername, password } = req.body;
-    const { user, token } = await Usuario.findByCredentials(emailOrUsername, password);
+    const { user, token } = await User.findByCredentials(emailOrUsername, password);
     
-    await user.update({ ultimoLogin: new Date() });
+    await user.update({ lastLoginAt: new Date() });
 
     res.json({
       message: 'Login exitoso',
@@ -245,9 +245,9 @@ const loginUsuario = async (req, res) => {
         id: user.id,
         email: user.email,
         username: user.username,
-        rol: user.rol,
-        kycVerificado: user.kycVerificado,
-        reputacionPromedio: user.reputacionPromedio
+        role: user.role,
+        kycVerified: user.kycVerified,
+        averageRating: user.averageRating
       },
       token
     });
@@ -303,7 +303,7 @@ const loginWithGoogle = async (req, res) => {
 
     await transaction.commit();
 
-    const usuario = await Usuario.findByPk(result.id);
+    const usuario = await User.findByPk(result.id);
     const token = usuario.generateUpdatedJWT();
 
     const response = {
@@ -312,10 +312,10 @@ const loginWithGoogle = async (req, res) => {
         id: result.id,
         email: result.email,
         username: result.username,
-        rol: result.rol,
-        kycVerificado: result.kycVerificado,
-        reputacionPromedio: result.reputacionPromedio,
-        pais: result.pais
+        role: result.role,
+        kycVerified: result.kycVerified,
+        averageRating: result.averageRating,
+        country: result.country
       },
       token,
       isNew: result.isNewUser
@@ -356,7 +356,7 @@ const verifyEmail = async (req, res) => {
     }
 
 
-    const { user, token, message } = await Usuario.verifyEmail(userId, codigo);
+    const { user, token, message } = await User.verifyEmail(userId, codigo);
     
     // Inicializar usuario completo después de verificar email
     const transaction = await sequelize.transaction();
@@ -375,11 +375,11 @@ const verifyEmail = async (req, res) => {
         id: user.id,
         email: user.email,
         username: user.username,
-        rol: user.rol,
-        emailVerificado: user.emailVerificado,
-        kycVerificado: user.kycVerificado
+        role: user.role,
+        emailVerified: user.emailVerified,
+        kycVerified: user.kycVerified
       },
-      token // Token actualizado con emailVerificado: true
+      token // Token actualizado con emailVerified: true
     });
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -393,7 +393,7 @@ const resendVerificationEmail = async (req, res) => {
     const userId = req.user.id;
     
 
-    const { user, codigo, message } = await Usuario.resendEmailVerification(userId);
+    const { user, codigo, message } = await User.resendEmailVerification(userId);
     
     // Enviar código por email
     try {
@@ -425,7 +425,7 @@ const resendVerificationEmail = async (req, res) => {
 const requestPasswordReset = async (req, res) => {
   try {
     const { email } = req.body;
-    const result = await Usuario.requestPasswordReset(email);
+    const result = await User.requestPasswordReset(email);
     
     if (result.sent) {
       await req.app.locals.emailService.enviarCodigoRecuperacion(
@@ -444,7 +444,7 @@ const requestPasswordReset = async (req, res) => {
 const verifyResetCode = async (req, res) => {
   try {
     const { email, codigo } = req.body;
-    const result = await Usuario.verifyResetCode(email, codigo);
+    const result = await User.verifyResetCode(email, codigo);
     res.json(result);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -459,7 +459,7 @@ const resetPassword = async (req, res) => {
       return res.status(400).json({ error: 'Las contraseñas no coinciden' });
     }
     
-    const { user, token } = await Usuario.resetPasswordWithCode(email, codigo, newPassword);
+    const { user, token } = await User.resetPasswordWithCode(email, codigo, newPassword);
 
     await req.app.locals.emailService.notificarCambioPassword(user.email, user.username);
     
@@ -483,16 +483,16 @@ const toggle2FA = async (req, res) => {
     const userId = req.user.id;
     
     // Obtener el usuario actual
-    const usuario = await Usuario.findByPk(userId);
+    const usuario = await User.findByPk(userId);
     if (!usuario) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
     
     // Alternar el estado actual
-    const nuevoEstado = !usuario.dosFactoresActivado;
+    const nuevoEstado = !usuario.twoFactorEnabled;
     
     // Actualizar en la base de datos
-    const { user, token } = await Usuario.toggle2FA(userId, nuevoEstado);
+    const { user, token } = await User.toggle2FA(userId, nuevoEstado);
     
     // Notificar por email
     await req.app.locals.emailService.notificar2FAChange(user.email, user.username, nuevoEstado);
@@ -501,7 +501,7 @@ const toggle2FA = async (req, res) => {
       message: `Autenticación en dos pasos ${nuevoEstado ? 'activada' : 'desactivada'} exitosamente`,
       user,
       token,
-      dosFactoresActivado: nuevoEstado
+      twoFactorEnabled: nuevoEstado
     });
   } catch (error) {
     console.error('Error en toggle2FA:', error);
@@ -512,12 +512,12 @@ const toggle2FA = async (req, res) => {
 const loginStep1 = async (req, res) => {
   try {
     const { emailOrUsername, password } = req.body;
-    const result = await Usuario.loginStep1(emailOrUsername, password);
+    const result = await User.loginStep1(emailOrUsername, password);
     
     if (result.requires2FA) {
       await req.app.locals.emailService.enviarCodigo2FA(
         result.user.email,
-        result.codigo2FA,
+        result.twoFactorCode,
         result.user.username
       );
       
@@ -541,7 +541,7 @@ const loginStep1 = async (req, res) => {
 const verify2FA = async (req, res) => {
   try {
     const { temporalToken, codigo } = req.body;
-    const { user, token } = await Usuario.verify2FA(temporalToken, codigo);
+    const { user, token } = await User.verify2FA(temporalToken, codigo);
     
     res.json({
       message: 'Verificación 2FA exitosa',
@@ -556,7 +556,7 @@ const verify2FA = async (req, res) => {
 const resend2FACode = async (req, res) => {
   try {
     const { temporalToken } = req.body;
-    const { user, codigo } = await Usuario.resend2FACode(temporalToken);
+    const { user, codigo } = await User.resend2FACode(temporalToken);
     
     await req.app.locals.emailService.enviarCodigo2FA(user.email, codigo, user.username);
 
@@ -572,7 +572,7 @@ const resend2FACode = async (req, res) => {
 const getMyProfile = async (req, res) => {
   try {
     const userId = req.user.id;
-    const user = await Usuario.getById(userId);
+    const user = await User.getById(userId);
     res.json(user);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -582,7 +582,7 @@ const getMyProfile = async (req, res) => {
 const updateMyProfile = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { user, token } = await Usuario.updateProfile(userId, req.body);
+    const { user, token } = await User.updateProfile(userId, req.body);
     res.json({ user, token });
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -594,7 +594,7 @@ const changePassword = async (req, res) => {
     const userId = req.user.id;
     const { currentPassword, newPassword } = req.body;
     
-    const { user, token } = await Usuario.changePassword(userId, currentPassword, newPassword);
+    const { user, token } = await User.changePassword(userId, currentPassword, newPassword);
 
     await req.app.locals.emailService.notificarCambioPassword(user.email, user.username);
     
@@ -618,13 +618,13 @@ const requestEmailChange = async (req, res) => {
   }
   let result;
   try {
-    result = await Usuario.requestEmailChange(req.user.id, nuevoEmail, passwordActual);
+    result = await User.requestEmailChange(req.user.id, nuevoEmail, passwordActual);
   } catch (error) {
     throw mapEmailChangeError(error);
   }
   // Enviar el código al email NUEVO (prueba de control). Fallo no fatal.
   try {
-    await req.app.locals.emailService.enviarCodigoCambioEmail(result.emailPendiente, result.codigo);
+    await req.app.locals.emailService.enviarCodigoCambioEmail(result.pendingEmail, result.codigo);
   } catch (e) {
     console.error('Error enviando código de cambio de email:', e);
   }
@@ -640,7 +640,7 @@ const confirmEmailChange = async (req, res) => {
   }
   let result;
   try {
-    result = await Usuario.confirmEmailChange(req.user.id, codigo);
+    result = await User.confirmEmailChange(req.user.id, codigo);
   } catch (error) {
     throw mapEmailChangeError(error);
   }
@@ -659,7 +659,7 @@ const confirmEmailChange = async (req, res) => {
 const getPublicProfile = async (req, res) => {
   try {
     const { id } = req.params;
-    const user = await Usuario.getById(id);
+    const user = await User.getById(id);
     
     if (!user) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
@@ -668,9 +668,9 @@ const getPublicProfile = async (req, res) => {
     const publicProfile = {
       id: user.id,
       username: user.username,
-      reputacionPromedio: user.reputacionPromedio,
-      totalValoraciones: user.totalValoraciones,
-      kycVerificado: user.kycVerificado,
+      averageRating: user.averageRating,
+      totalRatings: user.totalRatings,
+      kycVerified: user.kycVerified,
       created_at: user.created_at
     };
     
@@ -684,8 +684,8 @@ const getPublicProfile = async (req, res) => {
 const updateUsuarioStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { activo } = req.body;
-    const { user, token } = await Usuario.updateStatus(id, activo);
+    const { active } = req.body;
+    const { user, token } = await User.updateStatus(id, active);
     res.json({ user, token });
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -695,8 +695,8 @@ const updateUsuarioStatus = async (req, res) => {
 const updateUsuarioRole = async (req, res) => {
   try {
     const { id } = req.params;
-    const { rol } = req.body;
-    const { user, token } = await Usuario.updateRole(id, rol);
+    const { role } = req.body;
+    const { user, token } = await User.updateRole(id, role);
     res.json({ user, token });
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -707,7 +707,7 @@ const updateUsuarioKYC = async (req, res) => {
   try {
     const { id } = req.params;
     const { kycData, verified } = req.body;
-    const { user, token } = await Usuario.updateKYC(id, kycData, verified);
+    const { user, token } = await User.updateKYC(id, kycData, verified);
     res.json({ user, token });
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -717,8 +717,8 @@ const updateUsuarioKYC = async (req, res) => {
 const updateDailyLimit = async (req, res) => {
   try {
     const { id } = req.params;
-    const { limiteDiarioUsd } = req.body;
-    const { user, token } = await Usuario.updateDailyLimit(id, limiteDiarioUsd);
+    const { dailyLimitUsd } = req.body;
+    const { user, token } = await User.updateDailyLimit(id, dailyLimitUsd);
     res.json({ user, token });
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -728,8 +728,8 @@ const updateDailyLimit = async (req, res) => {
 const updateUsuarioReputation = async (req, res) => {
   try {
     const { id } = req.params;
-    const { reputacionPromedio, totalValoraciones } = req.body;
-    const { user, token } = await Usuario.updateReputation(id, reputacionPromedio, totalValoraciones);
+    const { averageRating, totalRatings } = req.body;
+    const { user, token } = await User.updateReputation(id, averageRating, totalRatings);
     res.json({ user, token });
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -739,7 +739,7 @@ const updateUsuarioReputation = async (req, res) => {
 const deleteUsuario = async (req, res) => {
   try {
     const { id } = req.params;
-    await Usuario.destroy({ where: { id } });
+    await User.destroy({ where: { id } });
     res.json({ message: 'Usuario eliminado exitosamente' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -749,7 +749,7 @@ const deleteUsuario = async (req, res) => {
 const deactivateInactiveUsers = async (req, res) => {
   try {
     const { days } = req.body;
-    const affectedRows = await Usuario.deactivateInactiveUsers(days || 365);
+    const affectedRows = await User.deactivateInactiveUsers(days || 365);
     res.json({
       message: `${affectedRows} usuarios inactivos desactivados`,
       affectedRows
@@ -763,15 +763,15 @@ const deactivateInactiveUsers = async (req, res) => {
 const searchUsuarios = async (req, res) => {
   try {
     const { query } = req.query;
-    const usuarios = await Usuario.findAll({
+    const usuarios = await User.findAll({
       where: {
         [Op.or]: [
           { username: { [Op.iLike]: `%${query}%` } },
           { email: { [Op.iLike]: `%${query}%` } }
         ],
-        activo: true
+        active: true
       },
-      attributes: ['id', 'username', 'reputacionPromedio', 'totalValoraciones', 'kycVerificado'],
+      attributes: ['id', 'username', 'averageRating', 'totalRatings', 'kycVerified'],
       limit: 10
     });
     res.json(usuarios);
@@ -782,7 +782,7 @@ const searchUsuarios = async (req, res) => {
 
 const getUsuariosStats = async (req, res) => {
   try {
-    const stats = await Usuario.getStats();
+    const stats = await User.getStats();
     res.json(stats);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -792,7 +792,7 @@ const getUsuariosStats = async (req, res) => {
 const getTopTraders = async (req, res) => {
   try {
     const { limit, period } = req.query;
-    const traders = await Usuario.getTopTraders(limit, period);
+    const traders = await User.getTopTraders(limit, period);
     res.json(traders);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -802,7 +802,7 @@ const getTopTraders = async (req, res) => {
 const getDailyVolume = async (req, res) => {
   try {
     const userId = req.params.id || req.user.id;
-    const volume = await Usuario.getDailyVolume(userId);
+    const volume = await User.getDailyVolume(userId);
     res.json({ userId, volume });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -813,7 +813,7 @@ const checkTransactionLimit = async (req, res) => {
   try {
     const userId = req.params.id || req.user.id;
     const { amount } = req.query;
-    const result = await Usuario.canMakeTransaction(userId, parseFloat(amount));
+    const result = await User.canMakeTransaction(userId, parseFloat(amount));
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -852,7 +852,7 @@ const checkEmailAvailability = async (req, res) => {
       return res.status(400).json({ error: 'Email requerido' });
     }
 
-    const existingUser = await Usuario.findOne({
+    const existingUser = await User.findOne({
       where: { email: email.toLowerCase() }
     });
 
@@ -873,7 +873,7 @@ const checkUsernameAvailability = async (req, res) => {
       return res.status(400).json({ error: 'Username requerido' });
     }
 
-    const existingUser = await Usuario.findOne({
+    const existingUser = await User.findOne({
       where: { username: username.toLowerCase() }
     });
 
@@ -891,7 +891,7 @@ const requestKYCVerification = async (req, res) => {
     const userId = req.user.id;
     const kycData = req.body;
     
-    const { user, token } = await Usuario.updateKYC(userId, kycData, false);
+    const { user, token } = await User.updateKYC(userId, kycData, false);
     
     await Notificaciones.notifyUsersByRole('admin', {
       tipo: 'kyc',
@@ -913,7 +913,7 @@ const requestKYCVerification = async (req, res) => {
 const logout = async (req, res) => {
   try {
     const userId = req.user.id;
-    const result = await Usuario.logout(userId);
+    const result = await User.logout(userId);
     
     res.json(result);
   } catch (error) {
@@ -924,7 +924,7 @@ const logout = async (req, res) => {
 const renewToken = async (req, res) => {
   try {
     const userId = req.user.id;
-    const user = await Usuario.findByPk(userId);
+    const user = await User.findByPk(userId);
     const token = user.generateUpdatedJWT();
     res.json({ token });
   } catch (error) {
@@ -944,7 +944,7 @@ const regenerateDepositAddress = async (req, res) => {
     
     const direccionActual = await DireccionDeposito.getByUserAndCrypto(userId, criptomonedaId);
     if (direccionActual) {
-      await direccionActual.update({ activa: false }, { transaction });
+      await direccionActual.update({ active: false }, { transaction });
     }
     
     const criptomoneda = await Criptomoneda.getById(criptomonedaId);
@@ -967,10 +967,10 @@ const regenerateDepositAddress = async (req, res) => {
       walletMaestraId: walletMaestra.id,
       direccion: nuevaDireccion,
       derivationIndex: derivationIndex,
-      activa: true
+      active: true
     }, { transaction });
     
-    const {Notificaciones} = require('../models/index.js');
+    const {Notificaciones} = require('../../models/index.js');
     await Notificaciones.createNotification({
       usuarioId: userId,
       tipo: 'seguridad',
@@ -1034,7 +1034,7 @@ const completeUserInitialization = async (req, res) => {
       return res.status(403).json({ error: 'Sin permisos para completar esta inicialización' });
     }
     
-    const usuario = await Usuario.getById(userId);
+    const usuario = await User.getById(userId);
     if (!usuario) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }

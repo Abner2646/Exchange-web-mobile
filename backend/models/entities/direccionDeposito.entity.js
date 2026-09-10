@@ -50,7 +50,7 @@ function initDireccionDeposito(sequelize) {
       allowNull: true,
       defaultValue: {}
     },
-    activa: {
+    active: {
       type: DataTypes.BOOLEAN,
       defaultValue: true
     }

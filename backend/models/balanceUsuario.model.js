@@ -174,7 +174,7 @@ function createBalanceUserModel(sequelize) {
   // NINGÚN money-path real usa este método — todos postean asientos ricos
   // (swap/trade/depósito/retiro/transferencia/P2P). El único caller vivo es el
   // endpoint admin de ajuste manual de saldo (PUT /balances/user/:id/crypto/:id):
-  // 'suspense' es acá su rol contable LEGÍTIMO y permanente (cuenta de ajustes/no
+  // 'suspense' es acá su role contable LEGÍTIMO y permanente (cuenta de ajustes/no
   // clasificados), no el placeholder transitorio de la migración. El guard de
   // sobregiro vive en postTransaction (FOR UPDATE); su SobregiroError (code
   // 'SOBREGIRO') se

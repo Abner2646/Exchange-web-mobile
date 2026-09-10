@@ -13,7 +13,7 @@ const Decimal = require('decimal.js');
 
 // Precisión alta para cálculos intermedios (40 dígitos significativos cubren 18
 // decimales — wei — con margen para multiplicaciones). El redondeo a la
-// precisión del activo se hace explícito y aparte, en roundForAsset/round.
+// precisión del active se hace explícito y aparte, en roundForAsset/round.
 Decimal.set({ precision: 40, rounding: Decimal.ROUND_HALF_EVEN });
 
 // Guarda anti-float en el borde de entrada: un Number no-entero (típicamente el
@@ -43,7 +43,7 @@ function multiply(a, b) {
 }
 
 // La división puede dar decimales infinitos (1/3): decimal.js la resuelve a la
-// precisión configurada (40 dígitos). El redondeo a la precisión del activo es
+// precisión configurada (40 dígitos). El redondeo a la precisión del active es
 // responsabilidad explícita de roundForAsset, no de acá.
 function divide(a, b) {
   return toDecimal(a).dividedBy(toDecimal(b)).toFixed();

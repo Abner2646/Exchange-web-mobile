@@ -113,7 +113,7 @@ class BlockchainJobManager {
       // ✅ 4. Verificar base de datos
       console.log('🔬 Verificando base de datos...');
       try {
-        const addressCount = await DireccionDeposito.count({ where: { activa: true } });
+        const addressCount = await DireccionDeposito.count({ where: { active: true } });
         const pendingTxCount = await TransaccionBlockchain.count({ 
           where: { estado: ['pendiente', 'procesando'] } 
         });
@@ -400,12 +400,12 @@ class BlockchainJobManager {
   async getPreScanStats() {
     try {
       const addressStats = await DireccionDeposito.findAll({
-        where: { activa: true },
+        where: { active: true },
         include: [
           {
             model: Criptomoneda,
             as: 'criptomoneda',
-            where: { activa: true },
+            where: { active: true },
             attributes: ['red', 'symbol']
           }
         ],
@@ -440,14 +440,14 @@ class BlockchainJobManager {
   async getActiveAddressesForNetwork(network) {
     try {
       return await DireccionDeposito.findAll({
-        where: { activa: true },
+        where: { active: true },
         include: [
           {
             model: Criptomoneda,
             as: 'criptomoneda',
             where: { 
               red: network.toLowerCase(),
-              activa: true 
+              active: true 
             }
           }
         ]

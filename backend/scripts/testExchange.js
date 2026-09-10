@@ -495,7 +495,7 @@ INSTRUCCIONES PARA EJECUTAR LAS PRUEBAS:
    - Reemplazar los IDs en TEST_DATA con IDs reales de tu base de datos
 
 3. Preparar datos de prueba:
-   - Asegúrate de tener al menos un ParExchange activo
+   - Asegúrate de tener al menos un ParExchange active
    - Verifica que el usuario tenga balances en las criptomonedas del par
    - Confirma que el límite diario del usuario permita transacciones
 

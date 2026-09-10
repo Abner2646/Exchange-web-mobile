@@ -20,8 +20,8 @@ function createCriptomonedaModel(sequelize) {
       const whereClause = {};
       
       // Filtros disponibles
-      if (filters.activa !== undefined) {
-        whereClause.activa = filters.activa === 'true';
+      if (filters.active !== undefined) {
+        whereClause.active = filters.active === 'true';
       }
       
       if (filters.red) {
@@ -58,7 +58,7 @@ function createCriptomonedaModel(sequelize) {
       const criptomonedas = await Criptomoneda.findAll({
         where: {
           [Op.and]: [
-            { activa: true },
+            { active: true },
             {
               [Op.or]: [
                 { symbol: { [Op.iLike]: `%${term}%` } },
@@ -82,7 +82,7 @@ function createCriptomonedaModel(sequelize) {
   Criptomoneda.updateStatus = async (id, newStatus) => {
     try {
       const [updatedRowsCount] = await Criptomoneda.update(
-        { activa: newStatus },
+        { active: newStatus },
         { 
           where: { id },
           returning: true
@@ -104,10 +104,10 @@ function createCriptomonedaModel(sequelize) {
     try {
       const totalCriptomonedas = await Criptomoneda.count();
       const criptomonedasActivas = await Criptomoneda.count({
-        where: { activa: true }
+        where: { active: true }
       });
       const criptomonedasInactivas = await Criptomoneda.count({
-        where: { activa: false }
+        where: { active: false }
       });
 
       // Estadísticas por red
@@ -135,7 +135,7 @@ function createCriptomonedaModel(sequelize) {
   Criptomoneda.getActive = async () => {
     try {
       const criptomonedas = await Criptomoneda.findAll({
-        where: { activa: true },
+        where: { active: true },
         order: [['symbol', 'ASC']]
       });
       return criptomonedas;
@@ -149,7 +149,7 @@ function createCriptomonedaModel(sequelize) {
       const criptomoneda = await Criptomoneda.findOne({
         where: { 
           symbol: symbol.toUpperCase(),
-          activa: true 
+          active: true 
         }
       });
       return criptomoneda;
@@ -163,7 +163,7 @@ function createCriptomonedaModel(sequelize) {
       const criptomonedas = await Criptomoneda.findAll({
         where: { 
           red: red,
-          activa: true 
+          active: true 
         },
         order: [['symbol', 'ASC']]
       });
@@ -178,7 +178,7 @@ function createCriptomonedaModel(sequelize) {
       const criptomoneda = await Criptomoneda.findOne({
         where: { 
           direccionContrato: direccionContrato,
-          activa: true 
+          active: true 
         }
       });
       return criptomoneda;
@@ -308,7 +308,7 @@ function createCriptomonedaModel(sequelize) {
         throw new Error('Criptomoneda no encontrada o inactiva');
       }
 
-      if (!criptomoneda.activa) {
+      if (!criptomoneda.active) {
         throw new Error('La criptomoneda está desactivada para transacciones');
       }
 

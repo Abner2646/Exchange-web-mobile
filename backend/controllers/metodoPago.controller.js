@@ -26,7 +26,7 @@ const getMetodoPagoById = async (req, res) => {
 // Crear nuevo método de pago
 const createMetodoPago = async (req, res) => {
   try {
-    const { nombre, descripcion, activo = true } = req.body;
+    const { nombre, descripcion, active = true } = req.body;
     
     if (!nombre) {
       return res.status(400).json({ 
@@ -37,7 +37,7 @@ const createMetodoPago = async (req, res) => {
     const nuevoMetodo = await MetodoPago.createMetodo({
       nombre,
       descripcion,
-      activo
+      active
     });
     
     res.status(201).json({ 
@@ -53,12 +53,12 @@ const createMetodoPago = async (req, res) => {
 const updateMetodoPago = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, descripcion, activo } = req.body;
+    const { nombre, descripcion, active } = req.body;
 
     const updatedMetodo = await MetodoPago.updateMetodo(id, {
       ...(nombre && { nombre }),
       ...(descripcion !== undefined && { descripcion }),
-      ...(activo !== undefined && { activo })
+      ...(active !== undefined && { active })
     });
 
     res.json({ 
@@ -149,15 +149,15 @@ const getMetodoPagoByName = async (req, res) => {
 const updateMetodoPagoStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { activo } = req.body;
+    const { active } = req.body;
     
-    if (typeof activo !== 'boolean') {
-      return res.status(400).json({ error: 'El campo activo debe ser un valor booleano' });
+    if (typeof active !== 'boolean') {
+      return res.status(400).json({ error: 'El campo active debe ser un valor booleano' });
     }
 
-    const updated = await MetodoPago.updateStatus(id, activo);
+    const updated = await MetodoPago.updateStatus(id, active);
     res.json({ 
-      message: `Método de pago ${activo ? 'activado' : 'desactivado'} exitosamente`, 
+      message: `Método de pago ${active ? 'activado' : 'desactivado'} exitosamente`, 
       data: updated 
     });
   } catch (error) {
@@ -175,7 +175,7 @@ const toggleMetodoPagoStatus = async (req, res) => {
       return res.status(404).json({ error: 'Método de pago no encontrado' });
     }
 
-    const newStatus = !metodo.activo;
+    const newStatus = !metodo.active;
     const updated = await MetodoPago.updateStatus(id, newStatus);
     
     res.json({ 
@@ -217,7 +217,7 @@ const getPopularMetodosPago = async (req, res) => {
 // Actualización masiva de estado
 const bulkUpdateStatus = async (req, res) => {
   try {
-    const { ids, activo } = req.body;
+    const { ids, active } = req.body;
     
     if (!Array.isArray(ids) || ids.length === 0) {
       return res.status(400).json({ 
@@ -225,13 +225,13 @@ const bulkUpdateStatus = async (req, res) => {
       });
     }
 
-    if (typeof activo !== 'boolean') {
+    if (typeof active !== 'boolean') {
       return res.status(400).json({ 
-        error: 'El campo activo debe ser un valor booleano' 
+        error: 'El campo active debe ser un valor booleano' 
       });
     }
 
-    const result = await MetodoPago.bulkUpdateStatus(ids, activo);
+    const result = await MetodoPago.bulkUpdateStatus(ids, active);
     res.json(result);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -282,7 +282,7 @@ const exportMetodosPago = async (req, res) => {
         metodo.id,
         metodo.nombre,
         descripcion,
-        metodo.activo
+        metodo.active
       ].join(',');
     }).join('\n');
     
@@ -297,7 +297,7 @@ const exportMetodosPago = async (req, res) => {
   }
 };
 
-// Verificar si método está activo (útil para validaciones rápidas)
+// Verificar si método está active (útil para validaciones rápidas)
 const checkMetodoActive = async (req, res) => {
   try {
     const { id } = req.params;
@@ -305,7 +305,7 @@ const checkMetodoActive = async (req, res) => {
     
     res.json({
       id: id,
-      activo: isActive,
+      active: isActive,
       message: isActive ? 'Método de pago activo' : 'Método de pago inactivo o no encontrado'
     });
   } catch (error) {

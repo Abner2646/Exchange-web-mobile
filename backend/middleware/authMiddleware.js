@@ -1,7 +1,7 @@
 // middleware/authMiddleware.js
 
 const jwt = require('jsonwebtoken');
-const { Usuario } = require('../models');
+const { User } = require('../models');
 
 // Middleware para autenticar usuario (solo tokens normales)
 const authenticateToken = async (req, res, next) => {
@@ -18,14 +18,14 @@ const authenticateToken = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await Usuario.findByPk(decoded.id);
+    const user = await User.findByPk(decoded.id);
 
-    if (!user || !user.activo) {
+    if (!user || !user.active) {
       return res.status(401).json({ success: false, message: 'Usuario no encontrado o inactivo' });
     }
 
     // Verificar que no haya hecho un logout con este token
-    if (user.ultimoLogout && decoded.iat * 1000 < user.ultimoLogout.getTime()) {
+    if (user.lastLogoutAt && decoded.iat * 1000 < user.lastLogoutAt.getTime()) {
       return res.status(401).json({ error: 'Token invalidado por logout' });
     }
 
@@ -34,11 +34,11 @@ const authenticateToken = async (req, res, next) => {
       id: user.id,
       email: user.email,
       username: user.username,
-      rol: user.rol,
-      kycVerificado: user.kycVerificado,
-      activo: user.activo,
-      limiteDiarioUsd: user.limiteDiarioUsd,
-      emailVerificado: user.emailVerificado,
+      role: user.role,
+      kycVerified: user.kycVerified,
+      active: user.active,
+      dailyLimitUsd: user.dailyLimitUsd,
+      emailVerified: user.emailVerified,
       googleId: user.googleId
     };
 
@@ -61,7 +61,7 @@ const requireEmailVerified = (req, res, next) => {
   }
 
   // Verificar que el email esté verificado en la base de datos
-  if (!req.user.emailVerificado) {
+  if (!req.user.emailVerified) {
     return res.status(403).json({ 
       success: false, 
       message: 'Debes verificar tu email antes de realizar esta operación',
@@ -80,18 +80,18 @@ const optionalAuth = async (req, res, next) => {
     if (!token) return next();
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await Usuario.findByPk(decoded.id);
+    const user = await User.findByPk(decoded.id);
 
-    if (user && user.activo) {
+    if (user && user.active) {
       req.user = {
         id: user.id,
         email: user.email,
         username: user.username,
-        rol: user.rol,
-        kycVerificado: user.kycVerificado,
-        activo: user.activo,
-        limiteDiarioUsd: user.limiteDiarioUsd,
-        emailVerificado: user.emailVerificado,
+        role: user.role,
+        kycVerified: user.kycVerified,
+        active: user.active,
+        dailyLimitUsd: user.dailyLimitUsd,
+        emailVerified: user.emailVerified,
         googleId: user.googleId
       };
     }
@@ -105,15 +105,15 @@ const optionalAuth = async (req, res, next) => {
 
 // Middleware para verificar KYC
 const requireKYC = (req, res, next) => {
-  if (!req.user?.kycVerificado) {
+  if (!req.user?.kycVerified) {
     return res.status(403).json({ success: false, message: 'Verificación KYC requerida para esta operación' });
   }
   next();
 };
 
-// Middleware para verificar cuenta activa
+// Middleware para verificar cuenta active
 const requireActiveAccount = (req, res, next) => {
-  if (!req.user?.activo) {
+  if (!req.user?.active) {
     return res.status(403).json({ success: false, message: 'Cuenta inactiva' });
   }
   next();
@@ -124,7 +124,7 @@ const requireRole = (allowedRoles) => (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({ success: false, message: 'No autenticado' });
   }
-  if (!allowedRoles.includes(req.user.rol)) {
+  if (!allowedRoles.includes(req.user.role)) {
     return res.status(403).json({ success: false, message: 'No autorizado para esta operación' });
   }
   next();
@@ -136,10 +136,10 @@ const checkUserLimits = async (req, res, next) => {
     const { cantidad } = req.body;
     if (!req.user) return res.status(401).json({ success: false, message: 'No autenticado' });
 
-    if (cantidad > req.user.limiteDiarioUsd) {
+    if (cantidad > req.user.dailyLimitUsd) {
       return res.status(400).json({
         success: false,
-        message: `Monto excede el límite diario de $${req.user.limiteDiarioUsd} USD`
+        message: `Monto excede el límite diario de $${req.user.dailyLimitUsd} USD`
       });
     }
     next();

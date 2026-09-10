@@ -15,13 +15,13 @@ async function seedPasswordUser({ email, username }) {
 
 // Requests a reset and returns the recovery code the fake captured.
 async function forgotAndGetCode(email) {
-  const res = await request(app).post('/api/usuario/forgot-password').send({ email });
+  const res = await request(app).post('/api/user/forgot-password').send({ email });
   const sent = h.fake.sent.find((s) => s.type === 'recuperacion' && s.email === email);
   return { res, code: sent && sent.codigo };
 }
 
 async function login(email, password) {
-  return request(app).post('/api/usuario/login').send({ emailOrUsername: email, password });
+  return request(app).post('/api/user/login').send({ emailOrUsername: email, password });
 }
 
 describe('POST /forgot-password → /verify-reset-code → /reset-password', () => {
@@ -38,13 +38,13 @@ describe('POST /forgot-password → /verify-reset-code → /reset-password', () 
     expect(JSON.stringify(res.body)).not.toContain(code);
 
     const verify = await request(app)
-      .post('/api/usuario/verify-reset-code')
+      .post('/api/user/verify-reset-code')
       .send({ email: 'reset@test.local', codigo: code });
     expect(verify.status).toBe(200);
     expect(verify.body.valid).toBe(true);
 
     const reset = await request(app)
-      .post('/api/usuario/reset-password')
+      .post('/api/user/reset-password')
       .send({ email: 'reset@test.local', codigo: code, newPassword: 'newpassword456', confirmPassword: 'newpassword456' });
     expect(reset.status).toBe(200);
     expect(typeof reset.body.token).toBe('string');
@@ -59,7 +59,7 @@ describe('POST /forgot-password → /verify-reset-code → /reset-password', () 
   });
 
   test('forgot-password for an unknown email returns 200 without emailing (no account enumeration)', async () => {
-    const res = await request(app).post('/api/usuario/forgot-password').send({ email: 'ghost@test.local' });
+    const res = await request(app).post('/api/user/forgot-password').send({ email: 'ghost@test.local' });
 
     expect(res.status).toBe(200);
     const codes = h.fake.sent.filter((s) => s.type === 'recuperacion');
@@ -71,7 +71,7 @@ describe('POST /forgot-password → /verify-reset-code → /reset-password', () 
     await forgotAndGetCode('badreset@test.local');
 
     const verify = await request(app)
-      .post('/api/usuario/verify-reset-code')
+      .post('/api/user/verify-reset-code')
       .send({ email: 'badreset@test.local', codigo: '000000' });
 
     expect(verify.status).toBe(400);
@@ -83,7 +83,7 @@ describe('POST /forgot-password → /verify-reset-code → /reset-password', () 
     const { code } = await forgotAndGetCode('mismatch@test.local');
 
     const reset = await request(app)
-      .post('/api/usuario/reset-password')
+      .post('/api/user/reset-password')
       .send({ email: 'mismatch@test.local', codigo: code, newPassword: 'newpassword456', confirmPassword: 'different789' });
 
     expect(reset.status).toBe(400);
@@ -98,7 +98,7 @@ describe('POST /forgot-password → /verify-reset-code → /reset-password', () 
     await forgotAndGetCode('wrongcode@test.local');
 
     const reset = await request(app)
-      .post('/api/usuario/reset-password')
+      .post('/api/user/reset-password')
       .send({ email: 'wrongcode@test.local', codigo: '000000', newPassword: 'newpassword456', confirmPassword: 'newpassword456' });
 
     expect(reset.status).toBe(400);
@@ -110,7 +110,7 @@ describe('PATCH /api/usuario/me/change-password', () => {
     const user = await seedPasswordUser({ email: 'changepw@test.local', username: 'changepwuser' });
 
     const res = await request(app)
-      .patch('/api/usuario/me/change-password')
+      .patch('/api/user/me/change-password')
       .set(f.authHeader(user))
       .send({ currentPassword: 'password123', newPassword: 'newpassword456' });
 
@@ -127,7 +127,7 @@ describe('PATCH /api/usuario/me/change-password', () => {
     const user = await seedPasswordUser({ email: 'wrongcurrent@test.local', username: 'wrongcurrentuser' });
 
     const res = await request(app)
-      .patch('/api/usuario/me/change-password')
+      .patch('/api/user/me/change-password')
       .set(f.authHeader(user))
       .send({ currentPassword: 'not-my-password', newPassword: 'newpassword456' });
 

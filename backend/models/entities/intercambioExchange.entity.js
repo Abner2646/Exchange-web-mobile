@@ -15,7 +15,7 @@ function initIntercambioExchange(sequelize) {
       allowNull: false,
       field: 'usuario_id',
       references: {
-        model: 'usuarios',
+        model: 'users',
         key: 'id'
       }
     },

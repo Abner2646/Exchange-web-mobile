@@ -14,9 +14,9 @@ function createTransaccionBlockchainModel(sequelize) {
       const transaccion = await TransaccionBlockchain.findByPk(id, {
         include: [
           {
-            model: sequelize.models.Usuario,
+            model: sequelize.models.User,
             as: 'usuario',
-            attributes: ['id', 'email', 'username', 'activo']
+            attributes: ['id', 'email', 'username', 'active']
           },
           {
             model: sequelize.models.Criptomoneda,
@@ -24,7 +24,7 @@ function createTransaccionBlockchainModel(sequelize) {
             attributes: ['id', 'symbol', 'nombre', 'red', 'decimales']
           },
           {
-            model: sequelize.models.Usuario,
+            model: sequelize.models.User,
             as: 'adminAprobador',
             attributes: ['id', 'email', 'username'],
             required: false
@@ -44,7 +44,7 @@ function createTransaccionBlockchainModel(sequelize) {
         where: { txHash },
         include: [
           {
-            model: sequelize.models.Usuario,
+            model: sequelize.models.User,
             as: 'usuario',
             attributes: ['id', 'email', 'username']
           },
@@ -136,7 +136,7 @@ function createTransaccionBlockchainModel(sequelize) {
         where: whereClause,
         include: [
           {
-            model: sequelize.models.Usuario,
+            model: sequelize.models.User,
             as: 'usuario',
             attributes: ['id', 'email', 'username']
           },
@@ -146,7 +146,7 @@ function createTransaccionBlockchainModel(sequelize) {
             attributes: ['id', 'symbol', 'nombre', 'red', 'decimales']
           },
           {
-            model: sequelize.models.Usuario,
+            model: sequelize.models.User,
             as: 'adminAprobador',
             attributes: ['id', 'email', 'username'],
             required: false
@@ -529,7 +529,7 @@ function createTransaccionBlockchainModel(sequelize) {
         },
         include: [
           {
-            model: sequelize.models.Usuario,
+            model: sequelize.models.User,
             as: 'usuario',
             attributes: ['id', 'email', 'username']
           },
@@ -556,7 +556,7 @@ function createTransaccionBlockchainModel(sequelize) {
         },
         include: [
           {
-            model: sequelize.models.Usuario,
+            model: sequelize.models.User,
             as: 'usuario',
             attributes: ['id', 'email', 'username']
           },
@@ -582,7 +582,7 @@ function createTransaccionBlockchainModel(sequelize) {
         },
         include: [
           {
-            model: sequelize.models.Usuario,
+            model: sequelize.models.User,
             as: 'usuario',
             attributes: ['id', 'email', 'username']
           },
@@ -661,15 +661,15 @@ function createTransaccionBlockchainModel(sequelize) {
     // Ver el comentario de _acreditarDeposito (Altos #10).
     const { BalanceUsuario } = require('./index');
     try {
-      // Validar usuario activo
-      const usuario = await sequelize.models.Usuario.findByPk(userId);
-      if (!usuario || !usuario.activo) {
+      // Validar usuario active
+      const usuario = await sequelize.models.User.findByPk(userId);
+      if (!usuario || !usuario.active) {
         return { valid: false, message: 'Usuario no encontrado o inactivo' };
       }
 
-      // Validar criptomoneda activa
+      // Validar criptomoneda active
       const criptomoneda = await sequelize.models.Criptomoneda.findByPk(criptomonedaId);
-      if (!criptomoneda || !criptomoneda.activa) {
+      if (!criptomoneda || !criptomoneda.active) {
         return { valid: false, message: 'Criptomoneda no encontrada o inactiva' };
       }
 

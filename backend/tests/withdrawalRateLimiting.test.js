@@ -12,19 +12,19 @@ const jwt = require('jsonwebtoken');
 
 const mockUser = {
   id: 'user-1',
-  activo: true,
+  active: true,
   email: 'user@example.com',
   username: 'user1',
-  rol: 'normal',
-  kycVerificado: true,
-  limiteDiarioUsd: 1000,
-  emailVerificado: true,
+  role: 'normal',
+  kycVerified: true,
+  dailyLimitUsd: 1000,
+  emailVerified: true,
   googleId: null,
-  ultimoLogout: null,
+  lastLogoutAt: null,
 };
 
 jest.mock('../models', () => ({
-  Usuario: { findByPk: jest.fn() },
+  User: { findByPk: jest.fn() },
   TransaccionBlockchain: {},
   Criptomoneda: {},
   BalanceUsuario: {},
@@ -38,7 +38,7 @@ jest.mock('../controllers/transaccionBlockchain.controller', () => {
   return new Proxy({}, { get: () => ok });
 });
 
-const { Usuario } = require('../models');
+const { User } = require('../models');
 const express = require('express');
 const request = require('supertest');
 const transaccionBlockchainRoutes = require('../routes/transaccionBlockchain.routes');
@@ -68,7 +68,7 @@ describe('POST /transaccionBlockchain/withdraw rate limiting (withdrawal: 10/15m
   const auth = `Bearer ${tokenFor(mockUser.id)}`;
 
   beforeEach(() => {
-    Usuario.findByPk.mockResolvedValue(mockUser);
+    User.findByPk.mockResolvedValue(mockUser);
   });
 
   test('permite 10 intentos y bloquea el 11vo con 429', async () => {

@@ -4,7 +4,7 @@ const { DataTypes, Model } = require('sequelize');
 // Key-value para parámetros globales de política de negocio que no tienen una
 // entidad propia (ej. confirmaciones requeridas por red, thresholds AML, mínimos
 // de operación). Lo que ya vive en una entidad se queda ahí (la comisión por par
-// en ParExchange, el límite diario por usuario en Usuario) — esta tabla es para lo
+// en ParExchange, el límite diario por usuario en User) — esta tabla es para lo
 // que hoy está hardcodeado/env y es política de negocio, no infra.
 //
 // Los SECRETOS y la config por-ambiente (claves, RPC URLs, credenciales) NO van

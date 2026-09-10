@@ -157,7 +157,7 @@ describe('POST /api/intercambioExchange (swap) — rejections', () => {
   });
 
   test('daily limit exceeded → 400 EXCHANGE_DAILY_LIMIT_EXCEEDED, balances unchanged', async () => {
-    const { user, usdt, par } = await seedPairOnly({ limiteDiarioUsd: 0.1 });
+    const { user, usdt, par } = await seedPairOnly({ dailyLimitUsd: 0.1 });
     await f.seedBalance(user, usdt, '1');   // enough balance, but over daily limit
 
     const res = await request(app).post('/api/intercambioExchange/')

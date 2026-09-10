@@ -12,13 +12,13 @@
 process.env.JWT_SECRET = 'test-secret';
 
 jest.mock('../models', () => ({
-  Usuario: { findByPk: jest.fn() },
+  User: { findByPk: jest.fn() },
   sequelize: {},
   TransaccionBlockchain: {}, Criptomoneda: {}, BalanceUsuario: {}, DireccionDeposito: {},
   // Required by idempotency.middleware (now wired into /withdraw)
   IdempotencyKey: { create: jest.fn().mockResolvedValue({}), findOne: jest.fn(), update: jest.fn(), destroy: jest.fn() },
 }));
-jest.mock('../controllers/usuario.controller.js', () => {
+jest.mock('../modules/users/user.controller.js', () => {
   const ok = (req, res) => res.json({ success: true, body: req.body });
   return new Proxy({}, { get: () => ok });
 });
@@ -34,19 +34,19 @@ test('schemas/transaccionBlockchain.schema.js carga sin lanzar (antes crasheaba 
 describe('POST /usuario/login valida el body con Joi antes del controller', () => {
   const express = require('express');
   const request = require('supertest');
-  const usuarioRoutes = require('../routes/usuario.routes.js');
+  const userRoutes = require('../modules/users/user.routes.js');
 
   function buildApp() {
     const app = express();
     app.use(express.json());
-    app.use('/usuario', usuarioRoutes);
+    app.use('/user', userRoutes);
     return app;
   }
 
   test('body válido (emailOrUsername + password) llega al controller', async () => {
     const app = buildApp();
     const res = await request(app)
-      .post('/usuario/login')
+      .post('/user/login')
       .send({ emailOrUsername: 'user@example.com', password: 'x' });
     expect(res.status).toBe(200);
   });
@@ -54,7 +54,7 @@ describe('POST /usuario/login valida el body con Joi antes del controller', () =
   test('sin password: 400 antes de tocar el controller', async () => {
     const app = buildApp();
     const res = await request(app)
-      .post('/usuario/login')
+      .post('/user/login')
       .send({ emailOrUsername: 'user@example.com' });
     expect(res.status).toBe(400);
     expect(res.body.errors.some((e) => e.field === 'password')).toBe(true);
@@ -63,7 +63,7 @@ describe('POST /usuario/login valida el body con Joi antes del controller', () =
   test('sin emailOrUsername: 400 antes de tocar el controller', async () => {
     const app = buildApp();
     const res = await request(app)
-      .post('/usuario/login')
+      .post('/user/login')
       .send({ password: 'x' });
     expect(res.status).toBe(400);
     expect(res.body.errors.some((e) => e.field === 'emailOrUsername')).toBe(true);
@@ -72,13 +72,13 @@ describe('POST /usuario/login valida el body con Joi antes del controller', () =
 
 describe('POST /transaccionBlockchain/withdraw valida el body con Joi antes del controller', () => {
   const mockUser = {
-    id: 'user-1', activo: true, email: 'user@example.com', username: 'user1',
-    rol: 'normal', kycVerificado: true, limiteDiarioUsd: 1000,
-    emailVerificado: true, googleId: null, ultimoLogout: null,
+    id: 'user-1', active: true, email: 'user@example.com', username: 'user1',
+    role: 'normal', kycVerified: true, dailyLimitUsd: 1000,
+    emailVerified: true, googleId: null, lastLogoutAt: null,
   };
 
   const jwt = require('jsonwebtoken');
-  const { Usuario } = require('../models');
+  const { User } = require('../models');
   const express = require('express');
   const request = require('supertest');
   const transaccionBlockchainRoutes = require('../routes/transaccionBlockchain.routes');
@@ -95,7 +95,7 @@ describe('POST /transaccionBlockchain/withdraw valida el body con Joi antes del 
   }
 
   beforeEach(() => {
-    Usuario.findByPk.mockResolvedValue(mockUser);
+    User.findByPk.mockResolvedValue(mockUser);
   });
 
   const validBody = {

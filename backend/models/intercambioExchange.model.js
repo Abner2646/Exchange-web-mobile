@@ -13,14 +13,14 @@ function createIntercambioExchangeModel(sequelize) {
       return await IntercambioExchange.findByPk(id, {
         include: [
           {
-            model: sequelize.models.Usuario,
+            model: sequelize.models.User,
             as: 'usuario',
-            attributes: ['id', 'username', 'email', 'reputacionPromedio']
+            attributes: ['id', 'username', 'email', 'averageRating']
           },
           {
             model: sequelize.models.ParExchange,
             as: 'par',
-            attributes: ['id', 'activo', 'comisionPorcentaje', 'precioActual'],
+            attributes: ['id', 'active', 'comisionPorcentaje', 'precioActual'],
             include: [
               {
                 model: sequelize.models.Criptomoneda,
@@ -87,14 +87,14 @@ function createIntercambioExchangeModel(sequelize) {
         where,
         include: [
           {
-            model: sequelize.models.Usuario,
+            model: sequelize.models.User,
             as: 'usuario',
-            attributes: ['id', 'username', 'reputacionPromedio']
+            attributes: ['id', 'username', 'averageRating']
           },
           {
             model: sequelize.models.ParExchange,
             as: 'par',
-            attributes: ['id', 'activo'],
+            attributes: ['id', 'active'],
             include: [
               {
                 model: sequelize.models.Criptomoneda,
@@ -149,7 +149,7 @@ function createIntercambioExchangeModel(sequelize) {
           {
             model: sequelize.models.ParExchange,
             as: 'par',
-            attributes: ['id', 'activo', 'precioActual'],
+            attributes: ['id', 'active', 'precioActual'],
             include: [
               {
                 model: sequelize.models.Criptomoneda,
@@ -190,14 +190,14 @@ function createIntercambioExchangeModel(sequelize) {
         },
         include: [
           {
-            model: sequelize.models.Usuario,
+            model: sequelize.models.User,
             as: 'usuario',
             attributes: ['id', 'username', 'email']
           },
           {
             model: sequelize.models.ParExchange,
             as: 'par',
-            attributes: ['id', 'activo'],
+            attributes: ['id', 'active'],
             include: [
               {
                 model: sequelize.models.Criptomoneda,
@@ -475,9 +475,9 @@ function createIntercambioExchangeModel(sequelize) {
         ],
         include: [
           {
-            model: sequelize.models.Usuario,
+            model: sequelize.models.User,
             as: 'usuario',
-            attributes: ['id', 'username', 'reputacionPromedio']
+            attributes: ['id', 'username', 'averageRating']
           }
         ],
         where: {

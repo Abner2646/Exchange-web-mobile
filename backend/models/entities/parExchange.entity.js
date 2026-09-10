@@ -66,7 +66,7 @@ function initParExchange(sequelize) {
       allowNull: false,
       field: 'comision_porcentaje'
     },
-    activo: {
+    active: {
       type: DataTypes.BOOLEAN,
       defaultValue: true
     },
@@ -100,7 +100,7 @@ function initParExchange(sequelize) {
         fields: ['cripto_base_id', 'cripto_quote_id']
       },
       {
-        fields: ['activo']
+        fields: ['active']
       },
       {
         fields: ['volumen_24h']

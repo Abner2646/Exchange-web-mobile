@@ -1,5 +1,5 @@
-// models/usuario.model.js - PARCHEADO
-const initUsuario = require('./entities/usuario.entity');
+// models/user.model.js - PARCHEADO
+const initUser = require('./user.entity');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const dotenv = require('dotenv');
@@ -8,22 +8,22 @@ const { Op } = require('sequelize');
 dotenv.config();
 const secretWord = process.env.JWT_SECRET;
 
-function createUsuarioModel(sequelize) {
-  const Usuario = initUsuario(sequelize);
+function createUserModel(sequelize) {
+  const User = initUser(sequelize);
 
 // Función para generar JWT actualizado (instancia)
-  Usuario.prototype.generateUpdatedJWT = function() {
+  User.prototype.generateUpdatedJWT = function() {
     const payload = {
       id: this.id,
       email: this.email,
       username: this.username,
-      rol: this.rol,
-      kycVerificado: this.kycVerificado,
-      activo: this.activo,
-      reputacionPromedio: this.reputacionPromedio,
-      pais: this.pais,
-      dosFactoresActivado: this.dosFactoresActivado || false,
-      emailVerificado: this.emailVerificado || false,
+      role: this.role,
+      kycVerified: this.kycVerified,
+      active: this.active,
+      averageRating: this.averageRating,
+      country: this.country,
+      twoFactorEnabled: this.twoFactorEnabled || false,
+      emailVerified: this.emailVerified || false,
       googleId: this.googleId || null,
     };
 
@@ -35,18 +35,18 @@ function createUsuarioModel(sequelize) {
   };
 
   // Método estático para generar JWT
-  Usuario.generateUpdatedJWT = function(userData) {
+  User.generateUpdatedJWT = function(userData) {
     const payload = {
       id: userData.id,
       email: userData.email,
       username: userData.username,
-      rol: userData.rol,
-      kycVerificado: userData.kycVerificado,
-      activo: userData.activo,
-      reputacionPromedio: userData.reputacionPromedio,
-      pais: userData.pais,
-      dosFactoresActivado: userData.dosFactoresActivado || false,
-      emailVerificado: userData.emailVerificado || false,
+      role: userData.role,
+      kycVerified: userData.kycVerified,
+      active: userData.active,
+      averageRating: userData.averageRating,
+      country: userData.country,
+      twoFactorEnabled: userData.twoFactorEnabled || false,
+      emailVerified: userData.emailVerified || false,
       googleId: userData.googleId || null,
     };
 
@@ -58,15 +58,15 @@ function createUsuarioModel(sequelize) {
   };
 
   // Métodos de autenticación existentes
-  Usuario.findByCredentials = async (emailOrUsername, password) => {
+  User.findByCredentials = async (emailOrUsername, password) => {
     try {
-      const user = await Usuario.findOne({
+      const user = await User.findOne({
         where: {
           [Op.or]: [
             { email: emailOrUsername.toLowerCase() },
             { username: emailOrUsername.toLowerCase() }
           ],
-          activo: true
+          active: true
         }
       });
 
@@ -86,16 +86,16 @@ function createUsuarioModel(sequelize) {
     }
   };
 
-  Usuario.findByExternalId = async (googleId) => {
-    return await Usuario.findOne({
-      where: { googleId, activo: true }
+  User.findByExternalId = async (googleId) => {
+    return await User.findOne({
+      where: { googleId, active: true }
     });
   };
 
-  Usuario.createWithPassword = async (data) => {
-    const { email, username, password, pais, ...otherData } = data;
+  User.createWithPassword = async (data) => {
+    const { email, username, password, country, ...otherData } = data;
 
-    const existingUser = await Usuario.findOne({
+    const existingUser = await User.findOne({
       where: {
         [Op.or]: [
           { email: email.toLowerCase() },
@@ -113,8 +113,8 @@ function createUsuarioModel(sequelize) {
     }
 
     // VERIFICAR SI ES EL PRIMER USUARIO
-    const userCount = await Usuario.count();
-    const rol = userCount === 0 ? 'super_admin' : 'normal';
+    const userCount = await User.count();
+    const role = userCount === 0 ? 'super_admin' : 'normal';
 
     const saltRounds = 12;
     const passwordHash = await bcrypt.hash(password, saltRounds);
@@ -123,27 +123,27 @@ function createUsuarioModel(sequelize) {
       email: email.toLowerCase(),
       username: username.toLowerCase(),
       passwordHash,
-      pais,
-      rol,
-      emailVerificado: false,
+      country,
+      role,
+      emailVerified: false,
       ...otherData
     };
 
-    const newUser = await Usuario.create(userData);
+    const newUser = await User.create(userData);
     
     // Generar código de verificación de email
-    const codigoVerificacion = await newUser.generarCodigoVerificacionEmail();
+    const codigoVerificacion = await newUser.generateEmailVerificationCode();
 
     return { user: newUser, codigoVerificacion };
   };
 
   // --------------------- MÉTODOS PARA RECUPERACIÓN DE CONTRASEÑA --------------------- //
   
-  Usuario.requestPasswordReset = async (email) => {
-    const user = await Usuario.findOne({
+  User.requestPasswordReset = async (email) => {
+    const user = await User.findOne({
       where: { 
         email: email.toLowerCase(),
-        activo: true,
+        active: true,
         passwordHash: { [Op.ne]: null }
       }
     });
@@ -156,21 +156,21 @@ function createUsuarioModel(sequelize) {
     }
 
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-    if (user.ultimoIntentoRecuperacion && 
-        user.ultimoIntentoRecuperacion > oneHourAgo && 
-        user.intentosRecuperacion >= 3) {
+    if (user.lastPasswordResetAttemptAt && 
+        user.lastPasswordResetAttemptAt > oneHourAgo && 
+        user.passwordResetAttempts >= 3) {
       throw new Error('Demasiados intentos. Espera 1 hora antes de intentar nuevamente');
     }
 
-    const codigo = await user.generarCodigoRecuperacion();
+    const codigo = await user.generatePasswordResetCode();
     
-    const nuevosIntentos = user.ultimoIntentoRecuperacion && 
-                          user.ultimoIntentoRecuperacion > oneHourAgo ? 
-                          user.intentosRecuperacion + 1 : 1;
+    const nuevosIntentos = user.lastPasswordResetAttemptAt && 
+                          user.lastPasswordResetAttemptAt > oneHourAgo ? 
+                          user.passwordResetAttempts + 1 : 1;
     
     await user.update({
-      intentosRecuperacion: nuevosIntentos,
-      ultimoIntentoRecuperacion: new Date()
+      passwordResetAttempts: nuevosIntentos,
+      lastPasswordResetAttemptAt: new Date()
     });
 
     return {
@@ -181,11 +181,11 @@ function createUsuarioModel(sequelize) {
     };
   };
 
-  Usuario.verifyResetCode = async (email, codigo) => {
-    const user = await Usuario.findOne({
+  User.verifyResetCode = async (email, codigo) => {
+    const user = await User.findOne({
       where: { 
         email: email.toLowerCase(),
-        activo: true
+        active: true
       }
     });
 
@@ -193,7 +193,7 @@ function createUsuarioModel(sequelize) {
       throw new Error('Código inválido o expirado');
     }
 
-    if (!user.validarCodigoRecuperacion(codigo)) {
+    if (!user.validatePasswordResetCode(codigo)) {
       throw new Error('Código inválido o expirado');
     }
 
@@ -202,14 +202,14 @@ function createUsuarioModel(sequelize) {
 
   // --------------------- MÉTODOS PARA VERIFICACIÓN DE EMAIL --------------------- //
 
-  Usuario.requestEmailVerification = async (userId) => {
-    const user = await Usuario.findByPk(userId);
+  User.requestEmailVerification = async (userId) => {
+    const user = await User.findByPk(userId);
     
     if (!user) {
       throw new Error('Usuario no encontrado');
     }
 
-    if (user.emailVerificado) {
+    if (user.emailVerified) {
       throw new Error('Email ya verificado');
     }
 
@@ -217,7 +217,7 @@ function createUsuarioModel(sequelize) {
       throw new Error('Usuarios de Google no necesitan verificar email');
     }
 
-    const codigo = await user.generarCodigoVerificacionEmail();
+    const codigo = await user.generateEmailVerificationCode();
 
     return {
       user,
@@ -226,25 +226,25 @@ function createUsuarioModel(sequelize) {
     };
   };
 
-  Usuario.verifyEmail = async (userId, codigo) => {
-    const user = await Usuario.findByPk(userId);
+  User.verifyEmail = async (userId, codigo) => {
+    const user = await User.findByPk(userId);
 
     if (!user) {
       throw new Error('Usuario no encontrado');
     }
 
-    if (user.emailVerificado) {
+    if (user.emailVerified) {
       throw new Error('Email ya verificado');
     }
 
-    if (!user.validarCodigoVerificacionEmail(codigo)) {
+    if (!user.validateEmailVerificationCode(codigo)) {
       throw new Error('Código inválido o expirado');
     }
 
     await user.update({
-      emailVerificado: true,
-      codigoVerificacionEmail: null,
-      codigoVerificacionEmailExpiracion: null
+      emailVerified: true,
+      emailVerificationCode: null,
+      emailVerificationCodeExpiresAt: null
     });
 
     const token = user.generateUpdatedJWT();
@@ -252,14 +252,14 @@ function createUsuarioModel(sequelize) {
     return { user, token, message: 'Email verificado exitosamente' };
   };
 
-  Usuario.resendEmailVerification = async (userId) => {
-    const user = await Usuario.findByPk(userId);
+  User.resendEmailVerification = async (userId) => {
+    const user = await User.findByPk(userId);
     
     if (!user) {
       throw new Error('Usuario no encontrado');
     }
 
-    if (user.emailVerificado) {
+    if (user.emailVerified) {
       throw new Error('Email ya verificado');
     }
 
@@ -267,7 +267,7 @@ function createUsuarioModel(sequelize) {
       throw new Error('Usuarios de Google no necesitan verificar email');
     }
 
-    const codigo = await user.generarCodigoVerificacionEmail();
+    const codigo = await user.generateEmailVerificationCode();
 
     return {
       user,
@@ -277,15 +277,15 @@ function createUsuarioModel(sequelize) {
   };
 
 
-  Usuario.resetPasswordWithCode = async (email, codigo, newPassword) => {
-    const user = await Usuario.findOne({
+  User.resetPasswordWithCode = async (email, codigo, newPassword) => {
+    const user = await User.findOne({
       where: { 
         email: email.toLowerCase(),
-        activo: true
+        active: true
       }
     });
 
-    if (!user || !user.validarCodigoRecuperacion(codigo)) {
+    if (!user || !user.validatePasswordResetCode(codigo)) {
       throw new Error('Código inválido o expirado');
     }
 
@@ -298,9 +298,9 @@ function createUsuarioModel(sequelize) {
 
     await user.update({ 
       passwordHash: newPasswordHash,
-      tokenRecuperacion: null,
-      tokenExpiracion: null,
-      intentosRecuperacion: 0
+      passwordResetCode: null,
+      passwordResetCodeExpiresAt: null,
+      passwordResetAttempts: 0
     });
 
     const token = user.generateUpdatedJWT();
@@ -310,13 +310,13 @@ function createUsuarioModel(sequelize) {
 
   // --------------------- MÉTODOS PARA LOGOUT CON INVALIDACIÓN DE TOKENS --------------------- //
 
-  Usuario.logout = async (userId) => {
-    const user = await Usuario.findByPk(userId);
+  User.logout = async (userId) => {
+    const user = await User.findByPk(userId);
     if (!user) {
       throw new Error('Usuario no encontrado');
     }
 
-    await user.update({ ultimoLogout: new Date() });
+    await user.update({ lastLogoutAt: new Date() });
     
     return { 
       message: 'Logout exitoso - Tokens anteriores invalidados',
@@ -324,21 +324,21 @@ function createUsuarioModel(sequelize) {
     };
   };
 
-  Usuario.isTokenValidAfterLogout = async (userId, tokenIssuedAt) => {
-    const user = await Usuario.findByPk(userId);
+  User.isTokenValidAfterLogout = async (userId, tokenIssuedAt) => {
+    const user = await User.findByPk(userId);
     
     if (!user) {
       return false;
     }
     
     // Si nunca hizo logout, el token es válido
-    if (!user.ultimoLogout) {
+    if (!user.lastLogoutAt) {
       return true;
     }
     
     // Comparar timestamp del token vs último logout
     const tokenTimestamp = tokenIssuedAt * 1000; // JWT usa segundos, JS usa milisegundos
-    const logoutTimestamp = user.ultimoLogout.getTime();
+    const logoutTimestamp = user.lastLogoutAt.getTime();
     
     // Token es válido si fue emitido DESPUÉS del logout
     return tokenTimestamp > logoutTimestamp;
@@ -346,24 +346,24 @@ function createUsuarioModel(sequelize) {
 
   // --------------------- MÉTODOS PARA AUTENTICACIÓN EN DOS PASOS --------------------- //
 
-Usuario.toggle2FA = async (id, nuevoEstado) => {
-  const user = await Usuario.findByPk(id);
+User.toggle2FA = async (id, nuevoEstado) => {
+  const user = await User.findByPk(id);
   if (!user) {
     throw new Error('Usuario no encontrado');
   }
 
   await user.update({ 
-    dosFactoresActivado: nuevoEstado,
-    codigo2FA: null,
-    codigo2FAExpiracion: null
+    twoFactorEnabled: nuevoEstado,
+    twoFactorCode: null,
+    twoFactorCodeExpiresAt: null
   });
 
   const token = user.generateUpdatedJWT();
   return { user, token };
 };
 
-  Usuario.generateAndSave2FACode = async (id) => {
-    const user = await Usuario.findByPk(id);
+  User.generateAndSave2FACode = async (id) => {
+    const user = await User.findByPk(id);
     if (!user) {
       throw new Error('Usuario no encontrado');
     }
@@ -372,30 +372,30 @@ Usuario.toggle2FA = async (id, nuevoEstado) => {
     const expiracion = new Date(Date.now() + 5 * 60 * 1000); // 5 minutos
 
     await user.update({
-      codigo2FA: codigo,
-      codigo2FAExpiracion: expiracion
+      twoFactorCode: codigo,
+      twoFactorCodeExpiresAt: expiracion
     });
 
     return { codigo, user };
   };
 
-  Usuario.verify2FACode = async (id, codigo) => {
-    const user = await Usuario.findByPk(id);
+  User.verify2FACode = async (id, codigo) => {
+    const user = await User.findByPk(id);
     if (!user) {
       throw new Error('Usuario no encontrado');
     }
 
-    if (!user.codigo2FA || 
-        user.codigo2FA !== codigo || 
-        !user.codigo2FAExpiracion || 
-        new Date() > user.codigo2FAExpiracion) {
+    if (!user.twoFactorCode || 
+        user.twoFactorCode !== codigo || 
+        !user.twoFactorCodeExpiresAt || 
+        new Date() > user.twoFactorCodeExpiresAt) {
       throw new Error('Código 2FA inválido o expirado');
     }
 
     await user.update({
-      codigo2FA: null,
-      codigo2FAExpiracion: null,
-      ultimoLogin: new Date()
+      twoFactorCode: null,
+      twoFactorCodeExpiresAt: null,
+      lastLoginAt: new Date()
     });
 
     const token = user.generateUpdatedJWT();
@@ -403,15 +403,15 @@ Usuario.toggle2FA = async (id, nuevoEstado) => {
   };
 
   // ============ MÉTODO CORREGIDO: loginStep1 ============
-  Usuario.loginStep1 = async (emailOrUsername, password) => {
+  User.loginStep1 = async (emailOrUsername, password) => {
     try {
-      const user = await Usuario.findOne({
+      const user = await User.findOne({
         where: {
           [Op.or]: [
             { email: emailOrUsername.toLowerCase() },
             { username: emailOrUsername.toLowerCase() }
           ],
-          activo: true
+          active: true
         }
       });
 
@@ -425,8 +425,8 @@ Usuario.toggle2FA = async (id, nuevoEstado) => {
       }
 
       // Si NO tiene 2FA activado, login normal
-      if (!user.dosFactoresActivado) {
-        await user.update({ ultimoLogin: new Date() });
+      if (!user.twoFactorEnabled) {
+        await user.update({ lastLoginAt: new Date() });
         const token = user.generateUpdatedJWT();
         return { 
           user, 
@@ -438,13 +438,13 @@ Usuario.toggle2FA = async (id, nuevoEstado) => {
 
       // ============ NUEVO: Si tiene 2FA activado ============
       // Generar código 2FA de 6 dígitos
-      const codigo2FA = Math.floor(100000 + Math.random() * 900000).toString();
+      const twoFactorCode = Math.floor(100000 + Math.random() * 900000).toString();
       const expiracion = new Date(Date.now() + 5 * 60 * 1000); // 5 minutos
 
       // Guardar código en la base de datos
       await user.update({
-        codigo2FA: codigo2FA,
-        codigo2FAExpiracion: expiracion
+        twoFactorCode: twoFactorCode,
+        twoFactorCodeExpiresAt: expiracion
       });
 
       // Generar token temporal (válido por 10 minutos) para verificar 2FA
@@ -464,7 +464,7 @@ Usuario.toggle2FA = async (id, nuevoEstado) => {
           username: user.username,
           email: user.email
         },
-        codigo2FA: codigo2FA,  // ⚠️ NUEVO: Código generado
+        twoFactorCode: twoFactorCode,  // ⚠️ NUEVO: Código generado
         temporalToken: temporalToken,  // ⚠️ NUEVO: Token temporal
         requires2FA: true,
         loginComplete: false
@@ -475,7 +475,7 @@ Usuario.toggle2FA = async (id, nuevoEstado) => {
   };
 
   // ============ NUEVA FUNCIÓN: verify2FA ============
-  Usuario.verify2FA = async (temporalToken, codigo) => {
+  User.verify2FA = async (temporalToken, codigo) => {
     // Verificar y decodificar el token temporal
     let decoded;
     try {
@@ -490,24 +490,24 @@ Usuario.toggle2FA = async (id, nuevoEstado) => {
     }
 
     // Buscar el usuario
-    const user = await Usuario.findByPk(decoded.userId);
+    const user = await User.findByPk(decoded.userId);
     if (!user) {
       throw new Error('Usuario no encontrado');
     }
 
     // Verificar el código 2FA
-    if (!user.codigo2FA || 
-        user.codigo2FA !== codigo || 
-        !user.codigo2FAExpiracion || 
-        new Date() > user.codigo2FAExpiracion) {
+    if (!user.twoFactorCode || 
+        user.twoFactorCode !== codigo || 
+        !user.twoFactorCodeExpiresAt || 
+        new Date() > user.twoFactorCodeExpiresAt) {
       throw new Error('Código 2FA inválido o expirado');
     }
 
     // Limpiar código 2FA y actualizar último login
     await user.update({
-      codigo2FA: null,
-      codigo2FAExpiracion: null,
-      ultimoLogin: new Date()
+      twoFactorCode: null,
+      twoFactorCodeExpiresAt: null,
+      lastLoginAt: new Date()
     });
 
     // Generar token JWT normal
@@ -517,7 +517,7 @@ Usuario.toggle2FA = async (id, nuevoEstado) => {
   };
 
   // ============ NUEVA FUNCIÓN: resend2FACode ============
-  Usuario.resend2FACode = async (temporalToken) => {
+  User.resend2FACode = async (temporalToken) => {
     // Verificar y decodificar el token temporal
     let decoded;
     try {
@@ -532,7 +532,7 @@ Usuario.toggle2FA = async (id, nuevoEstado) => {
     }
 
     // Buscar el usuario
-    const user = await Usuario.findByPk(decoded.userId);
+    const user = await User.findByPk(decoded.userId);
     if (!user) {
       throw new Error('Usuario no encontrado');
     }
@@ -542,16 +542,16 @@ Usuario.toggle2FA = async (id, nuevoEstado) => {
     const expiracion = new Date(Date.now() + 5 * 60 * 1000); // 5 minutos
 
     await user.update({
-      codigo2FA: codigo,
-      codigo2FAExpiracion: expiracion
+      twoFactorCode: codigo,
+      twoFactorCodeExpiresAt: expiracion
     });
 
     return { user, codigo };
   };
 
   // Métodos de consulta y gestión existentes
-  Usuario.getById = async (id) => {
-    const user = await Usuario.findByPk(id, {
+  User.getById = async (id) => {
+    const user = await User.findByPk(id, {
       attributes: { exclude: ['passwordHash'] },
       include: [
         // (Paso C: se quitó el include 'balances' — BalanceUsuario ya no es un
@@ -563,7 +563,7 @@ Usuario.toggle2FA = async (id, nuevoEstado) => {
           order: [['created_at', 'DESC']],
           include: [{
             association: 'evaluador',
-            attributes: ['id', 'username', 'reputacionPromedio']
+            attributes: ['id', 'username', 'averageRating']
           }]
         }
       ]
@@ -572,14 +572,14 @@ Usuario.toggle2FA = async (id, nuevoEstado) => {
     return user;
   };
 
-  Usuario.getAll = async (filters = {}) => {
+  User.getAll = async (filters = {}) => {
     const {
-      rol,
-      kycVerificado,
-      activo,
-      pais,
+      role,
+      kycVerified,
+      active,
+      country,
       search,
-      reputacionMin,
+      averageRatingMin,
       page = 1,
       limit = 20,
       orderBy = 'created_at',
@@ -589,11 +589,11 @@ Usuario.toggle2FA = async (id, nuevoEstado) => {
     const where = {};
     const offset = (page - 1) * limit;
 
-    if (rol) where.rol = rol;
-    if (kycVerificado !== undefined) where.kycVerificado = kycVerificado;
-    if (activo !== undefined) where.activo = activo;
-    if (pais) where.pais = pais;
-    if (reputacionMin) where.reputacionPromedio = { [Op.gte]: reputacionMin };
+    if (role) where.role = role;
+    if (kycVerified !== undefined) where.kycVerified = kycVerified;
+    if (active !== undefined) where.active = active;
+    if (country) where.country = country;
+    if (averageRatingMin) where.averageRating = { [Op.gte]: averageRatingMin };
 
     if (search) {
       where[Op.or] = [
@@ -602,16 +602,16 @@ Usuario.toggle2FA = async (id, nuevoEstado) => {
       ];
     }
 
-    const { count, rows } = await Usuario.findAndCountAll({
+    const { count, rows } = await User.findAndCountAll({
       where,
-      attributes: { exclude: ['passwordHash', 'kycData', 'taxId', 'nombreLegal', 'fechaNacimiento'] },
+      attributes: { exclude: ['passwordHash', 'kycData', 'taxId', 'legalName', 'dateOfBirth'] },
       order: [[orderBy, orderDirection]],
       limit: parseInt(limit),
       offset
     });
 
     return {
-      usuarios: rows,
+      users: rows,
       total: count,
       page: parseInt(page),
       limit: parseInt(limit),
@@ -619,60 +619,60 @@ Usuario.toggle2FA = async (id, nuevoEstado) => {
     };
   };
 
-  Usuario.search = async (term, limit = 10) => {
-    return await Usuario.findAll({
+  User.search = async (term, limit = 10) => {
+    return await User.findAll({
       where: {
         [Op.or]: [
           { email: { [Op.iLike]: `%${term}%` } },
           { username: { [Op.iLike]: `%${term}%` } }
         ],
-        activo: true
+        active: true
       },
-      attributes: ['id', 'email', 'username', 'reputacionPromedio', 'kycVerificado'],
+      attributes: ['id', 'email', 'username', 'averageRating', 'kycVerified'],
       limit,
-      order: [['reputacionPromedio', 'DESC']]
+      order: [['averageRating', 'DESC']]
     });
   };
 
   // Métodos administrativos existentes
-  Usuario.updateStatus = async (id, newStatus) => {
-    const user = await Usuario.findByPk(id);
+  User.updateStatus = async (id, newStatus) => {
+    const user = await User.findByPk(id);
     if (!user) {
       throw new Error('Usuario no encontrado');
     }
 
-    await user.update({ activo: newStatus });
+    await user.update({ active: newStatus });
     const token = user.generateUpdatedJWT();
     
     return { user, token };
   };
 
-  Usuario.updateRole = async (id, newRole) => {
+  User.updateRole = async (id, newRole) => {
     const validRoles = ['normal', 'admin', 'super_admin'];
     if (!validRoles.includes(newRole)) {
       throw new Error('Rol inválido');
     }
 
-    const user = await Usuario.findByPk(id);
+    const user = await User.findByPk(id);
     if (!user) {
       throw new Error('Usuario no encontrado');
     }
 
-    await user.update({ rol: newRole });
+    await user.update({ role: newRole });
     const token = user.generateUpdatedJWT();
     
     return { user, token };
   };
 
-  Usuario.updateReputation = async (id, reputacionPromedio, totalValoraciones) => {
-    const user = await Usuario.findByPk(id);
+  User.updateReputation = async (id, averageRating, totalRatings) => {
+    const user = await User.findByPk(id);
     if (!user) {
       throw new Error('Usuario no encontrado');
     }
 
     await user.update({ 
-      reputacionPromedio: parseFloat(reputacionPromedio).toFixed(2), 
-      totalValoraciones 
+      averageRating: parseFloat(averageRating).toFixed(2), 
+      totalRatings 
     });
     const token = user.generateUpdatedJWT();
     
@@ -680,18 +680,18 @@ Usuario.toggle2FA = async (id, nuevoEstado) => {
   };
 
   // Métodos de perfil de usuario existentes
-  Usuario.updateProfile = async (id, data) => {
-    const user = await Usuario.findByPk(id);
+  User.updateProfile = async (id, data) => {
+    const user = await User.findByPk(id);
     if (!user) {
       throw new Error('Usuario no encontrado');
     }
 
     // Radar #14: `username` es el handle de login — INMUTABLE por self-service
     // (no está en la whitelist). El nombre mostrado editable es `displayName`. Los
-    // campos de identidad KYC (nombreLegal/fechaNacimiento/taxId) se setean por el
+    // campos de identidad KYC (legalName/dateOfBirth/taxId) se setean por el
     // flujo de KYC (§4.7), no por edición libre de perfil. La whitelist además
-    // corta cualquier mass-assignment (rol, límites, flag AML no son editables acá).
-    const allowedFields = ['displayName', 'pais', 'estado', 'locale'];
+    // corta cualquier mass-assignment (role, límites, flag AML no son editables acá).
+    const allowedFields = ['displayName', 'country', 'state', 'locale'];
     const updateData = {};
 
     Object.keys(data).forEach(key => {
@@ -706,8 +706,8 @@ Usuario.toggle2FA = async (id, nuevoEstado) => {
     return { user, token };
   };
 
-  Usuario.changePassword = async (id, currentPassword, newPassword) => {
-    const user = await Usuario.findByPk(id);
+  User.changePassword = async (id, currentPassword, newPassword) => {
+    const user = await User.findByPk(id);
     if (!user) {
       throw new Error('Usuario no encontrado');
     }
@@ -731,7 +731,7 @@ Usuario.toggle2FA = async (id, nuevoEstado) => {
     await user.update({ passwordHash: newPasswordHash });
     const token = user.generateUpdatedJWT();
 
-    const { Notificaciones } = require('./index');
+    const { Notificaciones } = require('../../models');
     await Notificaciones.notifySecurityEvent(id, 'cambio_password');
     
     return { user, token };
@@ -742,8 +742,8 @@ Usuario.toggle2FA = async (id, nuevoEstado) => {
   // (case-insensitive); genera un código y lo deja pendiente. El envío del código
   // AL email nuevo lo hace el controller (seam de email). Devuelve el código y el
   // email normalizado para que el controller lo mande al destino nuevo.
-  Usuario.requestEmailChange = async (id, nuevoEmail, currentPassword) => {
-    const user = await Usuario.findByPk(id);
+  User.requestEmailChange = async (id, nuevoEmail, currentPassword) => {
+    const user = await User.findByPk(id);
     if (!user) throw new Error('Usuario no encontrado');
     if (!user.passwordHash) throw new Error('Usuario de OAuth no puede cambiar el email por esta vía');
 
@@ -757,52 +757,52 @@ Usuario.toggle2FA = async (id, nuevoEstado) => {
     if (email === user.email.toLowerCase()) {
       throw new Error('El email nuevo es igual al actual');
     }
-    const existente = await Usuario.findOne({ where: { email }, attributes: ['id'] });
+    const existente = await User.findOne({ where: { email }, attributes: ['id'] });
     if (existente) throw new Error('El email ya está en uso');
 
     const codigo = Math.floor(100000 + Math.random() * 900000).toString();
     const expiracion = new Date(Date.now() + 15 * 60 * 1000); // 15 min
     await user.update({
-      emailPendiente: email,
-      codigoCambioEmail: codigo,
-      codigoCambioEmailExpiracion: expiracion,
+      pendingEmail: email,
+      emailChangeCode: codigo,
+      emailChangeCodeExpiresAt: expiracion,
     });
-    return { codigo, emailPendiente: email };
+    return { codigo, pendingEmail: email };
   };
 
   // Paso 2: CONFIRMAR con el código enviado al email nuevo. Actualiza el email, lo
   // marca verificado, limpia el pendiente, y setea el COOLDOWN de retiros (duración
   // = config de negocio Radar #13, default 24h). Devuelve el email viejo para que
   // el controller lo NOTIFIQUE (anti account-takeover).
-  Usuario.confirmEmailChange = async (id, codigo) => {
-    const user = await Usuario.findByPk(id);
+  User.confirmEmailChange = async (id, codigo) => {
+    const user = await User.findByPk(id);
     if (!user) throw new Error('Usuario no encontrado');
-    if (!user.emailPendiente || !user.codigoCambioEmail) {
+    if (!user.pendingEmail || !user.emailChangeCode) {
       throw new Error('No hay un cambio de email pendiente');
     }
-    if (user.codigoCambioEmail !== String(codigo)) {
+    if (user.emailChangeCode !== String(codigo)) {
       throw new Error('Código de cambio de email incorrecto');
     }
-    if (!user.codigoCambioEmailExpiracion || new Date() > user.codigoCambioEmailExpiracion) {
+    if (!user.emailChangeCodeExpiresAt || new Date() > user.emailChangeCodeExpiresAt) {
       throw new Error('El código de cambio de email expiró');
     }
     // Carrera: el email pudo tomarse entre solicitar y confirmar.
-    const email = user.emailPendiente;
-    const existente = await Usuario.findOne({ where: { email }, attributes: ['id'] });
+    const email = user.pendingEmail;
+    const existente = await User.findOne({ where: { email }, attributes: ['id'] });
     if (existente && existente.id !== id) throw new Error('El email ya está en uso');
 
     const emailViejo = user.email;
-    const businessConfig = require('../services/config/businessConfig');
+    const businessConfig = require('../../services/config/businessConfig');
     const horas = await businessConfig.getNumber('cooldown_retiro_cambio_email_horas', 24);
     const cooldownHasta = new Date(Date.now() + horas * 60 * 60 * 1000);
 
     await user.update({
       email,
-      emailVerificado: true,
-      emailPendiente: null,
-      codigoCambioEmail: null,
-      codigoCambioEmailExpiracion: null,
-      cooldownRetiroHasta: cooldownHasta,
+      emailVerified: true,
+      pendingEmail: null,
+      emailChangeCode: null,
+      emailChangeCodeExpiresAt: null,
+      withdrawalCooldownUntil: cooldownHasta,
     });
     const token = user.generateUpdatedJWT();
 
@@ -810,21 +810,21 @@ Usuario.toggle2FA = async (id, nuevoEstado) => {
   };
 
   // Métodos relacionados con KYC existentes
-  Usuario.updateKYC = async (id, kycData, verified = false) => {
-    const user = await Usuario.findByPk(id);
+  User.updateKYC = async (id, kycData, verified = false) => {
+    const user = await User.findByPk(id);
     if (!user) {
       throw new Error('Usuario no encontrado');
     }
 
     const updateData = {
       kycData: { ...user.kycData, ...kycData },
-      kycVerificado: verified
+      kycVerified: verified
     };
 
     await user.update(updateData);
     const token = user.generateUpdatedJWT();
 
-    const { Notificaciones } = require('./index');
+    const { Notificaciones } = require('../../models');
     const template = verified ? 'KYC_APROBADO' : 'KYC_RECHAZADO';
     await Notificaciones.createNotification({
       usuarioId: id,
@@ -835,14 +835,14 @@ Usuario.toggle2FA = async (id, nuevoEstado) => {
   };
 
   // Métodos relacionados con transacciones existentes
-  Usuario.getDailyVolume = async (id, fecha = new Date()) => {
+  User.getDailyVolume = async (id, fecha = new Date()) => {
     const startOfDay = new Date(fecha);
     startOfDay.setHours(0, 0, 0, 0);
     
     const endOfDay = new Date(fecha);
     endOfDay.setHours(23, 59, 59, 999);
 
-    const { TransaccionP2P } = require('./index');
+    const { TransaccionP2P } = require('../../models');
     
     const volume = await TransaccionP2P.findAll({
       attributes: [
@@ -864,61 +864,61 @@ Usuario.toggle2FA = async (id, nuevoEstado) => {
     return parseFloat(volume[0]?.volumenTotal || 0);
   };
 
-  Usuario.canMakeTransaction = async (id, amount) => {
-    const user = await Usuario.findByPk(id);
+  User.canMakeTransaction = async (id, amount) => {
+    const user = await User.findByPk(id);
     if (!user) {
       return { canTransact: false, reason: 'Usuario no encontrado' };
     }
 
-    if (!user.activo) {
+    if (!user.active) {
       return { canTransact: false, reason: 'Cuenta desactivada' };
     }
 
-    if (!user.kycVerificado && amount > 100) {
+    if (!user.kycVerified && amount > 100) {
       return { canTransact: false, reason: 'KYC requerido para transacciones mayores a $100' };
     }
 
-    const dailyVolume = await Usuario.getDailyVolume(id);
-    if (dailyVolume + amount > user.limiteDiarioUsd) {
+    const dailyVolume = await User.getDailyVolume(id);
+    if (dailyVolume + amount > user.dailyLimitUsd) {
       return { 
         canTransact: false, 
-        reason: `Límite diario excedido. Disponible: $${user.limiteDiarioUsd - dailyVolume}` 
+        reason: `Límite diario excedido. Disponible: $${user.dailyLimitUsd - dailyVolume}` 
       };
     }
 
     return { canTransact: true };
   };
 
-  Usuario.updateDailyLimit = async (id, newLimit) => {
-    const user = await Usuario.findByPk(id);
+  User.updateDailyLimit = async (id, newLimit) => {
+    const user = await User.findByPk(id);
     if (!user) {
       throw new Error('Usuario no encontrado');
     }
 
-    await user.update({ limiteDiarioUsd: newLimit });
+    await user.update({ dailyLimitUsd: newLimit });
     const token = user.generateUpdatedJWT();
     
     return { user, token };
   };
 
   // Métodos de estadísticas existentes
-  Usuario.getStats = async () => {
-    const stats = await Usuario.findAll({
+  User.getStats = async () => {
+    const stats = await User.findAll({
       attributes: [
-        'rol',
-        'kycVerificado',
-        'activo',
-        'pais',
+        'role',
+        'kycVerified',
+        'active',
+        'country',
         [sequelize.fn('COUNT', sequelize.col('id')), 'total']
       ],
-      group: ['rol', 'kycVerificado', 'activo', 'pais'],
+      group: ['role', 'kycVerified', 'active', 'country'],
       raw: true
     });
 
     return stats;
   };
 
-  Usuario.getTopTraders = async (limit = 10, period = '30d') => {
+  User.getTopTraders = async (limit = 10, period = '30d') => {
     const fechaDesde = new Date();
     switch (period) {
       case '7d':
@@ -932,14 +932,14 @@ Usuario.toggle2FA = async (id, nuevoEstado) => {
         break;
     }
 
-    const { TransaccionP2P } = require('./index');
+    const { TransaccionP2P } = require('../../models');
 
-    const topTraders = await Usuario.findAll({
+    const topTraders = await User.findAll({
       attributes: [
         'id',
         'username',
-        'reputacionPromedio',
-        'totalValoraciones',
+        'averageRating',
+        'totalRatings',
         [sequelize.fn('COUNT', sequelize.col('transacciones.id')), 'totalTransacciones'],
         [sequelize.fn('SUM', sequelize.col('transacciones.montoFiat')), 'volumenTotal']
       ],
@@ -955,7 +955,7 @@ Usuario.toggle2FA = async (id, nuevoEstado) => {
           required: true
         }
       ],
-      group: ['Usuario.id'],
+      group: ['User.id'],
       order: [[sequelize.fn('SUM', sequelize.col('transacciones.montoFiat')), 'DESC']],
       limit: parseInt(limit),
       subQuery: false
@@ -965,17 +965,17 @@ Usuario.toggle2FA = async (id, nuevoEstado) => {
   };
 
   // Método para desactivar usuarios inactivos existente
-  Usuario.deactivateInactiveUsers = async (daysSinceLogin = 365) => {
+  User.deactivateInactiveUsers = async (daysSinceLogin = 365) => {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - daysSinceLogin);
 
-    const [affectedRows] = await Usuario.update(
-      { activo: false },
+    const [affectedRows] = await User.update(
+      { active: false },
       {
         where: {
-          activo: true,
+          active: true,
           updated_at: { [Op.lt]: cutoffDate },
-          rol: 'normal'
+          role: 'normal'
         }
       }
     );
@@ -983,7 +983,7 @@ Usuario.toggle2FA = async (id, nuevoEstado) => {
     return affectedRows;
   };
 
-  return Usuario;
+  return User;
 }
 
-module.exports = createUsuarioModel;
+module.exports = createUserModel;

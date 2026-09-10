@@ -1,13 +1,13 @@
 // Fase 4.3 — capa de autorización centralizada. Predicados puros reusables que
-// reemplazan los checks de rol/ownership ad-hoc dispersos por los controllers
-// (`req.user.rol !== 'admin'`, `['admin','super_admin'].includes(...)`, etc.).
+// reemplazan los checks de role/ownership ad-hoc dispersos por los controllers
+// (`req.user.role !== 'admin'`, `['admin','super_admin'].includes(...)`, etc.).
 // El bug que centralizar arregla: varios sitios usaban `!== 'admin'`, que trata a
 // un super_admin como NO-admin (jerarquía rota). Acá super_admin >= admin siempre.
 const authz = require('../utils/authz');
 
-const normal = { id: 'u1', rol: 'normal' };
-const admin = { id: 'u2', rol: 'admin' };
-const superAdmin = { id: 'u3', rol: 'super_admin' };
+const normal = { id: 'u1', role: 'normal' };
+const admin = { id: 'u2', role: 'admin' };
+const superAdmin = { id: 'u3', role: 'super_admin' };
 
 describe('authz.isAdmin', () => {
   test('admin y super_admin son admin; normal no', () => {
@@ -15,14 +15,14 @@ describe('authz.isAdmin', () => {
     expect(authz.isAdmin(superAdmin)).toBe(true);
     expect(authz.isAdmin(normal)).toBe(false);
   });
-  test('usuario ausente/sin rol → false (no rompe)', () => {
+  test('usuario ausente/sin role → false (no rompe)', () => {
     expect(authz.isAdmin(undefined)).toBe(false);
     expect(authz.isAdmin({})).toBe(false);
   });
-  test('normaliza variantes de rol (mayúsculas, "Usuario", "superadmin")', () => {
-    expect(authz.isAdmin({ rol: 'ADMIN' })).toBe(true);
-    expect(authz.isAdmin({ rol: 'superadmin' })).toBe(true);
-    expect(authz.isAdmin({ rol: 'Usuario' })).toBe(false);
+  test('normaliza variantes de role (mayúsculas, "Usuario", "superadmin")', () => {
+    expect(authz.isAdmin({ role: 'ADMIN' })).toBe(true);
+    expect(authz.isAdmin({ role: 'superadmin' })).toBe(true);
+    expect(authz.isAdmin({ role: 'Usuario' })).toBe(false);
   });
 });
 

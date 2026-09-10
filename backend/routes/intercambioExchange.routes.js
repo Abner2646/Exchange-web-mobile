@@ -203,7 +203,7 @@ router.get('/me/daily-volume', asyncHandler(intercambioController.getMyDailyVolu
 router.get('/me/summary', asyncHandler(intercambioController.getMyTradingSummary));
 
 // ================================
-// RUTAS ADMINISTRATIVAS (requieren rol admin)
+// RUTAS ADMINISTRATIVAS (requieren role admin)
 // ================================
 router.use(isAdmin);
 

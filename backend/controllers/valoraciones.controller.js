@@ -254,20 +254,20 @@ const createMultipleRatings = async (req, res) => {
 // Fix 2026-08-19 (AUDITORIA_BACKEND.md Código muerto #4, extendido a
 // Altos #11): esta función usaba `sequelize` y `Op` sin importarlos —
 // ReferenceError garantizado si se llamaba. También pedía columnas que
-// Usuario no tiene: 'nombre' (el campo real es 'username') y
-// 'reputacion' (el campo real es 'reputacionPromedio').
+// User no tiene: 'nombre' (el campo real es 'username') y
+// 'reputacion' (el campo real es 'averageRating').
 const getTopRatedUsers = async (req, res) => {
   try {
     const { limit = 10, minRatings = 5 } = req.query;
 
-    const { Usuario } = require('../models/index.js');
+    const { User } = require('../models/index.js');
 
-    const topUsers = await Usuario.findAll({
+    const topUsers = await User.findAll({
       attributes: [
         'id',
         'username',
-        'reputacionPromedio',
-        [sequelize.fn('COUNT', sequelize.col('valoracionesRecibidas.id')), 'totalValoraciones']
+        'averageRating',
+        [sequelize.fn('COUNT', sequelize.col('valoracionesRecibidas.id')), 'totalRatings']
       ],
       include: [
         {
@@ -275,14 +275,14 @@ const getTopRatedUsers = async (req, res) => {
           attributes: []
         }
       ],
-      group: ['Usuario.id'],
+      group: ['User.id'],
       having: sequelize.where(
         sequelize.fn('COUNT', sequelize.col('valoracionesRecibidas.id')),
         Op.gte,
         parseInt(minRatings)
       ),
       order: [
-        ['reputacionPromedio', 'DESC'],
+        ['averageRating', 'DESC'],
         [sequelize.fn('COUNT', sequelize.col('valoracionesRecibidas.id')), 'DESC']
       ],
       limit: parseInt(limit),
@@ -297,7 +297,7 @@ const getTopRatedUsers = async (req, res) => {
 
 // Obtener resumen de valoraciones entre dos usuarios
 // Fix 2026-08-19 (AUDITORIA_BACKEND.md Código muerto #4, extendido a
-// Altos #11): usaba Op sin importarlo, y pedía 'nombre' de Usuario (el
+// Altos #11): usaba Op sin importarlo, y pedía 'nombre' de User (el
 // campo real es 'username').
 const getUsersRatingSummary = async (req, res) => {
   try {

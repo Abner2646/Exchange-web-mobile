@@ -343,7 +343,7 @@ const exportOfertaMetodosPago = async (req, res) => {
         relacion.oferta ? relacion.oferta.tipo : '',
         relacion.metodoPagoId,
         relacion.metodoPago ? relacion.metodoPago.nombre : '',
-        relacion.metodoPago ? (relacion.metodoPago.activo ? 'SI' : 'NO') : ''
+        relacion.metodoPago ? (relacion.metodoPago.active ? 'SI' : 'NO') : ''
       ].join(',');
     }).join('\n');
     
@@ -409,7 +409,7 @@ const validateOfertaSetup = async (req, res) => {
       setup: {
         tienemetodos: metodosPago.length > 0,
         cantidadMetodos: metodosPago.length,
-        metodosActivos: metodosPago.filter(m => m.activo).length
+        metodosActivos: metodosPago.filter(m => m.active).length
       },
       validacion: {
         completa: metodosPago.length > 0,
@@ -428,8 +428,8 @@ const validateOfertaSetup = async (req, res) => {
       validationResult.validacion.recomendaciones.push('Considerar agregar más métodos de pago para mayor flexibilidad');
     }
 
-    if (metodosPago.some(m => !m.activo)) {
-      const inactivos = metodosPago.filter(m => !m.activo).length;
+    if (metodosPago.some(m => !m.active)) {
+      const inactivos = metodosPago.filter(m => !m.active).length;
       validationResult.validacion.warnings.push(`${inactivos} método(s) de pago inactivo(s) asignado(s)`);
     }
 

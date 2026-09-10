@@ -25,7 +25,7 @@ jest.mock('../models/index.js', () => ({
     getStatsByCrypto: jest.fn(),
     updateStatus: jest.fn(),
   },
-  Usuario: { findByPk: jest.fn() },
+  User: { findByPk: jest.fn() },
   ParExchange: { findByPk: jest.fn() },
   BalanceUsuario: {
     findOne: jest.fn(),
@@ -45,7 +45,7 @@ jest.mock('../models/index.js', () => ({
 // ── Pull in mocked objects so tests can configure them ───────────────────────
 const {
   sequelize,
-  Usuario,
+  User,
   ParExchange,
   BalanceUsuario,
   IntercambioExchange,
@@ -72,7 +72,7 @@ function buildApp() {
 }
 
 /** Fake Sequelize transaction that records commit/rollback calls. Incluye LOCK
- *  porque createOrder toma un FOR UPDATE sobre la fila de Usuario (límite diario). */
+ *  porque createOrder toma un FOR UPDATE sobre la fila de User (límite diario). */
 function makeFakeTx() {
   return {
     commit: jest.fn().mockResolvedValue(undefined),
@@ -86,7 +86,7 @@ const PAR_ID = '123e4567-e89b-12d3-a456-426614174000';
 /** Valid pair stub. */
 const VALID_PAR = {
   id: PAR_ID,
-  activo: true,
+  active: true,
   precioActual: '50000',
   comisionPorcentaje: '0.1',
   criptoBaseId: '11111111-1111-1111-1111-111111111111',
@@ -115,10 +115,10 @@ describe('createOrder — known business error → canonical envelope', () => {
     sequelize.transaction.mockResolvedValue(tx);
 
     ParExchange.findByPk.mockResolvedValue(VALID_PAR);
-    Usuario.findByPk.mockResolvedValue({
+    User.findByPk.mockResolvedValue({
       id: 'user-uuid-001',
-      activo: true,
-      limiteDiarioUsd: 99999,
+      active: true,
+      dailyLimitUsd: 99999,
     });
     IntercambioExchange.getDailyVolume.mockResolvedValue(0);
     // Read-flip: el controller lee el saldo via getSaldoCompartimento (Task 9),
@@ -145,10 +145,10 @@ describe('createOrder — known business error → canonical envelope', () => {
     sequelize.transaction.mockResolvedValue(tx);
 
     ParExchange.findByPk.mockResolvedValue(VALID_PAR);
-    Usuario.findByPk.mockResolvedValue({
+    User.findByPk.mockResolvedValue({
       id: 'user-uuid-001',
-      activo: true,
-      limiteDiarioUsd: 10, // tiny limit
+      active: true,
+      dailyLimitUsd: 10, // tiny limit
     });
     // daily volume already at 5, request is 50 => 5+50 > 10
     IntercambioExchange.getDailyVolume.mockResolvedValue(5);
@@ -184,7 +184,7 @@ describe('createOrder — known business error → canonical envelope', () => {
     const tx = makeFakeTx();
     sequelize.transaction.mockResolvedValue(tx);
     ParExchange.findByPk.mockResolvedValue(VALID_PAR);
-    Usuario.findByPk.mockResolvedValue(null);
+    User.findByPk.mockResolvedValue(null);
     IntercambioExchange.getDailyVolume.mockResolvedValue(0);
 
     const res = await request(buildApp())

@@ -181,7 +181,7 @@ function createTransferenciaModel(sequelize) {
         throw new Error('Código de verificación inválido o expirado');
       }
 
-      const { BalanceUsuario, Usuario } = require('./index');
+      const { BalanceUsuario, User } = require('./index');
 
       // Verificar que el remitente tenga fondos suficientes
       const balanceRemitente = await BalanceUsuario.getByUserAndCrypto(
@@ -195,14 +195,14 @@ function createTransferenciaModel(sequelize) {
       }
 
       // Obtener información de usuarios para notificaciones
-      const remitente = await Usuario.findByPk(transferencia.usuarioRemitenteId, { transaction: t });
-      const destinatario = await Usuario.findByPk(transferencia.usuarioDestinatarioId, { transaction: t });
+      const remitente = await User.findByPk(transferencia.usuarioRemitenteId, { transaction: t });
+      const destinatario = await User.findByPk(transferencia.usuarioDestinatarioId, { transaction: t });
 
-      if (!remitente || !remitente.activo) {
+      if (!remitente || !remitente.active) {
         throw new Error('Usuario remitente no válido');
       }
 
-      if (!destinatario || !destinatario.activo) {
+      if (!destinatario || !destinatario.active) {
         throw new Error('Usuario destinatario no válido');
       }
 

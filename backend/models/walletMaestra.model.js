@@ -15,22 +15,22 @@ function createWalletMaestraModel(sequelize) {
       console.log('Modelos disponibles:', Object.keys(sequelize.models));
       console.log('¿Existe Criptomoneda?', !!sequelize.models.Criptomoneda);
       console.log('¿Existe DireccionDeposito?', !!sequelize.models.DireccionDeposito);
-      console.log('¿Existe User?', !!sequelize.models.Usuario);
+      console.log('¿Existe User?', !!sequelize.models.User);
 
       const wallet = await WalletMaestra.findByPk(id, {
         include: [
           {
             model: sequelize.models.Criptomoneda,
             as: 'criptomoneda',
-            attributes: ['id', 'symbol', 'nombre', 'red', 'decimales', 'activa']
+            attributes: ['id', 'symbol', 'nombre', 'red', 'decimales', 'active']
           },
           {
             model: sequelize.models.DireccionDeposito,
             as: 'direccionesDeposito',
-            attributes: ['id', 'userId', 'direccion', 'derivationIndex', 'activa', 'created_at'],
+            attributes: ['id', 'userId', 'direccion', 'derivationIndex', 'active', 'created_at'],
             include: [
               {
-                model: sequelize.models.Usuario,
+                model: sequelize.models.User,
                 as: 'usuario',
                 attributes: ['id', 'email', 'username']
               }
@@ -51,7 +51,7 @@ function createWalletMaestraModel(sequelize) {
         {
           model: sequelize.models.Criptomoneda,
           as: 'criptomoneda',
-          attributes: ['id', 'symbol', 'nombre', 'red', 'activa']
+          attributes: ['id', 'symbol', 'nombre', 'red', 'active']
         }
       ];
       
@@ -60,8 +60,8 @@ function createWalletMaestraModel(sequelize) {
         whereClause.criptomonedaId = filters.criptomonedaId;
       }
       
-      if (filters.activa !== undefined) {
-        whereClause.activa = filters.activa === 'true';
+      if (filters.active !== undefined) {
+        whereClause.active = filters.active === 'true';
       }
 
       if (filters.red) {
@@ -184,12 +184,12 @@ function createWalletMaestraModel(sequelize) {
           {
             model: sequelize.models.DireccionDeposito,
             as: 'direccionesDeposito',
-            attributes: ['id', 'userId', 'direccion', 'derivationIndex', 'activa'],
-            where: { activa: true },
+            attributes: ['id', 'userId', 'direccion', 'derivationIndex', 'active'],
+            where: { active: true },
             required: false,
             include: [
               {
-                model: sequelize.models.Usuario,
+                model: sequelize.models.User,
                 as: 'usuario',
                 attributes: ['id', 'email', 'username']
               }
@@ -243,7 +243,7 @@ function createWalletMaestraModel(sequelize) {
 
   WalletMaestra.getActive = async (options = {}) => {
     try {
-      const whereClause = { activa: true };
+      const whereClause = { active: true };
       
       if (options.red) {
         whereClause.red = options.red;
@@ -255,8 +255,8 @@ function createWalletMaestraModel(sequelize) {
           {
             model: sequelize.models.Criptomoneda,
             as: 'criptomoneda',
-            attributes: ['id', 'symbol', 'nombre', 'red', 'activa'],
-            where: options.soloActivasCrypto !== false ? { activa: true } : undefined
+            attributes: ['id', 'symbol', 'nombre', 'red', 'active'],
+            where: options.soloActivasCrypto !== false ? { active: true } : undefined
           }
         ],
         order: [['balance_total', 'DESC']]
@@ -272,7 +272,7 @@ function createWalletMaestraModel(sequelize) {
       const wallets = await WalletMaestra.findAll({
         where: {
           balanceTotal: { [Op.lt]: threshold },
-          activa: true
+          active: true
         },
         include: [
           {
@@ -294,7 +294,7 @@ function createWalletMaestraModel(sequelize) {
       const wallets = await WalletMaestra.findAll({
         where: {
           balanceTotal: { [Op.gte]: threshold },
-          activa: true
+          active: true
         },
         include: [
           {
@@ -404,7 +404,7 @@ function createWalletMaestraModel(sequelize) {
 
   WalletMaestra.getBalanceSummary = async (options = {}) => {
     try {
-      const whereClause = { activa: true };
+      const whereClause = { active: true };
       
       if (options.red) {
         whereClause.red = options.red;
@@ -463,10 +463,10 @@ function createWalletMaestraModel(sequelize) {
 
       const totalWallets = await WalletMaestra.count({ where: baseWhere });
       const walletsActivas = await WalletMaestra.count({
-        where: { ...baseWhere, activa: true }
+        where: { ...baseWhere, active: true }
       });
       const walletsInactivas = await WalletMaestra.count({
-        where: { ...baseWhere, activa: false }
+        where: { ...baseWhere, active: false }
       });
 
       // Balance total por red
@@ -476,7 +476,7 @@ function createWalletMaestraModel(sequelize) {
           [sequelize.fn('COUNT', sequelize.col('id')), 'walletCount'],
           [sequelize.fn('SUM', sequelize.col('balance_total')), 'totalBalance']
         ],
-        where: { ...baseWhere, activa: true },
+        where: { ...baseWhere, active: true },
         group: ['red'],
         order: [[sequelize.fn('SUM', sequelize.col('balance_total')), 'DESC']],
         raw: true
@@ -506,7 +506,7 @@ function createWalletMaestraModel(sequelize) {
         where: {
           ...baseWhere,
           balanceTotal: { [Op.lt]: 0.1 },
-          activa: true
+          active: true
         }
       });
 
@@ -515,7 +515,7 @@ function createWalletMaestraModel(sequelize) {
       const walletsSinSincronizar = await WalletMaestra.count({
         where: {
           ...baseWhere,
-          activa: true,
+          active: true,
           [Op.or]: [
             { lastSyncAt: null },
             { lastSyncAt: { [Op.lt]: sevenDaysAgo } }
@@ -678,7 +678,7 @@ function createWalletMaestraModel(sequelize) {
       const direccionesActivas = await sequelize.models.DireccionDeposito.count({
         where: { 
           walletMaestraId: id,
-          activa: true
+          active: true
         },
         transaction
       });
@@ -721,10 +721,10 @@ function createWalletMaestraModel(sequelize) {
       }
 
       // Si se desactiva, también desactivar direcciones asociadas
-      if (!newStatus && wallet.activa) {
+      if (!newStatus && wallet.active) {
         await sequelize.models.DireccionDeposito.update(
           { 
-            activa: false,
+            active: false,
             metadata: sequelize.literal(`
               metadata || '{"deactivatedReason": "wallet_maestra_deactivated", "deactivatedAt": "${new Date().toISOString()}"}'::jsonb
             `)
@@ -737,7 +737,7 @@ function createWalletMaestraModel(sequelize) {
       }
 
       const updateData = { 
-        activa: newStatus,
+        active: newStatus,
         metadata: {
           ...wallet.metadata,
           lastStatusChange: new Date(),
@@ -873,7 +873,7 @@ function createWalletMaestraModel(sequelize) {
           [
             sequelize.literal(`
               ROUND(
-                (balance_total / NULLIF((SELECT SUM(balance_total) FROM wallets_maestras WHERE activa = true), 0)) * 100, 
+                (balance_total / NULLIF((SELECT SUM(balance_total) FROM wallets_maestras WHERE active = true), 0)) * 100, 
                 4
               )
             `),
@@ -887,7 +887,7 @@ function createWalletMaestraModel(sequelize) {
             attributes: ['symbol', 'nombre', 'red', 'decimales']
           }
         ],
-        where: { activa: true },
+        where: { active: true },
         order: [['balance_total', 'DESC']],
         raw: false
       });
@@ -998,7 +998,7 @@ function createWalletMaestraModel(sequelize) {
       const lowBalanceWallets = await WalletMaestra.getWithLowBalance(0.1);
       const staleSyncWallets = await WalletMaestra.findAll({
         where: {
-          activa: true,
+          active: true,
           [Op.or]: [
             { lastSyncAt: null },
             { lastSyncAt: { [Op.lt]: startDate } }

@@ -100,7 +100,7 @@ function createValoracionModel(sequelize) {
         },
         {
           association: 'evaluado',
-          attributes: ['id', 'username', 'reputacionPromedio']
+          attributes: ['id', 'username', 'averageRating']
         }
       ]
     });
@@ -228,7 +228,7 @@ function createValoracionModel(sequelize) {
 
     const summary = await Valoracion.findOne({
       attributes: [
-        [sequelize.fn('COUNT', sequelize.col('id')), 'totalValoraciones'],
+        [sequelize.fn('COUNT', sequelize.col('id')), 'totalRatings'],
         [sequelize.fn('AVG', sequelize.col('puntuacion')), 'puntuacionPromedio'],
         [sequelize.fn('MIN', sequelize.col('puntuacion')), 'puntuacionMinima'],
         [sequelize.fn('MAX', sequelize.col('puntuacion')), 'puntuacionMaxima']
@@ -305,8 +305,8 @@ function createValoracionModel(sequelize) {
     });
 
     if (stats && stats.puntuacionPromedio) {
-      const { Usuario } = require('./index');
-      await Usuario.update(
+      const { User } = require('./index');
+      await User.update(
         { reputacion: parseFloat(stats.puntuacionPromedio).toFixed(2) },
         { 
           where: { id: usuarioId },
@@ -391,7 +391,7 @@ function createValoracionModel(sequelize) {
 
     const summary = await Valoracion.findOne({
       attributes: [
-        [sequelize.fn('COUNT', sequelize.col('id')), 'totalValoraciones'],
+        [sequelize.fn('COUNT', sequelize.col('id')), 'totalRatings'],
         [sequelize.fn('AVG', sequelize.col('puntuacion')), 'puntuacionPromedio']
       ],
       where,

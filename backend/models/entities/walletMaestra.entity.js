@@ -6,7 +6,7 @@
 Cada usuario recibe una dirección única para cada criptomoneda, derivada de la wallet maestra.
 ¿Cuándo se crea?
 Se crea AUTOMÁTICAMENTE cuando:
-1. Usuario se registra (todas las cryptos soportadas)
+1. User se registra (todas las cryptos soportadas)
 2. Se agrega una nueva criptomoneda al sistema
 
 // Ejemplo: Solo UNA wallet maestra para Bitcoin
@@ -15,7 +15,7 @@ Se crea AUTOMÁTICAMENTE cuando:
   criptomonedaId: "btc-uuid", 
   direccionPublica: "1A2B3C...bitcoin-address",
   balanceTotal: 125.50000000,  // Total de todos los usuarios
-  activa: true
+  active: true
 }
 */
 
@@ -135,10 +135,10 @@ function initWalletMaestra(sequelize) {
     },
     
     // Control operativo
-    activa: {
+    active: {
       type: DataTypes.BOOLEAN,
       defaultValue: true,
-      comment: 'Si la wallet está activa para generar nuevas direcciones'
+      comment: 'Si la wallet está active para generar nuevas direcciones'
     },
     
     // Información adicional
@@ -191,7 +191,7 @@ function initWalletMaestra(sequelize) {
         name: 'wallets_maestras_red_symbol_unique'
       },
       {
-        fields: ['activa'],
+        fields: ['active'],
         name: 'wallets_maestras_activa_index'
       },
       {
@@ -299,7 +299,7 @@ function initWalletMaestra(sequelize) {
         }
         
         // Actualizar metadata en cambios importantes
-        if (wallet.changed('activa') || wallet.changed('xpub')) {
+        if (wallet.changed('active') || wallet.changed('xpub')) {
           const currentMetadata = wallet.metadata || {};
           wallet.metadata = {
             ...currentMetadata,

@@ -208,16 +208,16 @@ const notifyAllUsers = async (req, res) => {
   }
 };
 
-// Notificar a usuarios por rol (admin)
+// Notificar a usuarios por role (admin)
 const notifyUsersByRole = async (req, res) => {
   try {
-    const { rol } = req.params;
+    const { role } = req.params;
     const notificationData = req.body;
     
-    const notifications = await Notificaciones.notifyUsersByRole(rol, notificationData);
+    const notifications = await Notificaciones.notifyUsersByRole(role, notificationData);
     
     res.status(201).json({
-      message: `Notificación enviada a ${notifications.length} usuarios con rol ${rol}`,
+      message: `Notificación enviada a ${notifications.length} usuarios con role ${role}`,
       count: notifications.length
     });
   } catch (error) {

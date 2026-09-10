@@ -1,7 +1,7 @@
 require('../helpers/testEnv');
 const request = require('supertest');
 const { app, installAuthHarness } = require('../helpers/authHarness');
-const { WalletMaestra, DireccionDeposito, BalanceUsuario, Usuario } = require('../../models');
+const { WalletMaestra, DireccionDeposito, BalanceUsuario, User } = require('../../models');
 const f = require('../helpers/factories');
 
 const h = installAuthHarness(); // resetDb + email-fake seam + sequelize close
@@ -31,7 +31,7 @@ describe('deposit-address provisioning on email verification', () => {
     // Provisioning (inicializarUsuarioCompleto) runs on verify-email, not register.
     const { token, code } = await h.registerAndGetCode({ email: 'prov@test.local', username: 'provuser' });
     const verify = await request(app)
-      .post('/api/usuario/verify-email')
+      .post('/api/user/verify-email')
       .set('Authorization', `Bearer ${token}`)
       .send({ codigo: code });
     expect(verify.status).toBe(200);
@@ -44,7 +44,7 @@ describe('deposit-address provisioning on email verification', () => {
     // Write-flip (Paso B): el provisioning ya NO crea filas de balance en 0 (en el
     // ledger, 0 == cuenta inexistente, creada lazy al primer movimiento); por eso
     // se asevera la direccion de deposito, que es el entregable real del provisioning.
-    const user = await Usuario.findOne({ where: { email: 'prov@test.local' } });
+    const user = await User.findOne({ where: { email: 'prov@test.local' } });
     expect(await DireccionDeposito.count({ where: { userId: user.id } })).toBeGreaterThan(0);
   });
 });

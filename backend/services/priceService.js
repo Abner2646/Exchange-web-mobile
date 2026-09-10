@@ -428,7 +428,7 @@ class PriceService {
     try {
       const par = await ParExchange.getBySymbols(baseSymbol, quoteSymbol);
       
-      if (!par || !par.activo) {
+      if (!par || !par.active) {
         throw new Error(`Par ${baseSymbol}/${quoteSymbol} no encontrado o inactivo`);
       }
 
@@ -597,7 +597,7 @@ class PriceService {
         ]
       });
 
-      if (!par || !par.activo) {
+      if (!par || !par.active) {
         throw new Error('Par no encontrado o inactivo');
       }
 

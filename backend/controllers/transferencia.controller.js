@@ -1,4 +1,4 @@
-const { Transferencia, Usuario, Criptomoneda, BalanceUsuario, Notificaciones } = require('../models/index.js');
+const { Transferencia, User, Criptomoneda, BalanceUsuario, Notificaciones } = require('../models/index.js');
 const { sequelize } = require('../models/index.js');
 const AppError = require('../utils/AppError');
 const errorCodes = require('../utils/errorCodes');
@@ -27,15 +27,15 @@ const createTransferencia = async (req, res) => {
     }
 
     // Verify recipient exists and is active
-    const destinatario = await Usuario.findByPk(usuarioDestinatarioId);
-    if (!destinatario || !destinatario.activo) {
+    const destinatario = await User.findByPk(usuarioDestinatarioId);
+    if (!destinatario || !destinatario.active) {
       await transaction.rollback();
       throw new AppError(400, errorCodes.TRANSFER_RESOURCE_NOT_FOUND, 'Usuario destinatario no válido');
     }
 
     // Verify the crypto exists and is active
     const criptomoneda = await Criptomoneda.findByPk(criptomonedaId);
-    if (!criptomoneda || !criptomoneda.activa) {
+    if (!criptomoneda || !criptomoneda.active) {
       await transaction.rollback();
       throw new AppError(400, errorCodes.TRANSFER_RESOURCE_NOT_FOUND, 'Criptomoneda no válida');
     }
@@ -71,7 +71,7 @@ const createTransferencia = async (req, res) => {
     await transferencia.save({ transaction });
 
     // Fetch sender info for email
-    const remitente = await Usuario.findByPk(usuarioRemitenteId, { transaction });
+    const remitente = await User.findByPk(usuarioRemitenteId, { transaction });
 
     // Send verification email — failure is non-fatal
     try {
@@ -173,15 +173,15 @@ const procesarTransferencia = async (req, res) => {
     }
 
     // Verify both users are still active
-    const remitente = await Usuario.findByPk(transferencia.usuarioRemitenteId, { transaction });
-    const destinatario = await Usuario.findByPk(transferencia.usuarioDestinatarioId, { transaction });
+    const remitente = await User.findByPk(transferencia.usuarioRemitenteId, { transaction });
+    const destinatario = await User.findByPk(transferencia.usuarioDestinatarioId, { transaction });
 
-    if (!remitente || !remitente.activo) {
+    if (!remitente || !remitente.active) {
       await transaction.rollback();
       throw new AppError(400, errorCodes.TRANSFER_RESOURCE_NOT_FOUND, 'Usuario remitente no válido');
     }
 
-    if (!destinatario || !destinatario.activo) {
+    if (!destinatario || !destinatario.active) {
       await transaction.rollback();
       throw new AppError(400, errorCodes.TRANSFER_RESOURCE_NOT_FOUND, 'Usuario destinatario no válido');
     }
@@ -394,8 +394,8 @@ const reenviarCodigo = async (req, res) => {
   // would otherwise surface a 500 for an operation that actually succeeded — and
   // the user might retry, burning another code. Log and return success.
   try {
-    const remitente = await Usuario.findByPk(usuarioId);
-    const destinatario = await Usuario.findByPk(transferencia.usuarioDestinatarioId);
+    const remitente = await User.findByPk(usuarioId);
+    const destinatario = await User.findByPk(transferencia.usuarioDestinatarioId);
     const criptomoneda = await Criptomoneda.getById(transferencia.criptomonedaId);
 
     await req.app.locals.emailService.enviarCodigoTransferencia(

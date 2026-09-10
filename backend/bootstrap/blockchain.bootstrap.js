@@ -117,7 +117,7 @@ class BlockchainBootstrap {
       console.log('🔑 Verificando wallets maestras...');
       
       const criptomonedas = await Criptomoneda.findAll({
-        where: { activa: true }
+        where: { active: true }
       });
       
       const walletsCreated = [];
@@ -141,7 +141,7 @@ class BlockchainBootstrap {
             derivationPath: "m/44'/60'/0'",
             direccionPublica: this.generateTestAddress(cripto.red),
             balanceTotal: 0,
-            activa: true,
+            active: true,
             fingerprint: this.generateTestFingerprint(),
             publicKey: this.generateTestPublicKey(),
             nextDerivationIndex: 0,
@@ -209,8 +209,8 @@ class BlockchainBootstrap {
       };
       
       // Verificar conteo de datos críticos
-      const cryptoCount = await Criptomoneda.count({ where: { activa: true } });
-      const walletCount = await WalletMaestra.count({ where: { activa: true } });
+      const cryptoCount = await Criptomoneda.count({ where: { active: true } });
+      const walletCount = await WalletMaestra.count({ where: { active: true } });
       
       healthData.stats = {
         activeCryptocurrencies: cryptoCount,

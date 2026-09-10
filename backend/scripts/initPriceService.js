@@ -20,7 +20,7 @@ class PriceServiceInitializer {
 
       // Verificar que hay pares activos para actualizar
       const paresActivos = await ParExchange.count({
-        where: { activo: true }
+        where: { active: true }
       });
 
       if (paresActivos === 0) {
@@ -60,7 +60,7 @@ class PriceServiceInitializer {
       
       const paresParaActualizar = await ParExchange.findAll({
         where: {
-          activo: true,
+          active: true,
           fuentePrecio: 'manual'
         },
         include: [
@@ -112,7 +112,7 @@ class PriceServiceInitializer {
     try {
       const stats = priceService.getServiceStats();
       const paresActivos = await ParExchange.count({
-        where: { activo: true }
+        where: { active: true }
       });
       
       const paresPorFuente = await ParExchange.findAll({
@@ -120,7 +120,7 @@ class PriceServiceInitializer {
           'fuentePrecio',
           [require('sequelize').fn('COUNT', require('sequelize').col('id')), 'count']
         ],
-        where: { activo: true },
+        where: { active: true },
         group: ['fuentePrecio'],
         raw: true
       });
@@ -186,7 +186,7 @@ class PriceServiceInitializer {
             precioActual: pair.price,
             comisionPorcentaje: pair.commission,
             fuentePrecio: 'coingecko',
-            activo: true
+            active: true
           });
           console.log(`   ✓ Creado par ${pair.base}/${pair.quote}`);
         } catch (error) {

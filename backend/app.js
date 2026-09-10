@@ -25,7 +25,7 @@ app.locals.emailService = require('./services/email.service');
 
 // Google id_token verification goes through app.locals so tests can inject a
 // fake. Default is the real google-auth-library verifier (prod unchanged).
-app.locals.googleTokenVerifier = require('./services/auth/googleTokenVerifier');
+app.locals.googleTokenVerifier = require('./modules/users/googleTokenVerifier');
 
 // CORS (same policy as before)
 const rawAllowed = process.env.ALLOWED_ORIGINS || process.env.FRONTEND_URL || '';

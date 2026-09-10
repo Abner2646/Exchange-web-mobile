@@ -291,7 +291,7 @@ class TradingController {
 
       // Verificar que pertenezca al usuario (o sea admin)
       // Fix 2026-08-19 (AUDITORIA_BACKEND.md Altos #4): req.user.isAdmin
-      // nunca existe (authMiddleware setea req.user.rol) — la condición
+      // nunca existe (authMiddleware setea req.user.role) — la condición
       // "o sos admin" nunca se cumplía, ningún admin podía ver órdenes
       // ajenas pese a que el código aparentaba permitirlo.
       const isAdmin = authz.isAdmin(req.user);

@@ -43,8 +43,8 @@ function createParExchangeModel(sequelize) {
         whereClause.criptoQuoteId = filters.criptoQuoteId;
       }
 
-      if (filters.activo !== undefined) {
-        whereClause.activo = filters.activo === 'true';
+      if (filters.active !== undefined) {
+        whereClause.active = filters.active === 'true';
       }
 
       // Filtros de precio
@@ -164,7 +164,7 @@ function createParExchangeModel(sequelize) {
       const pares = await ParExchange.findAll({
         where: { 
           criptoBaseId: criptoBaseId,
-          activo: true 
+          active: true 
         },
         include: [
           {
@@ -191,7 +191,7 @@ function createParExchangeModel(sequelize) {
       const pares = await ParExchange.findAll({
         where: { 
           criptoQuoteId: criptoQuoteId,
-          activo: true 
+          active: true 
         },
         include: [
           {
@@ -216,7 +216,7 @@ function createParExchangeModel(sequelize) {
   ParExchange.getActive = async () => {
     try {
       const pares = await ParExchange.findAll({
-        where: { activo: true },
+        where: { active: true },
         include: [
           {
             model: sequelize.models.Criptomoneda,
@@ -242,7 +242,7 @@ function createParExchangeModel(sequelize) {
     try {
       const pares = await ParExchange.findAll({
         where: { 
-          activo: true,
+          active: true,
           volumen24h: { [Op.gt]: 0 }
         },
         include: [
@@ -271,7 +271,7 @@ function createParExchangeModel(sequelize) {
       const pares = await ParExchange.findAll({
         where: { 
           comisionPorcentaje: { [Op.gte]: threshold },
-          activo: true 
+          active: true 
         },
         include: [
           {
@@ -300,7 +300,7 @@ function createParExchangeModel(sequelize) {
       const pares = await ParExchange.findAll({
         where: {
           ultimaActualizacion: { [Op.lt]: cutoffTime },
-          activo: true,
+          active: true,
           fuentePrecio: { [Op.ne]: 'manual' }
         },
         include: [
@@ -328,10 +328,10 @@ function createParExchangeModel(sequelize) {
     try {
       const totalPares = await ParExchange.count();
       const paresActivos = await ParExchange.count({
-        where: { activo: true }
+        where: { active: true }
       });
       const paresInactivos = await ParExchange.count({
-        where: { activo: false }
+        where: { active: false }
       });
 
       // Estadísticas de precios
@@ -341,7 +341,7 @@ function createParExchangeModel(sequelize) {
           [sequelize.fn('MIN', sequelize.col('precioActual')), 'precioMinimo'],
           [sequelize.fn('MAX', sequelize.col('precioActual')), 'precioMaximo']
         ],
-        where: { activo: true },
+        where: { active: true },
         raw: true
       });
 
@@ -353,7 +353,7 @@ function createParExchangeModel(sequelize) {
           [sequelize.fn('MAX', sequelize.col('volumen24h')), 'volumenMaximo']
         ],
         where: { 
-          activo: true,
+          active: true,
           volumen24h: { [Op.gt]: 0 }
         },
         raw: true
@@ -366,7 +366,7 @@ function createParExchangeModel(sequelize) {
           [sequelize.fn('MIN', sequelize.col('comisionPorcentaje')), 'comisionMinima'],
           [sequelize.fn('MAX', sequelize.col('comisionPorcentaje')), 'comisionMaxima']
         ],
-        where: { activo: true },
+        where: { active: true },
         raw: true
       });
 
@@ -376,7 +376,7 @@ function createParExchangeModel(sequelize) {
           'fuentePrecio',
           [sequelize.fn('COUNT', sequelize.col('id')), 'count']
         ],
-        where: { activo: true },
+        where: { active: true },
         group: ['fuentePrecio'],
         raw: true
       });
@@ -395,7 +395,7 @@ function createParExchangeModel(sequelize) {
             attributes: ['symbol', 'nombre']
           }
         ],
-        where: { activo: true },
+        where: { active: true },
         group: ['criptoBaseId', 'criptoBase.id'],
         order: [[sequelize.fn('SUM', sequelize.col('volumen24h')), 'DESC']],
         limit: 10,
@@ -416,7 +416,7 @@ function createParExchangeModel(sequelize) {
             attributes: ['symbol', 'nombre']
           }
         ],
-        where: { activo: true },
+        where: { active: true },
         group: ['criptoQuoteId', 'criptoQuote.id'],
         order: [[sequelize.fn('SUM', sequelize.col('volumen24h')), 'DESC']],
         limit: 10,
@@ -426,7 +426,7 @@ function createParExchangeModel(sequelize) {
       // Cambios de precio (ganadores y perdedores)
       const gainersLosers = await ParExchange.findAll({
         where: { 
-          activo: true,
+          active: true,
           cambiosPorcentaje24h: { [Op.ne]: null }
         },
         attributes: ['id', 'cambiosPorcentaje24h'],
@@ -592,7 +592,7 @@ function createParExchangeModel(sequelize) {
   // Métodos de gestión de estado y precios
   ParExchange.updateStatus = async (id, newStatus) => {
     try {
-      const updated = await ParExchange.updatePar(id, { activo: newStatus });
+      const updated = await ParExchange.updatePar(id, { active: newStatus });
       return updated;
     } catch (error) {
       throw new Error(`Error al actualizar estado: ${error.message}`);
@@ -634,7 +634,7 @@ function createParExchangeModel(sequelize) {
   ParExchange.calculateExchange = async (parId, cantidadBase, direction = 'buy') => {
     try {
       const par = await ParExchange.getById(parId);
-      if (!par || !par.activo) {
+      if (!par || !par.active) {
         throw new Error('Par de exchange no encontrado o inactivo');
       }
 
@@ -726,7 +726,7 @@ function createParExchangeModel(sequelize) {
           const { baseSymbol, quoteSymbol, price, volume, change } = priceData;
           const par = await ParExchange.getBySymbols(baseSymbol, quoteSymbol);
           
-          if (par && par.activo) {
+          if (par && par.active) {
             const updateData = {
               precioActual: String(price),
               ultimaActualizacion: new Date()
@@ -782,7 +782,7 @@ function createParExchangeModel(sequelize) {
     try {
       const par = await ParExchange.getById(parId);
       
-      if (!par || !par.activo) {
+      if (!par || !par.active) {
         throw new Error('Par de exchange no encontrado o inactivo');
       }
 

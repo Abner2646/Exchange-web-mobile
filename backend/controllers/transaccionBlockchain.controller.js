@@ -1,5 +1,5 @@
 // controllers/transaccionBlockchain.controller.js
-const { TransaccionBlockchain, Usuario, Criptomoneda, BalanceUsuario, DireccionDeposito } = require('../models');
+const { TransaccionBlockchain, User, Criptomoneda, BalanceUsuario, DireccionDeposito } = require('../models');
 const BlockchainServiceManager = require('../services/blockchain');
 // Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #8): estos endpoints
 // llamaban a scanAllNetworksForDeposits/processAllPendingWithdrawals/
@@ -69,8 +69,8 @@ class TransaccionBlockchainController {
     // Cooldown de retiros tras un cambio de email reciente (Radar #14, anti
     // account-takeover): mientras esté vigente, no se crean retiros. Fail-fast,
     // antes de cualquier validación de red.
-    const solicitante = await Usuario.findByPk(userId, { attributes: ['cooldownRetiroHasta'] });
-    if (solicitante && solicitante.cooldownRetiroHasta && new Date() < solicitante.cooldownRetiroHasta) {
+    const solicitante = await User.findByPk(userId, { attributes: ['withdrawalCooldownUntil'] });
+    if (solicitante && solicitante.withdrawalCooldownUntil && new Date() < solicitante.withdrawalCooldownUntil) {
       throw new AppError(403, errorCodes.WITHDRAWAL_COOLDOWN,
         'Retiros temporalmente bloqueados tras un cambio de email reciente. Intentá más tarde.');
     }
@@ -137,7 +137,7 @@ class TransaccionBlockchainController {
 
     const balances = await BalanceUsuario.getByUserId(userId);
     const criptomonedas = await Criptomoneda.findAll({
-      where: { id: balances.map((b) => b.criptomonedaId), activa: true },
+      where: { id: balances.map((b) => b.criptomonedaId), active: true },
       attributes: ['id', 'symbol', 'nombre', 'red', 'decimales']
     });
     const criptoPorId = new Map(criptomonedas.map((c) => [c.id, c]));
@@ -163,9 +163,9 @@ class TransaccionBlockchainController {
     const userId = req.user.id;
     const { criptomonedaId } = req.params;
 
-    // Verificar que la criptomoneda existe y está activa
+    // Verificar que la criptomoneda existe y está active
     const criptomoneda = await Criptomoneda.findByPk(criptomonedaId);
-    if (!criptomoneda || !criptomoneda.activa) {
+    if (!criptomoneda || !criptomoneda.active) {
       throw new AppError(404, errorCodes.DEPOSIT_CRYPTO_NOT_FOUND, 'Criptomoneda no encontrada o inactiva');
     }
 

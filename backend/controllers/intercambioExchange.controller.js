@@ -1,6 +1,6 @@
 // controllers/intercambioExchange.controller.js
 
-const { IntercambioExchange, Usuario, ParExchange, BalanceUsuario, Criptomoneda, sequelize } = require('../models/index.js');
+const { IntercambioExchange, User, ParExchange, BalanceUsuario, Criptomoneda, sequelize } = require('../models/index.js');
 const AppError = require('../utils/AppError');
 const errorCodes = require('../utils/errorCodes');
 const money = require('../utils/money');
@@ -80,7 +80,7 @@ const createOrder = async (req, res) => {
       transaction
     });
 
-    if (!par || !par.activo) {
+    if (!par || !par.active) {
       await transaction.rollback();
       throw new AppError(404, errorCodes.EXCHANGE_PAIR_NOT_FOUND, 'Par de intercambio no encontrado o inactivo');
     }
@@ -96,13 +96,13 @@ const createOrder = async (req, res) => {
     // FOR UPDATE sobre la fila del usuario: serializa la sección crítica del
     // límite diario (AML) POR USUARIO. Sin este lock, dos swaps concurrentes del
     // mismo usuario leen el mismo getDailyVolume y ambos pasan → el volumen
-    // combinado excede limiteDiarioUsd (Radar #12d). Con el lock, el segundo swap
+    // combinado excede dailyLimitUsd (Radar #12d). Con el lock, el segundo swap
     // espera al commit del primero y re-lee el volumen ya incluyéndolo. Es
     // per-usuario (distintos usuarios lockean filas distintas, sin contención) y
     // se toma ANTES de los locks de saldo del ledger (orden consistente → sin
     // deadlock). El anti-sobregiro del ledger no cubre este agregado.
-    const usuario = await Usuario.findByPk(usuarioId, { transaction, lock: transaction.LOCK.UPDATE });
-    if (!usuario || !usuario.activo) {
+    const usuario = await User.findByPk(usuarioId, { transaction, lock: transaction.LOCK.UPDATE });
+    if (!usuario || !usuario.active) {
       await transaction.rollback();
       throw new AppError(404, errorCodes.EXCHANGE_USER_NOT_FOUND, 'Usuario no encontrado o inactivo');
     }
@@ -114,7 +114,7 @@ const createOrder = async (req, res) => {
     const dailyVolume = await IntercambioExchange.getDailyVolume(usuarioId, new Date(), transaction);
     const newDailyVolume = money.add(String(dailyVolume), cantidadQuote);
 
-    if (money.compare(newDailyVolume, String(usuario.limiteDiarioUsd)) > 0) {
+    if (money.compare(newDailyVolume, String(usuario.dailyLimitUsd)) > 0) {
       await transaction.rollback();
       throw new AppError(400, errorCodes.EXCHANGE_DAILY_LIMIT_EXCEEDED, 'Límite diario de operaciones excedido');
     }
@@ -155,7 +155,7 @@ const createOrder = async (req, res) => {
       completedAt: new Date()
     }, { transaction });
 
-    // Paso D: liquidación rica en el ledger. Usuario ↔ treasury (inventario de la
+    // Paso D: liquidación rica en el ledger. User ↔ treasury (inventario de la
     // casa); la comisión (en quote) acredita fee_revenue. Reemplaza los
     // updateBalance (funding+suspense) y el crédito a WalletMaestra.balanceTotal.
     await liquidarSwap({
@@ -241,7 +241,7 @@ const calculateExchange = async (req, res) => {
     ]
   });
 
-  if (!par || !par.activo) {
+  if (!par || !par.active) {
     throw new AppError(404, errorCodes.EXCHANGE_PAIR_NOT_FOUND, 'Par de intercambio no encontrado o inactivo');
   }
 
@@ -294,13 +294,13 @@ const checkTransactionLimit = async (req, res) => {
   }
 
   const dailyVolume = await IntercambioExchange.getDailyVolume(usuarioId);
-  const usuario = await Usuario.findByPk(usuarioId);
+  const usuario = await User.findByPk(usuarioId);
 
   if (!usuario) {
     throw new AppError(404, errorCodes.EXCHANGE_USER_NOT_FOUND, 'Usuario no encontrado');
   }
 
-  const remainingLimit = usuario.limiteDiarioUsd - dailyVolume;
+  const remainingLimit = usuario.dailyLimitUsd - dailyVolume;
 
   if (remainingLimit < cantidadQuote) {
     throw new AppError(400, errorCodes.EXCHANGE_DAILY_LIMIT_EXCEEDED, 'Límite diario de operaciones excedido');
@@ -309,7 +309,7 @@ const checkTransactionLimit = async (req, res) => {
   res.json({
     canTransact: true,
     dailyVolume,
-    limit: usuario.limiteDiarioUsd,
+    limit: usuario.dailyLimitUsd,
     remainingLimit,
     requestedAmount: cantidadQuote
   });

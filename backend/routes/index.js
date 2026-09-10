@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 // Import routes
-const authRoutes = require('./auth.routes.js')
+const authRoutes = require('../modules/users/auth.routes.js')
 const balanceUsuarioRoutes = require('./balanceUsuario.routes.js')
 const criptomonedaRoutes = require('./criptomoneda.routes.js')
 const direccionDepositoRoutes = require('./direccionDeposito.routes.js')
@@ -17,7 +17,7 @@ const transaccionBlockchainRoutes = require('./transaccionBlockchain.routes.js')
 const transaccionP2PRoutes = require('./transaccionesP2P.routes.js')
 const transferencia = require('./transferencia.routes.js')
 const tradingRoutes = require('./trading.routes');
-const usuarioRoutes = require('./usuario.routes.js')
+const userRoutes = require('../modules/users/user.routes.js')
 const valoracionRoutes = require('./valoraciones.routes.js')
 const walletMaestraRoutes = require('./walletMaestra.routes.js')
 const configuracionNegocioRoutes = require('./configuracionNegocio.routes.js')
@@ -39,13 +39,13 @@ router.use('/transaccionBlockchain', transaccionBlockchainRoutes)
 router.use('/transaccionP2P', transaccionP2PRoutes)
 router.use('/transferencia', transferencia)
 router.use('/trading', tradingRoutes);
-router.use('/usuario', usuarioRoutes)
+router.use('/user', userRoutes)
 // Fix 2026-08-19 (AUDITORIA_BACKEND.md Altos #11): estaba comentada pese a
 // que el modelo/controller ya estaban completos y activos en
 // models/index.js — reactivada. También se corrigieron bugs reales que
 // hubieran roto varios endpoints al usarse (Op/sequelize sin importar en
 // el controller, y 'nombre'/'reputacion' en vez de 'username'/
-// 'reputacionPromedio' en las queries del modelo).
+// 'averageRating' en las queries del modelo).
 router.use('/valoracion', valoracionRoutes)
 router.use('/walletMaestra', walletMaestraRoutes)
 

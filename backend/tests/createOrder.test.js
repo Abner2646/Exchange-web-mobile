@@ -27,7 +27,7 @@ const express = require('express');
 
 jest.mock('../models/index.js', () => ({
   IntercambioExchange: { create: jest.fn(), getDailyVolume: jest.fn() },
-  Usuario: { findByPk: jest.fn() },
+  User: { findByPk: jest.fn() },
   ParExchange: { findByPk: jest.fn() },
   BalanceUsuario: { getSaldoCompartimento: jest.fn() },
   Criptomoneda: {},
@@ -41,7 +41,7 @@ jest.mock('../services/ledger/operations', () => ({ liquidarSwap: jest.fn() }));
 
 const {
   IntercambioExchange,
-  Usuario,
+  User,
   ParExchange,
   BalanceUsuario,
   sequelize,
@@ -86,13 +86,13 @@ const CRIPTO_QUOTE_ID = 'quote-crypto-id';
 const PAR_ID = '11111111-1111-1111-1111-111111111111';
 const USER_ID = 'user-1';
 
-function setupCommonMocks({ limiteDiarioUsd = 1000000, dailyVolume = 0 } = {}) {
-  // LOCK: createOrder toma un FOR UPDATE sobre la fila de Usuario (límite diario).
+function setupCommonMocks({ dailyLimitUsd = 1000000, dailyVolume = 0 } = {}) {
+  // LOCK: createOrder toma un FOR UPDATE sobre la fila de User (límite diario).
   const transaction = { commit: jest.fn(), rollback: jest.fn(), LOCK: { UPDATE: 'UPDATE' } };
   sequelize.transaction.mockResolvedValue(transaction);
 
   ParExchange.findByPk.mockResolvedValue({
-    activo: true,
+    active: true,
     precioActual: '100',
     comisionPorcentaje: 1, // 1%
     criptoBaseId: CRIPTO_BASE_ID,
@@ -101,7 +101,7 @@ function setupCommonMocks({ limiteDiarioUsd = 1000000, dailyVolume = 0 } = {}) {
     criptoQuote: { symbol: 'USDT' },
   });
 
-  Usuario.findByPk.mockResolvedValue({ activo: true, limiteDiarioUsd });
+  User.findByPk.mockResolvedValue({ active: true, dailyLimitUsd });
   IntercambioExchange.getDailyVolume.mockResolvedValue(dailyVolume);
   IntercambioExchange.create.mockImplementation(async (data) => ({
     ...data,
@@ -190,7 +190,7 @@ describe('createOrder', () => {
   test('rechaza la orden si supera el límite diario (chequeo ya no está deshabilitado)', async () => {
     // Migrated to HTTP layer: createOrder now throws AppError for business
     // failures so the assertion must go through asyncHandler + errorHandler.
-    setupCommonMocks({ limiteDiarioUsd: 50, dailyVolume: 0 });
+    setupCommonMocks({ dailyLimitUsd: 50, dailyVolume: 0 });
     BalanceUsuario.getSaldoCompartimento.mockResolvedValue({ disponible: '200', bloqueado: '0', pendiente: '0' });
 
     // cantidadQuote = 1 * 100 = 100, supera el límite de 50
@@ -211,7 +211,7 @@ describe('checkTransactionLimit', () => {
 
   test('usa req.user.id (no req.usuario.id) y no revienta', async () => {
     IntercambioExchange.getDailyVolume.mockResolvedValue(0);
-    Usuario.findByPk.mockResolvedValue({ limiteDiarioUsd: 1000 });
+    User.findByPk.mockResolvedValue({ dailyLimitUsd: 1000 });
 
     const req = { user: { id: USER_ID }, body: { cantidadQuote: 100 } };
     const res = mockRes();
@@ -227,7 +227,7 @@ describe('checkTransactionLimit', () => {
     // of responding directly. The canTransact:false field has been replaced by
     // the canonical error envelope in the 400 response.
     IntercambioExchange.getDailyVolume.mockResolvedValue(950);
-    Usuario.findByPk.mockResolvedValue({ limiteDiarioUsd: 1000 });
+    User.findByPk.mockResolvedValue({ dailyLimitUsd: 1000 });
 
     const res = await request(buildCheckLimitApp())
       .post('/check-limit')

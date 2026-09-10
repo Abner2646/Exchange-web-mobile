@@ -27,7 +27,7 @@ jest.mock('../models', () => ({
     getStats: jest.fn(),
     failWithdrawal: jest.fn(),
   },
-  Usuario: { findByPk: jest.fn() },
+  User: { findByPk: jest.fn() },
   Criptomoneda: { findByPk: jest.fn() },
   BalanceUsuario: { findAll: jest.fn() },
   DireccionDeposito: {
@@ -67,7 +67,7 @@ function buildApp(method, path, handler) {
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    req.user = { id: 'user-test-id', rol: 'usuario' };
+    req.user = { id: 'user-test-id', role: 'usuario' };
     next();
   });
   app[method](path, asyncHandler(handler.bind(controller)));
@@ -87,7 +87,7 @@ function buildWithdrawApp() {
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    req.user = { id: 'user-test-id', rol: 'usuario' };
+    req.user = { id: 'user-test-id', role: 'usuario' };
     next();
   });
   app.post(
@@ -104,7 +104,7 @@ function buildDepositAddressApp() {
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    req.user = { id: 'user-test-id', rol: 'usuario' };
+    req.user = { id: 'user-test-id', role: 'usuario' };
     next();
   });
   app.get(
@@ -223,7 +223,7 @@ describe('GET /deposit-address/:criptomonedaId — business error paths', () => 
 
   test('address generation failure -> 500 DEPOSIT_ADDRESS_GENERATION_FAILED (canonical envelope)', async () => {
     const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    Criptomoneda.findByPk.mockResolvedValue({ id: 'c1', activa: true, symbol: 'ETH', red: 'ethereum' });
+    Criptomoneda.findByPk.mockResolvedValue({ id: 'c1', active: true, symbol: 'ETH', red: 'ethereum' });
     DireccionDeposito.getByUserAndCrypto.mockResolvedValue(null);
     DireccionDeposito.generateAddressForUser.mockRejectedValue(new Error('wallet key unavailable'));
 

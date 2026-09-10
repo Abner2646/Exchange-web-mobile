@@ -237,7 +237,7 @@ class EthereumService {
           const fee = this.calculateTransactionFee(tx);
 
           console.log(`💰 [ETH-NATIVE] Creando depósito:`);
-          console.log(`  - Usuario ID: ${direccion.userId}`);
+          console.log(`  - User ID: ${direccion.userId}`);
           console.log(`  - Cantidad: ${amount} ETH`);
           console.log(`  - Fee: ${fee} ETH`);
 
@@ -340,7 +340,7 @@ class EthereumService {
           const fee = this.calculateTransactionFee(tx);
 
           console.log(`💰 [ETH-ERC20] Creando depósito ${direccion.criptomoneda.symbol}:`);
-          console.log(`  - Usuario ID: ${direccion.userId}`);
+          console.log(`  - User ID: ${direccion.userId}`);
           console.log(`  - Cantidad: ${amount} ${direccion.criptomoneda.symbol}`);
           console.log(`  - Fee: ${fee} ETH`);
 
@@ -450,14 +450,14 @@ class EthereumService {
       console.log(`🔧 [ETH] Redes a buscar: ${redesToBuscar.join(', ')}`);
       
       const direcciones = await DireccionDeposito.findAll({
-        where: { activa: true },
+        where: { active: true },
         include: [
           {
             model: Criptomoneda,
             as: 'criptomoneda',
             where: { 
               red: redesToBuscar,
-              activa: true 
+              active: true 
             },
             attributes: ['id', 'symbol', 'nombre', 'red', 'direccionContrato', 'decimales']
           }
@@ -472,7 +472,7 @@ class EthereumService {
           console.log(`  - Dirección: ${dir.direccion}`);
           console.log(`  - Criptomoneda: ${dir.criptomoneda.symbol}`);
           console.log(`  - Red en DB: ${dir.criptomoneda.red}`);
-          console.log(`  - Usuario ID: ${dir.userId}`);
+          console.log(`  - User ID: ${dir.userId}`);
         });
       }
       

@@ -79,7 +79,7 @@ class BitcoinService {
           console.log(`🔍 [BTC] ================== ESCANEANDO DIRECCIÓN ${i + 1}/${direcciones.length} ==================`);
           console.log(`🔍 [BTC] Dirección: ${direccion.direccion}`);
           console.log(`🔍 [BTC] Red en DB: ${direccion.criptomoneda.red}`);
-          console.log(`🔍 [BTC] Usuario ID: ${direccion.userId}`);
+          console.log(`🔍 [BTC] User ID: ${direccion.userId}`);
           
           const deposits = await this.scanBitcoinAddress(direccion);
           newDeposits.push(...deposits);
@@ -210,7 +210,7 @@ class BitcoinService {
             const confirmations = tx.confirmations || 0;
 
             console.log(`💰 [BTC] Creando depósito:`);
-            console.log(`  - Usuario ID: ${direccion.userId}`);
+            console.log(`  - User ID: ${direccion.userId}`);
             console.log(`  - Cantidad: ${amountBTC} BTC`);
             console.log(`  - Confirmaciones: ${confirmations}/${this.requiredConfirmations}`);
             console.log(`  - Block Height: ${tx.block_height}`);
@@ -464,14 +464,14 @@ class BitcoinService {
       const redesToBuscar = [this.networkName, 'bitcoin'];
       
       const direcciones = await DireccionDeposito.findAll({
-        where: { activa: true },
+        where: { active: true },
         include: [
           {
             model: Criptomoneda,
             as: 'criptomoneda',
             where: { 
               red: redesToBuscar, 
-              activa: true 
+              active: true 
             }
           }
         ]
@@ -484,7 +484,7 @@ class BitcoinService {
           console.log(`🔧 [BTC] Dirección ${index + 1}:`);
           console.log(`  - Dirección: ${dir.direccion}`);
           console.log(`  - Red en DB: ${dir.criptomoneda.red}`);
-          console.log(`  - Usuario ID: ${dir.userId}`);
+          console.log(`  - User ID: ${dir.userId}`);
         });
       }
       

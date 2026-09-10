@@ -544,7 +544,7 @@ const executeCompleteSetup = async (req, res) => {
           red: config.red,
           decimales: config.decimales,
           direccionContrato: config.direccionContrato,
-          activa: true
+          active: true
           // iconUrl se genera automáticamente en el modelo
         }, { transaction });
         console.log(`✅ Criptomoneda ${config.symbol} creada con icono`);
@@ -626,7 +626,7 @@ const executeCompleteSetup = async (req, res) => {
           publicKey: walletData.publicKey,
           direccionPublica: walletData.address,
           balanceTotal: 0,
-          activa: true,
+          active: true,
           descripcion: `Wallet maestra para ${config.nombre} (${method})`,
           nextDerivationIndex: 0,
           metadata: {
@@ -737,12 +737,12 @@ const checkSetupStatus = async (req, res) => {
         as: 'criptomoneda',
         attributes: ['symbol', 'nombre', 'red', 'iconUrl']
       }],
-      attributes: ['id', 'nombre', 'symbol', 'red', 'activa', 'created_at', 'balanceTotal'],
+      attributes: ['id', 'nombre', 'symbol', 'red', 'active', 'created_at', 'balanceTotal'],
       order: [['symbol', 'ASC']]
     });
     
     const criptomonedas = await Criptomoneda.findAll({
-      attributes: ['id', 'symbol', 'nombre', 'red', 'decimales', 'direccionContrato', 'iconUrl', 'activa'],
+      attributes: ['id', 'symbol', 'nombre', 'red', 'decimales', 'direccionContrato', 'iconUrl', 'active'],
       order: [['symbol', 'ASC']]
     });
     
@@ -769,7 +769,7 @@ const checkSetupStatus = async (req, res) => {
           symbol: w.symbol,
           nombre: w.nombre,
           red: w.red,
-          activa: w.activa,
+          active: w.active,
           balance: w.balanceTotal,
           created_at: w.created_at,
           iconUrl: w.criptomoneda?.iconUrl
@@ -782,7 +782,7 @@ const checkSetupStatus = async (req, res) => {
           decimales: c.decimales,
           direccionContrato: c.direccionContrato,
           iconUrl: c.iconUrl,
-          activa: c.activa
+          active: c.active
         })),
         environmentStatus: {
           allVariablesPresent: envErrors.length === 0,

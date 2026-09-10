@@ -19,7 +19,7 @@ function createOrderModel(sequelize) {
             ]
           },
           {
-            model: sequelize.models.Usuario,
+            model: sequelize.models.User,
             as: 'user',
             attributes: ['id', 'email', 'nombre']
           }

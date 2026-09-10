@@ -13,7 +13,7 @@ const money = require('../../utils/money');
 // Liquida un swap contra la casa. Un solo asiento, net-zero por cripto:
 //  - el usuario paga en una cripto y recibe en la otra (compartimento a elección
 //    del usuario: funding por default, o spot),
-//  - la casa `treasury` es la contraparte de inventario (entrega/recibe el activo),
+//  - la casa `treasury` es la contraparte de inventario (entrega/recibe el active),
 //  - la comisión (en quote, igual que el modelo actual) acredita `fee_revenue`.
 // Mantiene idénticos los saldos del usuario respecto del modelo previo; sólo el
 // lado de la casa pasa de `suspense`/WalletMaestra a treasury+fee_revenue.

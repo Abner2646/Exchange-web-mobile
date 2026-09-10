@@ -38,7 +38,7 @@ function buildApp() {
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    req.user = { id: 'user-uuid-001', rol: 'usuario' };
+    req.user = { id: 'user-uuid-001', role: 'usuario' };
     next();
   });
   app.post('/ofertas', asyncHandler(createOferta));

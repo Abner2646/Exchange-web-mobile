@@ -1,9 +1,9 @@
 const { Op } = require('sequelize');
 // Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #10): Op, Criptomoneda y
-// Usuario se usaban en getMyTransacciones y getTransactionHistory sin estar
+// User se usaban en getMyTransacciones y getTransactionHistory sin estar
 // importados acá — ReferenceError garantizado en las dos rutas activas
 // GET /me/transacciones y GET /history/:otroUsuarioId.
-const { TransaccionP2P, Criptomoneda, Usuario } = require('../models/index.js');
+const { TransaccionP2P, Criptomoneda, User } = require('../models/index.js');
 const AppError = require('../utils/AppError');
 const errorCodes = require('../utils/errorCodes');
 const authz = require('../utils/authz');
@@ -25,7 +25,7 @@ const authz = require('../utils/authz');
 function mapP2PModelError(error) {
   if (error instanceof AppError) return error;
   const msg = error.message || '';
-  // Autorización (rol/participante) → 403
+  // Autorización (role/participante) → 403
   if (msg.includes('Solo el comprador') || msg.includes('Solo el vendedor') || msg.includes('No tienes permiso')) {
     return new AppError(403, errorCodes.P2P_TX_FORBIDDEN, 'No tenés permiso para esta operación sobre la transacción');
   }
@@ -232,14 +232,14 @@ const getMyTransacciones = async (req, res) => {
         attributes: ['id', 'symbol', 'nombre', 'iconUrl']
       },
       {
-        model: Usuario,
+        model: User,
         as: 'comprador',
-        attributes: ['id', 'username', 'reputacionPromedio']
+        attributes: ['id', 'username', 'averageRating']
       },
       {
-        model: Usuario,
+        model: User,
         as: 'vendedor',
-        attributes: ['id', 'username', 'reputacionPromedio']
+        attributes: ['id', 'username', 'averageRating']
       }
     ],
     order: [['created_at', 'DESC']],

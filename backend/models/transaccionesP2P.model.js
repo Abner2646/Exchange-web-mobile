@@ -43,7 +43,7 @@ TransaccionP2P.createTransaction = async (data) => {
       throw new Error('Oferta no encontrada');
     }
 
-    if (!oferta.activa) {
+    if (!oferta.active) {
       throw new Error('La oferta no está activa. No se pueden realizar transacciones con ofertas desactivadas.');
     }
 

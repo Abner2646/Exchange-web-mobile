@@ -1,11 +1,11 @@
-// routes/usuario.routes.js
+// routes/user.routes.js
 const { Router } = require('express');
 const router = Router();
 
 // Middleware de autenticación y autorización
-const { authenticateToken } = require('../middleware/authMiddleware.js');
-const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
-const asyncHandler = require('../utils/asyncHandler');
+const { authenticateToken } = require('../../middleware/authMiddleware.js');
+const { isAdmin, isSuperAdmin } = require('../../middleware/adminMiddleware.js');
+const asyncHandler = require('../../utils/asyncHandler');
 
 // Rate Limiters
 const {
@@ -20,21 +20,21 @@ const {
   verify2FALimiter,
   resend2FALimiter,
   changePasswordLimiter
-} = require('../middleware/rateLimiters');
+} = require('../../middleware/rateLimiters');
 
 // Validación
-const { joiValidate } = require('../middleware/joiValidate.middleware');
-const { LoginSchema } = require('../schemas/login.schema');
+const { joiValidate } = require('../../middleware/joiValidate.middleware');
+const { LoginSchema } = require('./login.schema');
 
 // Controlador
-const usuarioController = require('../controllers/usuario.controller.js');
+const userController = require('./user.controller.js');
 
 // Anotaciones OpenAPI del dominio Usuarios/Auth (bloque único por archivo). Los
 // flujos pre-login (register/login/forgot/reset/2fa-verify) son públicos
 // (security:[]); el resto requiere JWT; los de gestión son admin/super_admin.
 /**
  * @openapi
- * /usuario/register:
+ * /user/register:
  *   post:
  *     tags: [Usuarios / Auth]
  *     summary: Registro de usuario (devuelve token temporal para verificar email)
@@ -51,7 +51,7 @@ const usuarioController = require('../controllers/usuario.controller.js');
  *               password: { type: string, format: password }
  *               username: { type: string }
  *     responses: { 201: { description: Registrado (token temporal) }, 400: { $ref: '#/components/responses/BadRequest' } }
- * /usuario/login:
+ * /user/login:
  *   post:
  *     tags: [Usuarios / Auth]
  *     summary: Login paso 1 (credenciales; puede requerir 2FA)
@@ -67,7 +67,7 @@ const usuarioController = require('../controllers/usuario.controller.js');
  *               email: { type: string, format: email }
  *               password: { type: string, format: password }
  *     responses: { 200: { description: JWT, o requires2FA + temporalToken }, 400: { $ref: '#/components/responses/BadRequest' } }
- * /usuario/login/google:
+ * /user/login/google:
  *   post:
  *     tags: [Usuarios / Auth]
  *     summary: Login con Google (verifica un id_token server-side)
@@ -78,9 +78,9 @@ const usuarioController = require('../controllers/usuario.controller.js');
  *         application/json:
  *           schema: { type: object, required: [idToken], properties: { idToken: { type: string } } }
  *     responses: { 200: { description: JWT }, 401: { $ref: '#/components/responses/Unauthorized' } }
- * /usuario/logout:
+ * /user/logout:
  *   post: { tags: [Usuarios / Auth], summary: Cerrar sesión, responses: { 200: { description: OK } } }
- * /usuario/verify-email:
+ * /user/verify-email:
  *   post:
  *     tags: [Usuarios / Auth]
  *     summary: Verificar email con código (usa el token temporal)
@@ -90,9 +90,9 @@ const usuarioController = require('../controllers/usuario.controller.js');
  *         application/json:
  *           schema: { type: object, required: [codigo], properties: { codigo: { type: string } } }
  *     responses: { 200: { description: Email verificado }, 400: { $ref: '#/components/responses/BadRequest' } }
- * /usuario/resend-verification-email:
+ * /user/resend-verification-email:
  *   post: { tags: [Usuarios / Auth], summary: Reenviar código de verificación de email, responses: { 200: { description: Reenviado } } }
- * /usuario/forgot-password:
+ * /user/forgot-password:
  *   post:
  *     tags: [Usuarios / Auth]
  *     summary: Solicitar código de recuperación de contraseña (anti-enumeración)
@@ -103,35 +103,35 @@ const usuarioController = require('../controllers/usuario.controller.js');
  *         application/json:
  *           schema: { type: object, required: [email], properties: { email: { type: string, format: email } } }
  *     responses: { 200: { description: Si el email existe, se envió un código } }
- * /usuario/verify-reset-code:
+ * /user/verify-reset-code:
  *   post:
  *     tags: [Usuarios / Auth]
  *     summary: Verificar el código de recuperación
  *     security: []
  *     responses: { 200: { description: Código válido }, 400: { $ref: '#/components/responses/BadRequest' } }
- * /usuario/reset-password:
+ * /user/reset-password:
  *   post:
  *     tags: [Usuarios / Auth]
  *     summary: Resetear la contraseña con el código verificado
  *     security: []
  *     responses: { 200: { description: Contraseña actualizada }, 400: { $ref: '#/components/responses/BadRequest' } }
- * /usuario/verify-2fa:
+ * /user/verify-2fa:
  *   post:
  *     tags: [Usuarios / Auth]
  *     summary: Verificar el código 2FA durante el login
  *     security: []
  *     responses: { 200: { description: JWT }, 400: { $ref: '#/components/responses/BadRequest' } }
- * /usuario/resend-2fa:
+ * /user/resend-2fa:
  *   post: { tags: [Usuarios / Auth], summary: Reenviar el código 2FA, security: [], responses: { 200: { description: Reenviado } } }
- * /usuario/me/2fa-toggle:
+ * /user/me/2fa-toggle:
  *   patch: { tags: [Usuarios / Perfil], summary: Activar/desactivar 2FA, responses: { 200: { description: OK } } }
- * /usuario/me:
+ * /user/me:
  *   get: { tags: [Usuarios / Perfil], summary: Mi perfil, responses: { 200: { description: Perfil }, 401: { $ref: '#/components/responses/Unauthorized' } } }
  *   put:
  *     tags: [Usuarios / Perfil]
  *     summary: Actualizar mi perfil (username, país)
  *     responses: { 200: { description: Perfil actualizado }, 400: { $ref: '#/components/responses/BadRequest' } }
- * /usuario/me/change-password:
+ * /user/me/change-password:
  *   patch:
  *     tags: [Usuarios / Perfil]
  *     summary: Cambiar mi contraseña
@@ -141,81 +141,81 @@ const usuarioController = require('../controllers/usuario.controller.js');
  *         application/json:
  *           schema: { type: object, required: [currentPassword, newPassword], properties: { currentPassword: { type: string }, newPassword: { type: string } } }
  *     responses: { 200: { description: Contraseña cambiada }, 400: { $ref: '#/components/responses/BadRequest' } }
- * /usuario/me/kyc-request:
+ * /user/me/kyc-request:
  *   post: { tags: [Usuarios / Perfil], summary: Solicitar verificación KYC, responses: { 200: { description: Solicitud creada } } }
- * /usuario/me/daily-volume:
+ * /user/me/daily-volume:
  *   get: { tags: [Usuarios / Perfil], summary: Mi volumen diario, responses: { 200: { description: Volumen } } }
- * /usuario/search:
+ * /user/search:
  *   get:
  *     tags: [Usuarios / Perfil]
  *     summary: Buscar usuarios
  *     parameters: [{ in: query, name: q, schema: { type: string } }]
  *     responses: { 200: { description: Resultados } }
- * /usuario/public/{id}:
+ * /user/public/{id}:
  *   get:
  *     tags: [Usuarios / Perfil]
  *     summary: Perfil público de un usuario
  *     security: []
  *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
  *     responses: { 200: { description: Perfil público } }
- * /usuario:
+ * /user:
  *   get: { tags: [Usuarios - admin], summary: Listar usuarios (admin), responses: { 200: { description: Usuarios } } }
- * /usuario/{id}:
+ * /user/{id}:
  *   get:
  *     tags: [Usuarios / Perfil]
- *     summary: Usuario por id (admin ve perfil completo; usuario normal, público)
+ *     summary: User por id (admin ve perfil completo; usuario normal, público)
  *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
- *     responses: { 200: { description: Usuario }, 404: { $ref: '#/components/responses/BadRequest' } }
+ *     responses: { 200: { description: User }, 404: { $ref: '#/components/responses/BadRequest' } }
  *   delete:
  *     tags: [Usuarios - admin]
  *     summary: Eliminar usuario (super admin)
  *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
  *     responses: { 200: { description: Eliminado } }
- * /usuario/{id}/status:
+ * /user/{id}/status:
  *   patch:
  *     tags: [Usuarios - admin]
  *     summary: Actualizar estado de un usuario (admin)
  *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
  *     responses: { 200: { description: Estado actualizado } }
- * /usuario/{id}/role:
+ * /user/{id}/role:
  *   patch:
  *     tags: [Usuarios - admin]
- *     summary: Actualizar rol de un usuario (super admin)
+ *     summary: Actualizar role de un usuario (super admin)
  *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
  *     responses: { 200: { description: Rol actualizado } }
- * /usuario/{id}/kyc:
+ * /user/{id}/kyc:
  *   patch:
  *     tags: [Usuarios - admin]
  *     summary: Actualizar KYC de un usuario (admin)
  *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
  *     responses: { 200: { description: KYC actualizado } }
- * /usuario/{id}/daily-limit:
+ * /user/{id}/daily-limit:
  *   patch:
  *     tags: [Usuarios - admin]
  *     summary: Actualizar el límite diario de un usuario (admin)
  *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
  *     responses: { 200: { description: Límite actualizado } }
- * /usuario/{id}/reputation:
+ * /user/{id}/reputation:
  *   patch:
  *     tags: [Usuarios - admin]
  *     summary: Actualizar la reputación de un usuario (admin)
  *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
  *     responses: { 200: { description: Reputación actualizada } }
- * /usuario/{id}/daily-volume:
+ * /user/{id}/daily-volume:
  *   get:
  *     tags: [Usuarios - admin]
  *     summary: Volumen diario de un usuario (admin)
  *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
  *     responses: { 200: { description: Volumen } }
- * /usuario/{id}/transaction-limit:
+ * /user/{id}/transaction-limit:
  *   get:
  *     tags: [Usuarios - admin]
  *     summary: Verificar el límite de transacción de un usuario (admin)
  *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
  *     responses: { 200: { description: Límite } }
- * /usuario/admin/stats:
+ * /user/admin/stats:
  *   get: { tags: [Usuarios - admin], summary: Estadísticas de usuarios (admin), responses: { 200: { description: Stats } } }
- * /usuario/admin/deactivate-inactive:
+ * /user/admin/deactivate-inactive:
  *   post: { tags: [Usuarios - admin], summary: Desactivar usuarios inactivos (admin), responses: { 200: { description: Desactivados } } }
  */
 
@@ -230,7 +230,7 @@ const usuarioController = require('../controllers/usuario.controller.js');
  */
 router.post('/register', 
   registerLimiter,
-  usuarioController.registerUsuario
+  userController.registerUsuario
 );
 
 /**
@@ -241,7 +241,7 @@ router.post('/register',
 router.post('/login',
   loginLimiter,
   joiValidate(LoginSchema.login),
-  usuarioController.loginStep1
+  userController.loginStep1
 );
 
 /**
@@ -251,7 +251,7 @@ router.post('/login',
  */
 router.post('/login/google', 
   googleLoginLimiter,
-  usuarioController.loginWithGoogle
+  userController.loginWithGoogle
 );
 
 /**
@@ -260,7 +260,7 @@ router.post('/login/google',
  */
 router.post('/logout', 
   authenticateToken,
-  usuarioController.logout
+  userController.logout
 );
 
 // =====================================================================
@@ -275,7 +275,7 @@ router.post('/logout',
 router.post('/verify-email', 
   authenticateToken,
   verifyEmailCodeLimiter,
-  usuarioController.verifyEmail
+  userController.verifyEmail
 );
 
 /**
@@ -286,7 +286,7 @@ router.post('/verify-email',
 router.post('/resend-verification-email', 
   authenticateToken,
   resendVerificationEmailLimiter,
-  usuarioController.resendVerificationEmail
+  userController.resendVerificationEmail
 );
 
 // =====================================================================
@@ -300,7 +300,7 @@ router.post('/resend-verification-email',
  */
 router.post('/forgot-password', 
   forgotPasswordLimiter,
-  usuarioController.requestPasswordReset
+  userController.requestPasswordReset
 );
 
 /**
@@ -310,7 +310,7 @@ router.post('/forgot-password',
  */
 router.post('/verify-reset-code', 
   verifyResetCodeLimiter,
-  usuarioController.verifyResetCode
+  userController.verifyResetCode
 );
 
 /**
@@ -320,7 +320,7 @@ router.post('/verify-reset-code',
  */
 router.post('/reset-password', 
   resetPasswordLimiter,
-  usuarioController.resetPassword
+  userController.resetPassword
 );
 
 // =====================================================================
@@ -334,7 +334,7 @@ router.post('/reset-password',
  */
 router.post('/verify-2fa', 
   verify2FALimiter,
-  usuarioController.verify2FA
+  userController.verify2FA
 );
 
 /**
@@ -344,7 +344,7 @@ router.post('/verify-2fa',
  */
 router.post('/resend-2fa', 
   resend2FALimiter,
-  usuarioController.resend2FACode
+  userController.resend2FACode
 );
 
 /**
@@ -353,7 +353,7 @@ router.post('/resend-2fa',
  */
 router.patch('/me/2fa-toggle', 
   authenticateToken,
-  usuarioController.toggle2FA
+  userController.toggle2FA
 );
 
 // =====================================================================
@@ -366,7 +366,7 @@ router.patch('/me/2fa-toggle',
  */
 router.get('/me', 
   authenticateToken,
-  usuarioController.getMyProfile
+  userController.getMyProfile
 );
 
 /**
@@ -376,7 +376,7 @@ router.get('/me',
  */
 router.put('/me', 
   authenticateToken,
-  usuarioController.updateMyProfile
+  userController.updateMyProfile
 );
 
 /**
@@ -388,14 +388,14 @@ router.put('/me',
 router.patch('/me/change-password',
   authenticateToken,
   changePasswordLimiter,
-  usuarioController.changePassword
+  userController.changePassword
 );
 
 /**
  * @openapi
- * /usuario/me/email-change:
+ * /user/me/email-change:
  *   post:
- *     tags: [Usuario]
+ *     tags: [User]
  *     summary: Solicitar cambio de email (acción sensible — re-auth + código al email nuevo)
  *     requestBody:
  *       required: true
@@ -411,9 +411,9 @@ router.patch('/me/change-password',
  *       200: { description: Código enviado al email nuevo }
  *       400: { $ref: '#/components/responses/BadRequest' }
  *       401: { $ref: '#/components/responses/Unauthorized' }
- * /usuario/me/email-change/confirm:
+ * /user/me/email-change/confirm:
  *   post:
- *     tags: [Usuario]
+ *     tags: [User]
  *     summary: Confirmar el cambio de email con el código (setea cooldown de retiros)
  *     requestBody:
  *       required: true
@@ -431,11 +431,11 @@ router.patch('/me/change-password',
 router.post('/me/email-change',
   authenticateToken,
   changePasswordLimiter,
-  asyncHandler(usuarioController.requestEmailChange)
+  asyncHandler(userController.requestEmailChange)
 );
 router.post('/me/email-change/confirm',
   authenticateToken,
-  asyncHandler(usuarioController.confirmEmailChange)
+  asyncHandler(userController.confirmEmailChange)
 );
 
 /**
@@ -444,7 +444,7 @@ router.post('/me/email-change/confirm',
  */
 router.post('/me/kyc-request', 
   authenticateToken,
-  usuarioController.requestKYCVerification
+  userController.requestKYCVerification
 );
 
 /**
@@ -453,7 +453,7 @@ router.post('/me/kyc-request',
  */
 router.get('/me/daily-volume', 
   authenticateToken,
-  usuarioController.getDailyVolume
+  userController.getDailyVolume
 );
 
 // =====================================================================
@@ -466,7 +466,7 @@ router.get('/me/daily-volume',
  */
 router.get('/search', 
   authenticateToken,
-  usuarioController.searchUsuarios
+  userController.searchUsuarios
 );
 
 /**
@@ -474,7 +474,7 @@ router.get('/search',
  * Obtener perfil público de usuario
  */
 router.get('/public/:id', 
-  usuarioController.getPublicProfile
+  userController.getPublicProfile
 );
 
 // =====================================================================
@@ -488,18 +488,18 @@ router.get('/public/:id',
 router.get('/', 
   authenticateToken,
   isAdmin,
-  usuarioController.getUsuarios
+  userController.getUsuarios
 );
 
 /**
  * GET /:id
  * Obtener usuario por ID
  * Admin: perfil completo
- * Usuario normal: perfil público
+ * User normal: perfil público
  */
 router.get('/:id', 
   authenticateToken,
-  usuarioController.getUsuarioById
+  userController.getUsuarioById
 );
 
 /**
@@ -509,7 +509,7 @@ router.get('/:id',
 router.delete('/:id', 
   authenticateToken,
   isSuperAdmin,
-  usuarioController.deleteUsuario
+  userController.deleteUsuario
 );
 
 // =====================================================================
@@ -523,17 +523,17 @@ router.delete('/:id',
 router.patch('/:id/status', 
   authenticateToken,
   isAdmin,
-  usuarioController.updateUsuarioStatus
+  userController.updateUsuarioStatus
 );
 
 /**
  * PATCH /:id/role
- * Actualizar rol de usuario (super_admin)
+ * Actualizar role de usuario (super_admin)
  */
 router.patch('/:id/role', 
   authenticateToken,
   isSuperAdmin,
-  usuarioController.updateUsuarioRole
+  userController.updateUsuarioRole
 );
 
 /**
@@ -543,7 +543,7 @@ router.patch('/:id/role',
 router.patch('/:id/kyc', 
   authenticateToken,
   isAdmin,
-  usuarioController.updateUsuarioKYC
+  userController.updateUsuarioKYC
 );
 
 /**
@@ -553,7 +553,7 @@ router.patch('/:id/kyc',
 router.patch('/:id/daily-limit', 
   authenticateToken,
   isAdmin,
-  usuarioController.updateDailyLimit
+  userController.updateDailyLimit
 );
 
 /**
@@ -563,7 +563,7 @@ router.patch('/:id/daily-limit',
 router.patch('/:id/reputation', 
   authenticateToken,
   isAdmin,
-  usuarioController.updateUsuarioReputation
+  userController.updateUsuarioReputation
 );
 
 // =====================================================================
@@ -577,7 +577,7 @@ router.patch('/:id/reputation',
 router.get('/:id/daily-volume', 
   authenticateToken,
   isAdmin,
-  usuarioController.getDailyVolume
+  userController.getDailyVolume
 );
 
 /**
@@ -587,7 +587,7 @@ router.get('/:id/daily-volume',
 router.get('/:id/transaction-limit', 
   authenticateToken,
   isAdmin,
-  usuarioController.checkTransactionLimit
+  userController.checkTransactionLimit
 );
 
 // =====================================================================
@@ -601,7 +601,7 @@ router.get('/:id/transaction-limit',
 router.get('/admin/stats', 
   authenticateToken,
   isAdmin,
-  usuarioController.getUsuariosStats
+  userController.getUsuariosStats
 );
 
 /**
@@ -611,7 +611,7 @@ router.get('/admin/stats',
 router.post('/admin/deactivate-inactive', 
   authenticateToken,
   isAdmin,
-  usuarioController.deactivateInactiveUsers
+  userController.deactivateInactiveUsers
 );
 
 module.exports = router;

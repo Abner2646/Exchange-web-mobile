@@ -18,14 +18,14 @@ jest.mock('../models/index.js', () => ({
     getById: jest.fn(),
     reenviarCodigo: jest.fn(),
   },
-  Usuario: { findByPk: jest.fn() },
+  User: { findByPk: jest.fn() },
   Criptomoneda: { getById: jest.fn() },
   BalanceUsuario: {},
   Notificaciones: {},
   sequelize: { transaction: jest.fn() },
 }));
 
-const { Transferencia, Usuario, Criptomoneda } = require('../models/index.js');
+const { Transferencia, User, Criptomoneda } = require('../models/index.js');
 
 const asyncHandler = require('../utils/asyncHandler');
 const errorHandler = require('../middleware/errorHandler');
@@ -75,7 +75,7 @@ describe('reenviarCodigo — resiliencia post-commit', () => {
   test('un lookup de email-prep que rechaza NO vuelve fatal la operación (código ya regenerado)', async () => {
     setupHappyPathUntilLookups();
     // remitente lookup rechaza (hiccup de DB) — pero el código ya se commiteó.
-    Usuario.findByPk.mockRejectedValue(new Error('DB connection reset'));
+    User.findByPk.mockRejectedValue(new Error('DB connection reset'));
 
     const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
     const res = await request(buildApp()).post('/transfers/tx-id/resend-code').send({});
@@ -88,7 +88,7 @@ describe('reenviarCodigo — resiliencia post-commit', () => {
 
   test('email enviado en el happy path (lookups OK)', async () => {
     setupHappyPathUntilLookups();
-    Usuario.findByPk
+    User.findByPk
       .mockResolvedValueOnce({ email: 'sender@x.com', username: 'sender' })
       .mockResolvedValueOnce({ username: 'dest' });
     Criptomoneda.getById.mockResolvedValue({ symbol: 'BTC' });

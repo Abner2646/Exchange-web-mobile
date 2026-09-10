@@ -8,7 +8,7 @@
 process.env.JWT_SECRET = 'test-secret';
 
 jest.mock('../models', () => ({
-  Usuario: { findByPk: jest.fn() },
+  User: { findByPk: jest.fn() },
   WalletMaestra: {},
   Criptomoneda: {},
   sequelize: {},
@@ -23,7 +23,7 @@ jest.mock('../controllers/setupWallets.controller', () => ({
 const jwt = require('jsonwebtoken');
 const express = require('express');
 const request = require('supertest');
-const { Usuario } = require('../models');
+const { User } = require('../models');
 const setupWalletsRoutes = require('../routes/setupWallets.routes');
 
 function buildApp() {
@@ -47,7 +47,7 @@ describe('GET /setup-wallets/status', () => {
   });
 
   test('con token pero sin ser super_admin: 403, no 401', async () => {
-    Usuario.findByPk.mockResolvedValue({ id: 'u1', activo: true, rol: 'admin', emailVerificado: true });
+    User.findByPk.mockResolvedValue({ id: 'u1', active: true, role: 'admin', emailVerified: true });
 
     const res = await request(app)
       .get('/setup-wallets/status')
@@ -57,7 +57,7 @@ describe('GET /setup-wallets/status', () => {
   });
 
   test('un super_admin real con token válido ya no recibe 401', async () => {
-    Usuario.findByPk.mockResolvedValue({ id: 'admin1', activo: true, rol: 'super_admin', emailVerificado: true });
+    User.findByPk.mockResolvedValue({ id: 'admin1', active: true, role: 'super_admin', emailVerified: true });
 
     const res = await request(app)
       .get('/setup-wallets/status')

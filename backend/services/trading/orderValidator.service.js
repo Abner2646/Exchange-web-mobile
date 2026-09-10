@@ -1,5 +1,5 @@
 // services/trading/orderValidator.service.js
-const { TradingPair, Usuario } = require('../../models');
+const { TradingPair, User } = require('../../models');
 
 class OrderValidatorService {
 
@@ -20,7 +20,7 @@ class OrderValidatorService {
 
     try {
       // 1. Validar que el usuario exista
-      const user = await Usuario.findByPk(userId);
+      const user = await User.findByPk(userId);
       if (!user) {
         return {
           valid: false,
@@ -28,7 +28,7 @@ class OrderValidatorService {
         };
       }
 
-      // 2. Validar que el par de trading exista y esté activo
+      // 2. Validar que el par de trading exista y esté active
       const tradingPair = await TradingPair.findByPk(tradingPairId);
       if (!tradingPair) {
         return {
@@ -40,7 +40,7 @@ class OrderValidatorService {
       if (tradingPair.status !== 'active') {
         return {
           valid: false,
-          error: 'El par de trading no está activo para operar'
+          error: 'El par de trading no está active para operar'
         };
       }
 

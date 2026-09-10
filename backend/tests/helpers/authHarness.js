@@ -30,7 +30,7 @@ function installAuthHarness() {
   // Registers via HTTP and returns the token + the verification code the fake
   // captured. Fails loudly here if registration did not return 201.
   handle.registerAndGetCode = async ({ email, username, password = 'password123' }) => {
-    const res = await request(app).post('/api/usuario/register').send({ email, username, password });
+    const res = await request(app).post('/api/user/register').send({ email, username, password });
     expect(res.status).toBe(201);
     const sent = handle.fake.sent.find((s) => s.type === 'verificacion' && s.email === email);
     return { res, token: res.body.token, code: sent && sent.codigo };

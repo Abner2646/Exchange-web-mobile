@@ -487,7 +487,7 @@ class EmailService {
           <span class="detail-value">${new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">Usuario:</span>
+          <span class="detail-label">User:</span>
           <span class="detail-value">${username}</span>
         </div>
       </div>
@@ -537,7 +537,7 @@ class EmailService {
           <span class="detail-value">${new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">Usuario:</span>
+          <span class="detail-label">User:</span>
           <span class="detail-value">${username}</span>
         </div>
       </div>

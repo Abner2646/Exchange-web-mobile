@@ -31,7 +31,7 @@ async function seedVentaOffer(seller, cripto, { min = '0.1', max = '10', precio 
     cantidadMax: max,
     precioUnitario: precio,
     monedaFiat: 'USD',
-    activa: true,
+    active: true,
   });
 }
 
@@ -149,7 +149,7 @@ describe('P2P transaction — state-machine guards return a typed 4xx envelope',
 describe('P2P transaction — create rejections return a typed 4xx envelope', () => {
   test('inactive offer → 400 P2P_TX_OFFER_INACTIVE', async () => {
     const { buyer, metodo, oferta } = await seedScenario();
-    await oferta.update({ activa: false });
+    await oferta.update({ active: false });
 
     const res = await create(buyer, oferta, metodo, 1);
     expect(res.status).toBe(400);

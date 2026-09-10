@@ -7,10 +7,10 @@ class OfertaP2P extends Model {
     const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
     
     await this.update(
-      { activa: false },
+      { active: false },
       {
         where: {
-          activa: true,
+          active: true,
           created_at: {
             [Op.lt]: twelveHoursAgo
           }
@@ -25,8 +25,8 @@ class OfertaP2P extends Model {
 
     const where = {};
     
-    if (filters.activa !== undefined) {
-      where.activa = filters.activa === 'true' || filters.activa === true;
+    if (filters.active !== undefined) {
+      where.active = filters.active === 'true' || filters.active === true;
     }
     if (filters.tipo) where.tipo = filters.tipo;
     if (filters.criptomonedaId) where.criptomonedaId = filters.criptomonedaId;
@@ -43,7 +43,7 @@ class OfertaP2P extends Model {
         model: this.sequelize.models.MetodoPago,
         as: 'metodosPago',
         through: { attributes: [] }, // No incluir datos de la tabla intermedia
-        attributes: ['id', 'nombre', 'descripcion', 'activo']
+        attributes: ['id', 'nombre', 'descripcion', 'active']
       }
     ];
 
@@ -75,16 +75,16 @@ class OfertaP2P extends Model {
           model: this.sequelize.models.MetodoPago,
           as: 'metodosPago',
           through: { attributes: [] },
-          attributes: ['id', 'nombre', 'descripcion', 'activo']
+          attributes: ['id', 'nombre', 'descripcion', 'active']
         }
       ]
     });
     
-    if (oferta && oferta.activa) {
+    if (oferta && oferta.active) {
       const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
       if (oferta.created_at < twelveHoursAgo) {
-        await oferta.update({ activa: false });
-        oferta.activa = false;
+        await oferta.update({ active: false });
+        oferta.active = false;
       }
     }
     
@@ -114,7 +114,7 @@ class OfertaP2P extends Model {
     const metodosValidos = await this.sequelize.models.MetodoPago.findAll({
       where: {
         id: { [Op.in]: metodosPagoIds },
-        activo: true
+        active: true
       }
     });
 
@@ -208,7 +208,7 @@ class OfertaP2P extends Model {
       const metodosValidos = await this.sequelize.models.MetodoPago.findAll({
         where: {
           id: { [Op.in]: metodosPagoIds },
-          activo: true
+          active: true
         }
       });
 
@@ -269,7 +269,7 @@ class OfertaP2P extends Model {
     const metodosValidos = await this.sequelize.models.MetodoPago.findAll({
       where: {
         id: { [Op.in]: metodosNuevos },
-        activo: true
+        active: true
       }
     });
 
@@ -326,15 +326,15 @@ class OfertaP2P extends Model {
   }
 
   // Actualizar estado de oferta
-  static async updateStatus(id, activa) {
+  static async updateStatus(id, active) {
     const oferta = await this.findByPk(id);
     
     if (!oferta) {
       throw new Error('Oferta no encontrada');
     }
 
-    const updateData = { activa };
-    if (activa === true) {
+    const updateData = { active };
+    if (active === true) {
       updateData.created_at = new Date();
     }
 
@@ -348,7 +348,7 @@ class OfertaP2P extends Model {
 
     return await this.findAll({
       where: {
-        activa: true,
+        active: true,
         [Op.or]: [
           { condicionesAdicionales: { [Op.like]: `%${term}%` } },
           { monedaFiat: { [Op.like]: `%${term}%` } }
@@ -359,7 +359,7 @@ class OfertaP2P extends Model {
           model: this.sequelize.models.MetodoPago,
           as: 'metodosPago',
           through: { attributes: [] },
-          attributes: ['id', 'nombre', 'descripcion', 'activo']
+          attributes: ['id', 'nombre', 'descripcion', 'active']
         }
       ],
       limit,
@@ -378,7 +378,7 @@ class OfertaP2P extends Model {
           model: this.sequelize.models.MetodoPago,
           as: 'metodosPago',
           through: { attributes: [] },
-          attributes: ['id', 'nombre', 'descripcion', 'activo']
+          attributes: ['id', 'nombre', 'descripcion', 'active']
         }
       ],
       limit,
@@ -405,7 +405,7 @@ class OfertaP2P extends Model {
     const tipoOpuesto = tipo === 'compra' ? 'venta' : 'compra';
 
     const where = {
-      activa: true,
+      active: true,
       tipo: tipoOpuesto,
       criptomonedaId,
       monedaFiat,
@@ -417,7 +417,7 @@ class OfertaP2P extends Model {
       model: this.sequelize.models.MetodoPago,
       as: 'metodosPago',
       through: { attributes: [] },
-      attributes: ['id', 'nombre', 'descripcion', 'activo']
+      attributes: ['id', 'nombre', 'descripcion', 'active']
     };
 
     // Si se especifica un método de pago, filtrar por ese método
@@ -444,7 +444,7 @@ class OfertaP2P extends Model {
       return { canAccept: false, reason: 'Oferta no encontrada' };
     }
 
-    if (!oferta.activa) {
+    if (!oferta.active) {
       return { canAccept: false, reason: 'Oferta inactiva o expirada' };
     }
 
@@ -477,9 +477,9 @@ class OfertaP2P extends Model {
 
     const [totalOfertas, ofertasActivas, ofertasCompra, ofertasVenta] = await Promise.all([
       this.count(),
-      this.count({ where: { activa: true } }),
-      this.count({ where: { tipo: 'compra', activa: true } }),
-      this.count({ where: { tipo: 'venta', activa: true } })
+      this.count({ where: { active: true } }),
+      this.count({ where: { tipo: 'compra', active: true } }),
+      this.count({ where: { tipo: 'venta', active: true } })
     ]);
 
     return {
@@ -544,7 +544,7 @@ function initOfertaP2P(sequelize) {
       allowNull: true,
       field: 'condiciones_adicionales'
     },
-    activa: {
+    active: {
       type: DataTypes.BOOLEAN,
       defaultValue: true
     }

@@ -18,7 +18,7 @@ function createOfertaMetodoPagoModel(sequelize) {
           {
             model: sequelize.models.MetodoPago,
             as: 'metodoPago',
-            attributes: ['id', 'nombre', 'descripcion', 'activo']
+            attributes: ['id', 'nombre', 'descripcion', 'active']
           }
         ]
       });
@@ -52,7 +52,7 @@ function createOfertaMetodoPagoModel(sequelize) {
           {
             model: sequelize.models.MetodoPago,
             as: 'metodoPago',
-            attributes: ['id', 'nombre', 'descripcion', 'activo']
+            attributes: ['id', 'nombre', 'descripcion', 'active']
           }
         ],
         order: [['ofertaId', 'ASC'], ['metodoPagoId', 'ASC']]
@@ -73,8 +73,8 @@ function createOfertaMetodoPagoModel(sequelize) {
           {
             model: sequelize.models.MetodoPago,
             as: 'metodoPago',
-            attributes: ['id', 'nombre', 'descripcion', 'activo'],
-            where: { activo: true }, // Solo métodos activos
+            attributes: ['id', 'nombre', 'descripcion', 'active'],
+            where: { active: true }, // Solo métodos activos
             required: true
           }
         ],
@@ -111,7 +111,7 @@ function createOfertaMetodoPagoModel(sequelize) {
 
   OfertaMetodoPago.getOfertaMetodosPago = async (ofertaId, includeInactive = false) => {
     try {
-      const whereMetodo = includeInactive ? {} : { activo: true };
+      const whereMetodo = includeInactive ? {} : { active: true };
       
       const relations = await OfertaMetodoPago.findAll({
         where: { ofertaId: ofertaId },
@@ -119,7 +119,7 @@ function createOfertaMetodoPagoModel(sequelize) {
           {
             model: sequelize.models.MetodoPago,
             as: 'metodoPago',
-            attributes: ['id', 'nombre', 'descripcion', 'activo'],
+            attributes: ['id', 'nombre', 'descripcion', 'active'],
             where: whereMetodo,
             required: true
           },
@@ -173,13 +173,13 @@ function createOfertaMetodoPagoModel(sequelize) {
         throw new Error('La oferta especificada no existe');
       }
 
-      // Verificar que el método de pago existe y está activo
+      // Verificar que el método de pago existe y está active
       const metodoPago = await sequelize.models.MetodoPago.findByPk(data.metodoPagoId);
       if (!metodoPago) {
         throw new Error('El método de pago especificado no existe');
       }
       
-      if (!metodoPago.activo) {
+      if (!metodoPago.active) {
         throw new Error('El método de pago no está activo');
       }
 
@@ -322,7 +322,7 @@ function createOfertaMetodoPagoModel(sequelize) {
           {
             model: sequelize.models.MetodoPago,
             as: 'metodoPago',
-            attributes: ['nombre', 'activo']
+            attributes: ['nombre', 'active']
           }
         ],
         group: ['metodoPagoId', 'metodoPago.id'],
@@ -381,7 +381,7 @@ function createOfertaMetodoPagoModel(sequelize) {
   // Método para validar compatibilidad
   OfertaMetodoPago.validateCompatibility = async (ofertaId, metodoPagoId) => {
     try {
-      // Verificar que la oferta existe y está activa
+      // Verificar que la oferta existe y está active
       const oferta = await sequelize.models.Oferta.findByPk(ofertaId);
       if (!oferta) {
         throw new Error('Oferta no encontrada');
@@ -391,13 +391,13 @@ function createOfertaMetodoPagoModel(sequelize) {
         throw new Error('La oferta no está activa');
       }
 
-      // Verificar que el método de pago existe y está activo
+      // Verificar que el método de pago existe y está active
       const metodoPago = await sequelize.models.MetodoPago.findByPk(metodoPagoId);
       if (!metodoPago) {
         throw new Error('Método de pago no encontrado');
       }
 
-      if (!metodoPago.activo) {
+      if (!metodoPago.active) {
         throw new Error('El método de pago no está activo');
       }
 
@@ -424,7 +424,7 @@ function createOfertaMetodoPagoModel(sequelize) {
     try {
       // Obtener todos los métodos activos
       const todosMetodos = await sequelize.models.MetodoPago.findAll({
-        where: { activo: true },
+        where: { active: true },
         attributes: ['id', 'nombre', 'descripcion']
       });
 

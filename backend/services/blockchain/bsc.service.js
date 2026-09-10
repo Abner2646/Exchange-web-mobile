@@ -251,7 +251,7 @@ class BscService {
           const fee = this.calculateTransactionFee(tx);
 
           console.log(`💰 [BSC-BNB] Creando depósito:`);
-          console.log(`  - Usuario ID: ${direccion.userId}`);
+          console.log(`  - User ID: ${direccion.userId}`);
           console.log(`  - Cantidad: ${amount} BNB`);
           console.log(`  - Fee: ${fee} BNB`);
 
@@ -354,7 +354,7 @@ class BscService {
           const fee = this.calculateTransactionFee(tx);
 
           console.log(`💰 [BSC-BEP20] Creando depósito ${direccion.criptomoneda.symbol}:`);
-          console.log(`  - Usuario ID: ${direccion.userId}`);
+          console.log(`  - User ID: ${direccion.userId}`);
           console.log(`  - Cantidad: ${amount} ${direccion.criptomoneda.symbol}`);
           console.log(`  - Fee: ${fee} BNB`);
 
@@ -465,14 +465,14 @@ class BscService {
       console.log(`🔧 [BSC] Redes a buscar: ${redesToBuscar.join(', ')}`);
       
       const direcciones = await DireccionDeposito.findAll({
-        where: { activa: true },
+        where: { active: true },
         include: [
           {
             model: Criptomoneda,
             as: 'criptomoneda',
             where: { 
               red: redesToBuscar,
-              activa: true 
+              active: true 
             },
             attributes: ['id', 'symbol', 'nombre', 'red', 'direccionContrato', 'decimales']
           }
@@ -487,7 +487,7 @@ class BscService {
           console.log(`  - Dirección: ${dir.direccion}`);
           console.log(`  - Criptomoneda: ${dir.criptomoneda.symbol}`);
           console.log(`  - Red en DB: ${dir.criptomoneda.red}`);
-          console.log(`  - Usuario ID: ${dir.userId}`);
+          console.log(`  - User ID: ${dir.userId}`);
         });
       }
       

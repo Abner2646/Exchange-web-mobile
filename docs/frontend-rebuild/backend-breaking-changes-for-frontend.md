@@ -133,3 +133,32 @@ Also disable the submit button + show a "sending…" state (cheap first-line def
    (idempotency + string amounts), auth (Google id_token, email-verified gate),
    profile (username/displayName split + email-change + cooldown), and the admin
    panel (operator-MFA, business config).
+
+---
+
+## Fase 6.2 rename — applied changes (living, per domain)
+
+> As each backend domain is renamed to English (chunked, ~526 tests green after
+> each), its concrete old→new contract lands here. Domains not yet listed are still
+> in Spanish. Pin exact names against live `/api-docs`.
+
+### ✅ users / auth  (chunk 1 — done)
+
+- **Route base:** `/api/usuario/*` → **`/api/user/*`** (all auth + profile + admin
+  user endpoints: `register`, `login`, `login/google`, `logout`, `verify-email`,
+  `resend-verification-email`, `forgot-password`, `verify-reset-code`,
+  `reset-password`, `me`, `verify-2fa`, `resend-2fa`, `me/2fa-toggle`,
+  `me/email-change`, `me/email-change/confirm`, `:id/role`, `:id/status`, …).
+- **User object fields (response + request):**
+  `rol`→`role`, `activo`→`active`, `pais`→`country`, `estado`→`state` (province),
+  `emailVerificado`→`emailVerified`, `dosFactoresActivado`→`twoFactorEnabled`,
+  `kycVerificado`→`kycVerified`, `nivelKyc`→`kycLevel`,
+  `reputacionPromedio`→`averageRating`, `totalValoraciones`→`totalRatings`,
+  `limiteDiarioUsd`→`dailyLimitUsd`, `nombreLegal`→`legalName`,
+  `fechaNacimiento`→`dateOfBirth`, `emailPendiente`→`pendingEmail`,
+  `cooldownRetiroHasta`→`withdrawalCooldownUntil`.
+- **List response key:** `{ usuarios: [...] }` → **`{ users: [...] }`**.
+- **Enum values:** `kycLevel` `ninguno|basico|completo` → **`none|basic|full`**.
+- **Cross-cutting:** `active` / `role` / `country` are now the field names wherever
+  they appear (also on other domains' objects that expose an active flag — those
+  domains' full rename lands in later chunks).

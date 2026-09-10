@@ -2,12 +2,12 @@
 //
 // Cubre AUDITORIA_BACKEND.md Altos #11 (parte del hallazgo "Código muerto
 // #4" original, que en realidad afecta al sistema de valoraciones ya
-// activo, no a un controller huérfano): getTopRatedUsers y
+// active, no a un controller huérfano): getTopRatedUsers y
 // getUsersRatingSummary usaban Op y sequelize sin importarlos.
 
 jest.mock('../models/index.js', () => ({
   Valoracion: { findAll: jest.fn().mockResolvedValue([]) },
-  Usuario: { findAll: jest.fn().mockResolvedValue([]) },
+  User: { findAll: jest.fn().mockResolvedValue([]) },
   sequelize: {
     fn: jest.fn(() => 'FN'),
     col: jest.fn(() => 'COL'),

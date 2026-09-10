@@ -48,7 +48,7 @@ function initOfertaP2P(sequelize) {
       allowNull: true,
       field: 'condiciones_adicionales'
     },
-    activa: {
+    active: {
       type: DataTypes.BOOLEAN,
       defaultValue: true
     }

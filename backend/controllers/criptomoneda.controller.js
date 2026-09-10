@@ -32,7 +32,7 @@ const createCriptomoneda = async (req, res) => {
       red, 
       direccionContrato, 
       decimales = 18, 
-      activa = true,
+      active = true,
       iconUrl // ✨ NUEVO
     } = req.body;
     
@@ -48,7 +48,7 @@ const createCriptomoneda = async (req, res) => {
       red,
       direccionContrato,
       decimales,
-      activa,
+      active,
       iconUrl // ✨ NUEVO
     });
     
@@ -71,7 +71,7 @@ const updateCriptomoneda = async (req, res) => {
       red, 
       direccionContrato, 
       decimales, 
-      activa,
+      active,
       iconUrl // ✨ NUEVO
     } = req.body;
 
@@ -81,7 +81,7 @@ const updateCriptomoneda = async (req, res) => {
       ...(red && { red }),
       ...(direccionContrato !== undefined && { direccionContrato }),
       ...(decimales !== undefined && { decimales }),
-      ...(activa !== undefined && { activa }),
+      ...(active !== undefined && { active }),
       ...(iconUrl !== undefined && { iconUrl }) // ✨ NUEVO
     });
 
@@ -109,15 +109,15 @@ const deleteCriptomoneda = async (req, res) => {
 const updateCriptomonedaStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { activa } = req.body;
+    const { active } = req.body;
     
-    if (typeof activa !== 'boolean') {
-      return res.status(400).json({ error: 'El campo activa debe ser un valor booleano' });
+    if (typeof active !== 'boolean') {
+      return res.status(400).json({ error: 'El campo active debe ser un valor booleano' });
     }
 
-    const updated = await Criptomoneda.updateStatus(id, activa);
+    const updated = await Criptomoneda.updateStatus(id, active);
     res.json({ 
-      message: `Criptomoneda ${activa ? 'activada' : 'desactivada'} exitosamente`, 
+      message: `Criptomoneda ${active ? 'activada' : 'desactivada'} exitosamente`, 
       data: updated 
     });
   } catch (error) {
@@ -135,7 +135,7 @@ const toggleCriptomonedaStatus = async (req, res) => {
       return res.status(404).json({ error: 'Criptomoneda no encontrada' });
     }
 
-    const newStatus = !criptomoneda.activa;
+    const newStatus = !criptomoneda.active;
     const updated = await Criptomoneda.updateStatus(id, newStatus);
     
     res.json({ 

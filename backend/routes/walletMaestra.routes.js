@@ -38,7 +38,7 @@ const walletMaestraController = require('../controllers/walletMaestra.controller
  * /walletMaestra/internal/active-by-crypto/{criptomonedaId}:
  *   get:
  *     tags: [Wallets maestras (super admin)]
- *     summary: Wallet activa por cripto (servicios internos)
+ *     summary: Wallet active por cripto (servicios internos)
  *     parameters: [{ in: path, name: criptomonedaId, required: true, schema: { type: string, format: uuid } }]
  *     responses: { 200: { description: Wallet } }
  */

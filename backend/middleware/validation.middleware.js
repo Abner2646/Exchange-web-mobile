@@ -63,7 +63,7 @@ const validateCryptoExists = (field = 'criptomonedaId') => {
       if (!crypto) {
         throw new Error('Criptomoneda no encontrada');
       }
-      if (!crypto.activa) {
+      if (!crypto.active) {
         throw new Error('Criptomoneda no está activa');
       }
       return true;

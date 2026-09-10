@@ -14,7 +14,7 @@ const getOfertas = async (req, res) => {
 
 // List active offers with filters
 const getOfertasActivas = async (req, res) => {
-  const filters = { ...req.query, activa: true };
+  const filters = { ...req.query, active: true };
   const result = await OfertaP2P.getAll(filters);
   res.json(result);
 };
@@ -158,11 +158,11 @@ const deleteOferta = async (req, res) => {
 // Update offer status (admin)
 const updateOfertaStatus = async (req, res) => {
   const { id } = req.params;
-  const { activa } = req.body;
+  const { active } = req.body;
 
-  const updated = await OfertaP2P.updateStatus(id, activa);
+  const updated = await OfertaP2P.updateStatus(id, active);
 
-  const message = activa
+  const message = active
     ? 'Oferta activada exitosamente. La fecha de publicación ha sido renovada.'
     : 'Oferta desactivada exitosamente';
 
@@ -239,9 +239,9 @@ const toggleMyOferta = async (req, res) => {
     throw new AppError(403, errorCodes.OFFER_FORBIDDEN, 'You do not have permission to modify this offer');
   }
 
-  const updated = await OfertaP2P.updateStatus(id, !oferta.activa);
+  const updated = await OfertaP2P.updateStatus(id, !oferta.active);
 
-  const message = updated.activa
+  const message = updated.active
     ? 'Oferta activada exitosamente. La fecha de publicación ha sido renovada.'
     : 'Oferta desactivada exitosamente';
 

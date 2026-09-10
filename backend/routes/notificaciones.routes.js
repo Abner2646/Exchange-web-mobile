@@ -84,7 +84,7 @@ router.post('/bulk', authenticateToken, isAdmin, notificacionController.createBu
 // Notificar a todos los usuarios
 router.post('/notify-all', authenticateToken, isAdmin, notificacionController.notifyAllUsers);
 
-// Notificar a usuarios por rol
+// Notificar a usuarios por role
 router.post('/notify-role/:rol', authenticateToken, isAdmin, notificacionController.notifyUsersByRole);
 
 // --------------------- RUTAS DE TEMPLATES Y EVENTOS --------------------- //

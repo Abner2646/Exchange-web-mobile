@@ -18,7 +18,7 @@ jest.mock('../models/index.js', () => ({
     cancelarTransferencia: jest.fn(),
     reenviarCodigo: jest.fn(),
   },
-  Usuario: { findByPk: jest.fn() },
+  User: { findByPk: jest.fn() },
   Criptomoneda: { findByPk: jest.fn(), getById: jest.fn() },
   BalanceUsuario: {
     hasAvailableBalance: jest.fn(),
@@ -38,7 +38,7 @@ jest.mock('../services/email.service.js', () => ({
 }));
 
 // ── Pull in the mocked objects so tests can configure them ──────────────────
-const { sequelize, Usuario, Criptomoneda, BalanceUsuario, Transferencia } =
+const { sequelize, User, Criptomoneda, BalanceUsuario, Transferencia } =
   require('../models/index.js');
 
 const asyncHandler = require('../utils/asyncHandler');
@@ -60,7 +60,7 @@ function buildApp(method, path, handler) {
   app.use(express.json());
   // Inject a fake authenticated user
   app.use((req, _res, next) => {
-    req.user = { id: 'user-sender-id', rol: 'normal' };
+    req.user = { id: 'user-sender-id', role: 'normal' };
     next();
   });
   app[method](path, asyncHandler(handler));
@@ -93,8 +93,8 @@ describe('createTransferencia', () => {
     const tx = makeFakeTx();
     sequelize.transaction.mockResolvedValue(tx);
 
-    Usuario.findByPk.mockResolvedValue({ id: 'dest-id', activo: true, username: 'dest' });
-    Criptomoneda.findByPk.mockResolvedValue({ id: 'crypto-id', activa: true, symbol: 'BTC' });
+    User.findByPk.mockResolvedValue({ id: 'dest-id', active: true, username: 'dest' });
+    Criptomoneda.findByPk.mockResolvedValue({ id: 'crypto-id', active: true, symbol: 'BTC' });
     BalanceUsuario.hasAvailableBalance.mockResolvedValue(false);
 
     const res = await request(app()).post('/transfers').send(validBody);
@@ -112,7 +112,7 @@ describe('createTransferencia', () => {
     const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
     const tx = makeFakeTx();
     sequelize.transaction.mockResolvedValue(tx);
-    Usuario.findByPk.mockRejectedValue(new Error('SECRET: DB connection string'));
+    User.findByPk.mockRejectedValue(new Error('SECRET: DB connection string'));
 
     const res = await request(app()).post('/transfers').send(validBody);
 

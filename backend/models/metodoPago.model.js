@@ -20,8 +20,8 @@ function createMetodoPagoModel(sequelize) {
       const whereClause = {};
       
       // Filtros disponibles
-      if (filters.activo !== undefined) {
-        whereClause.activo = filters.activo === 'true';
+      if (filters.active !== undefined) {
+        whereClause.active = filters.active === 'true';
       }
       
       if (filters.nombre) {
@@ -64,7 +64,7 @@ function createMetodoPagoModel(sequelize) {
   MetodoPago.getActive = async () => {
     try {
       const metodosPago = await MetodoPago.findAll({
-        where: { activo: true },
+        where: { active: true },
         order: [['nombre', 'ASC']]
       });
       return metodosPago;
@@ -76,7 +76,7 @@ function createMetodoPagoModel(sequelize) {
   MetodoPago.getInactive = async () => {
     try {
       const metodosPago = await MetodoPago.findAll({
-        where: { activo: false },
+        where: { active: false },
         order: [['nombre', 'ASC']]
       });
       return metodosPago;
@@ -103,10 +103,10 @@ function createMetodoPagoModel(sequelize) {
     try {
       const totalMetodos = await MetodoPago.count();
       const metodosActivos = await MetodoPago.count({
-        where: { activo: true }
+        where: { active: true }
       });
       const metodosInactivos = await MetodoPago.count({
-        where: { activo: false }
+        where: { active: false }
       });
 
       return {
@@ -203,7 +203,7 @@ function createMetodoPagoModel(sequelize) {
   // Métodos de gestión de estado
   MetodoPago.updateStatus = async (id, newStatus) => {
     try {
-      const updated = await MetodoPago.updateMetodo(id, { activo: newStatus });
+      const updated = await MetodoPago.updateMetodo(id, { active: newStatus });
       return updated;
     } catch (error) {
       throw new Error(`Error al actualizar estado: ${error.message}`);
@@ -214,7 +214,7 @@ function createMetodoPagoModel(sequelize) {
   MetodoPago.isActive = async (id) => {
     try {
       const metodoPago = await MetodoPago.getById(id);
-      return metodoPago && metodoPago.activo;
+      return metodoPago && metodoPago.active;
     } catch (error) {
       throw new Error(`Error al verificar estado: ${error.message}`);
     }
@@ -228,7 +228,7 @@ function createMetodoPagoModel(sequelize) {
         throw new Error('Método de pago no encontrado');
       }
 
-      if (!metodoPago.activo) {
+      if (!metodoPago.active) {
         throw new Error('Método de pago inactivo');
       }
 
@@ -251,7 +251,7 @@ function createMetodoPagoModel(sequelize) {
       // Esta función requeriría join con tablas de transacciones
       // Por ahora devuelve los métodos activos ordenados alfabéticamente
       const metodosPopulares = await MetodoPago.findAll({
-        where: { activo: true },
+        where: { active: true },
         order: [['nombre', 'ASC']],
         limit: parseInt(limit)
       });
@@ -266,7 +266,7 @@ function createMetodoPagoModel(sequelize) {
   MetodoPago.bulkUpdateStatus = async (ids, newStatus) => {
     try {
       const [updatedCount] = await MetodoPago.update(
-        { activo: newStatus },
+        { active: newStatus },
         {
           where: {
             id: { [Op.in]: ids }
@@ -295,7 +295,7 @@ function createMetodoPagoModel(sequelize) {
         id: metodo.id,
         nombre: metodo.nombre,
         descripcion: metodo.descripcion || '',
-        activo: metodo.activo ? 'SI' : 'NO'
+        active: metodo.active ? 'SI' : 'NO'
       }));
     } catch (error) {
       throw new Error(`Error al preparar datos para exportar: ${error.message}`);

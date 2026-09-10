@@ -1,12 +1,12 @@
 // /middleware/adminMiddleware.js
 // Middleware robusto para verificar roles y permisos
 
-// Verifica que el usuario tenga rol de admin o super_admin
+// Verifica que el usuario tenga role de admin o super_admin
 // Jerarquía: normal(1) < admin(2) < super_admin(3)
 
 // Requiere que authenticateToken se ejecute primero
 
-//router.get('/', authenticateToken, isAdmin, usuarioController.getUsuarios);
+//router.get('/', authenticateToken, isAdmin, userController.getUsuarios);
 // ↑ Solo admin y super_admin pueden ver todos los usuarios
 
 // Configuración de roles y jerarquías
@@ -58,8 +58,8 @@ const validateAuth = (req, res) => {
     return false;
   }
 
-  // Verificar que la cuenta esté activa
-  if (req.user.activo === false) {
+  // Verificar que la cuenta esté active
+  if (req.user.active === false) {
     res.status(403).json({ 
       error: 'Cuenta desactivada',
       code: 'ACCOUNT_DISABLED',
@@ -71,13 +71,13 @@ const validateAuth = (req, res) => {
   return true;
 };
 
-// Función helper para obtener el nivel de rol
+// Función helper para obtener el nivel de role
 const getRoleLevel = (role) => {
   const normalizedRole = normalizeRole(role);
   return ROLE_HIERARCHY[normalizedRole] || 0;
 };
 
-// Función helper para verificar si un rol es válido
+// Función helper para verificar si un role es válido
 const isValidRole = (role) => {
   return getRoleLevel(role) > 0;
 };
@@ -86,7 +86,7 @@ const isValidRole = (role) => {
 const isAdmin = (req, res, next) => {
   if (!validateAuth(req, res)) return;
 
-  const userRole = normalizeRole(req.user.rol);
+  const userRole = normalizeRole(req.user.role);
   const userLevel = getRoleLevel(userRole);
   const adminLevel = getRoleLevel(ROLES.ADMIN);
 
@@ -94,7 +94,7 @@ const isAdmin = (req, res, next) => {
     return res.status(403).json({ 
       error: 'Permisos de administrador requeridos',
       code: 'ADMIN_REQUIRED',
-      userRole: req.user.rol,
+      userRole: req.user.role,
       requiredRoles: ['admin', 'super_admin'],
       hint: 'Esta acción requiere permisos de administrador'
     });
@@ -112,12 +112,12 @@ const isAdmin = (req, res, next) => {
 };
 
 // Middleware para verificar que el usuario es super_admin
-// Solo permite acceso a usuarios con rol 'super_admin'
+// Solo permite acceso a usuarios con role 'super_admin'
 // Es más restrictivo que isAdmin
 const isSuperAdmin = (req, res, next) => {
   if (!validateAuth(req, res)) return;
 
-  const userRole = normalizeRole(req.user.rol);
+  const userRole = normalizeRole(req.user.role);
   const userLevel = getRoleLevel(userRole);
   const superAdminLevel = getRoleLevel(ROLES.SUPER_ADMIN);
 
@@ -125,7 +125,7 @@ const isSuperAdmin = (req, res, next) => {
     return res.status(403).json({ 
       error: 'Permisos de super administrador requeridos',
       code: 'SUPER_ADMIN_REQUIRED',
-      userRole: req.user.rol,
+      userRole: req.user.role,
       requiredRoles: ['super_admin'],
       hint: 'Esta acción requiere los máximos permisos del sistema'
     });
@@ -145,7 +145,7 @@ const isSuperAdmin = (req, res, next) => {
 const isNormalUser = (req, res, next) => {
   if (!validateAuth(req, res)) return;
 
-  const userRole = normalizeRole(req.user.rol);
+  const userRole = normalizeRole(req.user.role);
   const userLevel = getRoleLevel(userRole);
   const adminLevel = getRoleLevel(ROLES.ADMIN);
 
@@ -153,7 +153,7 @@ const isNormalUser = (req, res, next) => {
     return res.status(403).json({ 
       error: 'Esta acción es solo para usuarios normales',
       code: 'NORMAL_USER_REQUIRED',
-      userRole: req.user.rol,
+      userRole: req.user.role,
       hint: 'Los administradores no pueden realizar esta acción'
     });
   }
@@ -183,7 +183,7 @@ const isOwnerOrAdmin = (options = {}) => {
   return (req, res, next) => {
     if (!validateAuth(req, res)) return;
 
-    const userRole = normalizeRole(req.user.rol);
+    const userRole = normalizeRole(req.user.role);
     const userLevel = getRoleLevel(userRole);
     const adminLevel = getRoleLevel(ROLES.ADMIN);
     const isAdmin = userLevel >= adminLevel;
@@ -263,13 +263,13 @@ const hasRole = (allowedRoles, options = {}) => {
     const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
     const normalizedAllowedRoles = roles.map(role => normalizeRole(role));
     
-    const userRole = normalizeRole(req.user.rol);
+    const userRole = normalizeRole(req.user.role);
     const userLevel = getRoleLevel(userRole);
 
     let hasPermission = false;
 
     if (config.allowHierarchy) {
-      // Verificar si el usuario tiene un rol igual o superior
+      // Verificar si el usuario tiene un role igual o superior
       const minRequiredLevel = Math.min(...normalizedAllowedRoles.map(role => getRoleLevel(role)));
       hasPermission = userLevel >= minRequiredLevel;
     } else {
@@ -281,12 +281,12 @@ const hasRole = (allowedRoles, options = {}) => {
       return res.status(403).json({ 
         error: `Rol requerido: ${roles.join(' o ')}`,
         code: 'ROLE_REQUIRED',
-        userRole: req.user.rol,
+        userRole: req.user.role,
         allowedRoles: roles,
         hierarchyEnabled: config.allowHierarchy,
         hint: config.allowHierarchy 
-          ? 'Tu rol no tiene suficiente nivel de acceso'
-          : 'Tu rol no coincide exactamente con los requeridos'
+          ? 'Tu role no tiene suficiente nivel de acceso'
+          : 'Tu role no coincide exactamente con los requeridos'
       });
     }
 
@@ -315,18 +315,18 @@ const requireAuth = (minRole = null, options = {}) => {
   return (req, res, next) => {
     if (!validateAuth(req, res)) return;
 
-    // Si no se especifica rol mínimo, solo verificar autenticación
+    // Si no se especifica role mínimo, solo verificar autenticación
     if (!minRole) {
       req.roleInfo = {
-        level: getRoleLevel(req.user.rol),
-        normalized: normalizeRole(req.user.rol),
-        isAdmin: getRoleLevel(req.user.rol) >= getRoleLevel(ROLES.ADMIN),
-        isSuperAdmin: getRoleLevel(req.user.rol) >= getRoleLevel(ROLES.SUPER_ADMIN)
+        level: getRoleLevel(req.user.role),
+        normalized: normalizeRole(req.user.role),
+        isAdmin: getRoleLevel(req.user.role) >= getRoleLevel(ROLES.ADMIN),
+        isSuperAdmin: getRoleLevel(req.user.role) >= getRoleLevel(ROLES.SUPER_ADMIN)
       };
       return next();
     }
 
-    const userRole = normalizeRole(req.user.rol);
+    const userRole = normalizeRole(req.user.role);
     const userLevel = getRoleLevel(userRole);
     const requiredRole = normalizeRole(minRole);
     const requiredLevel = getRoleLevel(requiredRole);
@@ -345,13 +345,13 @@ const requireAuth = (minRole = null, options = {}) => {
       return res.status(403).json({ 
         error: `Rol ${config.strictRoleMatch ? 'exacto' : 'mínimo'} requerido: ${minRole}`,
         code: 'INSUFFICIENT_ROLE',
-        userRole: req.user.rol,
+        userRole: req.user.role,
         requiredRole: minRole,
         userLevel: userLevel,
         requiredLevel: requiredLevel,
         hint: config.strictRoleMatch 
           ? 'Se requiere exactamente este rol'
-          : 'Se requiere este rol o uno superior'
+          : 'Se requiere este role o uno superior'
       });
     }
 
@@ -372,10 +372,10 @@ const debugRoles = (req, res, next) => {
   if (process.env.NODE_ENV === 'development' && req.user) {
     console.log('🎭 Role Debug:', {
       userId: req.user.id,
-      originalRole: req.user.rol,
-      normalizedRole: normalizeRole(req.user.rol),
-      roleLevel: getRoleLevel(req.user.rol),
-      isAdmin: getRoleLevel(req.user.rol) >= getRoleLevel(ROLES.ADMIN),
+      originalRole: req.user.role,
+      normalizedRole: normalizeRole(req.user.role),
+      roleLevel: getRoleLevel(req.user.role),
+      isAdmin: getRoleLevel(req.user.role) >= getRoleLevel(ROLES.ADMIN),
       url: req.url,
       method: req.method
     });

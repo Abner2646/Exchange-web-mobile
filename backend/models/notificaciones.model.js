@@ -367,11 +367,11 @@ function createNotificacionModel(sequelize) {
 
   // Métodos de notificaciones masivas
   Notificacion.notifyAllUsers = async (notificationData) => {
-    const { Usuario } = require('./index');
+    const { User } = require('./index');
     
-    const users = await Usuario.findAll({
+    const users = await User.findAll({
       attributes: ['id'],
-      where: { activo: true } // Solo usuarios activos
+      where: { active: true } // Solo usuarios activos
     });
 
     const notifications = users.map(user => ({
@@ -383,14 +383,14 @@ function createNotificacionModel(sequelize) {
     return await Notificacion.bulkCreate(notifications);
   };
 
-  Notificacion.notifyUsersByRole = async (rol, notificationData) => {
-    const { Usuario } = require('./index');
+  Notificacion.notifyUsersByRole = async (role, notificationData) => {
+    const { User } = require('./index');
     
-    const users = await Usuario.findAll({
+    const users = await User.findAll({
       attributes: ['id'],
       where: { 
-        rol,
-        activo: true
+        role,
+        active: true
       }
     });
 

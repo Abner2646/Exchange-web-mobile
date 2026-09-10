@@ -13,7 +13,7 @@ jest.mock('../models', () => ({
   DireccionDeposito: {},
   Criptomoneda: {},
   BlockchainState: {},
-  Usuario: {},
+  User: {},
   BalanceUsuario: {},
 }));
 jest.mock('../services/blockchain', () => ({ getService: jest.fn() }));

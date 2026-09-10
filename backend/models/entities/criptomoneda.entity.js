@@ -31,7 +31,7 @@ function initCriptomoneda(sequelize) {
       type: DataTypes.INTEGER,
       defaultValue: 18
     },
-    activa: {
+    active: {
       type: DataTypes.BOOLEAN,
       defaultValue: true
     },

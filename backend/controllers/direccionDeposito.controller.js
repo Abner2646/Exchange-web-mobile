@@ -28,7 +28,7 @@ const getDireccionDepositoById = async (req, res) => {
 // Crear nueva dirección de depósito
 const createDireccionDeposito = async (req, res) => {
   try {
-    let { criptomonedaId, walletMaestraId, direccion, derivationIndex, activa, crearParaTodasLasCriptos } = req.body;
+    let { criptomonedaId, walletMaestraId, direccion, derivationIndex, active, crearParaTodasLasCriptos } = req.body;
     const userId = req.user.id;
 
     // Validación básica de entrada
@@ -60,7 +60,7 @@ const createDireccionDeposito = async (req, res) => {
     // Si se envía criptomonedaId pero no walletMaestraId, buscar la wallet correspondiente
     if (criptomonedaId && !walletMaestraId) {
       const walletMaestra = await sequelize.models.WalletMaestra.findOne({
-        where: { criptomonedaId: criptomonedaId, activa: true }
+        where: { criptomonedaId: criptomonedaId, active: true }
       });
       
       if (walletMaestra) {
@@ -68,7 +68,7 @@ const createDireccionDeposito = async (req, res) => {
         console.log('WalletMaestraId obtenida desde criptomonedaId:', walletMaestraId);
       } else {
         return res.status(400).json({ 
-          error: 'No existe wallet maestra activa para esta criptomoneda' 
+          error: 'No existe wallet maestra activa para esta criptomoneda'
         });
       }
     }
@@ -95,7 +95,7 @@ const createDireccionDeposito = async (req, res) => {
         walletMaestraId,
         direccion,
         derivationIndex,
-        activa
+        active
       });
     } else {
       // Generación automática
@@ -116,13 +116,13 @@ const createDireccionDeposito = async (req, res) => {
 const updateDireccionDeposito = async (req, res) => {
   try {
     const { id } = req.params;
-    const { direccion, derivationIndex, activa, metadata } = req.body;
+    const { direccion, derivationIndex, active, metadata } = req.body;
 
     // Preparar datos de actualización
     const updateData = {};
     if (direccion) updateData.direccion = direccion;
     if (derivationIndex !== undefined) updateData.derivationIndex = derivationIndex;
-    if (activa !== undefined) updateData.activa = activa;
+    if (active !== undefined) updateData.active = active;
     if (metadata) updateData.metadata = metadata;
 
     const updatedDireccion = await DireccionDeposito.updateDireccion(id, updateData);
@@ -151,15 +151,15 @@ const deleteDireccionDeposito = async (req, res) => {
 const updateDireccionDepositoStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { activa } = req.body;
+    const { active } = req.body;
     
-    if (typeof activa !== 'boolean') {
-      return res.status(400).json({ error: 'El campo activa debe ser un valor booleano' });
+    if (typeof active !== 'boolean') {
+      return res.status(400).json({ error: 'El campo active debe ser un valor booleano' });
     }
 
-    const updated = await DireccionDeposito.updateStatus(id, activa);
+    const updated = await DireccionDeposito.updateStatus(id, active);
     res.json({ 
-      message: `Dirección de depósito ${activa ? 'activada' : 'desactivada'} exitosamente`, 
+      message: `Dirección de depósito ${active ? 'activada' : 'desactivada'} exitosamente`, 
       data: updated 
     });
   } catch (error) {
@@ -177,7 +177,7 @@ const toggleDireccionDepositoStatus = async (req, res) => {
       return res.status(404).json({ error: 'Dirección de depósito no encontrada' });
     }
 
-    const newStatus = !direccion.activa;
+    const newStatus = !direccion.active;
     const updated = await DireccionDeposito.updateStatus(id, newStatus);
     
     res.json({ 

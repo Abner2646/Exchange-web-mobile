@@ -38,7 +38,7 @@ jest.mock('../models/index.js', () => ({
     checkTimeouts: jest.fn(),
   },
   Criptomoneda: {},
-  Usuario: {},
+  User: {},
   OfertaP2P: {
     findByPk: jest.fn(),
   },
@@ -52,11 +52,11 @@ const controller = require('../controllers/transaccionesP2P.controller');
 // ── App builders ──────────────────────────────────────────────────────────────
 
 /** Mount createTransaccion as POST /transacciones */
-function buildCreateApp({ userId = 'user-uuid-001', rol = 'usuario' } = {}) {
+function buildCreateApp({ userId = 'user-uuid-001', role = 'usuario' } = {}) {
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    req.user = { id: userId, rol };
+    req.user = { id: userId, role };
     next();
   });
   app.post('/transacciones', asyncHandler(controller.createTransaccion));
@@ -65,11 +65,11 @@ function buildCreateApp({ userId = 'user-uuid-001', rol = 'usuario' } = {}) {
 }
 
 /** Mount getTransaccionById as GET /transacciones/:id */
-function buildGetByIdApp({ userId = 'user-uuid-001', rol = 'usuario' } = {}) {
+function buildGetByIdApp({ userId = 'user-uuid-001', role = 'usuario' } = {}) {
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    req.user = { id: userId, rol };
+    req.user = { id: userId, role };
     next();
   });
   app.get('/transacciones/:id', asyncHandler(controller.getTransaccionById));
@@ -78,11 +78,11 @@ function buildGetByIdApp({ userId = 'user-uuid-001', rol = 'usuario' } = {}) {
 }
 
 /** Mount forceStatusChange as PATCH /transacciones/:id/force-status */
-function buildForceStatusApp({ userId = 'admin-uuid-001', rol = 'admin' } = {}) {
+function buildForceStatusApp({ userId = 'admin-uuid-001', role = 'admin' } = {}) {
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    req.user = { id: userId, rol };
+    req.user = { id: userId, role };
     next();
   });
   app.patch('/transacciones/:id/force-status', asyncHandler(controller.forceStatusChange));
@@ -91,11 +91,11 @@ function buildForceStatusApp({ userId = 'admin-uuid-001', rol = 'admin' } = {}) 
 }
 
 /** Mount getUserVolume as GET /transacciones/volume */
-function buildGetVolumeApp({ userId = 'user-uuid-001', rol = 'usuario' } = {}) {
+function buildGetVolumeApp({ userId = 'user-uuid-001', role = 'usuario' } = {}) {
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    req.user = { id: userId, rol };
+    req.user = { id: userId, role };
     next();
   });
   // Simulate the admin variant that accepts a :usuarioId param
@@ -204,7 +204,7 @@ describe('getTransaccionById — known business error → canonical envelope', (
       vendedorId: 'other-user-002',
     });
 
-    const res = await request(buildGetByIdApp({ userId: 'intruder-uuid', rol: 'usuario' }))
+    const res = await request(buildGetByIdApp({ userId: 'intruder-uuid', role: 'usuario' }))
       .get('/transacciones/some-tx-id');
 
     expect(res.status).toBe(403);
@@ -220,7 +220,7 @@ describe('getTransaccionById — known business error → canonical envelope', (
 
 describe('forceStatusChange — known business error → canonical envelope', () => {
   test('non-admin user → 403 P2P_TX_ADMIN_REQUIRED', async () => {
-    const res = await request(buildForceStatusApp({ userId: 'regular-user', rol: 'usuario' }))
+    const res = await request(buildForceStatusApp({ userId: 'regular-user', role: 'usuario' }))
       .patch('/transacciones/some-id/force-status')
       .send({ estado: 'completada', motivo: 'manual fix' });
 
@@ -235,7 +235,7 @@ describe('forceStatusChange — known business error → canonical envelope', ()
   test('transaction not found (admin) → 404 P2P_TX_NOT_FOUND', async () => {
     TransaccionP2P.findByPk.mockResolvedValue(null);
 
-    const res = await request(buildForceStatusApp({ userId: 'admin-uuid', rol: 'admin' }))
+    const res = await request(buildForceStatusApp({ userId: 'admin-uuid', role: 'admin' }))
       .patch('/transacciones/nonexistent-id/force-status')
       .send({ estado: 'completada', motivo: 'manual fix' });
 
@@ -252,7 +252,7 @@ describe('forceStatusChange — known business error → canonical envelope', ()
 
 describe('getUserVolume — known business error → canonical envelope', () => {
   test('non-admin accessing another user volume → 403 P2P_TX_FORBIDDEN', async () => {
-    const res = await request(buildGetVolumeApp({ userId: 'user-A', rol: 'usuario' }))
+    const res = await request(buildGetVolumeApp({ userId: 'user-A', role: 'usuario' }))
       .get('/transacciones/volume/user-B'); // different userId
 
     expect(res.status).toBe(403);

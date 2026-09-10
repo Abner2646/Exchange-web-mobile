@@ -11,7 +11,7 @@ const businessConfig = require('../../services/config/businessConfig');
 beforeEach(async () => { await resetDb(); businessConfig.clearCache(); });
 afterAll(async () => { await sequelize.close(); });
 
-const adminConMFA = () => f.seedUser({ rol: 'admin', dosFactoresActivado: true });
+const adminConMFA = () => f.seedUser({ role: 'admin', twoFactorEnabled: true });
 
 describe('config de negocio (admin CRUD)', () => {
   test('un operador con 2FA crea/lee/lista config, y el servicio la ve', async () => {
@@ -41,7 +41,7 @@ describe('config de negocio (admin CRUD)', () => {
   });
 
   test('un admin SIN 2FA es rechazado por el guard de operador (403 OPERATOR_MFA_REQUIRED)', async () => {
-    const admin = await f.seedUser({ rol: 'admin', dosFactoresActivado: false });
+    const admin = await f.seedUser({ role: 'admin', twoFactorEnabled: false });
     const res = await request(app).put('/api/config/x').set(f.authHeader(admin)).send({ valor: '1' });
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('OPERATOR_MFA_REQUIRED');

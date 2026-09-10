@@ -7,8 +7,8 @@
 // - getTopRatedUsers y getUsersRatingSummary (controller) usaban Op y
 //   sequelize sin importarlos — ReferenceError garantizado.
 // - Todo el resto de valoracion.model.js (9 lugares, no solo esos 2)
-//   pedía las columnas 'nombre' y 'reputacion' de Usuario, que no
-//   existen — el campo real es 'username' y 'reputacionPromedio'. Esto
+//   pedía las columnas 'nombre' y 'reputacion' de User, que no
+//   existen — el campo real es 'username' y 'averageRating'. Esto
 //   es un error a nivel SQL (columna inexistente), no solo JS.
 
 const { execSync } = require('child_process');

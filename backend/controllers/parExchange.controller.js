@@ -27,7 +27,7 @@ const getParExchangeById = async (req, res) => {
     // updatePrice acepta cualquier string que no sea 'never'; 'force' no tiene
     // semántica especial propia, se comporta igual que cualquier otro valor
     // (incluyendo el default). Solo 'never' desactiva la actualización en vivo.
-    if (result.activo && result.fuentePrecio !== 'manual' && updatePrice !== 'never') {
+    if (result.active && result.fuentePrecio !== 'manual' && updatePrice !== 'never') {
       console.log(`Actualizando precio en tiempo real para ${result.criptoBase.symbol}/${result.criptoQuote.symbol}...`);
       
       try {
@@ -74,7 +74,7 @@ const createParExchange = async (req, res) => {
       criptoQuoteId, 
       //precioActual,      // OPCIONAL - si no se proporciona, se obtiene automáticamente
       comisionPorcentaje, 
-      activo = true,
+      active = true,
       //fuentePrecio,      // OPCIONAL - se auto-detecta si no se especifica
       simboloExterno
     } = req.body;
@@ -153,7 +153,7 @@ const createParExchange = async (req, res) => {
       criptoQuoteId,
       precioActual: finalPrice,
       comisionPorcentaje: parseFloat(comisionPorcentaje),
-      activo,
+      active,
       fuentePrecio: finalSource,
       simboloExterno: simboloExterno || `${criptoBase.symbol}${criptoQuote.symbol}`
     });
@@ -180,7 +180,7 @@ const createParExchange = async (req, res) => {
       criptoBaseId, 
       criptoQuoteId, 
       comisionPorcentaje, 
-      activo = true,
+      active = true,
       simboloExterno
     } = req.body;
     
@@ -250,7 +250,7 @@ const createParExchange = async (req, res) => {
       criptoQuoteId,
       precioActual: finalPrice,
       comisionPorcentaje: parseFloat(comisionPorcentaje),
-      activo,
+      active,
       fuentePrecio: finalSource,
       simboloExterno: simboloExterno || `${criptoBase.symbol}${criptoQuote.symbol}`
     });
@@ -358,7 +358,7 @@ const getParBySymbols = async (req, res) => {
     // updatePrice acepta cualquier string que no sea 'never'; 'force' no tiene
     // semántica especial propia, se comporta igual que cualquier otro valor
     // (incluyendo el default). Solo 'never' desactiva la actualización en vivo.
-    if (par.activo && par.fuentePrecio !== 'manual' && updatePrice !== 'never') {
+    if (par.active && par.fuentePrecio !== 'manual' && updatePrice !== 'never') {
       console.log(`Actualizando precio en tiempo real para ${baseSymbol}/${quoteSymbol}...`);
       
       try {
@@ -482,7 +482,7 @@ const getCurrentPrice = async (req, res) => {
       });
     }
 
-    if (!par.activo) {
+    if (!par.active) {
       return res.status(400).json({ 
         error: `Par ${baseSymbol}/${quoteSymbol} está inactivo` 
       });
@@ -538,7 +538,7 @@ const getCurrentPrice = async (req, res) => {
       
       // Obtener todas las criptomonedas activas
       const criptomonedas = await Criptomoneda.findAll({
-        where: { activa: true },
+        where: { active: true },
         attributes: ['id', 'symbol', 'nombre'],
         order: [['symbol', 'ASC']]
       });
@@ -622,7 +622,7 @@ const getCurrentPrice = async (req, res) => {
               comisionPorcentaje: defaultFee,
               fuentePrecio: priceResult.source || 'binance',
               simboloExterno: `${base.symbol}${quote.symbol}`,
-              activo: true,
+              active: true,
               ultimaActualizacion: new Date()
             });
             

@@ -22,7 +22,7 @@ test('GET /api-docs/ sirve la UI de Swagger (HTML) sin CSP que la rompa', async 
   expect(res.headers['content-security-policy']).toBeUndefined();
 });
 
-test('el CSP estricto de helmet SIGUE activo en el resto de la API', async () => {
+test('el CSP estricto de helmet SIGUE active en el resto de la API', async () => {
   const res = await request(app).get('/health');
   expect(res.headers['content-security-policy']).toBeDefined();
 });

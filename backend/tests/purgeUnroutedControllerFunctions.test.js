@@ -1,7 +1,7 @@
 // tests/purgeUnroutedControllerFunctions.test.js
 //
 // Cubre AUDITORIA_BACKEND.md Código muerto #7, #8, #9, #14: funciones de
-// controller sin ninguna ruta activa que las invoque (confirmado con grep
+// controller sin ninguna ruta active que las invoque (confirmado con grep
 // en routes/, frontend/ y mobile/ antes de borrar). Este test es una
 // barrera de regresión: si alguna de estas funciones "muertas" reaparece
 // en el export de su controller sin una ruta real que la use, algo se
@@ -20,7 +20,7 @@ describe('parExchange.controller.js ya no exporta las 13 funciones sin ruta (Có
     expect(controller[name]).toBeUndefined();
   });
 
-  test('las funciones con ruta activa siguen exportadas', () => {
+  test('las funciones con ruta active siguen exportadas', () => {
     for (const name of ['generateAllPairs', 'getParesExchange', 'getParExchangeById',
       'createParExchange', 'searchParesExchange', 'getParBySymbols', 'getCurrentPrice',
       'getParesByBaseCrypto', 'getParesByQuoteCrypto', 'getActiveExchangePairs',
@@ -46,7 +46,7 @@ describe('walletMaestra.controller.js ya no exporta las 19 funciones sin ruta (C
     expect(controller[name]).toBeUndefined();
   });
 
-  test('las funciones con ruta activa siguen exportadas', () => {
+  test('las funciones con ruta active siguen exportadas', () => {
     for (const name of ['getWalletsMaestras', 'getWalletMaestraById', 'createWalletMaestra',
       'getWalletByCriptomoneda', 'getActiveWallets', 'getFundsDistribution',
       'getTreasuryMetrics', 'getWalletsDashboard', 'getWalletMaestraStats',

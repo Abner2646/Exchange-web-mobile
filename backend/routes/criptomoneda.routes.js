@@ -31,7 +31,7 @@ const criptomonedaController = require('../controllers/criptomoneda.controller.j
  *               red: { type: string, example: Ethereum }
  *               direccionContrato: { type: string }
  *               decimales: { type: integer, example: 6 }
- *               activa: { type: boolean }
+ *               active: { type: boolean }
  *     responses: { 201: { description: Creada }, 400: { $ref: '#/components/responses/BadRequest' } }
  * /criptomoneda/{id}:
  *   get:
@@ -122,7 +122,7 @@ router.post('/', authenticateToken, isSuperAdmin, criptomonedaController.createC
   "red": "Ethereum",
   "direccionContrato": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
   "decimales": 6,
-  "activa": true
+  "active": true
 }
 
 */

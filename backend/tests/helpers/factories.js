@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const {
-  Usuario, Criptomoneda, ParExchange, BalanceUsuario, WalletMaestra, TradingPair,
+  User, Criptomoneda, ParExchange, BalanceUsuario, WalletMaestra, TradingPair,
 } = require('../../models');
 
 let seq = 0;
@@ -8,16 +8,16 @@ const uniq = () => `${Date.now()}${seq++}`;
 
 // Creates an active, email-verified local user by default (passes
 // authenticateToken + requireEmailVerified). passwordHash is set because the
-// Usuario beforeCreate hook rejects a non-Google user without one.
+// User beforeCreate hook rejects a non-Google user without one.
 async function seedUser(overrides = {}) {
   const n = uniq();
-  return Usuario.create({
+  return User.create({
     email: `user${n}@test.local`,
     username: `user_${n}`,
     passwordHash: 'not-used-by-token-auth',
-    emailVerificado: true,
-    activo: true,
-    rol: 'normal',
+    emailVerified: true,
+    active: true,
+    role: 'normal',
     ...overrides,
   });
 }
@@ -42,7 +42,7 @@ async function seedPar({ base, quote, precio, comision }) {
     criptoQuoteId: quote.id,
     precioActual: precio,
     comisionPorcentaje: comision,
-    activo: true,
+    active: true,
   });
 }
 

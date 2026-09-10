@@ -108,7 +108,7 @@ const createWalletMaestra = async (req, res) => {
       publicKey,
       descripcion,
       balanceTotal: parseFloat(balanceTotal),
-      activa: true,
+      active: true,
       metadata: {
         createdBy: req.user?.id || 'admin',
         createdAt: new Date(),
@@ -378,7 +378,7 @@ const exportWallets = async (req, res) => {
         wallet.symbol || '',
         `"${wallet.direccionPublica || ''}"`,
         wallet.balanceTotal || 0,
-        wallet.activa ? 'SI' : 'NO',
+        wallet.active ? 'SI' : 'NO',
         `"${wallet.xpub ? wallet.xpub.substring(0, 20) + '...' : ''}"`,
         wallet.direccionesDeposito ? wallet.direccionesDeposito.length : 0,
         wallet.lastSyncAt ? new Date(wallet.lastSyncAt).toISOString() : '',
@@ -409,17 +409,17 @@ const exportWallets = async (req, res) => {
 const healthCheck = async (req, res) => {
   try {
     const [activeWallets, totalWallets, lowBalanceCount, staleSync] = await Promise.all([
-      WalletMaestra.count({ where: { activa: true } }),
+      WalletMaestra.count({ where: { active: true } }),
       WalletMaestra.count(),
       WalletMaestra.count({ 
         where: { 
-          activa: true, 
+          active: true, 
           balanceTotal: { [require('sequelize').Op.lt]: 0.01 } 
         } 
       }),
       WalletMaestra.count({
         where: {
-          activa: true,
+          active: true,
           [require('sequelize').Op.or]: [
             { lastSyncAt: null },
             { lastSyncAt: { [require('sequelize').Op.lt]: new Date(Date.now() - 24 * 60 * 60 * 1000) } }

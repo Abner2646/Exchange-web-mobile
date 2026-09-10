@@ -10,23 +10,23 @@
 // ventana sin depender de disciplina por-caller.
 
 const { Sequelize } = require('sequelize');
-const initUsuario = require('../models/entities/usuario.entity');
+const initUser = require('../modules/users/user.entity');
 
 // Instancia que no conecta: build() + runHooks() corren en memoria.
 const sequelize = new Sequelize('postgres://u:p@localhost:5432/none', { logging: false });
-const Usuario = initUsuario(sequelize);
+const User = initUser(sequelize);
 
 describe('Usuario — normalización de email/username en beforeValidate', () => {
   test('baja a minúsculas y recorta email y username', async () => {
-    const u = Usuario.build({ email: '  John.Doe@Gmail.COM ', username: '  JohnDoe ' });
-    await Usuario.runHooks('beforeValidate', u, {});
+    const u = User.build({ email: '  John.Doe@Gmail.COM ', username: '  JohnDoe ' });
+    await User.runHooks('beforeValidate', u, {});
     expect(u.email).toBe('john.doe@gmail.com');
     expect(u.username).toBe('johndoe');
   });
 
   test('normaliza solo los campos presentes (safe en updates parciales)', async () => {
-    const u = Usuario.build({ username: 'OnlyUser' });
-    await Usuario.runHooks('beforeValidate', u, {});
+    const u = User.build({ username: 'OnlyUser' });
+    await User.runHooks('beforeValidate', u, {});
     expect(u.username).toBe('onlyuser');
     expect(u.email == null).toBe(true);
   });

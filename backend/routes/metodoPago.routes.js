@@ -20,7 +20,7 @@ const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
  *       required: true
  *       content:
  *         application/json:
- *           schema: { type: object, required: [nombre], properties: { nombre: { type: string, example: Mercado Pago }, descripcion: { type: string }, activo: { type: boolean } } }
+ *           schema: { type: object, required: [nombre], properties: { nombre: { type: string, example: Mercado Pago }, descripcion: { type: string }, active: { type: boolean } } }
  *     responses: { 201: { description: Creado } }
  * /metodoPago/{id}:
  *   get:
@@ -53,7 +53,7 @@ const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
  * /metodoPago/{id}/check-active:
  *   get:
  *     tags: [Métodos de pago]
- *     summary: Verificar si un método está activo
+ *     summary: Verificar si un método está active
  *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
  *     responses: { 200: { description: Estado } }
  * /metodoPago/{id}/validate:
@@ -75,7 +75,7 @@ Devuelve ej:
         "id": "cd323f9b-2392-47a1-83fd-69d3fb146a42",
         "nombre": "Mercado Pago",
         "descripcion": "Método confiable",
-        "activo": true
+        "active": true
     }
 ]
 */
@@ -108,7 +108,7 @@ router.get('/status/active', authenticateToken, metodoPagoController.getActiveMe
 // Obtener métodos de pago inactivos (solo admin)
 router.get('/status/inactive', authenticateToken, isSuperAdmin, metodoPagoController.getInactiveMetodosPago);
 
-// Verificar si método está activo
+// Verificar si método está active
 router.get('/:id/check-active', authenticateToken, metodoPagoController.checkMetodoActive);
 
 // Validar método de pago para uso

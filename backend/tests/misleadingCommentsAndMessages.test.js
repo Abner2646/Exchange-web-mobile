@@ -31,7 +31,7 @@ test('#3: setupWallets.controller.js ya no promete que los datos privados se log
 
 test('#6: walletMaestra.routes.js ya no tiene el comentario que insinuaba un bug de backend inexistente', () => {
   const src = source('../routes/walletMaestra.routes.js');
-  expect(src).not.toMatch(/El campo activa debe ser un valor booleano/);
+  expect(src).not.toMatch(/El campo active debe ser un valor booleano/);
 });
 
 test('#7: trades.controller.js ya no llama "Calcular PnL" a una copia de fees', () => {

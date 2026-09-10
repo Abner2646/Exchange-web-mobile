@@ -142,11 +142,11 @@ function createTradingPairModel(sequelize) {
         sequelize.models.Criptomoneda.findByPk(data.quoteAssetId)
       ]);
 
-      if (!baseAsset || !baseAsset.activa) {
+      if (!baseAsset || !baseAsset.active) {
         throw new Error('Base asset no encontrado o inactivo');
       }
 
-      if (!quoteAsset || !quoteAsset.activa) {
+      if (!quoteAsset || !quoteAsset.active) {
         throw new Error('Quote asset no encontrado o inactivo');
       }
 

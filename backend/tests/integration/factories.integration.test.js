@@ -9,7 +9,7 @@ afterAll(async () => { await sequelize.close(); });
 
 describe('factories + auth helper', () => {
   test('authTokenFor mints a token the auth middleware accepts', async () => {
-    const user = await f.seedUser();               // emailVerificado: true by default
+    const user = await f.seedUser();               // emailVerified: true by default
     const res = await request(app)
       .get('/api/intercambioExchange/me/balances')
       .set(f.authHeader(user));

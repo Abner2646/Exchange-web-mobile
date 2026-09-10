@@ -19,7 +19,7 @@ const parExchangeModel = require('./parExchange.model');
 const transaccionBlockchainModel = require('./transaccionBlockchain.model');
 const transaccionP2PModel = require('./transaccionesP2P.model');
 const transferenciaModel = require('./transferencia.model.js')
-const usuarioModel = require('./usuario.model');
+const userModel = require('../modules/users/user.model');
 const valoracionModel = require('./valoracion.model');
 const walletMaestraModel = require('./walletMaestra.model');
 
@@ -71,7 +71,7 @@ const ParExchange = parExchangeModel(sequelize);
 const TransaccionBlockchain = transaccionBlockchainModel(sequelize);
 const TransaccionP2P = transaccionP2PModel(sequelize);
 const Transferencia = transferenciaModel(sequelize);
-const Usuario = usuarioModel(sequelize);
+const User = userModel(sequelize);
 const Valoracion = valoracionModel(sequelize);
 const WalletMaestra = walletMaestraModel(sequelize);
 
@@ -100,62 +100,62 @@ const ConfiguracionNegocio = initConfiguracionNegocio(sequelize);
 // RELACIONES DE USUARIOS
 // ================================
 
-// (Paso C: Usuario↔BalanceUsuario se eliminó — BalanceUsuario ya no es un modelo
+// (Paso C: User↔BalanceUsuario se eliminó — BalanceUsuario ya no es un modelo
 // Sequelize sino una fachada del ledger; los saldos se leen de la proyección del
 // ledger, no de una asociación.)
 
-// Usuario puede tener muchas direcciones de depósito
+// User puede tener muchas direcciones de depósito
 // Mismo bug (Críticos #9), y encima asimétrico: el belongsTo ya se había
 // corregido a userId pero el hasMany inverso se había quedado en usuarioId.
-Usuario.hasMany(DireccionDeposito, { foreignKey: 'userId', as: 'direccionesDeposito' });
-DireccionDeposito.belongsTo(Usuario, { foreignKey: 'userId', as: 'usuario' });
+User.hasMany(DireccionDeposito, { foreignKey: 'userId', as: 'direccionesDeposito' });
+DireccionDeposito.belongsTo(User, { foreignKey: 'userId', as: 'usuario' });
 
-// Usuario puede crear muchas ofertas P2P
-Usuario.hasMany(OfertaP2P, { foreignKey: 'usuarioId', as: 'ofertas' });
-OfertaP2P.belongsTo(Usuario, { foreignKey: 'usuarioId', as: 'usuario' });
+// User puede crear muchas ofertas P2P
+User.hasMany(OfertaP2P, { foreignKey: 'usuarioId', as: 'ofertas' });
+OfertaP2P.belongsTo(User, { foreignKey: 'usuarioId', as: 'usuario' });
 
-// Usuario puede ser comprador en transacciones P2P
-Usuario.hasMany(TransaccionP2P, { foreignKey: 'compradorId', as: 'compras' });
-TransaccionP2P.belongsTo(Usuario, { foreignKey: 'compradorId', as: 'comprador' });
+// User puede ser comprador en transacciones P2P
+User.hasMany(TransaccionP2P, { foreignKey: 'compradorId', as: 'compras' });
+TransaccionP2P.belongsTo(User, { foreignKey: 'compradorId', as: 'comprador' });
 
-// Usuario puede ser vendedor en transacciones P2P
-Usuario.hasMany(TransaccionP2P, { foreignKey: 'vendedorId', as: 'ventas' });
-TransaccionP2P.belongsTo(Usuario, { foreignKey: 'vendedorId', as: 'vendedor' });
+// User puede ser vendedor en transacciones P2P
+User.hasMany(TransaccionP2P, { foreignKey: 'vendedorId', as: 'ventas' });
+TransaccionP2P.belongsTo(User, { foreignKey: 'vendedorId', as: 'vendedor' });
 
 
-// Usuario puede hacer muchos intercambios con el exchange
-Usuario.hasMany(IntercambioExchange, { foreignKey: 'usuarioId', as: 'intercambios' });
-IntercambioExchange.belongsTo(Usuario, { foreignKey: 'usuarioId', as: 'usuario' });
+// User puede hacer muchos intercambios con el exchange
+User.hasMany(IntercambioExchange, { foreignKey: 'usuarioId', as: 'intercambios' });
+IntercambioExchange.belongsTo(User, { foreignKey: 'usuarioId', as: 'usuario' });
 
-// Usuario puede evaluar a otros usuarios
-Usuario.hasMany(Valoracion, { foreignKey: 'usuarioEvaluadorId', as: 'valoracionesDadas' });
-Valoracion.belongsTo(Usuario, { foreignKey: 'usuarioEvaluadorId', as: 'evaluador' });
+// User puede evaluar a otros usuarios
+User.hasMany(Valoracion, { foreignKey: 'usuarioEvaluadorId', as: 'valoracionesDadas' });
+Valoracion.belongsTo(User, { foreignKey: 'usuarioEvaluadorId', as: 'evaluador' });
 
-// Usuario puede ser evaluado por otros usuarios
-Usuario.hasMany(Valoracion, { foreignKey: 'usuarioEvaluadoId', as: 'valoracionesRecibidas' });
-Valoracion.belongsTo(Usuario, { foreignKey: 'usuarioEvaluadoId', as: 'evaluado' });
+// User puede ser evaluado por otros usuarios
+User.hasMany(Valoracion, { foreignKey: 'usuarioEvaluadoId', as: 'valoracionesRecibidas' });
+Valoracion.belongsTo(User, { foreignKey: 'usuarioEvaluadoId', as: 'evaluado' });
 
-// Usuario puede hacer transacciones blockchain
+// User puede hacer transacciones blockchain
 // Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #9): mismo bug que arriba —
 // la columna real en transacciones_blockchain es user_id, no usuarioId.
-Usuario.hasMany(TransaccionBlockchain, { foreignKey: 'userId', as: 'transaccionesBlockchain' });
-TransaccionBlockchain.belongsTo(Usuario, { foreignKey: 'userId', as: 'usuario' });
+User.hasMany(TransaccionBlockchain, { foreignKey: 'userId', as: 'transaccionesBlockchain' });
+TransaccionBlockchain.belongsTo(User, { foreignKey: 'userId', as: 'usuario' });
 
 // Admin puede aprobar transacciones blockchain
-Usuario.hasMany(TransaccionBlockchain, { foreignKey: 'aprobadoPor', as: 'transaccionesAprobadas' });
-TransaccionBlockchain.belongsTo(Usuario, { foreignKey: 'aprobadoPor', as: 'adminAprobador' });
+User.hasMany(TransaccionBlockchain, { foreignKey: 'aprobadoPor', as: 'transaccionesAprobadas' });
+TransaccionBlockchain.belongsTo(User, { foreignKey: 'aprobadoPor', as: 'adminAprobador' });
 
-// 🆕 Usuario puede crear muchas órdenes de trading
-Usuario.hasMany(Order, { foreignKey: 'userId', as: 'orders' });
-Order.belongsTo(Usuario, { foreignKey: 'userId', as: 'user' });
+// 🆕 User puede crear muchas órdenes de trading
+User.hasMany(Order, { foreignKey: 'userId', as: 'orders' });
+Order.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
-// 🆕 Usuario puede ser comprador en trades
-Usuario.hasMany(Trade, { foreignKey: 'buyerId', as: 'buyTrades' });
-Trade.belongsTo(Usuario, { foreignKey: 'buyerId', as: 'buyer' });
+// 🆕 User puede ser comprador en trades
+User.hasMany(Trade, { foreignKey: 'buyerId', as: 'buyTrades' });
+Trade.belongsTo(User, { foreignKey: 'buyerId', as: 'buyer' });
 
-// 🆕 Usuario puede ser vendedor en trades
-Usuario.hasMany(Trade, { foreignKey: 'sellerId', as: 'sellTrades' });
-Trade.belongsTo(Usuario, { foreignKey: 'sellerId', as: 'seller' });
+// 🆕 User puede ser vendedor en trades
+User.hasMany(Trade, { foreignKey: 'sellerId', as: 'sellTrades' });
+Trade.belongsTo(User, { foreignKey: 'sellerId', as: 'seller' });
 
 // ================================
 // RELACIONES DE CRIPTOMONEDAS
@@ -276,7 +276,7 @@ TransaccionP2P.belongsTo(MetodoPago, { foreignKey: 'metodoPagoId', as: 'metodoPa
 // Fix 2026-08-19 (AUDITORIA_BACKEND.md Altos #11): estas dos líneas
 // habían quedado atrapadas dentro del mismo bloque comentado que las
 // asociaciones de Reclamo (que sí es código muerto) — pero Valoracion no
-// lo es, está activo. Sin esto, cualquier función de valoracion.model.js
+// lo es, está active. Sin esto, cualquier función de valoracion.model.js
 // que usa `association: 'transaccion'` (getById, getAll, y varias más)
 // tiraba "Association with alias 'transaccion' does not exist on
 // Valoracion". No estaba en la auditoría original; apareció al escribir
@@ -290,13 +290,13 @@ Valoracion.belongsTo(TransaccionP2P, { foreignKey: 'transaccionP2PId', as: 'tran
 // RELACIONES DE TRANSFERENCIAS
 // ================================
 
-// Usuario puede ser remitente en muchas transferencias
-Usuario.hasMany(Transferencia, { foreignKey: 'usuarioRemitenteId', as: 'transferenciasEnviadas' });
-Transferencia.belongsTo(Usuario, { foreignKey: 'usuarioRemitenteId', as: 'remitente' });
+// User puede ser remitente en muchas transferencias
+User.hasMany(Transferencia, { foreignKey: 'usuarioRemitenteId', as: 'transferenciasEnviadas' });
+Transferencia.belongsTo(User, { foreignKey: 'usuarioRemitenteId', as: 'remitente' });
 
-// Usuario puede ser destinatario en muchas transferencias
-Usuario.hasMany(Transferencia, { foreignKey: 'usuarioDestinatarioId', as: 'transferenciasRecibidas' });
-Transferencia.belongsTo(Usuario, { foreignKey: 'usuarioDestinatarioId', as: 'destinatario' });
+// User puede ser destinatario en muchas transferencias
+User.hasMany(Transferencia, { foreignKey: 'usuarioDestinatarioId', as: 'transferenciasRecibidas' });
+Transferencia.belongsTo(User, { foreignKey: 'usuarioDestinatarioId', as: 'destinatario' });
 
 // Transferencia pertenece a una criptomoneda
 Criptomoneda.hasMany(Transferencia, { foreignKey: 'criptomonedaId', as: 'transferencias' });
@@ -331,7 +331,7 @@ module.exports = {
   TransaccionBlockchain,
   TransaccionP2P,
   Transferencia,
-  Usuario,
+  User,
   Valoracion,
   WalletMaestra,
   // 🆕 TRADING MODELS

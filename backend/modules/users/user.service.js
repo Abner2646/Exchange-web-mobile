@@ -1,4 +1,4 @@
-const { Usuario } = require('../models');
+const { User } = require('../../models');
 
 class UserService {
   // `transaction` is optional so both callers work: the REST endpoint
@@ -19,16 +19,16 @@ class UserService {
     }
 
     // Buscar por googleId
-    let existingUser = await Usuario.findOne({
+    let existingUser = await User.findOne({
       where: { googleId: profile.id },
       transaction,
     });
 
     if (existingUser) {
       // ⭐ ASEGURAR que el email esté verificado
-      if (!existingUser.emailVerificado) {
-        await existingUser.update({ emailVerificado: true }, { transaction });
-        console.log('✅ emailVerificado actualizado a true para usuario existente de Google');
+      if (!existingUser.emailVerified) {
+        await existingUser.update({ emailVerified: true }, { transaction });
+        console.log('✅ emailVerified actualizado a true para usuario existente de Google');
       }
 
       return {
@@ -38,7 +38,7 @@ class UserService {
     }
 
     // Buscar por email
-    let userByEmail = await Usuario.findOne({
+    let userByEmail = await User.findOne({
       where: { email: profile.emails[0].value },
       transaction,
     });
@@ -47,28 +47,28 @@ class UserService {
       // ⭐ Vincular cuenta con Google y verificar email
       await userByEmail.update({
         googleId: profile.id,
-        emailVerificado: true // ⭐ CRÍTICO: Verificar email al vincular con Google
+        emailVerified: true // ⭐ CRÍTICO: Verificar email al vincular con Google
       }, { transaction });
-      console.log('✅ Usuario existente vinculado con Google y email verificado');
+      console.log('✅ User existente vinculado con Google y email verificado');
 
       return {
         ...userByEmail.dataValues,
         googleId: profile.id, // Asegurar que el objeto retornado tenga googleId actualizado
-        emailVerificado: true,
+        emailVerified: true,
         isNewUser: false
       };
     }
 
     // Crear nuevo usuario de Google
-    const newUser = await Usuario.create({
+    const newUser = await User.create({
       googleId: profile.id,
       email: profile.emails[0].value,
       username: profile.displayName || profile.emails[0].value.split('@')[0],
-      pais: 'AR',
-      rol: 'normal',
+      country: 'AR',
+      role: 'normal',
       passwordHash: null,
-      emailVerificado: true, // ⭐ CRÍTICO: Google ya verificó el email
-      activo: true,
+      emailVerified: true, // ⭐ CRÍTICO: Google ya verificó el email
+      active: true,
     }, { transaction });
 
     console.log('✅ Nuevo usuario de Google creado con email verificado');
