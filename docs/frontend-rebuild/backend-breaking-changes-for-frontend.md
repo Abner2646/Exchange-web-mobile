@@ -162,3 +162,20 @@ Also disable the submit button + show a "sending…" state (cheap first-line def
 - **Cross-cutting:** `active` / `role` / `country` are now the field names wherever
   they appear (also on other domains' objects that expose an active flag — those
   domains' full rename lands in later chunks).
+
+### ✅ crypto / config  (chunk 2 — done)
+
+- **Route base:** `/api/criptomoneda/*` → **`/api/crypto/*`**.
+- **Crypto object fields:** `nombre`→`name`, `red`→`network`, `decimales`→`decimals`,
+  `direccionContrato`→`contractAddress` (`symbol`, `iconUrl`, `active` already/prior).
+- **Include alias (big one for the frontend):** objects that embed a currency now
+  expose it under **`crypto`** instead of `criptomoneda` (e.g. offers, blockchain
+  txs, deposit addresses: `{ ..., crypto: { symbol, name, network, ... } }`).
+- **Cross-cutting:** `name` / `network` / `decimals` are now the field names wherever
+  they appear (wallets, deposit addresses, payment methods expose `name`/`network`
+  too; their model/route rename lands in later chunks).
+- **Still Spanish (deferred to owning domains):** the FK `criptomonedaId` on other
+  tables (renamed with each owning domain's chunk).
+- **Business config (admin):** model `ConfiguracionNegocio`→`BusinessConfig`; columns
+  `clave|valor|tipo|categoria|descripcion` → **`key|value|type|category|description`**;
+  route param `/config/:clave` → **`/config/:key`** (`type` enum values unchanged).

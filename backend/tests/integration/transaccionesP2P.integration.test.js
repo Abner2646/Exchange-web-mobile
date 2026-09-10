@@ -17,7 +17,7 @@ beforeEach(async () => { await resetDb(); });
 afterAll(async () => { await sequelize.close(); });
 
 async function seedMetodoPago() {
-  return MetodoPago.create({ nombre: 'Bank transfer' });
+  return MetodoPago.create({ name: 'Bank transfer' });
 }
 
 // A 'venta' offer: the offerer (seller) sells crypto; the acceptor is the buyer.

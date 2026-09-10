@@ -9,7 +9,7 @@
 jest.mock('../models', () => ({
   TransaccionBlockchain: { createDeposit: jest.fn() },
   DireccionDeposito: {},
-  Criptomoneda: {},
+  Crypto: {},
   BlockchainState: {},
 }));
 
@@ -17,11 +17,11 @@ const { TransaccionBlockchain } = require('../models');
 const BscService = require('../services/blockchain/bsc.service');
 const { BSC_PROFILES } = require('../config/networks/evm');
 
-// Fase 3: identidad de red desde el NetworkProfile inyectado (chainClient fake
+// Fase 3: identidad de network desde el NetworkProfile inyectado (chainClient fake
 // evita el ethers.Wallet real y el chequeo de rpc/clave por env).
 describe('bsc.service — NetworkProfile inyectado', () => {
   const fakeChain = { provider: null, wallet: null };
-  test('mainnet → chainId 56, red bsc', () => {
+  test('mainnet → chainId 56, network bsc', () => {
     const s = new BscService({ profile: BSC_PROFILES.mainnet, chainClient: fakeChain });
     expect(s.chainId).toBe(56);
     expect(s.actualNetwork).toBe('bsc');

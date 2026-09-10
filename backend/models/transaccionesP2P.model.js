@@ -35,7 +35,7 @@ TransaccionP2P.createTransaction = async (data) => {
   try {
     const { OfertaP2P } = require('./index');
     const oferta = await OfertaP2P.findByPk(ofertaId, { 
-      include: ['criptomoneda'],
+      include: ['crypto'],
       transaction 
     });
     
@@ -63,7 +63,7 @@ TransaccionP2P.createTransaction = async (data) => {
     
     if (!balance) {
       throw new Error(
-        `El vendedor no tiene balance en ${oferta.criptomoneda?.symbol || 'esta criptomoneda'}. ` +
+        `El vendedor no tiene balance en ${oferta.crypto?.symbol || 'esta criptomoneda'}. ` +
         `La transacción no puede continuar.`
       );
     }
@@ -73,8 +73,8 @@ TransaccionP2P.createTransaction = async (data) => {
     if (money.compare(balanceDisponible, cantidadNum) < 0) {
       throw new Error(
         `Fondos insuficientes del vendedor. ` +
-        `Disponible: ${balanceDisponible} ${oferta.criptomoneda?.symbol || ''}, ` +
-        `Requerido: ${cantidadNum} ${oferta.criptomoneda?.symbol || ''}`
+        `Disponible: ${balanceDisponible} ${oferta.crypto?.symbol || ''}, ` +
+        `Requerido: ${cantidadNum} ${oferta.crypto?.symbol || ''}`
       );
     }
 
@@ -103,7 +103,7 @@ TransaccionP2P.createTransaction = async (data) => {
     const transaccionConDatos = {
       id: nuevaTransaccion.id,
       cantidad: cantidadNum,
-      criptomoneda: oferta.criptomoneda,
+      crypto: oferta.crypto,
       montoFiat,
       monedaFiat: oferta.monedaFiat
     };
@@ -134,7 +134,7 @@ TransaccionP2P.completeTransaction = async (id, usuarioId) => {
   
   try {
     const transaccion = await TransaccionP2P.findByPk(id, { 
-      include: ['criptomoneda'],
+      include: ['crypto'],
       transaction 
     });
     
@@ -177,7 +177,7 @@ TransaccionP2P.completeTransaction = async (id, usuarioId) => {
     const transaccionConDatos = {
       id: transaccion.id,
       cantidad,
-      criptomoneda: transaccion.criptomoneda,
+      crypto: transaccion.crypto,
       montoFiat: String(transaccion.montoFiat),
       monedaFiat: transaccion.monedaFiat
     };
@@ -208,7 +208,7 @@ TransaccionP2P.cancelTransaction = async (id, usuarioId) => {
   
   try {
     const transaccion = await TransaccionP2P.findByPk(id, { 
-      include: ['criptomoneda'],
+      include: ['crypto'],
       transaction 
     });
     
@@ -249,7 +249,7 @@ TransaccionP2P.cancelTransaction = async (id, usuarioId) => {
     const transaccionConDatos = {
       id: transaccion.id,
       cantidad,
-      criptomoneda: transaccion.criptomoneda,
+      crypto: transaccion.crypto,
       montoFiat: String(transaccion.montoFiat),
       monedaFiat: transaccion.monedaFiat
     };
@@ -280,7 +280,7 @@ TransaccionP2P.cancelTransaction = async (id, usuarioId) => {
     
     try {
       const transaccion = await TransaccionP2P.findByPk(id, { 
-        include: ['criptomoneda'],
+        include: ['crypto'],
         transaction 
       });
       
@@ -310,7 +310,7 @@ TransaccionP2P.cancelTransaction = async (id, usuarioId) => {
       const transaccionConDatos = {
         id: transaccion.id,
         cantidad: String(transaccion.cantidad),
-        criptomoneda: transaccion.criptomoneda,
+        crypto: transaccion.crypto,
         montoFiat: String(transaccion.montoFiat),
         monedaFiat: transaccion.monedaFiat
       };
@@ -352,12 +352,12 @@ TransaccionP2P.cancelTransaction = async (id, usuarioId) => {
           attributes: ['id', 'username', 'email']
         },
         {
-          association: 'criptomoneda',
-          attributes: ['id', 'nombre', 'symbol']
+          association: 'crypto',
+          attributes: ['id', 'name', 'symbol']
         },
         {
           association: 'metodoPago',
-          attributes: ['id', 'nombre']
+          attributes: ['id', 'name']
         }
       ]
     });
@@ -417,12 +417,12 @@ TransaccionP2P.cancelTransaction = async (id, usuarioId) => {
           attributes: ['id', 'username']
         },
         {
-          association: 'criptomoneda',
-          attributes: ['id', 'nombre', 'symbol']
+          association: 'crypto',
+          attributes: ['id', 'name', 'symbol']
         },
         {
           association: 'metodoPago',
-          attributes: ['id', 'nombre']
+          attributes: ['id', 'name']
         }
       ],
       order: [[orderBy, orderDirection]],
@@ -470,8 +470,8 @@ TransaccionP2P.cancelTransaction = async (id, usuarioId) => {
           attributes: ['id', 'username']
         },
         {
-          association: 'criptomoneda',
-          attributes: ['id', 'nombre', 'symbol']
+          association: 'crypto',
+          attributes: ['id', 'name', 'symbol']
         }
       ],
       order: [['created_at', 'DESC']],
@@ -512,7 +512,7 @@ TransaccionP2P.cancelTransaction = async (id, usuarioId) => {
           attributes: ['id', 'username']
         },
         {
-          association: 'criptomoneda',
+          association: 'crypto',
           attributes: ['id', 'symbol']
         }
       ],

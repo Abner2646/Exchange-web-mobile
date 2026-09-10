@@ -26,7 +26,7 @@ const mockUser = {
 jest.mock('../models', () => ({
   User: { findByPk: jest.fn() },
   TransaccionBlockchain: {},
-  Criptomoneda: {},
+  Crypto: {},
   BalanceUsuario: {},
   DireccionDeposito: {},
   // Required by idempotency.middleware (now wired into /withdraw)

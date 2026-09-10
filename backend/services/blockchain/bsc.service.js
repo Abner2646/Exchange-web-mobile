@@ -1,13 +1,13 @@
 // services/blockchain/bsc.service.js - ACTUALIZADO PARA ETHERSCAN API V2
 require('dotenv').config();
 const { ethers } = require('ethers');
-const { TransaccionBlockchain, DireccionDeposito, Criptomoneda, BlockchainState } = require('../../models');
+const { TransaccionBlockchain, DireccionDeposito, Crypto, BlockchainState } = require('../../models');
 const money = require('../../utils/money');
 const EthersEvmClient = require('./ethersEvmClient');
 const { bscNetworkProfile } = require('../../config/networks/evm');
 
 class BscService {
-  // Fase 3: identidad de red desde el NetworkProfile inyectable (default por env,
+  // Fase 3: identidad de network desde el NetworkProfile inyectable (default por env,
   // preservando `isTestnet = BSC_NETWORK==='testnet' || NODE_ENV!=='production'`).
   constructor(opts = {}) {
     try {
@@ -82,7 +82,7 @@ class BscService {
 
       // Log de direcciones encontradas
       direcciones.forEach((dir, index) => {
-        console.log(`🔍 [BSC] Dirección ${index + 1}: ${dir.direccion} (${dir.criptomoneda.symbol})`);
+        console.log(`🔍 [BSC] Dirección ${index + 1}: ${dir.direccion} (${dir.crypto.symbol})`);
       });
 
       const lastProcessedBlock = await BlockchainState.getLastProcessedBlock(this.actualNetwork);
@@ -104,21 +104,21 @@ class BscService {
         try {
           console.log(`🔍 [BSC] ================== ESCANEANDO DIRECCIÓN ${i + 1}/${direcciones.length} ==================`);
           console.log(`🔍 [BSC] Dirección: ${direccion.direccion}`);
-          console.log(`🔍 [BSC] Criptomoneda: ${direccion.criptomoneda.symbol}`);
-          console.log(`🔍 [BSC] Red en DB: ${direccion.criptomoneda.red}`);
-          console.log(`🔍 [BSC] Es token (tiene contrato): ${!!direccion.criptomoneda.direccionContrato}`);
+          console.log(`🔍 [BSC] Crypto: ${direccion.crypto.symbol}`);
+          console.log(`🔍 [BSC] Red en DB: ${direccion.crypto.network}`);
+          console.log(`🔍 [BSC] Es token (tiene contrato): ${!!direccion.crypto.contractAddress}`);
           
           let deposits = [];
           
-          if (direccion.criptomoneda.symbol === 'BNB') {
+          if (direccion.crypto.symbol === 'BNB') {
             console.log(`🔍 [BSC] Escaneando transacciones BNB nativas...`);
             deposits = await this.scanBNBTransactions(direccion, scanFromBlock);
-          } else if (direccion.criptomoneda.direccionContrato) {
-            console.log(`🔍 [BSC] Escaneando transacciones BEP20 (${direccion.criptomoneda.symbol})...`);
-            console.log(`🔍 [BSC] Contrato: ${direccion.criptomoneda.direccionContrato}`);
+          } else if (direccion.crypto.contractAddress) {
+            console.log(`🔍 [BSC] Escaneando transacciones BEP20 (${direccion.crypto.symbol})...`);
+            console.log(`🔍 [BSC] Contrato: ${direccion.crypto.contractAddress}`);
             deposits = await this.scanBEP20Transactions(direccion, scanFromBlock);
           } else {
-            console.warn(`⚠️ [BSC] Tipo de criptomoneda no reconocido para ${direccion.criptomoneda.symbol}`);
+            console.warn(`⚠️ [BSC] Tipo de crypto no reconocido para ${direccion.crypto.symbol}`);
           }
           
           console.log(`🔍 [BSC] Depósitos encontrados para esta dirección: ${deposits.length}`);
@@ -279,11 +279,11 @@ class BscService {
   }
 
   async scanBEP20Transactions(direccion, fromBlock) {
-    const url = this.buildTokenTransactionUrl(direccion.direccion, direccion.criptomoneda.direccionContrato, fromBlock);
+    const url = this.buildTokenTransactionUrl(direccion.direccion, direccion.crypto.contractAddress, fromBlock);
 
     try {
       console.log(`🔍 [BSC-BEP20] URL de API: ${url.replace(process.env.ETHERSCAN_API_KEY, '***')}`);
-      console.log(`🔍 [BSC-BEP20] Consultando API para token ${direccion.criptomoneda.symbol}...`);
+      console.log(`🔍 [BSC-BEP20] Consultando API para token ${direccion.crypto.symbol}...`);
       
       const response = await fetch(url);
       console.log(`🔍 [BSC-BEP20] Respuesta HTTP: ${response.status} ${response.statusText}`);
@@ -301,7 +301,7 @@ class BscService {
 
       if (data.status !== '1') {
         if (data.message === 'No transactions found') {
-          console.log(`ℹ️ [BSC-BEP20] No hay transacciones ${direccion.criptomoneda.symbol} para ${direccion.direccion}`);
+          console.log(`ℹ️ [BSC-BEP20] No hay transacciones ${direccion.crypto.symbol} para ${direccion.direccion}`);
           return [];
         } else {
           console.warn(`⚠️ [BSC-BEP20] API warning: ${data.message}`);
@@ -315,7 +315,7 @@ class BscService {
       }
 
       const transactions = data.result;
-      console.log(`🔍 [BSC-BEP20] Procesando ${transactions.length} transacciones ${direccion.criptomoneda.symbol}...`);
+      console.log(`🔍 [BSC-BEP20] Procesando ${transactions.length} transacciones ${direccion.crypto.symbol}...`);
 
       const deposits = [];
       let incomingTransactions = 0;
@@ -329,8 +329,8 @@ class BscService {
         console.log(`  - Token Decimal: ${tx.tokenDecimal}`);
         console.log(`  - Block: ${tx.blockNumber}`);
         
-        const decimales = parseInt(tx.tokenDecimal);
-        const amount = ethers.formatUnits(tx.value, decimales);
+        const decimals = parseInt(tx.tokenDecimal);
+        const amount = ethers.formatUnits(tx.value, decimals);
         console.log(`  - Amount formatted: ${amount} ${tx.tokenSymbol}`);
         
         const isIncoming = tx.to && tx.to.toLowerCase() === direccion.direccion.toLowerCase();
@@ -353,9 +353,9 @@ class BscService {
 
           const fee = this.calculateTransactionFee(tx);
 
-          console.log(`💰 [BSC-BEP20] Creando depósito ${direccion.criptomoneda.symbol}:`);
+          console.log(`💰 [BSC-BEP20] Creando depósito ${direccion.crypto.symbol}:`);
           console.log(`  - User ID: ${direccion.userId}`);
-          console.log(`  - Cantidad: ${amount} ${direccion.criptomoneda.symbol}`);
+          console.log(`  - Cantidad: ${amount} ${direccion.crypto.symbol}`);
           console.log(`  - Fee: ${fee} BNB`);
 
           const newDeposit = await this.createDepositFromTransaction(
@@ -367,7 +367,7 @@ class BscService {
         }
       }
 
-      console.log(`📊 [BSC-BEP20] Resumen para ${direccion.direccion} (${direccion.criptomoneda.symbol}):`);
+      console.log(`📊 [BSC-BEP20] Resumen para ${direccion.direccion} (${direccion.crypto.symbol}):`);
       console.log(`  - Total transacciones analizadas: ${transactions.length}`);
       console.log(`  - Transacciones entrantes: ${incomingTransactions}`);
       console.log(`  - Depósitos válidos: ${validDeposits}`);
@@ -375,7 +375,7 @@ class BscService {
 
       return deposits;
     } catch (error) {
-      console.error(`❌ [BSC-BEP20] Error Token API para ${direccion.criptomoneda.symbol}:`, error.message);
+      console.error(`❌ [BSC-BEP20] Error Token API para ${direccion.crypto.symbol}:`, error.message);
       console.error(`❌ [BSC-BEP20] Stack trace:`, error.stack);
       return [];
     }
@@ -468,13 +468,13 @@ class BscService {
         where: { active: true },
         include: [
           {
-            model: Criptomoneda,
-            as: 'criptomoneda',
+            model: Crypto,
+            as: 'crypto',
             where: { 
-              red: redesToBuscar,
+              network: redesToBuscar,
               active: true 
             },
-            attributes: ['id', 'symbol', 'nombre', 'red', 'direccionContrato', 'decimales']
+            attributes: ['id', 'symbol', 'name', 'network', 'contractAddress', 'decimals']
           }
         ]
       });
@@ -485,8 +485,8 @@ class BscService {
         direcciones.forEach((dir, index) => {
           console.log(`🔧 [BSC] Dirección ${index + 1}:`);
           console.log(`  - Dirección: ${dir.direccion}`);
-          console.log(`  - Criptomoneda: ${dir.criptomoneda.symbol}`);
-          console.log(`  - Red en DB: ${dir.criptomoneda.red}`);
+          console.log(`  - Crypto: ${dir.crypto.symbol}`);
+          console.log(`  - Red en DB: ${dir.crypto.network}`);
           console.log(`  - User ID: ${dir.userId}`);
         });
       }
@@ -519,9 +519,9 @@ class BscService {
         },
         include: [
           {
-            model: Criptomoneda,
-            as: 'criptomoneda',
-            where: { red: this.actualNetwork }
+            model: Crypto,
+            as: 'crypto',
+            where: { network: this.actualNetwork }
           }
         ]
       });
@@ -545,7 +545,7 @@ class BscService {
   }
 
   async processWithdrawal(withdrawal) {
-    const { cantidad, direccionDestino, criptomoneda } = withdrawal;
+    const { cantidad, direccionDestino, crypto } = withdrawal;
 
     // Atomic claim BEFORE any broadcast (anti double-spend), for BOTH native and
     // token paths. If another concurrent run already claimed this row, skip.
@@ -555,7 +555,7 @@ class BscService {
       return null;
     }
 
-    if (criptomoneda.symbol === 'BNB') {
+    if (crypto.symbol === 'BNB') {
       // NATIVE — sign → pre-record txHash → broadcast → finalize (BSC is EVM).
       const walletBalance = await this.chain.getNativeBalance();
       if (money.compare(String(walletBalance), String(cantidad)) < 0) {
@@ -565,26 +565,26 @@ class BscService {
       await TransaccionBlockchain.recordWithdrawalTxHash(withdrawal.id, txHash);
       await this.chain.broadcast(signed);
       const updated = await TransaccionBlockchain.markWithdrawalAsSent(withdrawal.id, txHash, fee);
-      console.log(`✅ [BSC] Retiro enviado: ${cantidad} ${criptomoneda.symbol} - TX: ${txHash}`);
+      console.log(`✅ [BSC] Retiro enviado: ${cantidad} ${crypto.symbol} - TX: ${txHash}`);
       return updated;
     }
 
     // TOKEN (BEP20) — sign → pre-record txHash → broadcast → finalize.
-    const walletBalance = await this.chain.getTokenBalance(criptomoneda.direccionContrato);
+    const walletBalance = await this.chain.getTokenBalance(crypto.contractAddress);
     if (money.compare(String(walletBalance), String(cantidad)) < 0) {
       throw new Error(`Balance insuficiente en wallet maestra BSC: ${walletBalance} < ${cantidad}`);
     }
-    const { txHash, signed, fee } = await this.chain.signTokenTransfer(criptomoneda.direccionContrato, direccionDestino, cantidad.toString());
+    const { txHash, signed, fee } = await this.chain.signTokenTransfer(crypto.contractAddress, direccionDestino, cantidad.toString());
     await TransaccionBlockchain.recordWithdrawalTxHash(withdrawal.id, txHash);
     await this.chain.broadcast(signed);
     const updated = await TransaccionBlockchain.markWithdrawalAsSent(withdrawal.id, txHash, fee);
-    console.log(`✅ [BSC] Retiro enviado: ${cantidad} ${criptomoneda.symbol} - TX: ${txHash}`);
+    console.log(`✅ [BSC] Retiro enviado: ${cantidad} ${crypto.symbol} - TX: ${txHash}`);
     return updated;
   }
 
   async updateConfirmations() {
     try {
-      // Buscar en ambas variantes de red para compatibilidad
+      // Buscar en ambas variantes de network para compatibilidad
       const redesToBuscar = this.isTestnet ? ['bsc', 'bsc-testnet'] : ['bsc', 'bsc-mainnet'];
       console.log(`🔄 [BSC] Buscando confirmaciones en redes: ${redesToBuscar.join(', ')}`);
       
@@ -595,9 +595,9 @@ class BscService {
         },
         include: [
           {
-            model: Criptomoneda,
-            as: 'criptomoneda',
-            where: { red: redesToBuscar }
+            model: Crypto,
+            as: 'crypto',
+            where: { network: redesToBuscar }
           }
         ]
       });
@@ -647,10 +647,10 @@ class BscService {
     }
   }
 
-  async getWalletBalance(criptomoneda) {
-    if (criptomoneda.direccionContrato) {
+  async getWalletBalance(crypto) {
+    if (crypto.contractAddress) {
       const contract = new ethers.Contract(
-        criptomoneda.direccionContrato,
+        crypto.contractAddress,
         [
           'function balanceOf(address) view returns (uint256)', 
           'function decimals() view returns (uint8)'
@@ -659,8 +659,8 @@ class BscService {
       );
       
       const balance = await contract.balanceOf(this.wallet.address);
-      const decimales = await contract.decimals();
-      return ethers.formatUnits(balance, decimales);
+      const decimals = await contract.decimals();
+      return ethers.formatUnits(balance, decimals);
     } else {
       const balance = await this.provider.getBalance(this.wallet.address);
       return ethers.formatEther(balance);

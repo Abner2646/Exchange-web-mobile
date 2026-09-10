@@ -12,7 +12,7 @@
 const Decimal = require('decimal.js');
 
 // Precisión alta para cálculos intermedios (40 dígitos significativos cubren 18
-// decimales — wei — con margen para multiplicaciones). El redondeo a la
+// decimals — wei — con margen para multiplicaciones). El redondeo a la
 // precisión del active se hace explícito y aparte, en roundForAsset/round.
 Decimal.set({ precision: 40, rounding: Decimal.ROUND_HALF_EVEN });
 
@@ -42,7 +42,7 @@ function multiply(a, b) {
   return toDecimal(a).times(toDecimal(b)).toFixed();
 }
 
-// La división puede dar decimales infinitos (1/3): decimal.js la resuelve a la
+// La división puede dar decimals infinitos (1/3): decimal.js la resuelve a la
 // precisión configurada (40 dígitos). El redondeo a la precisión del active es
 // responsabilidad explícita de roundForAsset, no de acá.
 function divide(a, b) {
@@ -63,10 +63,10 @@ function negate(value) {
   return subtract('0', value);
 }
 
-// Formatea un monto a EXACTAMENTE 8 decimales (redondeo half-even + pad de
+// Formatea un monto a EXACTAMENTE 8 decimals (redondeo half-even + pad de
 // trailing zeros). add/subtract usan toFixed() sin escala y strippean los ceros
 // ('1' en vez de '1.00000000'); para la PRESENTACIÓN de saldos el contrato del
-// front pide 8 decimales uniformes. Este es el único lugar que fija esa regla.
+// front pide 8 decimals uniformes. Este es el único lugar que fija esa regla.
 function format8(value) {
   return toDecimal(value).toDecimalPlaces(8, Decimal.ROUND_HALF_EVEN).toFixed(8);
 }

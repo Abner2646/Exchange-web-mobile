@@ -1,6 +1,6 @@
 // controllers/parExchange.controller.js
 
-const { ParExchange, Criptomoneda } = require('../models/index.js');
+const { ParExchange, Crypto } = require('../models/index.js');
 const priceService = require('../services/priceService');
 
 // Listar pares de exchange
@@ -92,9 +92,9 @@ const createParExchange = async (req, res) => {
     }
 
     // Obtener información de las criptomonedas
-    const { Criptomoneda } = require('../models/index.js');
-    const criptoBase = await Criptomoneda.findByPk(criptoBaseId);
-    const criptoQuote = await Criptomoneda.findByPk(criptoQuoteId);
+    const { Crypto } = require('../models/index.js');
+    const criptoBase = await Crypto.findByPk(criptoBaseId);
+    const criptoQuote = await Crypto.findByPk(criptoQuoteId);
     
     if (!criptoBase || !criptoQuote) {
       return res.status(400).json({ 
@@ -197,9 +197,9 @@ const createParExchange = async (req, res) => {
     }
 
     // Obtener información de las criptomonedas
-    const { Criptomoneda } = require('../models/index.js');
-    const criptoBase = await Criptomoneda.findByPk(criptoBaseId);
-    const criptoQuote = await Criptomoneda.findByPk(criptoQuoteId);
+    const { Crypto } = require('../models/index.js');
+    const criptoBase = await Crypto.findByPk(criptoBaseId);
+    const criptoQuote = await Crypto.findByPk(criptoQuoteId);
     
     if (!criptoBase || !criptoQuote) {
       return res.status(400).json({ 
@@ -394,7 +394,7 @@ const getParBySymbols = async (req, res) => {
   }
 };
 
-// Obtener pares por criptomoneda base
+// Obtener pares por crypto base
 const getParesByBaseCrypto = async (req, res) => {
   try {
     const { criptoBaseId } = req.params;
@@ -405,7 +405,7 @@ const getParesByBaseCrypto = async (req, res) => {
   }
 };
 
-// Obtener pares por criptomoneda quote
+// Obtener pares por crypto quote
 const getParesByQuoteCrypto = async (req, res) => {
   try {
     const { criptoQuoteId } = req.params;
@@ -529,7 +529,7 @@ const getCurrentPrice = async (req, res) => {
 
   // ✨ NUEVA FUNCIÓN: Generar todos los pares automáticamente
   const generateAllPairs = async (req, res) => {
-    const { Criptomoneda } = require('../models/index.js')  // ✅ BIEN
+    const { Crypto } = require('../models/index.js')  // ✅ BIEN
     try {
       console.log('🚀 Iniciando generación automática de pares...');
       
@@ -537,9 +537,9 @@ const getCurrentPrice = async (req, res) => {
       const defaultFee = parseFloat(process.env.EXCHANGE_FEE_PERCENTAGE || 0.1);
       
       // Obtener todas las criptomonedas activas
-      const criptomonedas = await Criptomoneda.findAll({
+      const criptomonedas = await Crypto.findAll({
         where: { active: true },
-        attributes: ['id', 'symbol', 'nombre'],
+        attributes: ['id', 'symbol', 'name'],
         order: [['symbol', 'ASC']]
       });
       
@@ -561,7 +561,7 @@ const getCurrentPrice = async (req, res) => {
       // Generar todas las combinaciones (bidireccionales)
       for (let i = 0; i < criptomonedas.length; i++) {
         for (let j = 0; j < criptomonedas.length; j++) {
-          // Saltar si es la misma criptomoneda
+          // Saltar si es la misma crypto
           if (i === j) continue;
           
           const base = criptomonedas[i];

@@ -6,7 +6,7 @@ const { makeGetClientForNetwork } = require('../services/blockchain/withdrawalRe
 // directly. Unknown networks / missing capability resolve to null (reaper leaves
 // the row instead of guessing).
 function fakeManager(map) {
-  return { getService: (red) => map[red] || null };
+  return { getService: (network) => map[network] || null };
 }
 
 describe('makeGetClientForNetwork', () => {

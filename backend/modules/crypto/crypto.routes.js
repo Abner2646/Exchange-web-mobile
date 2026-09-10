@@ -1,19 +1,19 @@
-// routes/criptomoneda.routes.js
-// Prefijo: /criptomoneda
+// routes/crypto.routes.js
+// Prefijo: /crypto
 
 const { Router } = require('express');
 const router = Router();
 
 // Middleware de autenticación
-const { authenticateToken } = require('../middleware/authMiddleware.js');
-const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
+const { authenticateToken } = require('../../middleware/authMiddleware.js');
+const { isAdmin, isSuperAdmin } = require('../../middleware/adminMiddleware.js');
 
 // Importa el controlador de criptomonedas
-const criptomonedaController = require('../controllers/criptomoneda.controller.js');
+const cryptoController = require('./crypto.controller.js');
 
 /**
  * @openapi
- * /criptomoneda:
+ * /crypto:
  *   get: { tags: [Criptomonedas], summary: Listar criptomonedas, responses: { 200: { description: Lista } } }
  *   post:
  *     tags: [Criptomonedas - admin]
@@ -24,16 +24,16 @@ const criptomonedaController = require('../controllers/criptomoneda.controller.j
  *         application/json:
  *           schema:
  *             type: object
- *             required: [symbol, nombre, red, decimales]
+ *             required: [symbol, name, network, decimals]
  *             properties:
  *               symbol: { type: string, example: USDT }
- *               nombre: { type: string, example: Tether USD }
- *               red: { type: string, example: Ethereum }
- *               direccionContrato: { type: string }
- *               decimales: { type: integer, example: 6 }
+ *               name: { type: string, example: Tether USD }
+ *               network: { type: string, example: Ethereum }
+ *               contractAddress: { type: string }
+ *               decimals: { type: integer, example: 6 }
  *               active: { type: boolean }
  *     responses: { 201: { description: Creada }, 400: { $ref: '#/components/responses/BadRequest' } }
- * /criptomoneda/{id}:
+ * /crypto/{id}:
  *   get:
  *     tags: [Criptomonedas]
  *     summary: Obtener una cripto por id
@@ -49,96 +49,96 @@ const criptomonedaController = require('../controllers/criptomoneda.controller.j
  *     summary: Eliminar una cripto (super admin)
  *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
  *     responses: { 200: { description: Eliminada } }
- * /criptomoneda/{id}/generate-icon:
+ * /crypto/{id}/generate-icon:
  *   post:
  *     tags: [Criptomonedas - admin]
  *     summary: Generar el icono de una cripto (super admin)
  *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
  *     responses: { 200: { description: Icono generado } }
- * /criptomoneda/generate-all-icons:
+ * /crypto/generate-all-icons:
  *   post: { tags: [Criptomonedas - admin], summary: Generar iconos faltantes (super admin), responses: { 200: { description: OK } } }
- * /criptomoneda/search/query:
+ * /crypto/search/query:
  *   get:
  *     tags: [Criptomonedas]
  *     summary: Buscar criptos por término (público)
  *     security: []
  *     parameters: [{ in: query, name: q, schema: { type: string } }]
  *     responses: { 200: { description: Resultados } }
- * /criptomoneda/symbol/{symbol}:
+ * /crypto/symbol/{symbol}:
  *   get:
  *     tags: [Criptomonedas]
  *     summary: Cripto por símbolo (público)
  *     security: []
  *     parameters: [{ in: path, name: symbol, required: true, schema: { type: string } }]
  *     responses: { 200: { description: Cripto } }
- * /criptomoneda/network/{network}:
+ * /crypto/network/{network}:
  *   get:
  *     tags: [Criptomonedas]
- *     summary: Criptos por red/blockchain (público)
+ *     summary: Criptos por network/blockchain (público)
  *     security: []
  *     parameters: [{ in: path, name: network, required: true, schema: { type: string } }]
  *     responses: { 200: { description: Criptos } }
- * /criptomoneda/contract/{address}:
+ * /crypto/contract/{address}:
  *   get:
  *     tags: [Criptomonedas]
  *     summary: Cripto por dirección de contrato
  *     parameters: [{ in: path, name: address, required: true, schema: { type: string } }]
  *     responses: { 200: { description: Cripto } }
- * /criptomoneda/public/active:
+ * /crypto/public/active:
  *   get: { tags: [Criptomonedas], summary: Criptos activas (público, para trading), security: [], responses: { 200: { description: Criptos activas } } }
- * /criptomoneda/admin/stats:
+ * /crypto/admin/stats:
  *   get: { tags: [Criptomonedas - admin], summary: Estadísticas (super admin), responses: { 200: { description: Stats } } }
- * /criptomoneda/{id}/status:
+ * /crypto/{id}/status:
  *   patch:
  *     tags: [Criptomonedas - admin]
  *     summary: Actualizar el estado de una cripto (super admin)
  *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
  *     responses: { 200: { description: Estado actualizado } }
- * /criptomoneda/{id}/toggle:
+ * /crypto/{id}/toggle:
  *   patch:
  *     tags: [Criptomonedas - admin]
  *     summary: Activar/desactivar una cripto (super admin)
  *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
  *     responses: { 200: { description: OK } }
- * /criptomoneda/validate/transaction:
+ * /crypto/validate/transaction:
  *   post: { tags: [Criptomonedas - admin], summary: Validar una cripto para transacción (super admin), responses: { 200: { description: Válida } } }
  */
 
 // --------------------- RUTAS CRUD BÁSICAS --------------------- //
 
 // Obtener todas las criptomonedas
-router.get('/', authenticateToken, criptomonedaController.getCriptomonedas); // Bien
+router.get('/', authenticateToken, cryptoController.getCriptomonedas); // Bien
 
-// Obtener criptomoneda por ID
-router.get('/:id', authenticateToken, criptomonedaController.getCriptomonedaById);
+// Obtener crypto por ID
+router.get('/:id', authenticateToken, cryptoController.getCriptomonedaById);
 
-// Crear nueva criptomoneda
-router.post('/', authenticateToken, isSuperAdmin, criptomonedaController.createCriptomoneda); //Bien
+// Crear nueva crypto
+router.post('/', authenticateToken, isSuperAdmin, cryptoController.createCrypto); //Bien
 /*
 //USDT
 {
   "symbol": "USDT",
-  "nombre": "Tether USD",
-  "red": "Ethereum",
-  "direccionContrato": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-  "decimales": 6,
+  "name": "Tether USD",
+  "network": "Ethereum",
+  "contractAddress": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+  "decimals": 6,
   "active": true
 }
 
 */
 
-// Actualizar criptomoneda por ID
-router.put('/:id', authenticateToken, isSuperAdmin, criptomonedaController.updateCriptomoneda);
+// Actualizar crypto por ID
+router.put('/:id', authenticateToken, isSuperAdmin, cryptoController.updateCriptomoneda);
 
-// Eliminar criptomoneda por ID
-router.delete('/:id', authenticateToken, isSuperAdmin, criptomonedaController.deleteCriptomoneda);
+// Eliminar crypto por ID
+router.delete('/:id', authenticateToken, isSuperAdmin, cryptoController.deleteCriptomoneda);
 
 // ----------------------- DE LOS ICONOS -------------------------
 // Generar icono para una cripto específica
-router.post('/:id/generate-icon', authenticateToken, isSuperAdmin, criptomonedaController.generateIconUrl);
+router.post('/:id/generate-icon', authenticateToken, isSuperAdmin, cryptoController.generateIconUrl);
 
 // Generar iconos para todas las criptos sin icono
-router.post('/generate-all-icons', authenticateToken, isSuperAdmin, criptomonedaController.generateAllIconUrls);
+router.post('/generate-all-icons', authenticateToken, isSuperAdmin, cryptoController.generateAllIconUrls);
 
 /*Lista de simbolos de Cyptolcons.org soporta (más comunes):
 BTC, ETH, USDT, BNB, USDC, XRP, ADA, DOGE, SOL, DOT, MATIC, 
@@ -150,36 +150,36 @@ SAND, MANA, AXS, GALA, CHZ, ENJ, FLOW, etc.
 // --------------------- RUTAS DE BÚSQUEDA Y CONSULTA --------------------- //
 
 // Buscar criptomonedas por término
-router.get('/search/query', /*authenticateToken,*/ criptomonedaController.searchCriptomonedas);
+router.get('/search/query', /*authenticateToken,*/ cryptoController.searchCriptomonedas);
 
-// Obtener criptomoneda por símbolo
-router.get('/symbol/:symbol', criptomonedaController.getCriptomonedaBySymbol);
+// Obtener crypto por símbolo
+router.get('/symbol/:symbol', cryptoController.getCriptomonedaBySymbol);
 
-// Obtener criptomonedas por red/blockchain
-router.get('/network/:network', criptomonedaController.getCriptomonedasByNetwork);
+// Obtener criptomonedas por network/blockchain
+router.get('/network/:network', cryptoController.getCriptomonedasByNetwork);
 
-// Obtener criptomoneda por dirección de contrato
-router.get('/contract/:address', authenticateToken, criptomonedaController.getCriptomonedaByContract);
+// Obtener crypto por dirección de contrato
+router.get('/contract/:address', authenticateToken, cryptoController.getCriptomonedaByContract);
 
 // --------------------- RUTAS PÚBLICAS --------------------- //
 
 // Obtener solo criptomonedas activas (ruta pública para trading)
-router.get('/public/active', criptomonedaController.getCriptomonedasActivas);
+router.get('/public/active', cryptoController.getCriptomonedasActivas);
 
 // --------------------- RUTAS ADMINISTRATIVAS --------------------- //
 
 // Obtener estadísticas de criptomonedas
-router.get('/admin/stats', authenticateToken, isSuperAdmin, criptomonedaController.getCriptomonedaStats);
+router.get('/admin/stats', authenticateToken, isSuperAdmin, cryptoController.getCriptomonedaStats);
 
-// Actualizar estado específico de criptomoneda
-router.patch('/:id/status', authenticateToken, isSuperAdmin, criptomonedaController.updateCriptomonedaStatus);
+// Actualizar estado específico de crypto
+router.patch('/:id/status', authenticateToken, isSuperAdmin, cryptoController.updateCriptomonedaStatus);
 
-// Alternar estado de criptomoneda (activar/desactivar)
-router.patch('/:id/toggle', authenticateToken, isSuperAdmin, criptomonedaController.toggleCriptomonedaStatus);
+// Alternar estado de crypto (activar/desactivar)
+router.patch('/:id/toggle', authenticateToken, isSuperAdmin, cryptoController.toggleCriptomonedaStatus);
 
 // --------------------- RUTAS DE TRANSACCIONES --------------------- //
 
-// Validar criptomoneda para transacción
-router.post('/validate/transaction', authenticateToken, isSuperAdmin, criptomonedaController.validateForTransaction);
+// Validar crypto para transacción
+router.post('/validate/transaction', authenticateToken, isSuperAdmin, cryptoController.validateForTransaction);
 
 module.exports = router;

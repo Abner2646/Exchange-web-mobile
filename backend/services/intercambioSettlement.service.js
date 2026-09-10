@@ -13,7 +13,7 @@
 
 const money = require('../utils/money');
 
-// Redondeo a 8 decimales: es la escala de las columnas DECIMAL(28,8) donde
+// Redondeo a 8 decimals: es la escala de las columnas DECIMAL(28,8) donde
 // terminan estos montos, y preserva el comportamiento del toFixed(8) previo,
 // ahora con half-even determinista.
 const ASSET_DECIMALS = 8;

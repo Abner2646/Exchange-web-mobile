@@ -13,7 +13,7 @@ jest.mock('../models', () => ({
   ParExchange: {},
   BalanceUsuario: {},
   WalletMaestra: {},
-  Criptomoneda: {},
+  Crypto: {},
   sequelize: { transaction: jest.fn() },
 }));
 

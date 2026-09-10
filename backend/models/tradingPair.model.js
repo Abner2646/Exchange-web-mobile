@@ -11,14 +11,14 @@ function createTradingPairModel(sequelize) {
       const pair = await TradingPair.findByPk(id, {
         include: [
           { 
-            model: sequelize.models.Criptomoneda, 
+            model: sequelize.models.Crypto, 
             as: 'baseAsset',
-            attributes: ['id', 'symbol', 'nombre', 'decimales', 'iconUrl']
+            attributes: ['id', 'symbol', 'name', 'decimals', 'iconUrl']
           },
           { 
-            model: sequelize.models.Criptomoneda, 
+            model: sequelize.models.Crypto, 
             as: 'quoteAsset',
-            attributes: ['id', 'symbol', 'nombre', 'decimales', 'iconUrl']
+            attributes: ['id', 'symbol', 'name', 'decimals', 'iconUrl']
           }
         ]
       });
@@ -34,14 +34,14 @@ function createTradingPairModel(sequelize) {
         where: { symbol: symbol.toUpperCase() },
         include: [
           { 
-            model: sequelize.models.Criptomoneda, 
+            model: sequelize.models.Crypto, 
             as: 'baseAsset',
-            attributes: ['id', 'symbol', 'nombre', 'decimales', 'iconUrl']
+            attributes: ['id', 'symbol', 'name', 'decimals', 'iconUrl']
           },
           { 
-            model: sequelize.models.Criptomoneda, 
+            model: sequelize.models.Crypto, 
             as: 'quoteAsset',
-            attributes: ['id', 'symbol', 'nombre', 'decimales', 'iconUrl']
+            attributes: ['id', 'symbol', 'name', 'decimals', 'iconUrl']
           }
         ]
       });
@@ -71,14 +71,14 @@ function createTradingPairModel(sequelize) {
         where,
         include: [
           { 
-            model: sequelize.models.Criptomoneda, 
+            model: sequelize.models.Crypto, 
             as: 'baseAsset',
-            attributes: ['id', 'symbol', 'nombre', 'decimales', 'iconUrl']
+            attributes: ['id', 'symbol', 'name', 'decimals', 'iconUrl']
           },
           { 
-            model: sequelize.models.Criptomoneda, 
+            model: sequelize.models.Crypto, 
             as: 'quoteAsset',
-            attributes: ['id', 'symbol', 'nombre', 'decimales', 'iconUrl']
+            attributes: ['id', 'symbol', 'name', 'decimals', 'iconUrl']
           }
         ],
         order: [['symbol', 'ASC']],
@@ -98,14 +98,14 @@ function createTradingPairModel(sequelize) {
         where: { status: 'active' },
         include: [
           { 
-            model: sequelize.models.Criptomoneda, 
+            model: sequelize.models.Crypto, 
             as: 'baseAsset',
-            attributes: ['id', 'symbol', 'nombre', 'decimales', 'iconUrl']
+            attributes: ['id', 'symbol', 'name', 'decimals', 'iconUrl']
           },
           { 
-            model: sequelize.models.Criptomoneda, 
+            model: sequelize.models.Crypto, 
             as: 'quoteAsset',
-            attributes: ['id', 'symbol', 'nombre', 'decimales', 'iconUrl']
+            attributes: ['id', 'symbol', 'name', 'decimals', 'iconUrl']
           }
         ],
         order: [['symbol', 'ASC']]
@@ -138,8 +138,8 @@ function createTradingPairModel(sequelize) {
 
       // Verificar que las criptomonedas existan y estén activas
       const [baseAsset, quoteAsset] = await Promise.all([
-        sequelize.models.Criptomoneda.findByPk(data.baseAssetId),
-        sequelize.models.Criptomoneda.findByPk(data.quoteAssetId)
+        sequelize.models.Crypto.findByPk(data.baseAssetId),
+        sequelize.models.Crypto.findByPk(data.quoteAssetId)
       ]);
 
       if (!baseAsset || !baseAsset.active) {
@@ -154,8 +154,8 @@ function createTradingPairModel(sequelize) {
       const pair = await TradingPair.create({
         ...data,
         symbol: data.symbol.toUpperCase(),
-        pricePrecision: data.pricePrecision || quoteAsset.decimales,
-        quantityPrecision: data.quantityPrecision || baseAsset.decimales
+        pricePrecision: data.pricePrecision || quoteAsset.decimals,
+        quantityPrecision: data.quantityPrecision || baseAsset.decimals
       });
 
       return await TradingPair.getById(pair.id);
@@ -268,17 +268,17 @@ function createTradingPairModel(sequelize) {
         throw new Error(`Cantidad máxima: ${pair.maxOrderAmount}`);
       }
 
-      // Validar decimales de cantidad
+      // Validar decimals de cantidad
       const quantityDecimals = (quantity.toString().split('.')[1] || '').length;
       if (quantityDecimals > pair.quantityPrecision) {
-        throw new Error(`Máximo ${pair.quantityPrecision} decimales en cantidad`);
+        throw new Error(`Máximo ${pair.quantityPrecision} decimals en cantidad`);
       }
 
-      // Validar decimales de precio (si aplica)
+      // Validar decimals de precio (si aplica)
       if (price !== null) {
         const priceDecimals = (price.toString().split('.')[1] || '').length;
         if (priceDecimals > pair.pricePrecision) {
-          throw new Error(`Máximo ${pair.pricePrecision} decimales en precio`);
+          throw new Error(`Máximo ${pair.pricePrecision} decimals en precio`);
         }
       }
 
@@ -317,14 +317,14 @@ function createTradingPairModel(sequelize) {
         where: { status: 'active' },
         include: [
           { 
-            model: sequelize.models.Criptomoneda, 
+            model: sequelize.models.Crypto, 
             as: 'baseAsset',
-            attributes: ['symbol', 'nombre', 'iconUrl']
+            attributes: ['symbol', 'name', 'iconUrl']
           },
           { 
-            model: sequelize.models.Criptomoneda, 
+            model: sequelize.models.Crypto, 
             as: 'quoteAsset',
-            attributes: ['symbol', 'nombre', 'iconUrl']
+            attributes: ['symbol', 'name', 'iconUrl']
           }
         ],
         order: [['volume_24h', 'DESC']],

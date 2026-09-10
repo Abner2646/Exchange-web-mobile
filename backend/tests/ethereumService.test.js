@@ -9,7 +9,7 @@
 jest.mock('../models', () => ({
   TransaccionBlockchain: { createDeposit: jest.fn() },
   DireccionDeposito: {},
-  Criptomoneda: {},
+  Crypto: {},
   BlockchainState: {},
 }));
 
@@ -17,11 +17,11 @@ const { TransaccionBlockchain } = require('../models');
 const EthereumService = require('../services/blockchain/ethereum.service');
 const { ETHEREUM_PROFILES } = require('../config/networks/evm');
 
-// Fase 3: el service toma su identidad de red del NetworkProfile inyectado (un
+// Fase 3: el service toma su identidad de network del NetworkProfile inyectado (un
 // chainClient fake evita el ethers.Wallet real / claves por env).
 describe('ethereum.service — NetworkProfile inyectado', () => {
   const fakeChain = { provider: null, wallet: null };
-  test('mainnet → chainId 1, red ethereum', () => {
+  test('mainnet → chainId 1, network ethereum', () => {
     const s = new EthereumService({ profile: ETHEREUM_PROFILES.mainnet, chainClient: fakeChain });
     expect(s.chainId).toBe(1);
     expect(s.actualNetwork).toBe('ethereum');

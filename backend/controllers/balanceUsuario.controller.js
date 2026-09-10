@@ -34,7 +34,7 @@ const getBalancesByUser = async (req, res) => {
   res.json(result);
 };
 
-// Obtener balance específico (usuario + criptomoneda) (admin)
+// Obtener balance específico (usuario + crypto) (admin)
 const getBalanceByUserAndCrypto = async (req, res) => {
   const { userId, criptomonedaId } = req.params;
   const result = await BalanceUsuario.getByUserAndCrypto(userId, criptomonedaId);
@@ -91,7 +91,7 @@ const reclamarBtc = async (req, res) => {
       success: true,
       message: resultado.message,
       data: {
-        criptomoneda: 'BTC',
+        crypto: 'BTC',
         cantidad: '1.00000000',
         balanceDisponible: resultado.balance.balanceDisponible,
         balanceBloqueado: resultado.balance.balanceBloqueado

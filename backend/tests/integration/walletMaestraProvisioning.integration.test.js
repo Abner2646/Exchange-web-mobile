@@ -11,21 +11,21 @@ describe('WalletMaestra.getByCriptomoneda', () => {
     const btc = await f.seedCripto('BTC');
     const wallet = await f.seedWalletMaestra(btc);
 
-    // Regression: the include selected criptomoneda.derivationPath / addressFormat,
-    // columns that do not exist on Criptomoneda → the query threw
-    // "column criptomoneda.derivationPath does not exist" on every call, breaking
+    // Regression: the include selected crypto.derivationPath / addressFormat,
+    // columns that do not exist on Crypto → the query threw
+    // "column crypto.derivationPath does not exist" on every call, breaking
     // deposit-address provisioning (inicializarUsuarioCompleto).
     const found = await WalletMaestra.getByCriptomoneda(btc.id);
 
     expect(found).not.toBeNull();
     expect(found.id).toBe(wallet.id);
-    expect(found.criptomoneda.symbol).toBe('BTC');
+    expect(found.crypto.symbol).toBe('BTC');
   });
 });
 
 describe('deposit-address provisioning on email verification', () => {
   test('a verified user gets a deposit address for each active crypto with a master wallet', async () => {
-    const btc = await f.seedCripto('BTC'); // red 'test' → generarDireccionDerivada default branch
+    const btc = await f.seedCripto('BTC'); // network 'test' → generarDireccionDerivada default branch
     await f.seedWalletMaestra(btc);
 
     // Provisioning (inicializarUsuarioCompleto) runs on verify-email, not register.

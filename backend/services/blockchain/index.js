@@ -94,18 +94,18 @@ class BlockchainServiceManager {
     try {
       const normalizedNetwork = network.toLowerCase();
       
-      console.log(`🔍 Buscando servicio para red: ${normalizedNetwork}`);
+      console.log(`🔍 Buscando servicio para network: ${normalizedNetwork}`);
       console.log(`🔍 Servicios disponibles: ${Array.from(this.services.keys()).join(', ')}`);
       
       const service = this.services.get(normalizedNetwork);
       
       if (!service) {
-        console.error(`❌ Servicio no encontrado para red: ${normalizedNetwork}`);
+        console.error(`❌ Servicio no encontrado para network: ${normalizedNetwork}`);
         console.error(`❌ Servicios disponibles: ${Array.from(this.services.keys()).join(', ')}`);
         return null;
       }
       
-      console.log(`✅ Servicio encontrado para red: ${normalizedNetwork}`);
+      console.log(`✅ Servicio encontrado para network: ${normalizedNetwork}`);
       return service;
     } catch (error) {
       console.error(`❌ Error obteniendo servicio para ${network}:`, error.message);

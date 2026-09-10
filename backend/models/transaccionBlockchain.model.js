@@ -19,9 +19,9 @@ function createTransaccionBlockchainModel(sequelize) {
             attributes: ['id', 'email', 'username', 'active']
           },
           {
-            model: sequelize.models.Criptomoneda,
-            as: 'criptomoneda',
-            attributes: ['id', 'symbol', 'nombre', 'red', 'decimales']
+            model: sequelize.models.Crypto,
+            as: 'crypto',
+            attributes: ['id', 'symbol', 'name', 'network', 'decimals']
           },
           {
             model: sequelize.models.User,
@@ -49,9 +49,9 @@ function createTransaccionBlockchainModel(sequelize) {
             attributes: ['id', 'email', 'username']
           },
           {
-            model: sequelize.models.Criptomoneda,
-            as: 'criptomoneda',
-            attributes: ['id', 'symbol', 'nombre', 'red']
+            model: sequelize.models.Crypto,
+            as: 'crypto',
+            attributes: ['id', 'symbol', 'name', 'network']
           }
         ]
       });
@@ -83,9 +83,9 @@ function createTransaccionBlockchainModel(sequelize) {
         where: whereClause,
         include: [
           {
-            model: sequelize.models.Criptomoneda,
-            as: 'criptomoneda',
-            attributes: ['id', 'symbol', 'nombre', 'red', 'decimales']
+            model: sequelize.models.Crypto,
+            as: 'crypto',
+            attributes: ['id', 'symbol', 'name', 'network', 'decimals']
           }
         ],
         order: [['created_at', 'DESC']],
@@ -141,9 +141,9 @@ function createTransaccionBlockchainModel(sequelize) {
             attributes: ['id', 'email', 'username']
           },
           {
-            model: sequelize.models.Criptomoneda,
-            as: 'criptomoneda',
-            attributes: ['id', 'symbol', 'nombre', 'red', 'decimales']
+            model: sequelize.models.Crypto,
+            as: 'crypto',
+            attributes: ['id', 'symbol', 'name', 'network', 'decimals']
           },
           {
             model: sequelize.models.User,
@@ -227,8 +227,8 @@ function createTransaccionBlockchainModel(sequelize) {
       const transaccion = await TransaccionBlockchain.findByPk(id, {
         include: [
           {
-            model: sequelize.models.Criptomoneda,
-            as: 'criptomoneda'
+            model: sequelize.models.Crypto,
+            as: 'crypto'
           }
         ],
         transaction
@@ -333,10 +333,10 @@ function createTransaccionBlockchainModel(sequelize) {
 
       console.log(`✅ Depósito acreditado exitosamente: ${transaccion.cantidad} para usuario ${transaccion.userId}`);
       
-      // ✅ MEJORA: Obtener símbolo de criptomoneda para log
+      // ✅ MEJORA: Obtener símbolo de crypto para log
       try {
-        const criptomoneda = await sequelize.models.Criptomoneda.findByPk(transaccion.criptomonedaId, { transaction });
-        console.log(`✅ Depósito completado: ${transaccion.cantidad} ${criptomoneda?.symbol || 'BTC'} acreditado al usuario ${transaccion.userId}`);
+        const crypto = await sequelize.models.Crypto.findByPk(transaccion.criptomonedaId, { transaction });
+        console.log(`✅ Depósito completado: ${transaccion.cantidad} ${crypto?.symbol || 'BTC'} acreditado al usuario ${transaccion.userId}`);
       } catch (logError) {
         console.log(`✅ Depósito completado: ${transaccion.cantidad} acreditado al usuario ${transaccion.userId}`);
       }
@@ -534,9 +534,9 @@ function createTransaccionBlockchainModel(sequelize) {
             attributes: ['id', 'email', 'username']
           },
           {
-            model: sequelize.models.Criptomoneda,
-            as: 'criptomoneda',
-            attributes: ['id', 'symbol', 'nombre', 'red']
+            model: sequelize.models.Crypto,
+            as: 'crypto',
+            attributes: ['id', 'symbol', 'name', 'network']
           }
         ],
         order: [['created_at', 'ASC']]
@@ -561,9 +561,9 @@ function createTransaccionBlockchainModel(sequelize) {
             attributes: ['id', 'email', 'username']
           },
           {
-            model: sequelize.models.Criptomoneda,
-            as: 'criptomoneda',
-            attributes: ['id', 'symbol', 'nombre', 'red']
+            model: sequelize.models.Crypto,
+            as: 'crypto',
+            attributes: ['id', 'symbol', 'name', 'network']
           }
         ],
         order: [['created_at', 'ASC']]
@@ -587,9 +587,9 @@ function createTransaccionBlockchainModel(sequelize) {
             attributes: ['id', 'email', 'username']
           },
           {
-            model: sequelize.models.Criptomoneda,
-            as: 'criptomoneda',
-            attributes: ['id', 'symbol', 'nombre', 'red']
+            model: sequelize.models.Crypto,
+            as: 'crypto',
+            attributes: ['id', 'symbol', 'name', 'network']
           }
         ]
       });
@@ -636,9 +636,9 @@ function createTransaccionBlockchainModel(sequelize) {
         ],
         include: [
           {
-            model: sequelize.models.Criptomoneda,
-            as: 'criptomoneda',
-            attributes: ['symbol', 'nombre', 'red']
+            model: sequelize.models.Crypto,
+            as: 'crypto',
+            attributes: ['symbol', 'name', 'network']
           }
         ],
         where: whereClause,
@@ -667,9 +667,9 @@ function createTransaccionBlockchainModel(sequelize) {
         return { valid: false, message: 'Usuario no encontrado o inactivo' };
       }
 
-      // Validar criptomoneda active
-      const criptomoneda = await sequelize.models.Criptomoneda.findByPk(criptomonedaId);
-      if (!criptomoneda || !criptomoneda.active) {
+      // Validar crypto active
+      const crypto = await sequelize.models.Crypto.findByPk(criptomonedaId);
+      if (!crypto || !crypto.active) {
         return { valid: false, message: 'Criptomoneda no encontrada o inactiva' };
       }
 
@@ -683,9 +683,9 @@ function createTransaccionBlockchainModel(sequelize) {
       }*/
 
       // Validar monto mínimo
-      /*const montoMinimo = process.env[`MIN_WITHDRAWAL_${criptomoneda.symbol}`] || 0.001;
+      /*const montoMinimo = process.env[`MIN_WITHDRAWAL_${crypto.symbol}`] || 0.001;
       if (parseFloat(cantidad) < parseFloat(montoMinimo)) {
-        return { valid: false, message: `Monto mínimo de retiro: ${montoMinimo} ${criptomoneda.symbol}` };
+        return { valid: false, message: `Monto mínimo de retiro: ${montoMinimo} ${crypto.symbol}` };
       }*/
 
       // Validar límites diarios (pendiente transacciones) //Innecesario por ahora
@@ -713,7 +713,7 @@ function createTransaccionBlockchainModel(sequelize) {
         message: 'Retiro válido',
         fee: 0, // Calcular fee real después
         usuario,
-        criptomoneda,
+        crypto,
         balance
       };
     } catch (error) {
@@ -727,7 +727,7 @@ function createTransaccionBlockchainModel(sequelize) {
   // en vez de limpiarlas las forzaba a "confirmadas" vía
   // updateConfirmations() — lo que dispara _acreditarDeposito() y acredita
   // saldo REAL por transacciones que son solo placeholders de chequeo de
-  // balance. Dos implementaciones del mismo nombre haciendo lo opuesto:
+  // balance. Dos implementaciones del mismo name haciendo lo opuesto:
   // una borra, la otra acredita saldo falso. Nunca se llamaba desde
   // ningún lado (confirmado por grep), así que no rompía nada hoy — pero
   // era una trampa para quien decidiera "arreglar" el require roto del

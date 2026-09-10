@@ -45,10 +45,10 @@ if (!dbAvailable) {
 const describeIfDb = dbAvailable ? describe : describe.skip;
 
 describeIfDb('transaccionBlockchain.model.js: require lazy de BalanceUsuario', () => {
-  let sequelize, User, Criptomoneda, BalanceUsuario, TransaccionBlockchain;
+  let sequelize, User, Crypto, BalanceUsuario, TransaccionBlockchain;
 
   beforeAll(async () => {
-    ({ sequelize, User, Criptomoneda, BalanceUsuario, TransaccionBlockchain } = require('../models'));
+    ({ sequelize, User, Crypto, BalanceUsuario, TransaccionBlockchain } = require('../models'));
     sequelize.options.logging = false;
     await sequelize.sync({ force: true });
   });
@@ -65,7 +65,7 @@ describeIfDb('transaccionBlockchain.model.js: require lazy de BalanceUsuario', (
 
   test('_acreditarDeposito acredita de verdad en el ledger vía el modelo real de models/index.js', async () => {
     const user = await User.create({ email: 'lazy@test.com', username: 'lazy_user', passwordHash: 'x', role: 'normal' });
-    const cripto = await Criptomoneda.create({ symbol: 'ETH', nombre: 'Ethereum', red: 'ethereum', decimales: 18 });
+    const cripto = await Crypto.create({ symbol: 'ETH', name: 'Ethereum', network: 'ethereum', decimals: 18 });
 
     // Paso D: el depósito primero se acredita PENDIENTE (al detectarse), y
     // _acreditarDeposito (al confirmar) mueve pendiente → disponible. Se prueba

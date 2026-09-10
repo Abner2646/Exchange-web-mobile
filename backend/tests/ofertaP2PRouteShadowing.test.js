@@ -20,7 +20,7 @@ jest.mock('../middleware/adminMiddleware.js', () => ({
   isAdmin: (req, _res, next) => next(),
 }));
 
-// Controller → cada método reporta su nombre, para saber cuál atrapó la ruta.
+// Controller → cada método reporta su name, para saber cuál atrapó la ruta.
 jest.mock('../controllers/ofertaP2P.controller.js', () => {
   const names = [
     'findCompatibleOffers', 'searchOfertas', 'getOfertasByTipo', 'getOfertasByCrypto',

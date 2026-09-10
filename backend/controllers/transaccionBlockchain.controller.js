@@ -1,5 +1,5 @@
 // controllers/transaccionBlockchain.controller.js
-const { TransaccionBlockchain, User, Criptomoneda, BalanceUsuario, DireccionDeposito } = require('../models');
+const { TransaccionBlockchain, User, Crypto, BalanceUsuario, DireccionDeposito } = require('../models');
 const BlockchainServiceManager = require('../services/blockchain');
 // Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #8): estos endpoints
 // llamaban a scanAllNetworksForDeposits/processAllPendingWithdrawals/
@@ -13,7 +13,7 @@ const errorCodes = require('../utils/errorCodes');
 const money = require('../utils/money');
 const idempotency = require('../middleware/idempotency.middleware');
 const authz = require('../utils/authz');
-const businessConfig = require('../services/config/businessConfig');
+const businessConfig = require('../modules/config/businessConfig');
 
 class TransaccionBlockchainController {
   // =================== ENDPOINTS PARA USUARIOS ===================
@@ -68,7 +68,7 @@ class TransaccionBlockchainController {
 
     // Cooldown de retiros tras un cambio de email reciente (Radar #14, anti
     // account-takeover): mientras esté vigente, no se crean retiros. Fail-fast,
-    // antes de cualquier validación de red.
+    // antes de cualquier validación de network.
     const solicitante = await User.findByPk(userId, { attributes: ['withdrawalCooldownUntil'] });
     if (solicitante && solicitante.withdrawalCooldownUntil && new Date() < solicitante.withdrawalCooldownUntil) {
       throw new AppError(403, errorCodes.WITHDRAWAL_COOLDOWN,
@@ -88,7 +88,7 @@ class TransaccionBlockchainController {
     }
 
     // Validar dirección con el servicio de blockchain
-    const blockchainService = BlockchainServiceManager.getService(validation.criptomoneda.red);
+    const blockchainService = BlockchainServiceManager.getService(validation.crypto.network);
     const isValidAddress = await blockchainService.validateAddress(direccionDestino);
 
     if (!isValidAddress) {
@@ -100,10 +100,10 @@ class TransaccionBlockchainController {
     // para replay de idempotencia son idénticos.
     // Confirmaciones requeridas: config de negocio (Radar #13), con el default
     // previo como fallback (sin fila sembrada, comportamiento idéntico). Editable
-    // desde /config por un operador (clave `confirmaciones.<red>`).
-    const red = validation.criptomoneda.red;
+    // desde /config por un operador (clave `confirmaciones.<network>`).
+    const network = validation.crypto.network;
     const confirmacionesRequeridas = await businessConfig.getNumber(
-      `confirmaciones.${red}`, red === 'ethereum' ? 12 : 6
+      `confirmaciones.${network}`, network === 'ethereum' ? 12 : 6
     );
 
     let responseBody;
@@ -130,27 +130,27 @@ class TransaccionBlockchainController {
   // GET /api/transactions/balances - Obtener balances del usuario
   // Read-flip (write-flip Paso A): saldos desde la PROYECCION del ledger
   // (getByUserId → Funding), no de balances_users; montos como strings canonicos
-  // (no parseFloat). Se re-adjunta `criptomoneda` (solo las activas) por lookup.
+  // (no parseFloat). Se re-adjunta `crypto` (solo las activas) por lookup.
   // Ya no hay `id` de fila ni `updated_at`; las criptos sin saldo no se listan.
   async getMyBalances(req, res) {
     const userId = req.user.id;
 
     const balances = await BalanceUsuario.getByUserId(userId);
-    const criptomonedas = await Criptomoneda.findAll({
+    const criptomonedas = await Crypto.findAll({
       where: { id: balances.map((b) => b.criptomonedaId), active: true },
-      attributes: ['id', 'symbol', 'nombre', 'red', 'decimales']
+      attributes: ['id', 'symbol', 'name', 'network', 'decimals']
     });
     const criptoPorId = new Map(criptomonedas.map((c) => [c.id, c]));
 
     const balancesConTotal = balances
       .filter((b) => criptoPorId.has(b.criptomonedaId)) // solo criptos activas
       .map((b) => ({
-        criptomoneda: criptoPorId.get(b.criptomonedaId),
+        crypto: criptoPorId.get(b.criptomonedaId),
         balanceDisponible: b.balanceDisponible,
         balanceBloqueado: b.balanceBloqueado,
         balanceTotal: money.add(b.balanceDisponible, b.balanceBloqueado)
       }))
-      .sort((a, b) => a.criptomoneda.symbol.localeCompare(b.criptomoneda.symbol));
+      .sort((a, b) => a.crypto.symbol.localeCompare(b.crypto.symbol));
 
     res.json({
       success: true,
@@ -164,8 +164,8 @@ class TransaccionBlockchainController {
     const { criptomonedaId } = req.params;
 
     // Verificar que la criptomoneda existe y está active
-    const criptomoneda = await Criptomoneda.findByPk(criptomonedaId);
-    if (!criptomoneda || !criptomoneda.active) {
+    const crypto = await Crypto.findByPk(criptomonedaId);
+    if (!crypto || !crypto.active) {
       throw new AppError(404, errorCodes.DEPOSIT_CRYPTO_NOT_FOUND, 'Criptomoneda no encontrada o inactiva');
     }
 
@@ -198,17 +198,17 @@ class TransaccionBlockchainController {
       success: true,
       data: {
         direccion: direccion.direccion,
-        criptomoneda: direccion.criptomoneda || criptomoneda,
-        qrCode: `${criptomoneda.symbol}:${direccion.direccion}`,
+        crypto: direccion.crypto || crypto,
+        qrCode: `${crypto.symbol}:${direccion.direccion}`,
         derivationIndex: direccion.derivationIndex,
         metadata: {
           createdAt: direccion.created_at,
-          network: criptomoneda.red,
+          network: crypto.network,
           confirmationsRequired: direccion.confirmacionesRequeridas ||
-            (criptomoneda.red === 'bitcoin' ? 3 :
-            criptomoneda.red === 'ethereum' ? 12 : 6)
+            (crypto.network === 'bitcoin' ? 3 :
+            crypto.network === 'ethereum' ? 12 : 6)
         },
-        mensaje: `Esta es tu dirección para depósitos de ${criptomoneda.symbol}. Los depósitos se acreditarán automáticamente después de las confirmaciones requeridas.`
+        mensaje: `Esta es tu dirección para depósitos de ${crypto.symbol}. Los depósitos se acreditarán automáticamente después de las confirmaciones requeridas.`
       }
     });
   }
@@ -421,7 +421,7 @@ class TransaccionBlockchainController {
       }
     };
 
-    // Verificar estado de cada red
+    // Verificar estado de cada network
     for (const [network, service] of Object.entries(BlockchainServiceManager.services)) {
       try {
         if (network === 'bitcoin') {

@@ -2,7 +2,7 @@
 const sequelize = require('../config/database');
 const BlockchainServiceManager = require('../services/blockchain');
 const JobManager = require('../jobs');
-const { Criptomoneda, WalletMaestra, DireccionDeposito } = require('../models');
+const { Crypto, WalletMaestra, DireccionDeposito } = require('../models');
 
 class BlockchainBootstrap {
   constructor() {
@@ -55,7 +55,7 @@ class BlockchainBootstrap {
       console.log('✅ Conexión a base de datos verificada');
       
       // Verificar que las tablas existen
-      const tables = ['criptomonedas', 'wallets_maestras', 'direcciones_deposito', 'transacciones_blockchain'];
+      const tables = ['cryptos', 'wallets_maestras', 'direcciones_deposito', 'transacciones_blockchain'];
       for (const table of tables) {
         const tableExists = await sequelize.getQueryInterface().showAllTables()
           .then(tableNames => tableNames.includes(table));
@@ -84,7 +84,7 @@ class BlockchainBootstrap {
         try {
           const service = BlockchainServiceManager.getService(network);
           
-          // Verificar configuración específica por red
+          // Verificar configuración específica por network
           if (network === 'ethereum') {
             if (!process.env.ETHEREUM_RPC_URL || !process.env.ETH_PRIVATE_KEY) {
               throw new Error('Configuración de Ethereum incompleta');
@@ -116,7 +116,7 @@ class BlockchainBootstrap {
     try {
       console.log('🔑 Verificando wallets maestras...');
       
-      const criptomonedas = await Criptomoneda.findAll({
+      const criptomonedas = await Crypto.findAll({
         where: { active: true }
       });
       
@@ -134,12 +134,12 @@ class BlockchainBootstrap {
           
           const walletData = {
             criptomonedaId: cripto.id,
-            nombre: `${cripto.nombre} Master Wallet`,
-            red: cripto.red,
+            name: `${cripto.name} Master Wallet`,
+            network: cripto.network,
             symbol: cripto.symbol,
-            xpub: this.generateTestXpub(cripto.red),
+            xpub: this.generateTestXpub(cripto.network),
             derivationPath: "m/44'/60'/0'",
-            direccionPublica: this.generateTestAddress(cripto.red),
+            direccionPublica: this.generateTestAddress(cripto.network),
             balanceTotal: 0,
             active: true,
             fingerprint: this.generateTestFingerprint(),
@@ -209,7 +209,7 @@ class BlockchainBootstrap {
       };
       
       // Verificar conteo de datos críticos
-      const cryptoCount = await Criptomoneda.count({ where: { active: true } });
+      const cryptoCount = await Crypto.count({ where: { active: true } });
       const walletCount = await WalletMaestra.count({ where: { active: true } });
       
       healthData.stats = {

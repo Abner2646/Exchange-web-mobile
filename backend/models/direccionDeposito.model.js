@@ -47,15 +47,15 @@ function createDireccionDepositoModel(sequelize) {
             required: false
           },
           {
-            model: sequelize.models.Criptomoneda,
-            as: 'criptomoneda',
-            attributes: ['id', 'symbol', 'nombre', 'red', 'active', 'decimales'],
+            model: sequelize.models.Crypto,
+            as: 'crypto',
+            attributes: ['id', 'symbol', 'name', 'network', 'active', 'decimals'],
             required: false
           },
           {
             model: sequelize.models.WalletMaestra,
             as: 'walletMaestra',
-            attributes: ['id', 'nombre', 'red', 'symbol', 'active', 'balanceTotal'],
+            attributes: ['id', 'name', 'network', 'symbol', 'active', 'balanceTotal'],
             required: false
           }
         ]
@@ -81,9 +81,9 @@ function createDireccionDepositoModel(sequelize) {
           } : undefined
         },
         {
-          model: sequelize.models.Criptomoneda,
-          as: 'criptomoneda',
-          attributes: ['id', 'symbol', 'nombre', 'red', 'active'],
+          model: sequelize.models.Crypto,
+          as: 'crypto',
+          attributes: ['id', 'symbol', 'name', 'network', 'active'],
           where: filters.symbol ? {
             symbol: filters.symbol.toUpperCase()
           } : undefined
@@ -91,7 +91,7 @@ function createDireccionDepositoModel(sequelize) {
         {
           model: sequelize.models.WalletMaestra,
           as: 'walletMaestra',
-          attributes: ['id', 'nombre', 'red', 'symbol', 'active']
+          attributes: ['id', 'name', 'network', 'symbol', 'active']
         }
       ];
       
@@ -154,14 +154,14 @@ function createDireccionDepositoModel(sequelize) {
             attributes: ['id', 'email', 'username']
           },
           {
-            model: sequelize.models.Criptomoneda,
-            as: 'criptomoneda',
-            attributes: ['id', 'symbol', 'nombre', 'red']
+            model: sequelize.models.Crypto,
+            as: 'crypto',
+            attributes: ['id', 'symbol', 'name', 'network']
           },
           {
             model: sequelize.models.WalletMaestra,
             as: 'walletMaestra',
-            attributes: ['id', 'nombre', 'red', 'symbol']
+            attributes: ['id', 'name', 'network', 'symbol']
           }
         ],
         limit: parseInt(limit),
@@ -192,15 +192,15 @@ function createDireccionDepositoModel(sequelize) {
         where: whereClause,
         include: [
           {
-            model: sequelize.models.Criptomoneda,
-            as: 'criptomoneda',
-            attributes: ['id', 'symbol', 'nombre', 'red', 'active', 'decimales'],
+            model: sequelize.models.Crypto,
+            as: 'crypto',
+            attributes: ['id', 'symbol', 'name', 'network', 'active', 'decimals'],
             where: options.soloActivas !== false ? { active: true } : undefined
           },
           {
             model: sequelize.models.WalletMaestra,
             as: 'walletMaestra',
-            attributes: ['id', 'nombre', 'red', 'symbol', 'active', 'balanceTotal']
+            attributes: ['id', 'name', 'network', 'symbol', 'active', 'balanceTotal']
           }
         ],
         order: [['created_at', 'DESC']]
@@ -221,20 +221,20 @@ function createDireccionDepositoModel(sequelize) {
         },
         include: [
           {
-            model: sequelize.models.Criptomoneda,
-            as: 'criptomoneda',
-            attributes: ['id', 'symbol', 'nombre', 'red', 'active', 'decimales']
+            model: sequelize.models.Crypto,
+            as: 'crypto',
+            attributes: ['id', 'symbol', 'name', 'network', 'active', 'decimals']
           },
           {
             model: sequelize.models.WalletMaestra,
             as: 'walletMaestra',
-            attributes: ['id', 'nombre', 'red', 'symbol', 'xpub', 'active']
+            attributes: ['id', 'name', 'network', 'symbol', 'xpub', 'active']
           }
         ]
       });
       return direccion;
     } catch (error) {
-      throw new Error(`Error al obtener dirección por usuario y criptomoneda: ${error.message}`);
+      throw new Error(`Error al obtener dirección por usuario y crypto: ${error.message}`);
     }
   };
 
@@ -249,14 +249,14 @@ function createDireccionDepositoModel(sequelize) {
             attributes: ['id', 'email', 'username', 'active']
           },
           {
-            model: sequelize.models.Criptomoneda,
-            as: 'criptomoneda',
-            attributes: ['id', 'symbol', 'nombre', 'red', 'active']
+            model: sequelize.models.Crypto,
+            as: 'crypto',
+            attributes: ['id', 'symbol', 'name', 'network', 'active']
           },
           {
             model: sequelize.models.WalletMaestra,
             as: 'walletMaestra',
-            attributes: ['id', 'nombre', 'red', 'symbol', 'active']
+            attributes: ['id', 'name', 'network', 'symbol', 'active']
           }
         ]
       });
@@ -277,9 +277,9 @@ function createDireccionDepositoModel(sequelize) {
             attributes: ['id', 'email', 'username']
           },
           {
-            model: sequelize.models.Criptomoneda,
-            as: 'criptomoneda',
-            attributes: ['id', 'symbol', 'nombre', 'red']
+            model: sequelize.models.Crypto,
+            as: 'crypto',
+            attributes: ['id', 'symbol', 'name', 'network']
           }
         ],
         order: [['derivationIndex', 'ASC']]
@@ -316,11 +316,11 @@ function createDireccionDepositoModel(sequelize) {
       }
 
       // Obtener datos de la criptomoneda
-      const criptomoneda = await sequelize.models.Criptomoneda.findByPk(criptomonedaId, {
+      const crypto = await sequelize.models.Crypto.findByPk(criptomonedaId, {
         transaction: t
       });
 
-      if (!criptomoneda || !criptomoneda.active) {
+      if (!crypto || !crypto.active) {
         throw new Error('Criptomoneda no encontrada o inactiva');
       }
 
@@ -334,7 +334,7 @@ function createDireccionDepositoModel(sequelize) {
       });
 
       if (!walletMaestra) {
-        walletMaestra = await DireccionDeposito._createMasterWalletFromEnv(criptomoneda, t);
+        walletMaestra = await DireccionDeposito._createMasterWalletFromEnv(crypto, t);
       }
 
       if (!walletMaestra.xpub) {
@@ -350,18 +350,18 @@ function createDireccionDepositoModel(sequelize) {
       const maxAttempts = 3;
 
       while (attempts < maxAttempts) {
-        console.log(`Generando dirección para usuario ${userId}, ${criptomoneda.symbol}, índice ${uniqueIndex + attempts}`);
+        console.log(`Generando dirección para usuario ${userId}, ${crypto.symbol}, índice ${uniqueIndex + attempts}`);
         
         addressData = await DireccionDeposito._generateAddress(
           walletMaestra.xpub,
           walletMaestra.derivationPath,
           uniqueIndex + attempts,
-          criptomoneda.red,
+          crypto.network,
           'legacy',
           userId // **NUEVO**: Pasar userId para mayor unicidad
         );
 
-        console.log(`Dirección generada para usuario ${userId}, ${criptomoneda.symbol}:`, addressData);
+        console.log(`Dirección generada para usuario ${userId}, ${crypto.symbol}:`, addressData);
 
         // Verificar que la dirección no existe
         const existingByAddress = await DireccionDeposito.findOne({
@@ -380,7 +380,7 @@ function createDireccionDepositoModel(sequelize) {
       }
 
       if (!addressData || !addressData.address) {
-        throw new Error(`No se pudo generar dirección para ${criptomoneda.symbol}, usuario ${userId}`);
+        throw new Error(`No se pudo generar dirección para ${crypto.symbol}, usuario ${userId}`);
       }
 
       // Crear la dirección en la base de datos
@@ -396,7 +396,7 @@ function createDireccionDepositoModel(sequelize) {
         metadata: {
           generatedAt: new Date().toISOString(),
           method: 'auto_generation',
-          network: criptomoneda.red,
+          network: crypto.network,
           addressFormat: 'deterministic',
           userId: userId, // **NUEVO**: Agregar userId al metadata
           uniqueIndex: uniqueIndex
@@ -430,18 +430,18 @@ function createDireccionDepositoModel(sequelize) {
         active: nuevaDireccion.active,
         metadata: nuevaDireccion.metadata,
         created_at: nuevaDireccion.created_at,
-        criptomoneda: {
-          id: criptomoneda.id,
-          symbol: criptomoneda.symbol,
-          nombre: criptomoneda.nombre,
-          red: criptomoneda.red,
-          active: criptomoneda.active,
-          decimales: criptomoneda.decimales || 18
+        crypto: {
+          id: crypto.id,
+          symbol: crypto.symbol,
+          name: crypto.name,
+          network: crypto.network,
+          active: crypto.active,
+          decimals: crypto.decimals || 18
         },
         walletMaestra: {
           id: walletMaestra.id,
-          nombre: walletMaestra.nombre,
-          red: walletMaestra.red,
+          name: walletMaestra.name,
+          network: walletMaestra.network,
           symbol: walletMaestra.symbol,
           active: walletMaestra.active,
           balanceTotal: walletMaestra.balanceTotal || "0.00000000"
@@ -498,11 +498,11 @@ function createDireccionDepositoModel(sequelize) {
 
   // =================== CREACIÓN DE WALLET MAESTRA DESDE ENV ===================
 
-  DireccionDeposito._createMasterWalletFromEnv = async (criptomoneda, transaction) => {
+  DireccionDeposito._createMasterWalletFromEnv = async (crypto, transaction) => {
     try {
       let xpub, derivationPath;
 
-      switch (criptomoneda.red.toLowerCase()) {
+      switch (crypto.network.toLowerCase()) {
         case 'bitcoin':
         case 'testnet3':
           xpub = process.env.BTC_MASTER_XPUB;
@@ -545,16 +545,16 @@ function createDireccionDepositoModel(sequelize) {
           break;
 
         default:
-          throw new Error(`Red no configurada en variables de entorno: ${criptomoneda.red}`);
+          throw new Error(`Red no configurada en variables de entorno: ${crypto.network}`);
       }
 
       if (!xpub) {
-        throw new Error(`XPUB/seed no configurado para ${criptomoneda.red} en variables de entorno`);
+        throw new Error(`XPUB/seed no configurado para ${crypto.network} en variables de entorno`);
       }
 
       // Determinar estándar BIP
       let bipStandard = 'BIP44';
-      if (criptomoneda.red.toLowerCase() === 'bitcoin' || criptomoneda.red.toLowerCase() === 'testnet3') {
+      if (crypto.network.toLowerCase() === 'bitcoin' || crypto.network.toLowerCase() === 'testnet3') {
         const prefix = xpub.substring(0, 4);
         if (prefix === 'vpub' || prefix === 'vprv') {
           bipStandard = 'BIP84';
@@ -564,10 +564,10 @@ function createDireccionDepositoModel(sequelize) {
       }
 
       const walletData = {
-        nombre: `Wallet Maestra ${criptomoneda.symbol}`,
-        red: criptomoneda.red,
-        symbol: criptomoneda.symbol,
-        criptomonedaId: criptomoneda.id,
+        name: `Wallet Maestra ${crypto.symbol}`,
+        network: crypto.network,
+        symbol: crypto.symbol,
+        criptomonedaId: crypto.id,
         xpub: xpub,
         derivationPath: derivationPath,
         active: true,
@@ -584,7 +584,7 @@ function createDireccionDepositoModel(sequelize) {
       };
 
       const walletMaestra = await sequelize.models.WalletMaestra.create(walletData, { transaction });
-      console.log(`Wallet maestra creada para ${criptomoneda.symbol} - ${bipStandard} con path: ${derivationPath}`);
+      console.log(`Wallet maestra creada para ${crypto.symbol} - ${bipStandard} con path: ${derivationPath}`);
       
       return walletMaestra;
     } catch (error) {
@@ -596,7 +596,7 @@ function createDireccionDepositoModel(sequelize) {
 
   DireccionDeposito._generateAddress = async (xpub, derivationPath, index, network, addressFormat = 'legacy', userId = null) => {
     try {
-      console.log(`Generando dirección para usuario ${userId}, red: ${network}, índice: ${index}`);
+      console.log(`Generando dirección para usuario ${userId}, network: ${network}, índice: ${index}`);
 
       switch (network.toLowerCase()) {
         case 'bitcoin':
@@ -684,7 +684,7 @@ function createDireccionDepositoModel(sequelize) {
         network = bitcoin.networks.testnet;
       }
 
-      console.log(`Configuración de red para ${prefix}:`, {
+      console.log(`Configuración de network para ${prefix}:`, {
         bip32Public: network.bip32.public.toString(16),
         bip32Private: network.bip32.private.toString(16)
       });
@@ -742,7 +742,7 @@ function createDireccionDepositoModel(sequelize) {
           // BIP84 - Native SegWit (bech32)
           const p2wpkhResult = bitcoin.payments.p2wpkh({ 
             pubkey: pubkeyBuffer,
-            network: bitcoin.networks.testnet // Usar red estándar para payments
+            network: bitcoin.networks.testnet // Usar network estándar para payments
           });
           address = p2wpkhResult.address;
           console.log(`Dirección Native SegWit generada: ${address}`);
@@ -865,24 +865,24 @@ function createDireccionDepositoModel(sequelize) {
       const criptomonedasDisponibles = [];
       
       if (process.env.BTC_MASTER_XPUB) {
-        const btcCrypto = await sequelize.models.Criptomoneda.findOne({
-          where: { red: 'bitcoin', active: true },
+        const btcCrypto = await sequelize.models.Crypto.findOne({
+          where: { network: 'bitcoin', active: true },
           transaction
         });
         if (btcCrypto) criptomonedasDisponibles.push(btcCrypto);
       }
 
       if (process.env.ETH_MASTER_SEED) {
-        const ethCrypto = await sequelize.models.Criptomoneda.findOne({
-          where: { red: 'ethereum', active: true },
+        const ethCrypto = await sequelize.models.Crypto.findOne({
+          where: { network: 'ethereum', active: true },
           transaction
         });
         if (ethCrypto) criptomonedasDisponibles.push(ethCrypto);
       }
 
       if (process.env.BSC_MASTER_SEED) {
-        const bscCrypto = await sequelize.models.Criptomoneda.findOne({
-          where: { red: 'bsc', active: true },
+        const bscCrypto = await sequelize.models.Crypto.findOne({
+          where: { network: 'bsc', active: true },
           transaction
         });
         if (bscCrypto) criptomonedasDisponibles.push(bscCrypto);
@@ -895,12 +895,12 @@ function createDireccionDepositoModel(sequelize) {
       const resultados = [];
       const errores = [];
 
-      for (const criptomoneda of criptomonedasDisponibles) {
+      for (const crypto of criptomonedasDisponibles) {
         try {
           const existingAddress = await DireccionDeposito.findOne({
             where: {
               userId: userId,
-              criptomonedaId: criptomoneda.id,
+              criptomonedaId: crypto.id,
               active: true
             },
             transaction
@@ -909,27 +909,27 @@ function createDireccionDepositoModel(sequelize) {
           if (existingAddress) {
             const direccionCompleta = await DireccionDeposito.getById(existingAddress.id);
             resultados.push({
-              criptomoneda: criptomoneda.symbol,
+              crypto: crypto.symbol,
               direccion: direccionCompleta,
               status: 'ya_existia'
             });
           } else {
             const nuevaDireccion = await DireccionDeposito.generateAddressForUser(
               userId, 
-              criptomoneda.id, 
+              crypto.id, 
               transaction
             );
             
             resultados.push({
-              criptomoneda: criptomoneda.symbol,
+              crypto: crypto.symbol,
               direccion: nuevaDireccion,
               status: 'creada'
             });
           }
         } catch (error) {
-          console.error(`Error procesando ${criptomoneda.symbol}:`, error.message);
+          console.error(`Error procesando ${crypto.symbol}:`, error.message);
           errores.push({
-            criptomoneda: criptomoneda.symbol,
+            crypto: crypto.symbol,
             error: error.message
           });
         }
@@ -1001,9 +1001,9 @@ function createDireccionDepositoModel(sequelize) {
         throw new Error('userId y criptomonedaId son requeridos');
       }
 
-      const criptomoneda = await sequelize.models.Criptomoneda.findByPk(data.criptomonedaId, { transaction });
+      const crypto = await sequelize.models.Crypto.findByPk(data.criptomonedaId, { transaction });
       
-      if (!criptomoneda || !criptomoneda.active) {
+      if (!crypto || !crypto.active) {
         throw new Error('Criptomoneda no encontrada o inactiva');
       }
 
@@ -1146,7 +1146,7 @@ function createDireccionDepositoModel(sequelize) {
         };
       }
 
-      if (!direccionData.criptomoneda.active) {
+      if (!direccionData.crypto.active) {
         return {
           valid: false,
           message: 'La criptomoneda está desactivada'
@@ -1279,9 +1279,9 @@ function createDireccionDepositoModel(sequelize) {
           [sequelize.fn('COUNT', sequelize.literal('CASE WHEN "DireccionDeposito"."active" = true THEN 1 END')), 'activas']
         ],
         include: [{
-          model: sequelize.models.Criptomoneda,
-          as: 'criptomoneda',
-          attributes: ['symbol', 'nombre', 'red']
+          model: sequelize.models.Crypto,
+          as: 'crypto',
+          attributes: ['symbol', 'name', 'network']
         }],
         group: ['criptomonedaId', 'criptomoneda.id'],
         raw: false
@@ -1297,7 +1297,7 @@ function createDireccionDepositoModel(sequelize) {
         include: [{
           model: sequelize.models.WalletMaestra,
           as: 'walletMaestra',
-          attributes: ['nombre', 'red', 'symbol']
+          attributes: ['name', 'network', 'symbol']
         }],
         group: ['walletMaestraId', 'walletMaestra.id'],
         raw: false
@@ -1367,7 +1367,7 @@ function createDireccionDepositoModel(sequelize) {
     
     try {
       const direccionActual = await DireccionDeposito.findByPk(id, {
-        include: ['criptomoneda', 'walletMaestra'],
+        include: ['crypto', 'walletMaestra'],
         transaction
       });
       
@@ -1415,9 +1415,9 @@ function createDireccionDepositoModel(sequelize) {
             where: { active: true }
           },
           {
-            model: sequelize.models.Criptomoneda,
-            as: 'criptomoneda',
-            attributes: ['id', 'symbol', 'nombre', 'red', 'active'],
+            model: sequelize.models.Crypto,
+            as: 'crypto',
+            attributes: ['id', 'symbol', 'name', 'network', 'active'],
             where: { active: true }
           }
         ]
@@ -1441,12 +1441,12 @@ function createDireccionDepositoModel(sequelize) {
             where: { active: true }
           },
           {
-            model: sequelize.models.Criptomoneda,
-            as: 'criptomoneda',
-            attributes: ['id', 'symbol', 'nombre', 'red', 'active'],
+            model: sequelize.models.Crypto,
+            as: 'crypto',
+            attributes: ['id', 'symbol', 'name', 'network', 'active'],
             where: { 
               active: true,
-              red: network.toLowerCase()
+              network: network.toLowerCase()
             }
           }
         ]
@@ -1454,7 +1454,7 @@ function createDireccionDepositoModel(sequelize) {
       
       return direcciones;
     } catch (error) {
-      throw new Error(`Error obteniendo direcciones por red: ${error.message}`);
+      throw new Error(`Error obteniendo direcciones por network: ${error.message}`);
     }
   };
 
@@ -1506,7 +1506,7 @@ function createDireccionDepositoModel(sequelize) {
         throw new Error('XPUB inválido: formato incorrecto');
       }
 
-      // Verificar prefijos válidos según la red
+      // Verificar prefijos válidos según la network
       const validPrefixes = network === bitcoin.networks.testnet
         ? ['tpub', 'tprv', 'upub', 'uprv', 'vpub', 'vprv'] // testnet
         : ['xpub', 'xprv', 'ypub', 'yprv', 'zpub', 'zprv']; // mainnet
@@ -1514,7 +1514,7 @@ function createDireccionDepositoModel(sequelize) {
       const hasValidPrefix = validPrefixes.some(prefix => xpub.startsWith(prefix));
       
       if (!hasValidPrefix) {
-        console.warn(`XPUB con prefijo inusual: ${xpub.substring(0, 4)} para red ${network === bitcoin.networks.testnet ? 'testnet' : 'mainnet'}`);
+        console.warn(`XPUB con prefijo inusual: ${xpub.substring(0, 4)} para network ${network === bitcoin.networks.testnet ? 'testnet' : 'mainnet'}`);
       }
 
       // Intentar parsear para validar

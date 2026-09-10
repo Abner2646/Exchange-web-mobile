@@ -8,7 +8,7 @@ const dbConfig = config[env];
 // Import models
 const balanceUsuarioModel = require('./balanceUsuario.model');
 const createBlockchainStateModel = require('./blockchainState.model');
-const criptomonedaModel = require('./criptomoneda.model.js');
+const cryptoModel = require('../modules/crypto/crypto.model.js');
 const direccionDepositoModel = require('./direccionDeposito.model');
 const intercambioExchangeModel = require('./intercambioExchange.model');
 const metodoPagoModel = require('./metodoPago.model');
@@ -37,7 +37,7 @@ const initMovimientoLedger = require('./entities/movimientoLedger.entity');
 const initSaldoLedger = require('./entities/saldoLedger.entity');
 
 // Config de negocio (Radar #13)
-const initConfiguracionNegocio = require('./entities/configuracionNegocio.entity');
+const initBusinessConfig = require('../modules/config/businessConfig.entity');
 
 
 
@@ -60,7 +60,7 @@ const sequelize = new Sequelize(
 //Initialize models
 const BalanceUsuario = balanceUsuarioModel(sequelize);
 const BlockchainState = createBlockchainStateModel(sequelize);
-const Criptomoneda = criptomonedaModel(sequelize);
+const Crypto = cryptoModel(sequelize);
 const DireccionDeposito = direccionDepositoModel(sequelize);
 const IntercambioExchange = intercambioExchangeModel(sequelize);
 const MetodoPago = metodoPagoModel(sequelize);
@@ -87,7 +87,7 @@ const CuentaLedger = initCuentaLedger(sequelize);
 const AsientoLedger = initAsientoLedger(sequelize);
 const MovimientoLedger = initMovimientoLedger(sequelize);
 const SaldoLedger = initSaldoLedger(sequelize);
-const ConfiguracionNegocio = initConfiguracionNegocio(sequelize);
+const BusinessConfig = initBusinessConfig(sequelize);
 
 // (Write-flip Paso B: el shim CDC balanceMirror se eliminó — todas las escrituras
 // de dinero postean al ledger DIRECTO vía updateBalance/blockBalance/unblockBalance
@@ -161,43 +161,43 @@ Trade.belongsTo(User, { foreignKey: 'sellerId', as: 'seller' });
 // RELACIONES DE CRIPTOMONEDAS
 // ================================
 
-// Criptomoneda puede tener una wallet maestra
-Criptomoneda.hasOne(WalletMaestra, { foreignKey: 'criptomonedaId', as: 'walletMaestra' });
-WalletMaestra.belongsTo(Criptomoneda, { foreignKey: 'criptomonedaId', as: 'criptomoneda' });
+// Crypto puede tener una wallet maestra
+Crypto.hasOne(WalletMaestra, { foreignKey: 'criptomonedaId', as: 'walletMaestra' });
+WalletMaestra.belongsTo(Crypto, { foreignKey: 'criptomonedaId', as: 'crypto' });
 
-// Criptomoneda puede tener muchas direcciones de depósito
-Criptomoneda.hasMany(DireccionDeposito, { foreignKey: 'criptomonedaId', as: 'direccionesDeposito' });
-DireccionDeposito.belongsTo(Criptomoneda, { foreignKey: 'criptomonedaId', as: 'criptomoneda' });
+// Crypto puede tener muchas direcciones de depósito
+Crypto.hasMany(DireccionDeposito, { foreignKey: 'criptomonedaId', as: 'direccionesDeposito' });
+DireccionDeposito.belongsTo(Crypto, { foreignKey: 'criptomonedaId', as: 'crypto' });
 
-// (Paso C: Criptomoneda↔BalanceUsuario se eliminó junto con la tabla balances_users.)
+// (Paso C: Crypto↔BalanceUsuario se eliminó junto con la tabla balances_users.)
 
-// Criptomoneda puede estar en muchas ofertas P2P
-Criptomoneda.hasMany(OfertaP2P, { foreignKey: 'criptomonedaId', as: 'ofertas' });
-OfertaP2P.belongsTo(Criptomoneda, { foreignKey: 'criptomonedaId', as: 'criptomoneda' });
+// Crypto puede estar en muchas ofertas P2P
+Crypto.hasMany(OfertaP2P, { foreignKey: 'criptomonedaId', as: 'ofertas' });
+OfertaP2P.belongsTo(Crypto, { foreignKey: 'criptomonedaId', as: 'crypto' });
 
-// Criptomoneda puede estar en muchas transacciones P2P
-Criptomoneda.hasMany(TransaccionP2P, { foreignKey: 'criptomonedaId', as: 'transaccionesP2P' });
-TransaccionP2P.belongsTo(Criptomoneda, { foreignKey: 'criptomonedaId', as: 'criptomoneda' });
+// Crypto puede estar en muchas transacciones P2P
+Crypto.hasMany(TransaccionP2P, { foreignKey: 'criptomonedaId', as: 'transaccionesP2P' });
+TransaccionP2P.belongsTo(Crypto, { foreignKey: 'criptomonedaId', as: 'crypto' });
 
-// Criptomoneda puede ser base en pares de exchange
-Criptomoneda.hasMany(ParExchange, { foreignKey: 'criptoBaseId', as: 'paresComoBase' });
-ParExchange.belongsTo(Criptomoneda, { foreignKey: 'criptoBaseId', as: 'criptoBase' });
+// Crypto puede ser base en pares de exchange
+Crypto.hasMany(ParExchange, { foreignKey: 'criptoBaseId', as: 'paresComoBase' });
+ParExchange.belongsTo(Crypto, { foreignKey: 'criptoBaseId', as: 'criptoBase' });
 
-// Criptomoneda puede ser quote en pares de exchange
-Criptomoneda.hasMany(ParExchange, { foreignKey: 'criptoQuoteId', as: 'paresComoQuote' });
-ParExchange.belongsTo(Criptomoneda, { foreignKey: 'criptoQuoteId', as: 'criptoQuote' });
+// Crypto puede ser quote en pares de exchange
+Crypto.hasMany(ParExchange, { foreignKey: 'criptoQuoteId', as: 'paresComoQuote' });
+ParExchange.belongsTo(Crypto, { foreignKey: 'criptoQuoteId', as: 'criptoQuote' });
 
-// Criptomoneda puede estar en transacciones blockchain
-Criptomoneda.hasMany(TransaccionBlockchain, { foreignKey: 'criptomonedaId', as: 'transaccionesBlockchain' });
-TransaccionBlockchain.belongsTo(Criptomoneda, { foreignKey: 'criptomonedaId', as: 'criptomoneda' });
+// Crypto puede estar en transacciones blockchain
+Crypto.hasMany(TransaccionBlockchain, { foreignKey: 'criptomonedaId', as: 'transaccionesBlockchain' });
+TransaccionBlockchain.belongsTo(Crypto, { foreignKey: 'criptomonedaId', as: 'crypto' });
 
-// 🆕 Criptomoneda puede ser base asset en pares de trading
-Criptomoneda.hasMany(TradingPair, { foreignKey: 'baseAssetId', as: 'tradingPairsAsBase' });
-TradingPair.belongsTo(Criptomoneda, { foreignKey: 'baseAssetId', as: 'baseAsset' });
+// 🆕 Crypto puede ser base asset en pares de trading
+Crypto.hasMany(TradingPair, { foreignKey: 'baseAssetId', as: 'tradingPairsAsBase' });
+TradingPair.belongsTo(Crypto, { foreignKey: 'baseAssetId', as: 'baseAsset' });
 
-// 🆕 Criptomoneda puede ser quote asset en pares de trading
-Criptomoneda.hasMany(TradingPair, { foreignKey: 'quoteAssetId', as: 'tradingPairsAsQuote' });
-TradingPair.belongsTo(Criptomoneda, { foreignKey: 'quoteAssetId', as: 'quoteAsset' });
+// 🆕 Crypto puede ser quote asset en pares de trading
+Crypto.hasMany(TradingPair, { foreignKey: 'quoteAssetId', as: 'tradingPairsAsQuote' });
+TradingPair.belongsTo(Crypto, { foreignKey: 'quoteAssetId', as: 'quoteAsset' });
 
 // ================================
 // RELACIONES DE PARES EXCHANGE
@@ -299,8 +299,8 @@ User.hasMany(Transferencia, { foreignKey: 'usuarioDestinatarioId', as: 'transfer
 Transferencia.belongsTo(User, { foreignKey: 'usuarioDestinatarioId', as: 'destinatario' });
 
 // Transferencia pertenece a una criptomoneda
-Criptomoneda.hasMany(Transferencia, { foreignKey: 'criptomonedaId', as: 'transferencias' });
-Transferencia.belongsTo(Criptomoneda, { foreignKey: 'criptomonedaId', as: 'criptomonedaTransferencia' }); // Alias único
+Crypto.hasMany(Transferencia, { foreignKey: 'criptomonedaId', as: 'transferencias' });
+Transferencia.belongsTo(Crypto, { foreignKey: 'criptomonedaId', as: 'criptomonedaTransferencia' }); // Alias único
 
 
 // ================================
@@ -320,7 +320,7 @@ module.exports = {
   Sequelize,
   BalanceUsuario,
   BlockchainState,
-  Criptomoneda,
+  Crypto,
   DireccionDeposito,
   IntercambioExchange,
   MetodoPago,
@@ -345,5 +345,5 @@ module.exports = {
   AsientoLedger,
   MovimientoLedger,
   SaldoLedger,
-  ConfiguracionNegocio,
+  BusinessConfig,
 };

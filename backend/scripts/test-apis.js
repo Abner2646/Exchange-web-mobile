@@ -10,7 +10,7 @@ https://api.etherscan.io/v2/api
 Todas las chains EVM ahora se manejan con una sola API key, no necesito BSCSCAN_API_KEY separado.
 Usa solo ETHERSCAN_API_KEY.
 
-Para especificar la red se pasa el parámetro chainid:
+Para especificar la network se pasa el parámetro chainid:
 
 Ethereum Sepolia: 11155111
 
@@ -238,7 +238,7 @@ function buildTokenTransactionUrl(chainid, address, contractaddress, startblock 
   return `${baseUrl}?${params.toString()}`;
 }
 
-// Función para obtener la configuración de una chain por nombre
+// Función para obtener la configuración de una chain por name
 function getChainConfig(networkName) {
   const mappings = {
     'ethereum': CHAINS['ethereum-mainnet'],

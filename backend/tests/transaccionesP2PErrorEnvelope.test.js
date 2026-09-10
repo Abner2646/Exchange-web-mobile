@@ -37,7 +37,7 @@ jest.mock('../models/index.js', () => ({
     getUserVolume: jest.fn(),
     checkTimeouts: jest.fn(),
   },
-  Criptomoneda: {},
+  Crypto: {},
   User: {},
   OfertaP2P: {
     findByPk: jest.fn(),

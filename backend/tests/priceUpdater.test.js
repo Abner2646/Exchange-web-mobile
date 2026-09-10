@@ -3,7 +3,7 @@
 // Fase 1 — precisión monetaria en el feed de precios. priceUpdater escribe
 // TradingPair.lastPrice, que es justo el precio que consume el trading engine ya
 // migrado (market pricing en balanceManager, getBestPrice en orderBook). Binance
-// devuelve los precios como strings decimales EXACTOS; el parseFloat los pasaba
+// devuelve los precios como strings decimals EXACTOS; el parseFloat los pasaba
 // por float binario antes de guardarlos en columnas DECIMAL, contaminando el
 // input del trading. Ahora se preserva el string canónico tal cual.
 

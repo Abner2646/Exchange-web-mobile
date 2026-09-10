@@ -28,7 +28,7 @@ jest.mock('../models', () => ({
     failWithdrawal: jest.fn(),
   },
   User: { findByPk: jest.fn() },
-  Criptomoneda: { findByPk: jest.fn() },
+  Crypto: { findByPk: jest.fn() },
   BalanceUsuario: { findAll: jest.fn() },
   DireccionDeposito: {
     getByUserAndCrypto: jest.fn(),
@@ -50,7 +50,7 @@ jest.mock('../jobs/blockchain.jobs', () => ({
 // we just want to verify controller-level error responses.
 jest.mock('../middleware/idempotency.middleware', () => (req, res, next) => next());
 
-const { TransaccionBlockchain, Criptomoneda, DireccionDeposito } = require('../models');
+const { TransaccionBlockchain, Crypto, DireccionDeposito } = require('../models');
 const BlockchainServiceManager = require('../services/blockchain');
 
 const asyncHandler = require('../utils/asyncHandler');
@@ -159,7 +159,7 @@ describe('POST /withdraw — business error paths', () => {
   test('invalid blockchain address -> 400 WITHDRAWAL_INVALID_ADDRESS (canonical envelope)', async () => {
     TransaccionBlockchain.validateWithdrawal.mockResolvedValue({
       valid: true,
-      criptomoneda: { red: 'ethereum' },
+      crypto: { network: 'ethereum' },
     });
     const mockService = { validateAddress: jest.fn().mockResolvedValue(false) };
     BlockchainServiceManager.getService.mockReturnValue(mockService);
@@ -195,7 +195,7 @@ describe('POST /withdraw — business error paths', () => {
 
 describe('GET /deposit-address/:criptomonedaId — business error paths', () => {
   test('crypto not found -> 404 DEPOSIT_CRYPTO_NOT_FOUND (canonical envelope)', async () => {
-    Criptomoneda.findByPk.mockResolvedValue(null);
+    Crypto.findByPk.mockResolvedValue(null);
 
     const res = await request(buildDepositAddressApp()).get('/deposit-address/some-id');
 
@@ -210,7 +210,7 @@ describe('GET /deposit-address/:criptomonedaId — business error paths', () => 
 
   test('unexpected service throw -> sanitized 500, no raw message in body', async () => {
     const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    Criptomoneda.findByPk.mockRejectedValue(new Error('SECRET_INTERNAL: crypto table missing'));
+    Crypto.findByPk.mockRejectedValue(new Error('SECRET_INTERNAL: crypto table missing'));
 
     const res = await request(buildDepositAddressApp()).get('/deposit-address/some-id');
 
@@ -223,7 +223,7 @@ describe('GET /deposit-address/:criptomonedaId — business error paths', () => 
 
   test('address generation failure -> 500 DEPOSIT_ADDRESS_GENERATION_FAILED (canonical envelope)', async () => {
     const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    Criptomoneda.findByPk.mockResolvedValue({ id: 'c1', active: true, symbol: 'ETH', red: 'ethereum' });
+    Crypto.findByPk.mockResolvedValue({ id: 'c1', active: true, symbol: 'ETH', network: 'ethereum' });
     DireccionDeposito.getByUserAndCrypto.mockResolvedValue(null);
     DireccionDeposito.generateAddressForUser.mockRejectedValue(new Error('wallet key unavailable'));
 

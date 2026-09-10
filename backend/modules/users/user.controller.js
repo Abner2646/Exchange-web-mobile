@@ -1,5 +1,5 @@
 // controllers/user.controller.js
-const { User, Criptomoneda, WalletMaestra, DireccionDeposito, BalanceUsuario, Notificaciones } = require('../../models/index.js');
+const { User, Crypto, WalletMaestra, DireccionDeposito, BalanceUsuario, Notificaciones } = require('../../models/index.js');
 const { Op } = require('sequelize');
 const { sequelize } = require('../../models/index.js');
 const emailService = require('../../services/email.service.js');
@@ -31,7 +31,7 @@ const generarDireccionDerivada = async (walletMaestra, usuarioId, derivationInde
     .update(`${walletMaestra.direccionPublica}-${usuarioId}-${derivationIndex}`)
     .digest('hex');
   
-  switch (walletMaestra.criptomoneda.red) {
+  switch (walletMaestra.crypto.network) {
     case 'bitcoin':
       return `1${hash.substring(0, 33)}`;
     case 'ethereum':
@@ -45,7 +45,7 @@ const generarDireccionDerivada = async (walletMaestra, usuarioId, derivationInde
 // Función helper para inicializar todo lo del usuario nuevo
 const inicializarUsuarioCompleto = async (usuario, transaction) => {
   try {
-    const criptomonedasActivas = await Criptomoneda.getActive();
+    const criptomonedasActivas = await Crypto.getActive();
     
     if (criptomonedasActivas.length === 0) {
       throw new Error('No hay criptomonedas activas en el sistema');
@@ -54,25 +54,25 @@ const inicializarUsuarioCompleto = async (usuario, transaction) => {
     const direccionesCreadas = [];
     const balancesCreados = [];
 
-    for (const criptomoneda of criptomonedasActivas) {
-      const walletMaestra = await WalletMaestra.getByCriptomoneda(criptomoneda.id);
+    for (const crypto of criptomonedasActivas) {
+      const walletMaestra = await WalletMaestra.getByCriptomoneda(crypto.id);
       
       if (!walletMaestra) {
-        console.warn(`No hay wallet maestra para ${criptomoneda.symbol}. Saltando...`);
+        console.warn(`No hay wallet maestra para ${crypto.symbol}. Saltando...`);
         continue;
       }
 
       const derivationIndex = await DireccionDeposito.getNextDerivationIndex(walletMaestra.id);
       
       const nuevaDireccion = await generarDireccionDerivada(
-        { ...walletMaestra, criptomoneda }, 
+        { ...walletMaestra, crypto }, 
         usuario.id, 
         derivationIndex
       );
 
       const direccionDeposito = await DireccionDeposito.create({
         userId: usuario.id, // la entity usa `userId` (field user_id); `usuarioId` se ignoraba → NOT NULL
-        criptomonedaId: criptomoneda.id,
+        criptomonedaId: crypto.id,
         walletMaestraId: walletMaestra.id,
         direccion: nuevaDireccion,
         derivationIndex: derivationIndex,
@@ -80,7 +80,7 @@ const inicializarUsuarioCompleto = async (usuario, transaction) => {
       }, { transaction });
 
       direccionesCreadas.push({
-        criptomoneda: criptomoneda.symbol,
+        crypto: crypto.symbol,
         direccion: nuevaDireccion
       });
 
@@ -92,7 +92,7 @@ const inicializarUsuarioCompleto = async (usuario, transaction) => {
 
     const mensajeBienvenida = `¡Bienvenido al Exchange! Tu cuenta ha sido creada exitosamente. 
     
-Se han generado ${direccionesCreadas.length} direcciones de depósito para las siguientes criptomonedas: ${direccionesCreadas.map(d => d.criptomoneda).join(', ')}.
+Se han generado ${direccionesCreadas.length} direcciones de depósito para las siguientes criptomonedas: ${direccionesCreadas.map(d => d.crypto).join(', ')}.
 
 Para comenzar a operar:
 1. Completa tu verificación KYC
@@ -325,7 +325,7 @@ const loginWithGoogle = async (req, res) => {
       response.inicializacion = {
         direccionesCreadas: inicializacionResult.direccionesCreadas.length,
         balancesCreados: inicializacionResult.balancesCreados.length,
-        criptomonedas: inicializacionResult.direccionesCreadas.map(d => d.criptomoneda)
+        criptomonedas: inicializacionResult.direccionesCreadas.map(d => d.crypto)
       };
     }
 
@@ -832,7 +832,7 @@ const getMyDepositAddresses = async (req, res) => {
 
 // Forma UNIFICADA (2026-09-03): misma respuesta compartimentada que
 // /balances/my/balances y /intercambioExchange/me/balances (getBalancesConCompartimentos:
-// totales de raíz Funding+Spot + desglose + objeto criptomoneda). Antes era
+// totales de raíz Funding+Spot + desglose + objeto crypto). Antes era
 // funding-only. Cambio de contrato documentado en el contract doc.
 const getMyBalances = async (req, res) => {
   try {
@@ -947,7 +947,7 @@ const regenerateDepositAddress = async (req, res) => {
       await direccionActual.update({ active: false }, { transaction });
     }
     
-    const criptomoneda = await Criptomoneda.getById(criptomonedaId);
+    const crypto = await Crypto.getById(criptomonedaId);
     const walletMaestra = await WalletMaestra.getByCriptomoneda(criptomonedaId);
     
     if (!walletMaestra) {
@@ -956,7 +956,7 @@ const regenerateDepositAddress = async (req, res) => {
     
     const derivationIndex = await DireccionDeposito.getNextDerivationIndex(walletMaestra.id);
     const nuevaDireccion = await generarDireccionDerivada(
-      { ...walletMaestra, criptomoneda }, 
+      { ...walletMaestra, crypto }, 
       userId, 
       derivationIndex
     );
@@ -975,7 +975,7 @@ const regenerateDepositAddress = async (req, res) => {
       usuarioId: userId,
       tipo: 'seguridad',
       titulo: 'Dirección de depósito regenerada',
-      mensaje: `Tu dirección de depósito para ${criptomoneda.symbol} ha sido regenerada por seguridad. Nueva dirección: ${nuevaDireccion}`,
+      mensaje: `Tu dirección de depósito para ${crypto.symbol} ha sido regenerada por seguridad. Nueva dirección: ${nuevaDireccion}`,
       importante: true
     }, { transaction });
     
@@ -985,7 +985,7 @@ const regenerateDepositAddress = async (req, res) => {
       message: 'Dirección regenerada exitosamente',
       nuevaDireccion: {
         id: nuevaDireccionDeposito.id,
-        criptomoneda: criptomoneda.symbol,
+        crypto: crypto.symbol,
         direccion: nuevaDireccion,
         direccionAnterior: direccionActual ? direccionActual.direccion : null
       }
@@ -1004,7 +1004,7 @@ const checkUserInitialization = async (req, res) => {
     const balances = await BalanceUsuario.getByUserId(userId);
     const notificaciones = await Notificaciones.getUserNotifications(userId, { limit: 1 });
     
-    const criptomonedasActivas = await Criptomoneda.getActive();
+    const criptomonedasActivas = await Crypto.getActive();
     
     const estado = {
       usuarioId: userId,

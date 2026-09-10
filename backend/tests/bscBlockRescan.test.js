@@ -12,11 +12,11 @@ jest.mock('../models', () => ({
     findAll: jest.fn().mockResolvedValue([
       {
         direccion: '0xUserAddress',
-        criptomoneda: { symbol: 'BNB', red: 'bsc', direccionContrato: null, decimales: 18 },
+        crypto: { symbol: 'BNB', network: 'bsc', contractAddress: null, decimals: 18 },
       },
     ]),
   },
-  Criptomoneda: {},
+  Crypto: {},
   BlockchainState: { getLastProcessedBlock: jest.fn().mockResolvedValue(500000) },
 }), { virtual: false });
 

@@ -19,7 +19,7 @@ jest.mock('../models/index.js', () => ({
     reenviarCodigo: jest.fn(),
   },
   User: { findByPk: jest.fn() },
-  Criptomoneda: { findByPk: jest.fn(), getById: jest.fn() },
+  Crypto: { findByPk: jest.fn(), getById: jest.fn() },
   BalanceUsuario: {
     hasAvailableBalance: jest.fn(),
     findOne: jest.fn(),
@@ -38,7 +38,7 @@ jest.mock('../services/email.service.js', () => ({
 }));
 
 // ── Pull in the mocked objects so tests can configure them ──────────────────
-const { sequelize, User, Criptomoneda, BalanceUsuario, Transferencia } =
+const { sequelize, User, Crypto, BalanceUsuario, Transferencia } =
   require('../models/index.js');
 
 const asyncHandler = require('../utils/asyncHandler');
@@ -94,7 +94,7 @@ describe('createTransferencia', () => {
     sequelize.transaction.mockResolvedValue(tx);
 
     User.findByPk.mockResolvedValue({ id: 'dest-id', active: true, username: 'dest' });
-    Criptomoneda.findByPk.mockResolvedValue({ id: 'crypto-id', active: true, symbol: 'BTC' });
+    Crypto.findByPk.mockResolvedValue({ id: 'crypto-id', active: true, symbol: 'BTC' });
     BalanceUsuario.hasAvailableBalance.mockResolvedValue(false);
 
     const res = await request(app()).post('/transfers').send(validBody);

@@ -107,10 +107,10 @@ router.get('/symbols/:baseSymbol/:quoteSymbol', parExchangeController.getParBySy
 // Obtener precio actual rápido (optimizado para trading)
 router.get('/price/:baseSymbol/:quoteSymbol', parExchangeController.getCurrentPrice);
 
-// Obtener pares por criptomoneda base
+// Obtener pares por crypto base
 router.get('/base/:criptoBaseId', parExchangeController.getParesByBaseCrypto);
 
-// Obtener pares por criptomoneda quote
+// Obtener pares por crypto quote
 router.get('/quote/:criptoQuoteId', parExchangeController.getParesByQuoteCrypto);
 
 // Obtener solo pares activos

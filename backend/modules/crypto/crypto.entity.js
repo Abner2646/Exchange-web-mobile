@@ -1,9 +1,9 @@
 const { DataTypes, Model } = require('sequelize');
 
-class Criptomoneda extends Model {}
+class Crypto extends Model {}
 
-function initCriptomoneda(sequelize) {
-  Criptomoneda.init({
+function initCrypto(sequelize) {
+  Crypto.init({
     id: {
       type: DataTypes.UUID,
       primaryKey: true,
@@ -14,20 +14,20 @@ function initCriptomoneda(sequelize) {
       allowNull: false,
       unique: true
     },
-    nombre: {
+    name: {
       type: DataTypes.STRING(100),
       allowNull: false
     },
-    red: {
+    network: {
       type: DataTypes.STRING(50),
       allowNull: false
     },
-    direccionContrato: {
+    contractAddress: {
       type: DataTypes.STRING(42),
       allowNull: true,
-      field: 'direccion_contrato'
+      field: 'contract_address'
     },
-    decimales: {
+    decimals: {
       type: DataTypes.INTEGER,
       defaultValue: 18
     },
@@ -44,14 +44,14 @@ function initCriptomoneda(sequelize) {
     }
   }, {
     sequelize,
-    modelName: 'Criptomoneda',
-    tableName: 'criptomonedas',
+    modelName: 'Crypto',
+    tableName: 'cryptos',
     timestamps: true,
     createdAt: 'created_at',
     updatedAt: false
   });
 
-  return Criptomoneda;
+  return Crypto;
 }
 
-module.exports = initCriptomoneda;
+module.exports = initCrypto;

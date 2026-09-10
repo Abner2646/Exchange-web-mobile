@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const {
-  User, Criptomoneda, ParExchange, BalanceUsuario, WalletMaestra, TradingPair,
+  User, Crypto, ParExchange, BalanceUsuario, WalletMaestra, TradingPair,
 } = require('../../models');
 
 let seq = 0;
@@ -33,7 +33,7 @@ function authHeader(user) {
 }
 
 async function seedCripto(symbol) {
-  return Criptomoneda.create({ symbol, nombre: symbol, red: 'test' });
+  return Crypto.create({ symbol, name: symbol, network: 'test' });
 }
 
 async function seedPar({ base, quote, precio, comision }) {
@@ -85,13 +85,13 @@ async function getSpotBalance(user, cripto) {
   return BalanceUsuario.getSaldoCompartimento(user.id, cripto.id, 'spot');
 }
 
-// red 'test' sidesteps the network-specific xpub validation; the swap only
+// network 'test' sidesteps the network-specific xpub validation; the swap only
 // looks the wallet up by criptomonedaId to credit the commission (balanceTotal).
 async function seedWalletMaestra(cripto) {
   return WalletMaestra.create({
     criptomonedaId: cripto.id,
-    nombre: `${cripto.symbol} test wallet`,
-    red: 'test',
+    name: `${cripto.symbol} test wallet`,
+    network: 'test',
     symbol: cripto.symbol,
     xpub: 'testxpub',
   });

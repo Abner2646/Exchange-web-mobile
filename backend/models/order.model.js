@@ -14,14 +14,14 @@ function createOrderModel(sequelize) {
             model: sequelize.models.TradingPair,
             as: 'tradingPair',
             include: [
-              { model: sequelize.models.Criptomoneda, as: 'baseAsset' },
-              { model: sequelize.models.Criptomoneda, as: 'quoteAsset' }
+              { model: sequelize.models.Crypto, as: 'baseAsset' },
+              { model: sequelize.models.Crypto, as: 'quoteAsset' }
             ]
           },
           {
             model: sequelize.models.User,
             as: 'user',
-            attributes: ['id', 'email', 'nombre']
+            attributes: ['id', 'email', 'name']
           }
         ],
         ...options
@@ -59,8 +59,8 @@ function createOrderModel(sequelize) {
             model: sequelize.models.TradingPair,
             as: 'tradingPair',
             include: [
-              { model: sequelize.models.Criptomoneda, as: 'baseAsset' },
-              { model: sequelize.models.Criptomoneda, as: 'quoteAsset' }
+              { model: sequelize.models.Crypto, as: 'baseAsset' },
+              { model: sequelize.models.Crypto, as: 'quoteAsset' }
             ]
           }
         ],
@@ -274,8 +274,8 @@ function createOrderModel(sequelize) {
             model: sequelize.models.TradingPair,
             as: 'tradingPair',
             include: [
-              { model: sequelize.models.Criptomoneda, as: 'baseAsset' },
-              { model: sequelize.models.Criptomoneda, as: 'quoteAsset' }
+              { model: sequelize.models.Crypto, as: 'baseAsset' },
+              { model: sequelize.models.Crypto, as: 'quoteAsset' }
             ]
           }
         ],

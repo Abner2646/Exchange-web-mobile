@@ -43,7 +43,7 @@ class OfertaP2P extends Model {
         model: this.sequelize.models.MetodoPago,
         as: 'metodosPago',
         through: { attributes: [] }, // No incluir datos de la tabla intermedia
-        attributes: ['id', 'nombre', 'descripcion', 'active']
+        attributes: ['id', 'name', 'descripcion', 'active']
       }
     ];
 
@@ -75,7 +75,7 @@ class OfertaP2P extends Model {
           model: this.sequelize.models.MetodoPago,
           as: 'metodosPago',
           through: { attributes: [] },
-          attributes: ['id', 'nombre', 'descripcion', 'active']
+          attributes: ['id', 'name', 'descripcion', 'active']
         }
       ]
     });
@@ -359,7 +359,7 @@ class OfertaP2P extends Model {
           model: this.sequelize.models.MetodoPago,
           as: 'metodosPago',
           through: { attributes: [] },
-          attributes: ['id', 'nombre', 'descripcion', 'active']
+          attributes: ['id', 'name', 'descripcion', 'active']
         }
       ],
       limit,
@@ -378,7 +378,7 @@ class OfertaP2P extends Model {
           model: this.sequelize.models.MetodoPago,
           as: 'metodosPago',
           through: { attributes: [] },
-          attributes: ['id', 'nombre', 'descripcion', 'active']
+          attributes: ['id', 'name', 'descripcion', 'active']
         }
       ],
       limit,
@@ -417,7 +417,7 @@ class OfertaP2P extends Model {
       model: this.sequelize.models.MetodoPago,
       as: 'metodosPago',
       through: { attributes: [] },
-      attributes: ['id', 'nombre', 'descripcion', 'active']
+      attributes: ['id', 'name', 'descripcion', 'active']
     };
 
     // Si se especifica un método de pago, filtrar por ese método

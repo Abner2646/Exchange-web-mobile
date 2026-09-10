@@ -14,11 +14,11 @@ describe('money.add — suma exacta (sin errores de coma binarios)', () => {
     expect(money.add('0.1', '0.2')).toBe('0.3');
   });
 
-  test('suma montos con 8 decimales (satoshis) sin perder precisión', () => {
+  test('suma montos con 8 decimals (satoshis) sin perder precisión', () => {
     expect(money.add('0.00000001', '0.00000002')).toBe('0.00000003');
   });
 
-  test('suma valores grandes con 18 decimales (wei) sin redondear', () => {
+  test('suma valores grandes con 18 decimals (wei) sin redondear', () => {
     expect(money.add('1234567890.123456789012345678', '0.000000000000000001')).toBe(
       '1234567890.123456789012345679'
     );
@@ -56,12 +56,12 @@ describe('money.divide — división exacta (resultados terminantes)', () => {
 });
 
 describe('money.round — half-even (banker\'s rounding)', () => {
-  test('empates van al dígito par: 2.5 -> 2, 3.5 -> 4 (a 0 decimales)', () => {
+  test('empates van al dígito par: 2.5 -> 2, 3.5 -> 4 (a 0 decimals)', () => {
     expect(money.round('2.5', 0)).toBe('2');
     expect(money.round('3.5', 0)).toBe('4');
   });
 
-  test('empates a 2 decimales: 0.125 -> 0.12, 0.135 -> 0.14', () => {
+  test('empates a 2 decimals: 0.125 -> 0.12, 0.135 -> 0.14', () => {
     expect(money.round('0.125', 2)).toBe('0.12');
     expect(money.round('0.135', 2)).toBe('0.14');
   });
@@ -76,7 +76,7 @@ describe('money.round — half-even (banker\'s rounding)', () => {
     expect(money.round('1.005', 2)).toBe('1');
   });
 
-  test('redondea a 8 decimales (BTC/satoshis)', () => {
+  test('redondea a 8 decimals (BTC/satoshis)', () => {
     expect(money.round('0.123456785', 8)).toBe('0.12345678');
   });
 });
@@ -143,15 +143,15 @@ describe('money.negate — cambia el signo (centraliza el idiom subtract("0", x)
   });
 });
 
-describe('money.format8 — formato uniforme a 8 decimales (presentación de saldos)', () => {
+describe('money.format8 — formato uniforme a 8 decimals (presentación de saldos)', () => {
   test('pad de trailing zeros que add/subtract strippean', () => {
     expect(money.format8('1')).toBe('1.00000000');
     expect(money.format8('0')).toBe('0.00000000');
     expect(money.format8('1.5')).toBe('1.50000000');
   });
 
-  test('redondea a 8 decimales con half-even', () => {
-    // 9 decimales → 8; el 9º dígito decide
+  test('redondea a 8 decimals con half-even', () => {
+    // 9 decimals → 8; el 9º dígito decide
     expect(money.format8('0.123456784')).toBe('0.12345678');
     expect(money.format8('0.123456786')).toBe('0.12345679');
   });

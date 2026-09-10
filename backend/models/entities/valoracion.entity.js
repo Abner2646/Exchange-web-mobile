@@ -45,7 +45,7 @@ function initValoracion(sequelize) {
     updatedAt: false,
     indexes: [
       {
-        // ✅ SOLUCIÓN: Darle un nombre explícito y corto al índice
+        // ✅ SOLUCIÓN: Darle un name explícito y corto al índice
         name: 'idx_valoracion_unique',
         unique: true,
         fields: ['transaccion_p2p_id', 'usuario_evaluador_id', 'usuario_evaluado_id']

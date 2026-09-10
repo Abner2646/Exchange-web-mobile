@@ -1,6 +1,6 @@
 // controllers/intercambioExchange.controller.js
 
-const { IntercambioExchange, User, ParExchange, BalanceUsuario, Criptomoneda, sequelize } = require('../models/index.js');
+const { IntercambioExchange, User, ParExchange, BalanceUsuario, Crypto, sequelize } = require('../models/index.js');
 const AppError = require('../utils/AppError');
 const errorCodes = require('../utils/errorCodes');
 const money = require('../utils/money');
@@ -74,8 +74,8 @@ const createOrder = async (req, res) => {
 
     const par = await ParExchange.findByPk(parId, {
       include: [
-        { model: Criptomoneda, as: 'criptoBase' },
-        { model: Criptomoneda, as: 'criptoQuote' }
+        { model: Crypto, as: 'criptoBase' },
+        { model: Crypto, as: 'criptoQuote' }
       ],
       transaction
     });
@@ -236,8 +236,8 @@ const calculateExchange = async (req, res) => {
   // Obtener el par para usar su precio actual
   const par = await ParExchange.findByPk(parId, {
     include: [
-      { model: Criptomoneda, as: 'criptoBase' },
-      { model: Criptomoneda, as: 'criptoQuote' }
+      { model: Crypto, as: 'criptoBase' },
+      { model: Crypto, as: 'criptoQuote' }
     ]
   });
 
@@ -318,7 +318,7 @@ const checkTransactionLimit = async (req, res) => {
 // Obtener mis balances — forma UNIFICADA (2026-09-03): los tres endpoints de
 // "mis balances" (balances/intercambio/usuario) devuelven la misma forma aditiva
 // compartimentada de getBalancesConCompartimentos (totales de raíz Funding+Spot +
-// desglose por compartimento + objeto `criptomoneda`). Antes este endpoint era
+// desglose por compartimento + objeto `crypto`). Antes este endpoint era
 // funding-only y re-adjuntaba la cripto a mano. Cambio de contrato documentado en
 // docs/frontend-rebuild/backend-contract-changes.md. El orden no está garantizado.
 const getMyBalances = async (req, res) => {
@@ -664,7 +664,7 @@ const getMarketSummary = async (req, res) => {
   res.json(summary);
 };
 
-// Estadísticas por criptomoneda (analytics)
+// Estadísticas por crypto (analytics)
 const getStatsByCrypto = async (req, res) => {
   const filters = { ...req.query };
 

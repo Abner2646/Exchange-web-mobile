@@ -44,18 +44,18 @@ class EthersEvmClient extends EvmChainClient {
 
   async getTokenBalance(contractAddress) {
     const contract = new ethers.Contract(contractAddress, ERC20_ABI, this.provider);
-    const [balance, decimales] = await Promise.all([
+    const [balance, decimals] = await Promise.all([
       contract.balanceOf(this.wallet.address),
       contract.decimals(),
     ]);
-    return ethers.formatUnits(balance, decimales);
+    return ethers.formatUnits(balance, decimals);
   }
 
   async sendTokenTransfer(contractAddress, toAddress, amount) {
     const gasPrice = await this._gasPrice();
     const contract = new ethers.Contract(contractAddress, ERC20_ABI, this.wallet);
-    const decimales = await contract.decimals();
-    const value = ethers.parseUnits(amount.toString(), decimales);
+    const decimals = await contract.decimals();
+    const value = ethers.parseUnits(amount.toString(), decimals);
     const tx = await contract.transfer(toAddress, value, { gasLimit: 60000, gasPrice });
     const fee = ethers.formatEther(gasPrice * BigInt(60000));
     return { txHash: tx.hash, fee };
@@ -80,8 +80,8 @@ class EthersEvmClient extends EvmChainClient {
   async signTokenTransfer(contractAddress, toAddress, amount) {
     const gasPrice = await this._gasPrice();
     const contract = new ethers.Contract(contractAddress, ERC20_ABI, this.wallet);
-    const decimales = await contract.decimals();
-    const value = ethers.parseUnits(amount.toString(), decimales);
+    const decimals = await contract.decimals();
+    const value = ethers.parseUnits(amount.toString(), decimals);
     const req = await contract.transfer.populateTransaction(toAddress, value, { gasLimit: 60000, gasPrice });
     const populated = await this.wallet.populateTransaction(req);
     const signed = await this.wallet.signTransaction(populated);

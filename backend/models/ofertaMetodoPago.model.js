@@ -18,7 +18,7 @@ function createOfertaMetodoPagoModel(sequelize) {
           {
             model: sequelize.models.MetodoPago,
             as: 'metodoPago',
-            attributes: ['id', 'nombre', 'descripcion', 'active']
+            attributes: ['id', 'name', 'descripcion', 'active']
           }
         ]
       });
@@ -52,7 +52,7 @@ function createOfertaMetodoPagoModel(sequelize) {
           {
             model: sequelize.models.MetodoPago,
             as: 'metodoPago',
-            attributes: ['id', 'nombre', 'descripcion', 'active']
+            attributes: ['id', 'name', 'descripcion', 'active']
           }
         ],
         order: [['ofertaId', 'ASC'], ['metodoPagoId', 'ASC']]
@@ -73,12 +73,12 @@ function createOfertaMetodoPagoModel(sequelize) {
           {
             model: sequelize.models.MetodoPago,
             as: 'metodoPago',
-            attributes: ['id', 'nombre', 'descripcion', 'active'],
+            attributes: ['id', 'name', 'descripcion', 'active'],
             where: { active: true }, // Solo métodos activos
             required: true
           }
         ],
-        order: [['metodoPago', 'nombre', 'ASC']]
+        order: [['metodoPago', 'name', 'ASC']]
       });
       
       return metodosPago.map(om => om.metodoPago);
@@ -119,7 +119,7 @@ function createOfertaMetodoPagoModel(sequelize) {
           {
             model: sequelize.models.MetodoPago,
             as: 'metodoPago',
-            attributes: ['id', 'nombre', 'descripcion', 'active'],
+            attributes: ['id', 'name', 'descripcion', 'active'],
             where: whereMetodo,
             required: true
           },
@@ -129,7 +129,7 @@ function createOfertaMetodoPagoModel(sequelize) {
             attributes: ['id', 'titulo', 'tipo', 'estado']
           }
         ],
-        order: [['metodoPago', 'nombre', 'ASC']]
+        order: [['metodoPago', 'name', 'ASC']]
       });
       
       return relations;
@@ -322,7 +322,7 @@ function createOfertaMetodoPagoModel(sequelize) {
           {
             model: sequelize.models.MetodoPago,
             as: 'metodoPago',
-            attributes: ['nombre', 'active']
+            attributes: ['name', 'active']
           }
         ],
         group: ['metodoPagoId', 'metodoPago.id'],
@@ -425,7 +425,7 @@ function createOfertaMetodoPagoModel(sequelize) {
       // Obtener todos los métodos activos
       const todosMetodos = await sequelize.models.MetodoPago.findAll({
         where: { active: true },
-        attributes: ['id', 'nombre', 'descripcion']
+        attributes: ['id', 'name', 'descripcion']
       });
 
       // Obtener métodos ya asignados a esta oferta

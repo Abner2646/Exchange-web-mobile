@@ -10,7 +10,7 @@ jest.mock('../models', () => ({
   Trade: { getById: jest.fn() },
   TradingPair: {},
   PriceCandle: {},
-  Criptomoneda: {},
+  Crypto: {},
 }));
 jest.mock('../services/trading/orderBook.service', () => ({}));
 jest.mock('../services/trading/orderValidator.service', () => ({}));

@@ -9,7 +9,7 @@ function initMetodoPago(sequelize) {
       primaryKey: true,
       defaultValue: DataTypes.UUIDV4
     },
-    nombre: {
+    name: {
       type: DataTypes.STRING(100),
       allowNull: false
     },

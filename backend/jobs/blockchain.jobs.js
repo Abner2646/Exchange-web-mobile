@@ -1,7 +1,7 @@
 // jobs/blockchain.jobs.js - VERSIÓN MEJORADA CON DIAGNÓSTICOS
 const BlockchainServiceManager = require('../services/blockchain');
 const { reapStaleWithdrawals, makeGetClientForNetwork } = require('../services/blockchain/withdrawalReaper');
-const { TransaccionBlockchain, DireccionDeposito, Criptomoneda, BlockchainState } = require('../models');
+const { TransaccionBlockchain, DireccionDeposito, Crypto, BlockchainState } = require('../models');
 require('dotenv').config();
 
 class BlockchainJobManager {
@@ -207,12 +207,12 @@ class BlockchainJobManager {
       console.log(`🔍 [DEPOSIT_SCAN] Direcciones activas: ${preStats.totalAddresses}`);
       console.log(`🔍 [DEPOSIT_SCAN] Redes disponibles: ${preStats.networks.join(', ')}`);
       
-      // Escanear cada red por separado para mejor control
+      // Escanear cada network por separado para mejor control
       const networkResults = [];
       
       for (const network of preStats.networks) {
         try {
-          console.log(`🔍 [DEPOSIT_SCAN] Escaneando red: ${network.toUpperCase()}`);
+          console.log(`🔍 [DEPOSIT_SCAN] Escaneando network: ${network.toUpperCase()}`);
           
           // ✅ Verificar si el servicio está disponible
           const service = BlockchainServiceManager.getService(network);
@@ -308,7 +308,7 @@ class BlockchainJobManager {
   // =================== ESCANEO POR RED (MEJORADO) ===================
   async scanNetworkForDeposits(network) {
     try {
-      // Obtener direcciones activas para esta red
+      // Obtener direcciones activas para esta network
       const addresses = await this.getActiveAddressesForNetwork(network);
       
       if (addresses.length === 0) {
@@ -336,7 +336,7 @@ class BlockchainJobManager {
         throw new Error(`Servicio blockchain no disponible para ${network}`);
       }
       
-      // ✅ Verificar configuración de red antes de escanear
+      // ✅ Verificar configuración de network antes de escanear
       const diagnostic = this.stats.lastDiagnostic;
       if (!diagnostic?.services[network]?.available) {
         throw new Error(`Servicio ${network} reportado como no disponible en diagnóstico`);
@@ -364,7 +364,7 @@ class BlockchainJobManager {
           console.log(`💰 [${network.toUpperCase()}] Depósito procesado:`, {
             usuario: deposit.userId,
             cantidad: deposit.cantidad,
-            crypto: deposit.criptomoneda?.symbol,
+            crypto: deposit.crypto?.symbol,
             txHash: deposit.txHash,
             confirmaciones: deposit.confirmaciones
           });
@@ -403,10 +403,10 @@ class BlockchainJobManager {
         where: { active: true },
         include: [
           {
-            model: Criptomoneda,
-            as: 'criptomoneda',
+            model: Crypto,
+            as: 'crypto',
             where: { active: true },
-            attributes: ['red', 'symbol']
+            attributes: ['network', 'symbol']
           }
         ],
         attributes: ['id', 'direccion', 'criptomonedaId']
@@ -414,7 +414,7 @@ class BlockchainJobManager {
       
       const networkCounts = {};
       addressStats.forEach(addr => {
-        const network = addr.criptomoneda.red;
+        const network = addr.crypto.network;
         if (!networkCounts[network]) {
           networkCounts[network] = 0;
         }
@@ -443,10 +443,10 @@ class BlockchainJobManager {
         where: { active: true },
         include: [
           {
-            model: Criptomoneda,
-            as: 'criptomoneda',
+            model: Crypto,
+            as: 'crypto',
             where: { 
-              red: network.toLowerCase(),
+              network: network.toLowerCase(),
               active: true 
             }
           }
@@ -563,9 +563,9 @@ class BlockchainJobManager {
   // Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #8): createWithdrawal
   // bloquea el balance del usuario apenas se crea el retiro, pero hasta
   // ahora ningún job ni ruta llamaba a processPendingWithdrawals() — que sí
-  // está bien implementada en cada servicio de red — así que todo retiro
+  // está bien implementada en cada servicio de network — así que todo retiro
   // quedaba con fondos bloqueados para siempre, sin nada que lo complete ni
-  // lo libere. Mismo patrón que runConfirmationUpdateJob: iterar por red,
+  // lo libere. Mismo patrón que runConfirmationUpdateJob: iterar por network,
   // dejar que cada service resuelva sus propios retiros pendientes.
   async runWithdrawalProcessJob() {
     const startTime = Date.now();
@@ -662,16 +662,16 @@ class BlockchainJobManager {
         },
         include: [
           {
-            model: Criptomoneda,
-            as: 'criptomoneda',
-            attributes: ['red']
+            model: Crypto,
+            as: 'crypto',
+            attributes: ['network']
           }
         ]
       });
       
       const byNetwork = {};
       pendingTxs.forEach(tx => {
-        const network = tx.criptomoneda.red;
+        const network = tx.crypto.network;
         if (!byNetwork[network]) {
           byNetwork[network] = [];
         }

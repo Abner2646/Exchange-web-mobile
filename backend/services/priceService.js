@@ -520,7 +520,7 @@ class PriceService {
         throw new Error(`${baseSymbol} no está en el mapeo de CoinGecko`);
       }
 
-      // Si quote es una crypto conocida pero no USD/EUR, hacer cálculo indirecto
+      // Si quote es una criptomoneda conocida pero no USD/EUR, hacer cálculo indirecto
       if (quoteId && quoteSymbol !== 'USD' && quoteSymbol !== 'EUR') {
         const response = await axios.get(`${this.coingeckoBaseURL}/simple/price`, {
           params: {
@@ -585,12 +585,12 @@ class PriceService {
       const par = await ParExchange.findByPk(parId, {
         include: [
           {
-            model: require('../models/index.js').Criptomoneda,
+            model: require('../models/index.js').Crypto,
             as: 'criptoBase',
             attributes: ['symbol']
           },
           {
-            model: require('../models/index.js').Criptomoneda,
+            model: require('../models/index.js').Crypto,
             as: 'criptoQuote',
             attributes: ['symbol']
           }

@@ -16,7 +16,7 @@ function createBlockchainStateModel(sequelize) {
       });
       
       if (!state) {
-        // Crear estado inicial para la red
+        // Crear estado inicial para la network
         await this.create({
           network: network.toLowerCase(),
           key: 'last_processed_block',
@@ -251,7 +251,7 @@ function createBlockchainStateModel(sequelize) {
       console.log(`${isActive ? '✅' : '❌'} Red ${network} ${isActive ? 'activada' : 'desactivada'}`);
       return state;
     } catch (error) {
-      console.error(`Error configurando estado de red ${network}:`, error.message);
+      console.error(`Error configurando estado de network ${network}:`, error.message);
       throw error;
     }
   };

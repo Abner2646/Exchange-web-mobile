@@ -77,7 +77,7 @@ function createTransferenciaModel(sequelize) {
             },
             {
             association: 'criptomonedaTransferencia', // Alias actualizado
-            attributes: ['id', 'symbol', 'nombre', 'red']
+            attributes: ['id', 'symbol', 'name', 'network']
             }
         ],
         ...options
@@ -140,7 +140,7 @@ function createTransferenciaModel(sequelize) {
           },
           {
             association: 'criptomonedaTransferencia',
-            attributes: ['id', 'symbol', 'nombre']
+            attributes: ['id', 'symbol', 'name']
           }
         ],
         order: [['created_at', 'DESC']],
@@ -341,7 +341,7 @@ function createTransferenciaModel(sequelize) {
           },
           {
             association: 'criptomonedaTransferencia',
-            attributes: ['id', 'symbol', 'nombre']
+            attributes: ['id', 'symbol', 'name']
           }
         ],
         order: [['created_at', 'DESC']],

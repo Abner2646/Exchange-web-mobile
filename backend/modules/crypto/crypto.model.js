@@ -1,21 +1,21 @@
-// models/criptomoneda.model.js
-const initCriptomoneda = require('./entities/criptomoneda.entity');
+// models/crypto.model.js
+const initCrypto = require('./crypto.entity');
 const { Op } = require('sequelize');
 
-function createCriptomonedaModel(sequelize) {
-  const Criptomoneda = initCriptomoneda(sequelize);
+function createCryptoModel(sequelize) {
+  const Crypto = initCrypto(sequelize);
 
   // Métodos de consulta básicos
-  Criptomoneda.getById = async (id) => {
+  Crypto.getById = async (id) => {
     try {
-      const criptomoneda = await Criptomoneda.findByPk(id);
-      return criptomoneda;
+      const crypto = await Crypto.findByPk(id);
+      return crypto;
     } catch (error) {
       throw new Error(`Error al obtener criptomoneda por ID: ${error.message}`);
     }
   };
 
-  Criptomoneda.getAll = async (filters = {}) => {
+  Crypto.getAll = async (filters = {}) => {
     try {
       const whereClause = {};
       
@@ -24,9 +24,9 @@ function createCriptomonedaModel(sequelize) {
         whereClause.active = filters.active === 'true';
       }
       
-      if (filters.red) {
-        whereClause.red = {
-          [Op.iLike]: `%${filters.red}%`
+      if (filters.network) {
+        whereClause.network = {
+          [Op.iLike]: `%${filters.network}%`
         };
       }
 
@@ -36,13 +36,13 @@ function createCriptomonedaModel(sequelize) {
         };
       }
 
-      if (filters.nombre) {
-        whereClause.nombre = {
-          [Op.iLike]: `%${filters.nombre}%`
+      if (filters.name) {
+        whereClause.name = {
+          [Op.iLike]: `%${filters.name}%`
         };
       }
 
-      const criptomonedas = await Criptomoneda.findAll({
+      const criptomonedas = await Crypto.findAll({
         where: whereClause,
         order: [['symbol', 'ASC']]
       });
@@ -53,17 +53,17 @@ function createCriptomonedaModel(sequelize) {
     }
   };
 
-  Criptomoneda.search = async (term, limit = 10) => {
+  Crypto.search = async (term, limit = 10) => {
     try {
-      const criptomonedas = await Criptomoneda.findAll({
+      const criptomonedas = await Crypto.findAll({
         where: {
           [Op.and]: [
             { active: true },
             {
               [Op.or]: [
                 { symbol: { [Op.iLike]: `%${term}%` } },
-                { nombre: { [Op.iLike]: `%${term}%` } },
-                { red: { [Op.iLike]: `%${term}%` } }
+                { name: { [Op.iLike]: `%${term}%` } },
+                { network: { [Op.iLike]: `%${term}%` } }
               ]
             }
           ]
@@ -79,9 +79,9 @@ function createCriptomonedaModel(sequelize) {
   };
 
   // Métodos administrativos
-  Criptomoneda.updateStatus = async (id, newStatus) => {
+  Crypto.updateStatus = async (id, newStatus) => {
     try {
-      const [updatedRowsCount] = await Criptomoneda.update(
+      const [updatedRowsCount] = await Crypto.update(
         { active: newStatus },
         { 
           where: { id },
@@ -93,30 +93,30 @@ function createCriptomonedaModel(sequelize) {
         throw new Error('Criptomoneda no encontrada');
       }
       
-      const updatedCriptomoneda = await Criptomoneda.getById(id);
+      const updatedCriptomoneda = await Crypto.getById(id);
       return updatedCriptomoneda;
     } catch (error) {
       throw new Error(`Error al actualizar estado: ${error.message}`);
     }
   };
 
-  Criptomoneda.getStats = async () => {
+  Crypto.getStats = async () => {
     try {
-      const totalCriptomonedas = await Criptomoneda.count();
-      const criptomonedasActivas = await Criptomoneda.count({
+      const totalCriptomonedas = await Crypto.count();
+      const criptomonedasActivas = await Crypto.count({
         where: { active: true }
       });
-      const criptomonedasInactivas = await Criptomoneda.count({
+      const criptomonedasInactivas = await Crypto.count({
         where: { active: false }
       });
 
-      // Estadísticas por red
-      const redesStats = await Criptomoneda.findAll({
+      // Estadísticas por network
+      const redesStats = await Crypto.findAll({
         attributes: [
-          'red',
-          [sequelize.fn('COUNT', sequelize.col('red')), 'count']
+          'network',
+          [sequelize.fn('COUNT', sequelize.col('network')), 'count']
         ],
-        group: ['red'],
+        group: ['network'],
         raw: true
       });
 
@@ -132,9 +132,9 @@ function createCriptomonedaModel(sequelize) {
   };
 
   // Métodos específicos para criptomonedas
-  Criptomoneda.getActive = async () => {
+  Crypto.getActive = async () => {
     try {
-      const criptomonedas = await Criptomoneda.findAll({
+      const criptomonedas = await Crypto.findAll({
         where: { active: true },
         order: [['symbol', 'ASC']]
       });
@@ -144,51 +144,51 @@ function createCriptomonedaModel(sequelize) {
     }
   };
 
-  Criptomoneda.getBySymbol = async (symbol) => {
+  Crypto.getBySymbol = async (symbol) => {
     try {
-      const criptomoneda = await Criptomoneda.findOne({
+      const crypto = await Crypto.findOne({
         where: { 
           symbol: symbol.toUpperCase(),
           active: true 
         }
       });
-      return criptomoneda;
+      return crypto;
     } catch (error) {
       throw new Error(`Error al obtener criptomoneda por símbolo: ${error.message}`);
     }
   };
 
-  Criptomoneda.getByNetwork = async (red) => {
+  Crypto.getByNetwork = async (network) => {
     try {
-      const criptomonedas = await Criptomoneda.findAll({
+      const criptomonedas = await Crypto.findAll({
         where: { 
-          red: red,
+          network: network,
           active: true 
         },
         order: [['symbol', 'ASC']]
       });
       return criptomonedas;
     } catch (error) {
-      throw new Error(`Error al obtener criptomonedas por red: ${error.message}`);
+      throw new Error(`Error al obtener criptomonedas por network: ${error.message}`);
     }
   };
 
-  Criptomoneda.getByContractAddress = async (direccionContrato) => {
+  Crypto.getByContractAddress = async (contractAddress) => {
     try {
-      const criptomoneda = await Criptomoneda.findOne({
+      const crypto = await Crypto.findOne({
         where: { 
-          direccionContrato: direccionContrato,
+          contractAddress: contractAddress,
           active: true 
         }
       });
-      return criptomoneda;
+      return crypto;
     } catch (error) {
       throw new Error(`Error al obtener criptomoneda por dirección de contrato: ${error.message}`);
     }
   };
 
   // ✨ Método helper para generar URL de icono
-  Criptomoneda.generateIconUrl = (symbol) => {
+  Crypto.generateIconUrl = (symbol) => {
     // Usar SVG transparente de jsDelivr
     return `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/svg/color/${symbol.toLowerCase()}.svg`;
     
@@ -196,11 +196,11 @@ function createCriptomonedaModel(sequelize) {
     // return `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/${symbol.toLowerCase()}.png`;
   };
 
-  // Crear criptomoneda (MÉTODO ÚNICO CORREGIDO)
-  Criptomoneda.createCriptomoneda = async (data) => {
+  // Crear crypto (MÉTODO ÚNICO CORREGIDO)
+  Crypto.createCrypto = async (data) => {
     try {
       // Verificar si ya existe una criptomoneda con el mismo símbolo
-      const existingBySymbol = await Criptomoneda.findOne({
+      const existingBySymbol = await Crypto.findOne({
         where: { symbol: data.symbol.toUpperCase() }
       });
       
@@ -209,9 +209,9 @@ function createCriptomonedaModel(sequelize) {
       }
 
       // Verificar dirección de contrato única si se proporciona
-      if (data.direccionContrato) {
-        const existingByContract = await Criptomoneda.findOne({
-          where: { direccionContrato: data.direccionContrato }
+      if (data.contractAddress) {
+        const existingByContract = await Crypto.findOne({
+          where: { contractAddress: data.contractAddress }
         });
         
         if (existingByContract) {
@@ -221,26 +221,26 @@ function createCriptomonedaModel(sequelize) {
 
       // ✨ Auto-generar iconUrl si no se proporciona
       if (!data.iconUrl) {
-        data.iconUrl = Criptomoneda.generateIconUrl(data.symbol);
+        data.iconUrl = Crypto.generateIconUrl(data.symbol);
       }
 
       // Convertir símbolo a mayúsculas y crear
-      const nuevaCriptomoneda = await Criptomoneda.create({
+      const nuevaCriptomoneda = await Crypto.create({
         ...data,
         symbol: data.symbol.toUpperCase()
       });
       
       return nuevaCriptomoneda;
     } catch (error) {
-      throw new Error(`Error al crear criptomoneda: ${error.message}`);
+      throw new Error(`Error al crear crypto: ${error.message}`);
     }
   };
 
-  Criptomoneda.updateCriptomoneda = async (id, data) => {
+  Crypto.updateCriptomoneda = async (id, data) => {
     try {
       // Si se está actualizando el símbolo, verificar que no exista
       if (data.symbol) {
-        const existingBySymbol = await Criptomoneda.findOne({
+        const existingBySymbol = await Crypto.findOne({
           where: { 
             symbol: data.symbol.toUpperCase(),
             id: { [Op.ne]: id }
@@ -254,10 +254,10 @@ function createCriptomonedaModel(sequelize) {
       }
 
       // Verificar dirección de contrato única si se actualiza
-      if (data.direccionContrato) {
-        const existingByContract = await Criptomoneda.findOne({
+      if (data.contractAddress) {
+        const existingByContract = await Crypto.findOne({
           where: { 
-            direccionContrato: data.direccionContrato,
+            contractAddress: data.contractAddress,
             id: { [Op.ne]: id }
           }
         });
@@ -267,7 +267,7 @@ function createCriptomonedaModel(sequelize) {
         }
       }
 
-      const [updatedRowsCount] = await Criptomoneda.update(data, {
+      const [updatedRowsCount] = await Crypto.update(data, {
         where: { id },
         returning: true
       });
@@ -276,16 +276,16 @@ function createCriptomonedaModel(sequelize) {
         throw new Error('Criptomoneda no encontrada');
       }
       
-      const updatedCriptomoneda = await Criptomoneda.getById(id);
+      const updatedCriptomoneda = await Crypto.getById(id);
       return updatedCriptomoneda;
     } catch (error) {
-      throw new Error(`Error al actualizar criptomoneda: ${error.message}`);
+      throw new Error(`Error al actualizar crypto: ${error.message}`);
     }
   };
 
-  Criptomoneda.deleteCriptomoneda = async (id) => {
+  Crypto.deleteCriptomoneda = async (id) => {
     try {
-      const deletedRowsCount = await Criptomoneda.destroy({
+      const deletedRowsCount = await Crypto.destroy({
         where: { id }
       });
       
@@ -295,32 +295,32 @@ function createCriptomonedaModel(sequelize) {
       
       return { message: 'Criptomoneda eliminada correctamente' };
     } catch (error) {
-      throw new Error(`Error al eliminar criptomoneda: ${error.message}`);
+      throw new Error(`Error al eliminar crypto: ${error.message}`);
     }
   };
 
   // Métodos relacionados con transacciones
-  Criptomoneda.validateForTransaction = async (symbol, amount) => {
+  Crypto.validateForTransaction = async (symbol, amount) => {
     try {
-      const criptomoneda = await Criptomoneda.getBySymbol(symbol);
+      const crypto = await Crypto.getBySymbol(symbol);
       
-      if (!criptomoneda) {
+      if (!crypto) {
         throw new Error('Criptomoneda no encontrada o inactiva');
       }
 
-      if (!criptomoneda.active) {
+      if (!crypto.active) {
         throw new Error('La criptomoneda está desactivada para transacciones');
       }
 
-      // Validar decimales
+      // Validar decimals
       const decimalPlaces = (amount.toString().split('.')[1] || '').length;
-      if (decimalPlaces > criptomoneda.decimales) {
-        throw new Error(`Máximo ${criptomoneda.decimales} decimales permitidos para ${symbol}`);
+      if (decimalPlaces > crypto.decimals) {
+        throw new Error(`Máximo ${crypto.decimals} decimals permitidos para ${symbol}`);
       }
 
       return {
         valid: true,
-        criptomoneda: criptomoneda,
+        crypto: crypto,
         message: 'Criptomoneda válida para transacción'
       };
     } catch (error) {
@@ -331,7 +331,7 @@ function createCriptomonedaModel(sequelize) {
     }
   };
 
-  return Criptomoneda;
+  return Crypto;
 }
 
-module.exports = createCriptomonedaModel;
+module.exports = createCryptoModel;

@@ -19,7 +19,7 @@ const createTransaccionBlockchainModel = require('../models/transaccionBlockchai
 
 const fakeModel = {};
 initTransaccionBlockchain.mockReturnValue(fakeModel);
-const sequelize = { transaction: jest.fn(), models: { Criptomoneda: { findByPk: jest.fn() } } };
+const sequelize = { transaction: jest.fn(), models: { Crypto: { findByPk: jest.fn() } } };
 const TransaccionBlockchain = createTransaccionBlockchainModel(sequelize);
 
 beforeEach(() => jest.clearAllMocks());
@@ -27,7 +27,7 @@ beforeEach(() => jest.clearAllMocks());
 describe('_acreditarDeposito — delega en confirmarDeposito (pendiente→disponible)', () => {
   test('confirma el depósito por la cantidad exacta, en la transacción', async () => {
     TransaccionBlockchain.update = jest.fn().mockResolvedValue([1]);
-    sequelize.models.Criptomoneda.findByPk.mockResolvedValue({ symbol: 'BTC' });
+    sequelize.models.Crypto.findByPk.mockResolvedValue({ symbol: 'BTC' });
 
     const transaccion = { id: 't1', userId: 'u', criptomonedaId: 'c', cantidad: '0.2', estado: 'confirmado' };
     await TransaccionBlockchain._acreditarDeposito(transaccion, {});

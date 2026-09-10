@@ -1,7 +1,7 @@
 // tests/transaccionesP2PController.test.js
 //
 // Cubre AUDITORIA_BACKEND.md Críticos #10 y #11:
-// - getMyTransacciones y getTransactionHistory usaban Op/Criptomoneda/User
+// - getMyTransacciones y getTransactionHistory usaban Op/Crypto/User
 //   sin importarlos — ReferenceError garantizado en ambas rutas activas.
 // - updateTransaccionStatus y lockCryptos llamaban a métodos inexistentes
 //   del modelo (TransaccionP2P.updateStatus/.lockCryptos) — se eliminaron
@@ -10,7 +10,7 @@
 
 jest.mock('../models/index.js', () => ({
   TransaccionP2P: { findAndCountAll: jest.fn(), getAll: jest.fn() },
-  Criptomoneda: {},
+  Crypto: {},
   User: {},
   OfertaP2P: {},
 }));
@@ -30,7 +30,7 @@ function mockRes() {
 describe('getMyTransacciones', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  test('no revienta con ReferenceError (Op/Criptomoneda/User ahora están importados)', async () => {
+  test('no revienta con ReferenceError (Op/Crypto/User ahora están importados)', async () => {
     TransaccionP2P.findAndCountAll.mockResolvedValue({ count: 0, rows: [] });
 
     const req = { user: { id: 'u1' }, query: {} };

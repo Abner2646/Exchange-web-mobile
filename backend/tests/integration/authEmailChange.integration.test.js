@@ -80,7 +80,7 @@ describe('cambio de email — enforcement del cooldown de retiros', () => {
       .send({ codigo: codeFor('nuevof@test.local') });
 
     // Retiro con body Joi-válido + Idempotency-Key; el check de cooldown corre
-    // primero (fail-fast) → 403 antes de tocar validación de red.
+    // primero (fail-fast) → 403 antes de tocar validación de network.
     const res = await request(app).post('/api/transaccionBlockchain/withdraw')
       .set(auth).set('Idempotency-Key', 'cooldown-1')
       .send({

@@ -165,14 +165,14 @@ class OrderValidatorService {
         };
       }
 
-      // Validar precisión de decimales
+      // Validar precisión de decimals
       const qtyString = quantity.toString();
       const decimals = qtyString.includes('.') ? qtyString.split('.')[1].length : 0;
       
       if (decimals > tradingPair.quantityPrecision) {
         return {
           valid: false,
-          error: `Máximo ${tradingPair.quantityPrecision} decimales permitidos en cantidad`
+          error: `Máximo ${tradingPair.quantityPrecision} decimals permitidos en cantidad`
         };
       }
 
@@ -201,14 +201,14 @@ class OrderValidatorService {
         };
       }
 
-      // Validar precisión de decimales
+      // Validar precisión de decimals
       const priceString = price.toString();
       const decimals = priceString.includes('.') ? priceString.split('.')[1].length : 0;
       
       if (decimals > tradingPair.pricePrecision) {
         return {
           valid: false,
-          error: `Máximo ${tradingPair.pricePrecision} decimales permitidos en precio`
+          error: `Máximo ${tradingPair.pricePrecision} decimals permitidos en precio`
         };
       }
 

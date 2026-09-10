@@ -86,7 +86,7 @@ router.get('/user/me/crypto/:criptomonedaId',  authenticateToken, requireEmailVe
 // Obtener direcciones de depósito por usuario específico (admin)
 router.get('/user/:userId', authenticateToken, isAdmin, direccionDepositoController.getDireccionesByUser);
 
-// Obtener dirección específica por usuario y criptomoneda (admin)
+// Obtener dirección específica por usuario y crypto (admin)
 router.get('/user/:userId/crypto/:criptomonedaId', authenticateToken, isAdmin, direccionDepositoController.getDireccionByUserAndCrypto);
 
 // --------------------- RUTAS POR WALLET --------------------- //

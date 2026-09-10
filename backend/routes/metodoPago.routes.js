@@ -20,7 +20,7 @@ const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
  *       required: true
  *       content:
  *         application/json:
- *           schema: { type: object, required: [nombre], properties: { nombre: { type: string, example: Mercado Pago }, descripcion: { type: string }, active: { type: boolean } } }
+ *           schema: { type: object, required: [name], properties: { name: { type: string, example: Mercado Pago }, descripcion: { type: string }, active: { type: boolean } } }
  *     responses: { 201: { description: Creado } }
  * /metodoPago/{id}:
  *   get:
@@ -40,11 +40,11 @@ const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
  *     responses: { 200: { description: Eliminado } }
  * /metodoPago/search/query:
  *   get: { tags: [Métodos de pago], summary: Buscar métodos, parameters: [{ in: query, name: q, schema: { type: string } }], responses: { 200: { description: Resultados } } }
- * /metodoPago/name/{nombre}:
+ * /metodoPago/name/{name}:
  *   get:
  *     tags: [Métodos de pago]
- *     summary: Método por nombre
- *     parameters: [{ in: path, name: nombre, required: true, schema: { type: string } }]
+ *     summary: Método por name
+ *     parameters: [{ in: path, name: name, required: true, schema: { type: string } }]
  *     responses: { 200: { description: Método } }
  * /metodoPago/status/active:
  *   get: { tags: [Métodos de pago], summary: Métodos activos, responses: { 200: { description: Activos } } }
@@ -73,7 +73,7 @@ Devuelve ej:
 [
     {
         "id": "cd323f9b-2392-47a1-83fd-69d3fb146a42",
-        "nombre": "Mercado Pago",
+        "name": "Mercado Pago",
         "descripcion": "Método confiable",
         "active": true
     }
@@ -97,7 +97,7 @@ router.delete('/:id', authenticateToken, isSuperAdmin, metodoPagoController.dele
 // Buscar métodos de pago por término
 router.get('/search/query', authenticateToken, metodoPagoController.searchMetodosPago);
 
-// Obtener método de pago por nombre
+// Obtener método de pago por name
 router.get('/name/:nombre', authenticateToken, metodoPagoController.getMetodoPagoByName);
 
 // --------------------- RUTAS DE ESTADO --------------------- //

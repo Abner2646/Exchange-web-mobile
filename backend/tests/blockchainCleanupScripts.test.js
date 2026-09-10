@@ -11,7 +11,7 @@
 jest.mock('../models', () => ({
   TransaccionBlockchain: { findAll: jest.fn().mockResolvedValue([]) },
   DireccionDeposito: {},
-  Criptomoneda: {},
+  Crypto: {},
   BlockchainState: {},
   User: {},
   BalanceUsuario: {},

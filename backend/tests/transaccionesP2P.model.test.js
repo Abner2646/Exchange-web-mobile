@@ -29,7 +29,7 @@ describe('TransaccionP2P.createTransaction — montoFiat y bloqueo exactos', () 
     sequelize.transaction.mockResolvedValue({ commit: jest.fn(), rollback: jest.fn(), finished: false });
     OfertaP2P.findByPk = jest.fn().mockResolvedValue({
       active: true, cantidadMin: '0.01', cantidadMax: '10',
-      criptomoneda: { symbol: 'BTC' }, monedaFiat: 'USD',
+      crypto: { symbol: 'BTC' }, monedaFiat: 'USD',
     });
     BalanceUsuario.getByUserAndCrypto = jest.fn().mockResolvedValue({ balanceDisponible: '5' });
     BalanceUsuario.blockBalance = jest.fn().mockResolvedValue();

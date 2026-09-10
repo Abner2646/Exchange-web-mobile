@@ -1,4 +1,4 @@
-const { Transferencia, User, Criptomoneda, BalanceUsuario, Notificaciones } = require('../models/index.js');
+const { Transferencia, User, Crypto, BalanceUsuario, Notificaciones } = require('../models/index.js');
 const { sequelize } = require('../models/index.js');
 const AppError = require('../utils/AppError');
 const errorCodes = require('../utils/errorCodes');
@@ -34,8 +34,8 @@ const createTransferencia = async (req, res) => {
     }
 
     // Verify the crypto exists and is active
-    const criptomoneda = await Criptomoneda.findByPk(criptomonedaId);
-    if (!criptomoneda || !criptomoneda.active) {
+    const crypto = await Crypto.findByPk(criptomonedaId);
+    if (!crypto || !crypto.active) {
       await transaction.rollback();
       throw new AppError(400, errorCodes.TRANSFER_RESOURCE_NOT_FOUND, 'Criptomoneda no válida');
     }
@@ -80,7 +80,7 @@ const createTransferencia = async (req, res) => {
         codigo,
         remitente.username,
         cantidad,
-        criptomoneda.symbol,
+        crypto.symbol,
         destinatario.username
       );
     } catch (emailError) {
@@ -92,7 +92,7 @@ const createTransferencia = async (req, res) => {
       data: {
         id: transferencia.id,
         cantidad,
-        criptomoneda: criptomoneda.symbol,
+        crypto: crypto.symbol,
         destinatario: destinatario.username,
         estado: transferencia.estado,
         expiracionCodigo: transferencia.expiracionCodigo,
@@ -280,7 +280,7 @@ const procesarTransferencia = async (req, res) => {
       data: {
         id: transferencia.id,
         cantidad: transferencia.cantidad,
-        criptomoneda: transferencia.criptomonedaTransferencia.symbol,
+        crypto: transferencia.criptomonedaTransferencia.symbol,
         destinatario: destinatario.username,
         estado: transferencia.estado,
         fecha: transferencia.updated_at,
@@ -357,7 +357,7 @@ const cancelarTransferencia = async (req, res) => {
       template: 'TRANSFERENCIA_CANCELADA',
       templateData: {
         cantidad: transferencia.cantidad,
-        simbolo: transferencia.criptomoneda.symbol,
+        simbolo: transferencia.crypto.symbol,
         destinatario: transferencia.destinatario.username,
       },
     });
@@ -396,14 +396,14 @@ const reenviarCodigo = async (req, res) => {
   try {
     const remitente = await User.findByPk(usuarioId);
     const destinatario = await User.findByPk(transferencia.usuarioDestinatarioId);
-    const criptomoneda = await Criptomoneda.getById(transferencia.criptomonedaId);
+    const crypto = await Crypto.getById(transferencia.criptomonedaId);
 
     await req.app.locals.emailService.enviarCodigoTransferencia(
       remitente.email,
       codigo,
       remitente.username,
       transferencia.cantidad,
-      criptomoneda.symbol,
+      crypto.symbol,
       destinatario.username
     );
   } catch (emailError) {
@@ -434,14 +434,14 @@ const verificarFondos = async (req, res) => {
     cantidad
   );
 
-  const criptomoneda = await Criptomoneda.getById(criptomonedaId);
+  const crypto = await Crypto.getById(criptomonedaId);
   const balance = await BalanceUsuario.getByUserAndCrypto(usuarioId, criptomonedaId);
 
   res.json({
     tieneFondos,
     balanceDisponible: balance ? parseFloat(balance.balanceDisponible) : 0,
     cantidadSolicitada: parseFloat(cantidad),
-    criptomoneda: criptomoneda.symbol,
+    crypto: crypto.symbol,
     suficiente: tieneFondos,
   });
 };

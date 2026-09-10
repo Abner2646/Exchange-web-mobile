@@ -14,8 +14,8 @@ function createTradeModel(sequelize) {
             model: sequelize.models.TradingPair,
             as: 'tradingPair',
             include: [
-              { model: sequelize.models.Criptomoneda, as: 'baseAsset' },
-              { model: sequelize.models.Criptomoneda, as: 'quoteAsset' }
+              { model: sequelize.models.Crypto, as: 'baseAsset' },
+              { model: sequelize.models.Crypto, as: 'quoteAsset' }
             ]
           },
           {
@@ -97,8 +97,8 @@ function createTradeModel(sequelize) {
             model: sequelize.models.TradingPair,
             as: 'tradingPair',
             include: [
-              { model: sequelize.models.Criptomoneda, as: 'baseAsset' },
-              { model: sequelize.models.Criptomoneda, as: 'quoteAsset' }
+              { model: sequelize.models.Crypto, as: 'baseAsset' },
+              { model: sequelize.models.Crypto, as: 'quoteAsset' }
             ]
           }
         ],
@@ -236,8 +236,8 @@ function createTradeModel(sequelize) {
             as: 'tradingPair',
             attributes: ['symbol'],
             include: [
-              { model: sequelize.models.Criptomoneda, as: 'baseAsset', attributes: ['symbol', 'iconUrl'] },
-              { model: sequelize.models.Criptomoneda, as: 'quoteAsset', attributes: ['symbol', 'iconUrl'] }
+              { model: sequelize.models.Crypto, as: 'baseAsset', attributes: ['symbol', 'iconUrl'] },
+              { model: sequelize.models.Crypto, as: 'quoteAsset', attributes: ['symbol', 'iconUrl'] }
             ]
           }
         ],

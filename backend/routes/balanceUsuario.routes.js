@@ -22,7 +22,7 @@ const asyncHandler = require('../utils/asyncHandler');
  *     summary: Mis balances (forma compartimentada aditiva)
  *     description: >
  *       Por cada cripto con cuenta, devuelve los totales de raíz (Funding + Spot),
- *       el desglose por compartimento y el objeto criptomoneda.
+ *       el desglose por compartimento y el objeto crypto.
  *     responses:
  *       200:
  *         description: Lista de balances del usuario autenticado
@@ -120,7 +120,7 @@ router.post('/user/:userId/crypto/:criptomonedaId/unblock', authenticateToken, i
 router.post('/transfer', authenticateToken, isAdmin, requireOperatorMFA, asyncHandler(balanceUserController.transferBalance));
 
 // RUTAS POR CRIPTOMONEDA
-// GET /api/balances/crypto/:criptomonedaId/users - Usuarios con balance en una crypto
+// GET /api/balances/crypto/:criptomonedaId/users - Usuarios con balance en una criptomoneda
 // Fix: faltaba authenticateToken antes de isAdmin (isAdmin sin req.user rechazaba
 // hasta a un admin válido → la ruta estaba de hecho rota). Agregado.
 router.get('/crypto/:criptomonedaId/users', authenticateToken, isAdmin, asyncHandler(balanceUserController.getUsersWithBalance));

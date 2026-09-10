@@ -1,5 +1,5 @@
 // controllers/tradingPairs.controller.js
-const { TradingPair, Criptomoneda } = require('../models');
+const { TradingPair, Crypto } = require('../models');
 
 class TradingPairsController {
 
@@ -301,7 +301,7 @@ class TradingPairsController {
       // ================================
       // 2. OBTENER TODAS LAS CRIPTOMONEDAS ACTIVAS
       // ================================
-      const allCryptos = await Criptomoneda.getActive();
+      const allCryptos = await Crypto.getActive();
       
       if (allCryptos.length === 0) {
         return res.status(400).json({
@@ -444,8 +444,8 @@ class TradingPairsController {
             quoteAssetId: pairData.quoteAsset.id,
             minOrderAmount: 0,
             maxOrderAmount: null,
-            pricePrecision: pairData.quoteAsset.decimales,
-            quantityPrecision: pairData.baseAsset.decimales,
+            pricePrecision: pairData.quoteAsset.decimals,
+            quantityPrecision: pairData.baseAsset.decimals,
             makerFeePercent: defaultFees.makerFeePercent,
             takerFeePercent: defaultFees.takerFeePercent
           });

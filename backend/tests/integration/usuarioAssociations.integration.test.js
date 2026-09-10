@@ -13,7 +13,7 @@
 require('../helpers/testEnv');
 const { sequelize, resetDb } = require('../helpers/db');
 const {
-  User, Criptomoneda, DireccionDeposito,
+  User, Crypto, DireccionDeposito,
   TransaccionBlockchain, WalletMaestra,
 } = require('../../models');
 
@@ -26,9 +26,9 @@ describe('Usuario associations -> direccionesDeposito / transaccionesBlockchain'
 
   test("Usuario.include('direccionesDeposito') returns the real address", async () => {
     const user = await User.create({ email: 'direcciones@test.com', username: 'direcciones_user', passwordHash: 'x', role: 'normal' });
-    const cripto = await Criptomoneda.create({ symbol: 'ETH', nombre: 'Ethereum', red: 'ethereum', decimales: 18 });
+    const cripto = await Crypto.create({ symbol: 'ETH', name: 'Ethereum', network: 'ethereum', decimals: 18 });
     const wallet = await WalletMaestra.create({
-      criptomonedaId: cripto.id, nombre: 'ETH master', red: 'ethereum', symbol: 'ETH',
+      criptomonedaId: cripto.id, name: 'ETH master', network: 'ethereum', symbol: 'ETH',
       direccionPublica: '0xmaster', xpub: 'ethxpubtest123',
     });
     await DireccionDeposito.create({
@@ -44,7 +44,7 @@ describe('Usuario associations -> direccionesDeposito / transaccionesBlockchain'
 
   test("Usuario.include('transaccionesBlockchain') returns the real transaction", async () => {
     const user = await User.create({ email: 'tx@test.com', username: 'tx_user', passwordHash: 'x', role: 'normal' });
-    const cripto = await Criptomoneda.create({ symbol: 'USDT', nombre: 'Tether', red: 'ethereum', decimales: 6 });
+    const cripto = await Crypto.create({ symbol: 'USDT', name: 'Tether', network: 'ethereum', decimals: 6 });
     await TransaccionBlockchain.create({
       userId: user.id, criptomonedaId: cripto.id, tipo: 'deposito',
       cantidad: 100, direccionDestino: '0xabc', estado: 'pendiente',

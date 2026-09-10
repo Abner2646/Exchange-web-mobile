@@ -59,9 +59,9 @@ class BalanceCheckCleanup {
           attributes: ['id', 'email']
         },
         {
-          model: require('../models').Criptomoneda,
-          as: 'criptomoneda',
-          attributes: ['id', 'symbol', 'red']
+          model: require('../models').Crypto,
+          as: 'crypto',
+          attributes: ['id', 'symbol', 'network']
         }
       ]
     });
@@ -79,9 +79,9 @@ class BalanceCheckCleanup {
           attributes: ['id', 'email']
         },
         {
-          model: require('../models').Criptomoneda,
-          as: 'criptomoneda',
-          attributes: ['id', 'symbol', 'red']
+          model: require('../models').Crypto,
+          as: 'crypto',
+          attributes: ['id', 'symbol', 'network']
         }
       ]
     });
@@ -99,9 +99,9 @@ class BalanceCheckCleanup {
           attributes: ['id', 'email']
         },
         {
-          model: require('../models').Criptomoneda,
-          as: 'criptomoneda',
-          attributes: ['id', 'symbol', 'red']
+          model: require('../models').Crypto,
+          as: 'crypto',
+          attributes: ['id', 'symbol', 'network']
         }
       ]
     });
@@ -163,7 +163,7 @@ class BalanceCheckCleanup {
           userId: tx.userId,
           criptomonedaId: tx.criptomonedaId,
           email: tx.usuario?.email,
-          symbol: tx.criptomoneda?.symbol
+          symbol: tx.crypto?.symbol
         });
       }
 

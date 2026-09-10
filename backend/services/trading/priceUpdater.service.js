@@ -113,7 +113,7 @@ class PriceUpdaterService {
 
       const data = response.data;
 
-      // Binance devuelve los precios como strings decimales exactos. Se guardan
+      // Binance devuelve los precios como strings decimals exactos. Se guardan
       // tal cual (String() es no-op si ya vienen string) para no perder dígitos
       // por el float binario: lastPrice alimenta TradingPair.lastPrice, que es el
       // input del trading engine (aritmética exacta con money.js).

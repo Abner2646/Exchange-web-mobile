@@ -268,7 +268,7 @@ const getOfertaSummary = async (req, res) => {
         count: metodosPago.length,
         metodos: metodosPago.map(m => ({
           id: m.id,
-          nombre: m.nombre
+          name: m.name
         }))
       },
       metodosDisponibles: {
@@ -342,7 +342,7 @@ const exportOfertaMetodosPago = async (req, res) => {
         relacion.oferta ? relacion.oferta.titulo : '',
         relacion.oferta ? relacion.oferta.tipo : '',
         relacion.metodoPagoId,
-        relacion.metodoPago ? relacion.metodoPago.nombre : '',
+        relacion.metodoPago ? relacion.metodoPago.name : '',
         relacion.metodoPago ? (relacion.metodoPago.active ? 'SI' : 'NO') : ''
       ].join(',');
     }).join('\n');

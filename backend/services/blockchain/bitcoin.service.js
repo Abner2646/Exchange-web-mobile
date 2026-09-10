@@ -2,7 +2,7 @@
 require('dotenv').config();
 const bitcoin = require('bitcoinjs-lib');
 const ECPair = require('ecpair');
-const { TransaccionBlockchain, DireccionDeposito, Criptomoneda, BlockchainState } = require('../../models');
+const { TransaccionBlockchain, DireccionDeposito, Crypto, BlockchainState } = require('../../models');
 
 const tinysecp = require('tiny-secp256k1');
 const ECPairFactory = ECPair.ECPairFactory(tinysecp);
@@ -19,7 +19,7 @@ class BitcoinService {
     this.networkName = profile.networkName;
     this.network = profile.bitcoinjsNetwork;
 
-    // Params operacionales overridables por env, con el default del perfil/red.
+    // Params operacionales overridables por env, con el default del perfil/network.
     this.requiredConfirmations = parseInt(process.env.BTC_REQUIRED_CONFIRMATIONS) || profile.minConfirmations;
     this.feePerByte = parseInt(process.env.BTC_FEE_PER_BYTE) || 10;
 
@@ -78,7 +78,7 @@ class BitcoinService {
         try {
           console.log(`🔍 [BTC] ================== ESCANEANDO DIRECCIÓN ${i + 1}/${direcciones.length} ==================`);
           console.log(`🔍 [BTC] Dirección: ${direccion.direccion}`);
-          console.log(`🔍 [BTC] Red en DB: ${direccion.criptomoneda.red}`);
+          console.log(`🔍 [BTC] Red en DB: ${direccion.crypto.network}`);
           console.log(`🔍 [BTC] User ID: ${direccion.userId}`);
           
           const deposits = await this.scanBitcoinAddress(direccion);
@@ -243,7 +243,7 @@ class BitcoinService {
     }
   }
 
-  // Convierte un monto en BTC (string decimal, hasta 8 decimales por la columna
+  // Convierte un monto en BTC (string decimal, hasta 8 decimals por la columna
   // DECIMAL(28,8)) al entero exacto de satoshis. Antes: Math.floor(parseFloat(
   // cantidad) * 1e8) — el float binario dejaba 0.29*1e8 en 28999999.999999996 y
   // el floor lo truncaba a 28999999, transmitiendo 1 satoshi de menos. Con
@@ -302,9 +302,9 @@ class BitcoinService {
         },
         include: [
           {
-            model: Criptomoneda,
-            as: 'criptomoneda',
-            where: { red: redesToBuscar }
+            model: Crypto,
+            as: 'crypto',
+            where: { network: redesToBuscar }
           }
         ]
       });
@@ -395,9 +395,9 @@ class BitcoinService {
         },
         include: [
           {
-            model: Criptomoneda,
-            as: 'criptomoneda',
-            where: { red: redesToBuscar }
+            model: Crypto,
+            as: 'crypto',
+            where: { network: redesToBuscar }
           }
         ]
       });
@@ -467,10 +467,10 @@ class BitcoinService {
         where: { active: true },
         include: [
           {
-            model: Criptomoneda,
-            as: 'criptomoneda',
+            model: Crypto,
+            as: 'crypto',
             where: { 
-              red: redesToBuscar, 
+              network: redesToBuscar, 
               active: true 
             }
           }
@@ -483,7 +483,7 @@ class BitcoinService {
         direcciones.forEach((dir, index) => {
           console.log(`🔧 [BTC] Dirección ${index + 1}:`);
           console.log(`  - Dirección: ${dir.direccion}`);
-          console.log(`  - Red en DB: ${dir.criptomoneda.red}`);
+          console.log(`  - Red en DB: ${dir.crypto.network}`);
           console.log(`  - User ID: ${dir.userId}`);
         });
       }

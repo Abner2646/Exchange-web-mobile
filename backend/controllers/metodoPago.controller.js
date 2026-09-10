@@ -26,16 +26,16 @@ const getMetodoPagoById = async (req, res) => {
 // Crear nuevo método de pago
 const createMetodoPago = async (req, res) => {
   try {
-    const { nombre, descripcion, active = true } = req.body;
+    const { name, descripcion, active = true } = req.body;
     
-    if (!nombre) {
+    if (!name) {
       return res.status(400).json({ 
         error: 'El nombre es requerido' 
       });
     }
 
     const nuevoMetodo = await MetodoPago.createMetodo({
-      nombre,
+      name,
       descripcion,
       active
     });
@@ -53,10 +53,10 @@ const createMetodoPago = async (req, res) => {
 const updateMetodoPago = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, descripcion, active } = req.body;
+    const { name, descripcion, active } = req.body;
 
     const updatedMetodo = await MetodoPago.updateMetodo(id, {
-      ...(nombre && { nombre }),
+      ...(name && { name }),
       ...(descripcion !== undefined && { descripcion }),
       ...(active !== undefined && { active })
     });
@@ -127,11 +127,11 @@ const getInactiveMetodosPago = async (req, res) => {
   }
 };
 
-// Obtener método de pago por nombre
+// Obtener método de pago por name
 const getMetodoPagoByName = async (req, res) => {
   try {
-    const { nombre } = req.params;
-    const metodo = await MetodoPago.getByName(nombre);
+    const { name } = req.params;
+    const metodo = await MetodoPago.getByName(name);
     
     if (!metodo) {
       return res.status(404).json({ 
@@ -280,7 +280,7 @@ const exportMetodosPago = async (req, res) => {
       const descripcion = (metodo.descripcion || '').replace(/,/g, ' ').replace(/\n/g, ' ');
       return [
         metodo.id,
-        metodo.nombre,
+        metodo.name,
         descripcion,
         metodo.active
       ].join(',');
@@ -313,13 +313,13 @@ const checkMetodoActive = async (req, res) => {
   }
 };
 
-// Obtener métodos de pago para formularios (solo nombre e id de activos)
+// Obtener métodos de pago para formularios (solo name e id de activos)
 const getMetodosForForm = async (req, res) => {
   try {
     const metodos = await MetodoPago.getActive();
     const metodosForm = metodos.map(metodo => ({
       id: metodo.id,
-      nombre: metodo.nombre,
+      name: metodo.name,
       descripcion: metodo.descripcion
     }));
     

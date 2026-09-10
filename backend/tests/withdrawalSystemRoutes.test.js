@@ -10,7 +10,7 @@ process.env.JWT_SECRET = 'test-secret';
 jest.mock('../models', () => ({
   User: { findByPk: jest.fn() },
   TransaccionBlockchain: {},
-  Criptomoneda: {},
+  Crypto: {},
   BalanceUsuario: {},
   DireccionDeposito: {},
 }));

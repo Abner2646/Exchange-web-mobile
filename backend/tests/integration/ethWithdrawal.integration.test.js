@@ -17,7 +17,7 @@ afterAll(async () => { await sequelize.close(); });
 // ETH cripto on the test network (actualNetwork = 'sepolia' under NODE_ENV=test).
 async function seedEth() {
   const eth = await f.seedCripto('ETH');       // symbol ETH
-  await eth.update({ red: 'sepolia' });         // match actualNetwork; native (no contract)
+  await eth.update({ network: 'sepolia' });         // match actualNetwork; native (no contract)
   return eth;
 }
 
@@ -88,7 +88,7 @@ describe('ETH native withdrawal — processPendingWithdrawals (fake chain)', () 
 describe('ERC20 token withdrawal — via the chain-client port', () => {
   async function seedUsdt() {
     const usdt = await f.seedCripto('USDT');
-    await usdt.update({ red: 'sepolia', direccionContrato: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' });
+    await usdt.update({ network: 'sepolia', contractAddress: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' });
     return usdt;
   }
 

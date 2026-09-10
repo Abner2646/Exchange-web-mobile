@@ -64,8 +64,8 @@ const createWalletMaestra = async (req, res) => {
   try {
     const { 
       criptomonedaId,
-      nombre,
-      red,
+      name,
+      network,
       symbol,
       xpub,                    // CRÍTICO
       derivationPath = "m/44'/0'/0'",
@@ -77,17 +77,17 @@ const createWalletMaestra = async (req, res) => {
     } = req.body;
     
     // Validaciones obligatorias
-    if (!criptomonedaId || !nombre || !red || !symbol || !xpub) {
+    if (!criptomonedaId || !name || !network || !symbol || !xpub) {
       return res.status(400).json({ 
         success: false,
-        error: 'Los campos criptomonedaId, nombre, red, symbol y xpub son requeridos',
+        error: 'Los campos criptomonedaId, name, network, symbol y xpub son requeridos',
         code: 'MISSING_REQUIRED_FIELDS',
-        required: ['criptomonedaId', 'nombre', 'red', 'symbol', 'xpub']
+        required: ['criptomonedaId', 'name', 'network', 'symbol', 'xpub']
       });
     }
 
-    // Validar formato de XPUB para la red
-    const xpubValidation = WalletMaestra.validateXpubNetwork(xpub, red);
+    // Validar formato de XPUB para la network
+    const xpubValidation = WalletMaestra.validateXpubNetwork(xpub, network);
     if (!xpubValidation.valid) {
       return res.status(400).json({
         success: false,
@@ -98,8 +98,8 @@ const createWalletMaestra = async (req, res) => {
 
     const walletData = {
       criptomonedaId,
-      nombre,
-      red: red.toLowerCase(),
+      name,
+      network: network.toLowerCase(),
       symbol: symbol.toUpperCase(),
       xpub,
       derivationPath,
@@ -121,7 +121,7 @@ const createWalletMaestra = async (req, res) => {
     res.status(201).json({ 
       success: true,
       data: nuevaWallet,
-      message: `Wallet maestra '${nombre}' creada exitosamente`,
+      message: `Wallet maestra '${name}' creada exitosamente`,
       code: 'WALLET_CREATED'
     });
   } catch (error) {
@@ -135,7 +135,7 @@ const createWalletMaestra = async (req, res) => {
 
 // =================== CONTROLADORES DE BÚSQUEDA Y CONSULTA ===================
 
-// Obtener wallet por criptomoneda específica
+// Obtener wallet por crypto específica
 const getWalletByCriptomoneda = async (req, res) => {
   try {
     const { criptomonedaId } = req.params;
@@ -175,10 +175,10 @@ const getWalletByCriptomoneda = async (req, res) => {
 // Obtener solo wallets activas con filtros
 const getActiveWallets = async (req, res) => {
   try {
-    const { red, soloActivasCrypto = true } = req.query;
+    const { network, soloActivasCrypto = true } = req.query;
     
     const options = {
-      red: red?.toLowerCase(),
+      network: network?.toLowerCase(),
       soloActivasCrypto: soloActivasCrypto === 'true'
     };
 
@@ -373,8 +373,8 @@ const exportWallets = async (req, res) => {
     const csvData = wallets.map(wallet => {
       return [
         wallet.id,
-        `"${wallet.nombre || ''}"`,
-        wallet.red || '',
+        `"${wallet.name || ''}"`,
+        wallet.network || '',
         wallet.symbol || '',
         `"${wallet.direccionPublica || ''}"`,
         wallet.balanceTotal || 0,

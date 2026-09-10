@@ -1,5 +1,5 @@
 // controllers/trades.controller.js 
-const { Trade, TradingPair, Order, PriceCandle, Criptomoneda } = require('../models');
+const { Trade, TradingPair, Order, PriceCandle, Crypto } = require('../models');
 const { Op } = require('sequelize');
 const axios = require('axios');
 const authz = require('../utils/authz');

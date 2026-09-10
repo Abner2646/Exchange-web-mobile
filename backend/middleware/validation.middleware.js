@@ -1,7 +1,7 @@
 // middleware/validation.middleware.js
 
 const { body, param, query, validationResult } = require('express-validator');
-const { Criptomoneda } = require('../models');
+const { Crypto } = require('../models');
 
 // Middleware principal para validar resultados
 const validate = (req, res, next) => {
@@ -36,7 +36,7 @@ const validateAmount = (field = 'amount') => {
     .withMessage(`${field} debe ser un número mayor a 0`);
 };
 
-// Validar dirección de criptomoneda
+// Validar dirección de crypto
 const validateAddress = (field = 'address') => {
   return body(field)
     .isString()
@@ -59,7 +59,7 @@ const validateCryptoExists = (field = 'criptomonedaId') => {
     .isUUID()
     .withMessage(`${field} debe ser un UUID válido`)
     .custom(async (value) => {
-      const crypto = await Criptomoneda.findByPk(value);
+      const crypto = await Crypto.findByPk(value);
       if (!crypto) {
         throw new Error('Criptomoneda no encontrada');
       }

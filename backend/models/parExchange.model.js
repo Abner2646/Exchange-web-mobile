@@ -13,14 +13,14 @@ function createParExchangeModel(sequelize) {
       const par = await ParExchange.findByPk(id, {
         include: [
           {
-            model: sequelize.models.Criptomoneda,
+            model: sequelize.models.Crypto,
             as: 'criptoBase',
-            attributes: ['id', 'symbol', 'nombre', 'red']
+            attributes: ['id', 'symbol', 'name', 'network']
           },
           {
-            model: sequelize.models.Criptomoneda,
+            model: sequelize.models.Crypto,
             as: 'criptoQuote',
-            attributes: ['id', 'symbol', 'nombre', 'red']
+            attributes: ['id', 'symbol', 'name', 'network']
           }
         ]
       });
@@ -84,14 +84,14 @@ function createParExchangeModel(sequelize) {
         where: whereClause,
         include: [
           {
-            model: sequelize.models.Criptomoneda,
+            model: sequelize.models.Crypto,
             as: 'criptoBase',
-            attributes: ['id', 'symbol', 'nombre', 'red']
+            attributes: ['id', 'symbol', 'name', 'network']
           },
           {
-            model: sequelize.models.Criptomoneda,
+            model: sequelize.models.Crypto,
             as: 'criptoQuote',
-            attributes: ['id', 'symbol', 'nombre', 'red']
+            attributes: ['id', 'symbol', 'name', 'network']
           }
         ],
         order: [['volumen24h', 'DESC'], ['precioActual', 'DESC']]
@@ -108,20 +108,20 @@ function createParExchangeModel(sequelize) {
       const pares = await ParExchange.findAll({
         include: [
           {
-            model: sequelize.models.Criptomoneda,
+            model: sequelize.models.Crypto,
             as: 'criptoBase',
-            attributes: ['id', 'symbol', 'nombre', 'red'],
+            attributes: ['id', 'symbol', 'name', 'network'],
             where: {
               [Op.or]: [
                 { symbol: { [Op.iLike]: `%${term}%` } },
-                { nombre: { [Op.iLike]: `%${term}%` } }
+                { name: { [Op.iLike]: `%${term}%` } }
               ]
             }
           },
           {
-            model: sequelize.models.Criptomoneda,
+            model: sequelize.models.Crypto,
             as: 'criptoQuote',
-            attributes: ['id', 'symbol', 'nombre', 'red']
+            attributes: ['id', 'symbol', 'name', 'network']
           }
         ],
         limit: parseInt(limit),
@@ -140,15 +140,15 @@ function createParExchangeModel(sequelize) {
       const par = await ParExchange.findOne({
         include: [
           {
-            model: sequelize.models.Criptomoneda,
+            model: sequelize.models.Crypto,
             as: 'criptoBase',
-            attributes: ['id', 'symbol', 'nombre', 'red'],
+            attributes: ['id', 'symbol', 'name', 'network'],
             where: { symbol: baseSymbol.toUpperCase() }
           },
           {
-            model: sequelize.models.Criptomoneda,
+            model: sequelize.models.Crypto,
             as: 'criptoQuote',
-            attributes: ['id', 'symbol', 'nombre', 'red'],
+            attributes: ['id', 'symbol', 'name', 'network'],
             where: { symbol: quoteSymbol.toUpperCase() }
           }
         ]
@@ -168,14 +168,14 @@ function createParExchangeModel(sequelize) {
         },
         include: [
           {
-            model: sequelize.models.Criptomoneda,
+            model: sequelize.models.Crypto,
             as: 'criptoBase',
-            attributes: ['id', 'symbol', 'nombre', 'red']
+            attributes: ['id', 'symbol', 'name', 'network']
           },
           {
-            model: sequelize.models.Criptomoneda,
+            model: sequelize.models.Crypto,
             as: 'criptoQuote',
-            attributes: ['id', 'symbol', 'nombre', 'red']
+            attributes: ['id', 'symbol', 'name', 'network']
           }
         ],
         order: [['volumen24h', 'DESC'], ['precioActual', 'DESC']]
@@ -195,14 +195,14 @@ function createParExchangeModel(sequelize) {
         },
         include: [
           {
-            model: sequelize.models.Criptomoneda,
+            model: sequelize.models.Crypto,
             as: 'criptoBase',
-            attributes: ['id', 'symbol', 'nombre', 'red']
+            attributes: ['id', 'symbol', 'name', 'network']
           },
           {
-            model: sequelize.models.Criptomoneda,
+            model: sequelize.models.Crypto,
             as: 'criptoQuote',
-            attributes: ['id', 'symbol', 'nombre', 'red']
+            attributes: ['id', 'symbol', 'name', 'network']
           }
         ],
         order: [['volumen24h', 'DESC'], ['precioActual', 'DESC']]
@@ -219,14 +219,14 @@ function createParExchangeModel(sequelize) {
         where: { active: true },
         include: [
           {
-            model: sequelize.models.Criptomoneda,
+            model: sequelize.models.Crypto,
             as: 'criptoBase',
-            attributes: ['id', 'symbol', 'nombre', 'red']
+            attributes: ['id', 'symbol', 'name', 'network']
           },
           {
-            model: sequelize.models.Criptomoneda,
+            model: sequelize.models.Crypto,
             as: 'criptoQuote',
-            attributes: ['id', 'symbol', 'nombre', 'red']
+            attributes: ['id', 'symbol', 'name', 'network']
           }
         ],
         order: [['volumen24h', 'DESC'], ['precioActual', 'DESC']]
@@ -247,14 +247,14 @@ function createParExchangeModel(sequelize) {
         },
         include: [
           {
-            model: sequelize.models.Criptomoneda,
+            model: sequelize.models.Crypto,
             as: 'criptoBase',
-            attributes: ['id', 'symbol', 'nombre', 'red']
+            attributes: ['id', 'symbol', 'name', 'network']
           },
           {
-            model: sequelize.models.Criptomoneda,
+            model: sequelize.models.Crypto,
             as: 'criptoQuote',
-            attributes: ['id', 'symbol', 'nombre', 'red']
+            attributes: ['id', 'symbol', 'name', 'network']
           }
         ],
         order: [['volumen24h', 'DESC']],
@@ -275,14 +275,14 @@ function createParExchangeModel(sequelize) {
         },
         include: [
           {
-            model: sequelize.models.Criptomoneda,
+            model: sequelize.models.Crypto,
             as: 'criptoBase',
-            attributes: ['id', 'symbol', 'nombre', 'red']
+            attributes: ['id', 'symbol', 'name', 'network']
           },
           {
-            model: sequelize.models.Criptomoneda,
+            model: sequelize.models.Crypto,
             as: 'criptoQuote',
-            attributes: ['id', 'symbol', 'nombre', 'red']
+            attributes: ['id', 'symbol', 'name', 'network']
           }
         ],
         order: [['comisionPorcentaje', 'DESC']]
@@ -305,14 +305,14 @@ function createParExchangeModel(sequelize) {
         },
         include: [
           {
-            model: sequelize.models.Criptomoneda,
+            model: sequelize.models.Crypto,
             as: 'criptoBase',
-            attributes: ['id', 'symbol', 'nombre', 'red']
+            attributes: ['id', 'symbol', 'name', 'network']
           },
           {
-            model: sequelize.models.Criptomoneda,
+            model: sequelize.models.Crypto,
             as: 'criptoQuote',
-            attributes: ['id', 'symbol', 'nombre', 'red']
+            attributes: ['id', 'symbol', 'name', 'network']
           }
         ],
         order: [['ultimaActualizacion', 'ASC']]
@@ -390,9 +390,9 @@ function createParExchangeModel(sequelize) {
         ],
         include: [
           {
-            model: sequelize.models.Criptomoneda,
+            model: sequelize.models.Crypto,
             as: 'criptoBase',
-            attributes: ['symbol', 'nombre']
+            attributes: ['symbol', 'name']
           }
         ],
         where: { active: true },
@@ -411,9 +411,9 @@ function createParExchangeModel(sequelize) {
         ],
         include: [
           {
-            model: sequelize.models.Criptomoneda,
+            model: sequelize.models.Crypto,
             as: 'criptoQuote',
-            attributes: ['symbol', 'nombre']
+            attributes: ['symbol', 'name']
           }
         ],
         where: { active: true },
@@ -432,12 +432,12 @@ function createParExchangeModel(sequelize) {
         attributes: ['id', 'cambiosPorcentaje24h'],
         include: [
           {
-            model: sequelize.models.Criptomoneda,
+            model: sequelize.models.Crypto,
             as: 'criptoBase',
             attributes: ['symbol']
           },
           {
-            model: sequelize.models.Criptomoneda,
+            model: sequelize.models.Crypto,
             as: 'criptoQuote',
             attributes: ['symbol']
           }
@@ -490,8 +490,8 @@ function createParExchangeModel(sequelize) {
       }
 
       // Verificar que las criptomonedas existen
-      const criptoBase = await sequelize.models.Criptomoneda.findByPk(data.criptoBaseId);
-      const criptoQuote = await sequelize.models.Criptomoneda.findByPk(data.criptoQuoteId);
+      const criptoBase = await sequelize.models.Crypto.findByPk(data.criptoBaseId);
+      const criptoQuote = await sequelize.models.Crypto.findByPk(data.criptoQuoteId);
       
       if (!criptoBase || !criptoQuote) {
         throw new Error('Una o ambas criptomonedas no existen');

@@ -1,13 +1,13 @@
 /*
-// Las wallets maestras son ÚNICAS por criptomoneda
+// Las wallets maestras son ÚNICAS por crypto
 // Las crea UN ADMIN o el SISTEMA automáticamente
 // NO cada usuario
 
-Cada usuario recibe una dirección única para cada criptomoneda, derivada de la wallet maestra.
+Cada usuario recibe una dirección única para cada crypto, derivada de la wallet maestra.
 ¿Cuándo se crea?
 Se crea AUTOMÁTICAMENTE cuando:
 1. User se registra (todas las cryptos soportadas)
-2. Se agrega una nueva criptomoneda al sistema
+2. Se agrega una nueva crypto al sistema
 
 // Ejemplo: Solo UNA wallet maestra para Bitcoin
 {
@@ -84,12 +84,12 @@ function initWalletMaestra(sequelize) {
     // ========== CAMPOS NUEVOS PARA HD WALLETS ==========
     
     // Información descriptiva
-    nombre: {
+    name: {
       type: DataTypes.STRING(100),
       allowNull: false,
       comment: 'Nombre descriptivo de la wallet (ej: "Bitcoin Master Wallet")'
     },
-    red: {
+    network: {
       type: DataTypes.STRING(50),
       allowNull: false,
       comment: 'Red blockchain (bitcoin, ethereum, bsc, etc.)'
@@ -187,7 +187,7 @@ function initWalletMaestra(sequelize) {
       },
       {
         unique: true,
-        fields: ['red', 'symbol'],
+        fields: ['network', 'symbol'],
         name: 'wallets_maestras_red_symbol_unique'
       },
       {
@@ -206,11 +206,11 @@ function initWalletMaestra(sequelize) {
     
     // Validaciones a nivel de modelo
     validate: {
-      // Validar que xpub corresponde a la red
+      // Validar que xpub corresponde a la network
       xpubMatchesNetwork() {
-        if (this.xpub && this.red) {
+        if (this.xpub && this.network) {
           // Bitcoin: acepta mainnet y testnet
-          if (this.red === 'bitcoin') {
+          if (this.network === 'bitcoin') {
             const validBitcoinPrefixes = ['xpub', 'ypub', 'zpub', 'tpub', 'upub', 'vpub'];
             const isValidBitcoin = validBitcoinPrefixes.some(prefix => 
               this.xpub.startsWith(prefix)
@@ -222,12 +222,12 @@ function initWalletMaestra(sequelize) {
           }
           
           // Ethereum usa formato diferente
-          if (this.red === 'ethereum' && this.xpub.startsWith('xpub')) {
+          if (this.network === 'ethereum' && this.xpub.startsWith('xpub')) {
             throw new Error('XPUB de Ethereum no debe usar formato Bitcoin');
           }
           
           // BSC puede usar formato ethereum o propio
-          if (this.red === 'bsc') {
+          if (this.network === 'bsc') {
             const validBscPrefixes = ['epub', 'bpub', 'upub'];
             const startsWithBitcoinPrefix = this.xpub.startsWith('xpub') || 
                                             this.xpub.startsWith('ypub') || 
@@ -251,7 +251,7 @@ function initWalletMaestra(sequelize) {
     // Hooks para mantenimiento automático
     hooks: {
       beforeCreate: async (wallet, options) => {
-        // Validar que no existe otra wallet para la misma criptomoneda
+        // Validar que no existe otra wallet para la misma crypto
         const existing = await WalletMaestra.findOne({
           where: { criptomonedaId: wallet.criptomonedaId },
           transaction: options.transaction
@@ -310,7 +310,7 @@ function initWalletMaestra(sequelize) {
       },
       
       afterCreate: async (wallet, options) => {
-        console.log(`Nueva wallet maestra creada: ${wallet.nombre} (${wallet.symbol})`);
+        console.log(`Nueva wallet maestra creada: ${wallet.name} (${wallet.symbol})`);
       }
     }
   });

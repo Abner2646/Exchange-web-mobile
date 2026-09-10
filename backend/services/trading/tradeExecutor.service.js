@@ -79,7 +79,7 @@ class TradeExecutorService {
 
       const updateData = {
         quantityFilled: newFilled,
-        quantityRemaining: dustCompare < 0 ? '0' : newRemaining, // Evitar decimales residuales
+        quantityRemaining: dustCompare < 0 ? '0' : newRemaining, // Evitar decimals residuales
         averagePrice: newAveragePrice,
         makerOrTaker: isMaker ? 'maker' : 'taker',
         status: dustCompare <= 0 ? 'filled' : 'partially_filled'

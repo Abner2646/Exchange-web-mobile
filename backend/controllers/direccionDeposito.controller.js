@@ -243,7 +243,7 @@ const getMyDirecciones = async (req, res) => {
   }
 };
 
-// Obtener dirección específica por usuario y criptomoneda
+// Obtener dirección específica por usuario y crypto
 const getDireccionByUserAndCrypto = async (req, res) => {
   try {
     const { userId, criptomonedaId } = req.params;

@@ -10,7 +10,7 @@ afterAll(async () => { await sequelize.close(); });
 
 async function seedEth() {
   const eth = await f.seedCripto('ETH');
-  await eth.update({ red: 'sepolia' });
+  await eth.update({ network: 'sepolia' });
   return eth;
 }
 

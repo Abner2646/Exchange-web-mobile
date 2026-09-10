@@ -53,7 +53,7 @@ describe('models/index.js ya no exporta los modelos de los dominios borrados', (
   });
 
   test('el resto de los modelos activos sigue exportado (nada colateral se rompió)', () => {
-    for (const name of ['User', 'BalanceUsuario', 'Criptomoneda', 'TransaccionP2P',
+    for (const name of ['User', 'BalanceUsuario', 'Crypto', 'TransaccionP2P',
       'TransaccionBlockchain', 'Valoracion', 'WalletMaestra']) {
       expect(models[name]).toBeDefined();
     }

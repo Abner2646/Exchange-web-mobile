@@ -1,9 +1,9 @@
 const { Op } = require('sequelize');
-// Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #10): Op, Criptomoneda y
+// Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #10): Op, Crypto y
 // User se usaban en getMyTransacciones y getTransactionHistory sin estar
 // importados acá — ReferenceError garantizado en las dos rutas activas
 // GET /me/transacciones y GET /history/:otroUsuarioId.
-const { TransaccionP2P, Criptomoneda, User } = require('../models/index.js');
+const { TransaccionP2P, Crypto, User } = require('../models/index.js');
 const AppError = require('../utils/AppError');
 const errorCodes = require('../utils/errorCodes');
 const authz = require('../utils/authz');
@@ -92,7 +92,7 @@ const createTransaccion = async (req, res) => {
   // Fetch offer data
   const { OfertaP2P } = require('../models/index.js');
   const oferta = await OfertaP2P.findByPk(ofertaId, {
-    include: ['criptomoneda']
+    include: ['crypto']
   });
 
   if (!oferta) {
@@ -227,9 +227,9 @@ const getMyTransacciones = async (req, res) => {
     where: whereCondition,
     include: [
       {
-        model: Criptomoneda,
-        as: 'criptomoneda',
-        attributes: ['id', 'symbol', 'nombre', 'iconUrl']
+        model: Crypto,
+        as: 'crypto',
+        attributes: ['id', 'symbol', 'name', 'iconUrl']
       },
       {
         model: User,

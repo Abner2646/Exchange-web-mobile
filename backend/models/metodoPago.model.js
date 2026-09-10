@@ -24,15 +24,15 @@ function createMetodoPagoModel(sequelize) {
         whereClause.active = filters.active === 'true';
       }
       
-      if (filters.nombre) {
-        whereClause.nombre = {
-          [Op.iLike]: `%${filters.nombre}%`
+      if (filters.name) {
+        whereClause.name = {
+          [Op.iLike]: `%${filters.name}%`
         };
       }
 
       const metodosPago = await MetodoPago.findAll({
         where: whereClause,
-        order: [['nombre', 'ASC']]
+        order: [['name', 'ASC']]
       });
       
       return metodosPago;
@@ -46,12 +46,12 @@ function createMetodoPagoModel(sequelize) {
       const metodosPago = await MetodoPago.findAll({
         where: {
           [Op.or]: [
-            { nombre: { [Op.iLike]: `%${term}%` } },
+            { name: { [Op.iLike]: `%${term}%` } },
             { descripcion: { [Op.iLike]: `%${term}%` } }
           ]
         },
         limit: parseInt(limit),
-        order: [['nombre', 'ASC']]
+        order: [['name', 'ASC']]
       });
       
       return metodosPago;
@@ -65,7 +65,7 @@ function createMetodoPagoModel(sequelize) {
     try {
       const metodosPago = await MetodoPago.findAll({
         where: { active: true },
-        order: [['nombre', 'ASC']]
+        order: [['name', 'ASC']]
       });
       return metodosPago;
     } catch (error) {
@@ -77,7 +77,7 @@ function createMetodoPagoModel(sequelize) {
     try {
       const metodosPago = await MetodoPago.findAll({
         where: { active: false },
-        order: [['nombre', 'ASC']]
+        order: [['name', 'ASC']]
       });
       return metodosPago;
     } catch (error) {
@@ -85,11 +85,11 @@ function createMetodoPagoModel(sequelize) {
     }
   };
 
-  MetodoPago.getByName = async (nombre) => {
+  MetodoPago.getByName = async (name) => {
     try {
       const metodoPago = await MetodoPago.findOne({
         where: { 
-          nombre: { [Op.iLike]: nombre }
+          name: { [Op.iLike]: name }
         }
       });
       return metodoPago;
@@ -123,10 +123,10 @@ function createMetodoPagoModel(sequelize) {
   // Métodos CRUD
   MetodoPago.createMetodo = async (data) => {
     try {
-      // Verificar si ya existe un método con el mismo nombre
+      // Verificar si ya existe un método con el mismo name
       const existingMetodo = await MetodoPago.findOne({
         where: { 
-          nombre: { [Op.iLike]: data.nombre }
+          name: { [Op.iLike]: data.name }
         }
       });
       
@@ -143,11 +143,11 @@ function createMetodoPagoModel(sequelize) {
 
   MetodoPago.updateMetodo = async (id, data) => {
     try {
-      // Si se está actualizando el nombre, verificar que no exista
-      if (data.nombre) {
+      // Si se está actualizando el name, verificar que no exista
+      if (data.name) {
         const existingMetodo = await MetodoPago.findOne({
           where: { 
-            nombre: { [Op.iLike]: data.nombre },
+            name: { [Op.iLike]: data.name },
             id: { [Op.ne]: id }
           }
         });
@@ -252,7 +252,7 @@ function createMetodoPagoModel(sequelize) {
       // Por ahora devuelve los métodos activos ordenados alfabéticamente
       const metodosPopulares = await MetodoPago.findAll({
         where: { active: true },
-        order: [['nombre', 'ASC']],
+        order: [['name', 'ASC']],
         limit: parseInt(limit)
       });
       
@@ -288,12 +288,12 @@ function createMetodoPagoModel(sequelize) {
   MetodoPago.getForExport = async () => {
     try {
       const metodos = await MetodoPago.findAll({
-        order: [['nombre', 'ASC']]
+        order: [['name', 'ASC']]
       });
       
       return metodos.map(metodo => ({
         id: metodo.id,
-        nombre: metodo.nombre,
+        name: metodo.name,
         descripcion: metodo.descripcion || '',
         active: metodo.active ? 'SI' : 'NO'
       }));

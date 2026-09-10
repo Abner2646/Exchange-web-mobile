@@ -145,7 +145,7 @@ class TransaccionBlockchainSchema {
       })
   });
 
-  // Validar direcciones por red
+  // Validar direcciones por network
   validateAddress(address, network) {
     let schema;
     

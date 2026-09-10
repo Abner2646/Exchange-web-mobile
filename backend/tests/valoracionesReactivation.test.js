@@ -7,7 +7,7 @@
 // - getTopRatedUsers y getUsersRatingSummary (controller) usaban Op y
 //   sequelize sin importarlos — ReferenceError garantizado.
 // - Todo el resto de valoracion.model.js (9 lugares, no solo esos 2)
-//   pedía las columnas 'nombre' y 'reputacion' de User, que no
+//   pedía las columnas 'name' y 'reputacion' de User, que no
 //   existen — el campo real es 'username' y 'averageRating'. Esto
 //   es un error a nivel SQL (columna inexistente), no solo JS.
 
@@ -54,10 +54,10 @@ describeIfDb('Valoracion.getById — la query real contra Postgres (no un mock)'
     await sequelize.close();
   });
 
-  test('no revienta con "column usuario.nombre does not exist" (aunque no haya ninguna fila)', async () => {
+  test('no revienta con "column usuario.name does not exist" (aunque no haya ninguna fila)', async () => {
     // No hace falta que exista la valoración: Sequelize igual compila y
     // ejecuta el SELECT con los JOIN/attributes de las asociaciones
-    // 'evaluador'/'evaluado' (antes pedían 'nombre'/'reputacion', columnas
+    // 'evaluador'/'evaluado' (antes pedían 'name'/'reputacion', columnas
     // que no existen) — eso es lo que falla a nivel SQL, no la ausencia
     // de filas. findByPk con un id que no matchea devuelve null sin
     // tirar excepción, PERO solo si la query en sí es válida.

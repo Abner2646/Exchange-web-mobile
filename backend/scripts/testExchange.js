@@ -286,7 +286,7 @@ class ExchangeTester {
         await api.post('/', {
           parId: TEST_DATA.parId,
           tipo: 'compra',
-          cantidadBase: 0.123456789, // 9 decimales (máximo 8)
+          cantidadBase: 0.123456789, // 9 decimals (máximo 8)
           precio: 45000
         });
       } catch (error) {

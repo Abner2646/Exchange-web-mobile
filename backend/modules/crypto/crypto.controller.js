@@ -1,21 +1,21 @@
-const { Criptomoneda } = require('../models/index.js');
+const { Crypto } = require('../../models/index.js');
 
 // Listar criptomonedas
 const getCriptomonedas = async (req, res) => {
   try {
     const filters = { ...req.query };
-    const result = await Criptomoneda.getAll(filters);
+    const result = await Crypto.getAll(filters);
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-// Obtener criptomoneda por ID
+// Obtener crypto por ID
 const getCriptomonedaById = async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await Criptomoneda.getById(id);
+    const result = await Crypto.getById(id);
     if (!result) return res.status(404).json({ error: 'Criptomoneda no encontrada' });
     res.json(result);
   } catch (error) {
@@ -23,31 +23,31 @@ const getCriptomonedaById = async (req, res) => {
   }
 };
 
-// Crear nueva criptomoneda
-const createCriptomoneda = async (req, res) => {
+// Crear nueva crypto
+const createCrypto = async (req, res) => {
   try {
     const { 
       symbol, 
-      nombre, 
-      red, 
-      direccionContrato, 
-      decimales = 18, 
+      name, 
+      network, 
+      contractAddress, 
+      decimals = 18, 
       active = true,
       iconUrl // ✨ NUEVO
     } = req.body;
     
-    if (!symbol || !nombre || !red) {
+    if (!symbol || !name || !network) {
       return res.status(400).json({ 
-        error: 'Los campos symbol, nombre y red son requeridos' 
+        error: 'Los campos symbol, name y network son requeridos' 
       });
     }
 
-    const nuevaCriptomoneda = await Criptomoneda.createCriptomoneda({
+    const nuevaCriptomoneda = await Crypto.createCrypto({
       symbol,
-      nombre,
-      red,
-      direccionContrato,
-      decimales,
+      name,
+      network,
+      contractAddress,
+      decimals,
       active,
       iconUrl // ✨ NUEVO
     });
@@ -61,26 +61,26 @@ const createCriptomoneda = async (req, res) => {
   }
 };
 
-// Actualizar criptomoneda por ID
+// Actualizar crypto por ID
 const updateCriptomoneda = async (req, res) => {
   try {
     const { id } = req.params;
     const { 
       symbol, 
-      nombre, 
-      red, 
-      direccionContrato, 
-      decimales, 
+      name, 
+      network, 
+      contractAddress, 
+      decimals, 
       active,
       iconUrl // ✨ NUEVO
     } = req.body;
 
-    const updatedCriptomoneda = await Criptomoneda.updateCriptomoneda(id, {
+    const updatedCriptomoneda = await Crypto.updateCriptomoneda(id, {
       ...(symbol && { symbol }),
-      ...(nombre && { nombre }),
-      ...(red && { red }),
-      ...(direccionContrato !== undefined && { direccionContrato }),
-      ...(decimales !== undefined && { decimales }),
+      ...(name && { name }),
+      ...(network && { network }),
+      ...(contractAddress !== undefined && { contractAddress }),
+      ...(decimals !== undefined && { decimals }),
       ...(active !== undefined && { active }),
       ...(iconUrl !== undefined && { iconUrl }) // ✨ NUEVO
     });
@@ -94,18 +94,18 @@ const updateCriptomoneda = async (req, res) => {
   }
 };
 
-// Eliminar criptomoneda por ID
+// Eliminar crypto por ID
 const deleteCriptomoneda = async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await Criptomoneda.deleteCriptomoneda(id);
+    const result = await Crypto.deleteCriptomoneda(id);
     res.json(result);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 };
 
-// Actualizar estado de criptomoneda
+// Actualizar estado de crypto
 const updateCriptomonedaStatus = async (req, res) => {
   try {
     const { id } = req.params;
@@ -115,9 +115,9 @@ const updateCriptomonedaStatus = async (req, res) => {
       return res.status(400).json({ error: 'El campo active debe ser un valor booleano' });
     }
 
-    const updated = await Criptomoneda.updateStatus(id, active);
+    const updated = await Crypto.updateStatus(id, active);
     res.json({ 
-      message: `Criptomoneda ${active ? 'activada' : 'desactivada'} exitosamente`, 
+      message: `Crypto ${active ? 'activada' : 'desactivada'} exitosamente`, 
       data: updated 
     });
   } catch (error) {
@@ -125,21 +125,21 @@ const updateCriptomonedaStatus = async (req, res) => {
   }
 };
 
-// Alternar estado de criptomoneda
+// Alternar estado de crypto
 const toggleCriptomonedaStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const criptomoneda = await Criptomoneda.getById(id);
+    const crypto = await Crypto.getById(id);
     
-    if (!criptomoneda) {
+    if (!crypto) {
       return res.status(404).json({ error: 'Criptomoneda no encontrada' });
     }
 
-    const newStatus = !criptomoneda.active;
-    const updated = await Criptomoneda.updateStatus(id, newStatus);
+    const newStatus = !crypto.active;
+    const updated = await Crypto.updateStatus(id, newStatus);
     
     res.json({ 
-      message: `Criptomoneda ${newStatus ? 'activada' : 'desactivada'} exitosamente`, 
+      message: `Crypto ${newStatus ? 'activada' : 'desactivada'} exitosamente`, 
       data: updated 
     });
   } catch (error) {
@@ -156,7 +156,7 @@ const searchCriptomonedas = async (req, res) => {
       return res.status(400).json({ error: 'Parámetro de búsqueda requerido' });
     }
 
-    const result = await Criptomoneda.search(term, limit);
+    const result = await Crypto.search(term, limit);
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -166,7 +166,7 @@ const searchCriptomonedas = async (req, res) => {
 // Obtener estadísticas de criptomonedas
 const getCriptomonedaStats = async (req, res) => {
   try {
-    const stats = await Criptomoneda.getStats();
+    const stats = await Crypto.getStats();
     res.json(stats);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -176,18 +176,18 @@ const getCriptomonedaStats = async (req, res) => {
 // Obtener solo criptomonedas activas
 const getCriptomonedasActivas = async (req, res) => {
   try {
-    const criptomonedas = await Criptomoneda.getActive();
+    const criptomonedas = await Crypto.getActive();
     res.json(criptomonedas);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-// Obtener criptomoneda por símbolo
+// Obtener crypto por símbolo
 const getCriptomonedaBySymbol = async (req, res) => {
   try {
     const { symbol } = req.params;
-    const result = await Criptomoneda.getBySymbol(symbol);
+    const result = await Crypto.getBySymbol(symbol);
     
     if (!result) {
       return res.status(404).json({ error: 'Criptomoneda no encontrada' });
@@ -199,22 +199,22 @@ const getCriptomonedaBySymbol = async (req, res) => {
   }
 };
 
-// Obtener criptomonedas por red
+// Obtener criptomonedas por network
 const getCriptomonedasByNetwork = async (req, res) => {
   try {
     const { network } = req.params;
-    const result = await Criptomoneda.getByNetwork(network);
+    const result = await Crypto.getByNetwork(network);
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-// Obtener criptomoneda por dirección de contrato
+// Obtener crypto por dirección de contrato
 const getCriptomonedaByContract = async (req, res) => {
   try {
     const { address } = req.params;
-    const result = await Criptomoneda.getByContractAddress(address);
+    const result = await Crypto.getByContractAddress(address);
     
     if (!result) {
       return res.status(404).json({ error: 'Criptomoneda no encontrada para esa dirección de contrato' });
@@ -226,7 +226,7 @@ const getCriptomonedaByContract = async (req, res) => {
   }
 };
 
-// Validar criptomoneda para transacción
+// Validar crypto para transacción
 const validateForTransaction = async (req, res) => {
   try {
     const { symbol, amount } = req.body;
@@ -237,7 +237,7 @@ const validateForTransaction = async (req, res) => {
       });
     }
 
-    const result = await Criptomoneda.validateForTransaction(symbol, parseFloat(amount));
+    const result = await Crypto.validateForTransaction(symbol, parseFloat(amount));
     
     if (result.valid) {
       res.json(result);
@@ -253,16 +253,16 @@ const validateForTransaction = async (req, res) => {
 const generateIconUrl = async (req, res) => {
   try {
     const { id } = req.params;
-    const criptomoneda = await Criptomoneda.getById(id);
+    const crypto = await Crypto.getById(id);
     
-    if (!criptomoneda) {
+    if (!crypto) {
       return res.status(404).json({ error: 'Criptomoneda no encontrada' });
     }
 
     // SVG transparente
-    const iconUrl = `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/svg/color/${criptomoneda.symbol.toLowerCase()}.svg`;
+    const iconUrl = `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/svg/color/${crypto.symbol.toLowerCase()}.svg`;
     
-    const updated = await Criptomoneda.updateCriptomoneda(id, { iconUrl });
+    const updated = await Crypto.updateCriptomoneda(id, { iconUrl });
     
     res.json({
       message: 'URL de icono SVG transparente generada',
@@ -276,13 +276,13 @@ const generateIconUrl = async (req, res) => {
 // ✨ Generar todos con SVG transparente
 const generateAllIconUrls = async (req, res) => {
   try {
-    const criptomonedas = await Criptomoneda.getAll({});
+    const criptomonedas = await Crypto.getAll({});
     const updated = [];
     
     for (const crypto of criptomonedas) {
       if (!crypto.iconUrl) {
         const iconUrl = `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/svg/color/${crypto.symbol.toLowerCase()}.svg`;
-        const updatedCrypto = await Criptomoneda.updateCriptomoneda(crypto.id, { iconUrl });
+        const updatedCrypto = await Crypto.updateCriptomoneda(crypto.id, { iconUrl });
         updated.push(updatedCrypto);
       }
     }
@@ -299,7 +299,7 @@ const generateAllIconUrls = async (req, res) => {
 module.exports = {
   getCriptomonedas,
   getCriptomonedaById,
-  createCriptomoneda,
+  createCrypto,
   updateCriptomoneda,
   deleteCriptomoneda,
   updateCriptomonedaStatus,

@@ -687,7 +687,7 @@ User.toggle2FA = async (id, nuevoEstado) => {
     }
 
     // Radar #14: `username` es el handle de login — INMUTABLE por self-service
-    // (no está en la whitelist). El nombre mostrado editable es `displayName`. Los
+    // (no está en la whitelist). El name mostrado editable es `displayName`. Los
     // campos de identidad KYC (legalName/dateOfBirth/taxId) se setean por el
     // flujo de KYC (§4.7), no por edición libre de perfil. La whitelist además
     // corta cualquier mass-assignment (role, límites, flag AML no son editables acá).
@@ -792,7 +792,7 @@ User.toggle2FA = async (id, nuevoEstado) => {
     if (existente && existente.id !== id) throw new Error('El email ya está en uso');
 
     const emailViejo = user.email;
-    const businessConfig = require('../../services/config/businessConfig');
+    const businessConfig = require('../config/businessConfig');
     const horas = await businessConfig.getNumber('cooldown_retiro_cambio_email_horas', 24);
     const cooldownHasta = new Date(Date.now() + horas * 60 * 60 * 1000);
 

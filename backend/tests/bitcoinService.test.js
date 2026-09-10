@@ -10,7 +10,7 @@
 jest.mock('../models', () => ({
   TransaccionBlockchain: { createDeposit: jest.fn() },
   DireccionDeposito: {},
-  Criptomoneda: {},
+  Crypto: {},
   BlockchainState: {},
 }));
 
@@ -21,11 +21,11 @@ const { BITCOIN_PROFILES } = require('../config/networks/bitcoin');
 
 const svc = new BitcoinService();
 
-// Fase 3: el service consume el NetworkProfile INYECTADO (red, explorador,
+// Fase 3: el service consume el NetworkProfile INYECTADO (network, explorador,
 // confirmaciones) en vez de leer env desde adentro — mismo mecanismo que permite
 // aislar testnet/mainnet en tests y, más adelante, inyectar un provider fake.
 describe('bitcoin.service — NetworkProfile inyectado', () => {
-  test('mainnet profile → red bitcoin, explorador main', () => {
+  test('mainnet profile → network bitcoin, explorador main', () => {
     const s = new BitcoinService(BITCOIN_PROFILES.mainnet);
     expect(s.network).toBe(bitcoin.networks.bitcoin);
     expect(s.networkName).toBe('mainnet');
@@ -33,7 +33,7 @@ describe('bitcoin.service — NetworkProfile inyectado', () => {
     expect(s.requiredConfirmations).toBe(3);
   });
 
-  test('testnet profile → red testnet, explorador test3', () => {
+  test('testnet profile → network testnet, explorador test3', () => {
     const s = new BitcoinService(BITCOIN_PROFILES.testnet);
     expect(s.network).toBe(bitcoin.networks.testnet);
     expect(s.networkName).toBe('testnet3');

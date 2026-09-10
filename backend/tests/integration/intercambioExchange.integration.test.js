@@ -76,7 +76,7 @@ describe('POST /api/intercambioExchange (swap) — buy', () => {
 
     const res = await request(app).get('/api/intercambioExchange/me/balances').set(f.authHeader(user));
     expect(res.status).toBe(200);
-    const usdtEntry = res.body.find((b) => b.criptomoneda.symbol === 'USDT');
+    const usdtEntry = res.body.find((b) => b.crypto.symbol === 'USDT');
     expect(usdtEntry.balanceDisponible).toBe('0.69700000');
     // Forma unificada (2026-09-03): este endpoint ahora expone el desglose por
     // compartimento, igual que /balances/my/balances. Sin saldo Spot → funding
@@ -95,10 +95,10 @@ describe('POST /api/intercambioExchange (swap) — buy', () => {
 
     const res = await request(app).get('/api/intercambioExchange/me/balances').set(f.authHeader(user));
     expect(res.status).toBe(200);
-    const symbols = res.body.map((b) => b.criptomoneda.symbol);
+    const symbols = res.body.map((b) => b.crypto.symbol);
     expect(symbols).toContain('BTC');
     expect(symbols).not.toContain('USDT'); // sin movimiento en el ledger
-    const btcEntry = res.body.find((b) => b.criptomoneda.symbol === 'BTC');
+    const btcEntry = res.body.find((b) => b.crypto.symbol === 'BTC');
     expect(btcEntry.balanceDisponible).toBe('2.00000000');
   });
 });

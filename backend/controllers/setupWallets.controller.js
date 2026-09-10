@@ -1,5 +1,5 @@
 // controllers/setupWallets.controller.js
-const { WalletMaestra, Criptomoneda, sequelize } = require('../models');
+const { WalletMaestra, Crypto, sequelize } = require('../models');
 const bip39 = require('bip39');
 const bitcoin = require('bitcoinjs-lib');
 const ecc = require('tiny-secp256k1');
@@ -13,178 +13,178 @@ const CRIPTOMONEDAS_BASICAS = [
   // ========== NATIVAS CON WALLET ==========
   {
     symbol: 'BTC',
-    nombre: 'Bitcoin',
-    red: 'bitcoin',
+    name: 'Bitcoin',
+    network: 'bitcoin',
     derivationPath: "m/84'/1'/0'",
-    decimales: 8,
-    direccionContrato: null,
+    decimals: 8,
+    contractAddress: null,
     tieneWallet: true
   },
   {
     symbol: 'ETH',
-    nombre: 'Ethereum',
-    red: 'ethereum',
+    name: 'Ethereum',
+    network: 'ethereum',
     derivationPath: "m/44'/60'/0'",
-    decimales: 18,
-    direccionContrato: null,
+    decimals: 18,
+    contractAddress: null,
     tieneWallet: true
   },
   {
     symbol: 'BNB',
-    nombre: 'BNB Smart Chain',
-    red: 'bsc',
+    name: 'BNB Smart Chain',
+    network: 'bsc',
     derivationPath: "m/44'/60'/0'",
-    decimales: 18,
-    direccionContrato: null,
+    decimals: 18,
+    contractAddress: null,
     tieneWallet: true
   },
   
   // ========== STABLECOINS (TOKENS ERC-20) ==========
   {
     symbol: 'USDT',
-    nombre: 'Tether USD',
-    red: 'ethereum',
-    decimales: 6,
-    direccionContrato: process.env.USDT_CONTRACT_ADDRESS || '0x7169D38820dfd117C3FA1f22a697dBA58d90BA06',
+    name: 'Tether USD',
+    network: 'ethereum',
+    decimals: 6,
+    contractAddress: process.env.USDT_CONTRACT_ADDRESS || '0x7169D38820dfd117C3FA1f22a697dBA58d90BA06',
     tieneWallet: false
   },
   {
     symbol: 'USDC',
-    nombre: 'USD Coin',
-    red: 'ethereum',
-    decimales: 6,
-    direccionContrato: process.env.USDC_CONTRACT_ADDRESS || null,
+    name: 'USD Coin',
+    network: 'ethereum',
+    decimals: 6,
+    contractAddress: process.env.USDC_CONTRACT_ADDRESS || null,
     tieneWallet: false
   },
   {
     symbol: 'DAI',
-    nombre: 'Dai Stablecoin',
-    red: 'ethereum',
-    decimales: 18,
-    direccionContrato: process.env.DAI_CONTRACT_ADDRESS || null,
+    name: 'Dai Stablecoin',
+    network: 'ethereum',
+    decimals: 18,
+    contractAddress: process.env.DAI_CONTRACT_ADDRESS || null,
     tieneWallet: false
   },
   
   // ========== DEFI TOKENS (ERC-20) ==========
   {
     symbol: 'LINK',
-    nombre: 'Chainlink',
-    red: 'ethereum',
-    decimales: 18,
-    direccionContrato: process.env.LINK_CONTRACT_ADDRESS || null,
+    name: 'Chainlink',
+    network: 'ethereum',
+    decimals: 18,
+    contractAddress: process.env.LINK_CONTRACT_ADDRESS || null,
     tieneWallet: false
   },
   {
     symbol: 'UNI',
-    nombre: 'Uniswap',
-    red: 'ethereum',
-    decimales: 18,
-    direccionContrato: process.env.UNI_CONTRACT_ADDRESS || null,
+    name: 'Uniswap',
+    network: 'ethereum',
+    decimals: 18,
+    contractAddress: process.env.UNI_CONTRACT_ADDRESS || null,
     tieneWallet: false
   },
   {
     symbol: 'WBTC',
-    nombre: 'Wrapped Bitcoin',
-    red: 'ethereum',
-    decimales: 8,
-    direccionContrato: process.env.WBTC_CONTRACT_ADDRESS || null,
+    name: 'Wrapped Bitcoin',
+    network: 'ethereum',
+    decimals: 8,
+    contractAddress: process.env.WBTC_CONTRACT_ADDRESS || null,
     tieneWallet: false
   },
   {
     symbol: 'AAVE',
-    nombre: 'Aave',
-    red: 'ethereum',
-    decimales: 18,
-    direccionContrato: process.env.AAVE_CONTRACT_ADDRESS || null,
+    name: 'Aave',
+    network: 'ethereum',
+    decimals: 18,
+    contractAddress: process.env.AAVE_CONTRACT_ADDRESS || null,
     tieneWallet: false
   },
   {
     symbol: 'MKR',
-    nombre: 'Maker',
-    red: 'ethereum',
-    decimales: 18,
-    direccionContrato: process.env.MKR_CONTRACT_ADDRESS || null,
+    name: 'Maker',
+    network: 'ethereum',
+    decimals: 18,
+    contractAddress: process.env.MKR_CONTRACT_ADDRESS || null,
     tieneWallet: false
   },
   
   // ========== MEME & POPULAR TOKENS (ERC-20) ==========
   {
     symbol: 'SHIB',
-    nombre: 'Shiba Inu',
-    red: 'ethereum',
-    decimales: 18,
-    direccionContrato: process.env.SHIB_CONTRACT_ADDRESS || null,
+    name: 'Shiba Inu',
+    network: 'ethereum',
+    decimals: 18,
+    contractAddress: process.env.SHIB_CONTRACT_ADDRESS || null,
     tieneWallet: false
   },
   {
     symbol: 'PEPE',
-    nombre: 'Pepe',
-    red: 'ethereum',
-    decimales: 18,
-    direccionContrato: process.env.PEPE_CONTRACT_ADDRESS || null,
+    name: 'Pepe',
+    network: 'ethereum',
+    decimals: 18,
+    contractAddress: process.env.PEPE_CONTRACT_ADDRESS || null,
     tieneWallet: false
   },
   
   // ========== LAYER 2 & SCALING (TOKENS) ==========
   {
     symbol: 'MATIC',
-    nombre: 'Polygon',
-    red: 'ethereum',
-    decimales: 18,
-    direccionContrato: process.env.MATIC_CONTRACT_ADDRESS || null,
+    name: 'Polygon',
+    network: 'ethereum',
+    decimals: 18,
+    contractAddress: process.env.MATIC_CONTRACT_ADDRESS || null,
     tieneWallet: false
   },
   {
     symbol: 'ARB',
-    nombre: 'Arbitrum',
-    red: 'ethereum',
-    decimales: 18,
-    direccionContrato: process.env.ARB_CONTRACT_ADDRESS || null,
+    name: 'Arbitrum',
+    network: 'ethereum',
+    decimals: 18,
+    contractAddress: process.env.ARB_CONTRACT_ADDRESS || null,
     tieneWallet: false
   },
   {
     symbol: 'OP',
-    nombre: 'Optimism',
-    red: 'ethereum',
-    decimales: 18,
-    direccionContrato: process.env.OP_CONTRACT_ADDRESS || null,
+    name: 'Optimism',
+    network: 'ethereum',
+    decimals: 18,
+    contractAddress: process.env.OP_CONTRACT_ADDRESS || null,
     tieneWallet: false
   },
   
   // ========== OTRAS IMPORTANTES (SOLO PARA TRADING) ==========
   {
     symbol: 'SOL',
-    nombre: 'Solana',
-    red: 'solana',
-    decimales: 9,
-    direccionContrato: null,
+    name: 'Solana',
+    network: 'solana',
+    decimals: 9,
+    contractAddress: null,
     tieneWallet: false,
     soloTrading: true
   },
   {
     symbol: 'ADA',
-    nombre: 'Cardano',
-    red: 'cardano',
-    decimales: 6,
-    direccionContrato: null,
+    name: 'Cardano',
+    network: 'cardano',
+    decimals: 6,
+    contractAddress: null,
     tieneWallet: false,
     soloTrading: true
   },
   {
     symbol: 'XRP',
-    nombre: 'Ripple',
-    red: 'ripple',
-    decimales: 6,
-    direccionContrato: null,
+    name: 'Ripple',
+    network: 'ripple',
+    decimals: 6,
+    contractAddress: null,
     tieneWallet: false,
     soloTrading: true
   },
   {
     symbol: 'DOGE',
-    nombre: 'Dogecoin',
-    red: 'dogecoin',
-    decimales: 8,
-    direccionContrato: null,
+    name: 'Dogecoin',
+    network: 'dogecoin',
+    decimals: 8,
+    contractAddress: null,
     tieneWallet: false,
     soloTrading: true
   }
@@ -225,11 +225,11 @@ class WalletSetupGenerator {
         throw new Error('BTC_MASTER_XPUB debe tener un prefijo válido (xpub/ypub/zpub/tpub/upub/vpub)');
       }
       
-      // Detectar red del XPUB
+      // Detectar network del XPUB
       const detectedNetwork = getNetworkFromXpub(xpub);
       const derivationPath = detectedNetwork === 'testnet' ? "m/44'/1'/0'" : "m/44'/0'/0'";
       
-      // Validar address según la red detectada
+      // Validar address según la network detectada
       if (detectedNetwork === 'testnet') {
         // Testnet: legacy (m,n,2), P2SH (2), Bech32 (tb1)
         if (!address.match(/^([mn2][a-km-zA-HJ-NP-Z1-9]{25,34}|tb1[a-z0-9]{39,59})$/)) {
@@ -394,19 +394,19 @@ const validateBitcoinXpub = (xpub, network = null) => {
   
   const trimmed = xpub.trim();
   
-  // Prefijos válidos para Bitcoin según red
+  // Prefijos válidos para Bitcoin según network
   const validPrefixes = {
     mainnet: ['xpub', 'ypub', 'zpub'],        // Legacy, P2SH-wrapped SegWit, Native SegWit
     testnet: ['tpub', 'upub', 'vpub']         // Testnet equivalents
   };
   
-  // Si se especifica red, validar solo esa red
+  // Si se especifica network, validar solo esa network
   if (network) {
     const prefixes = validPrefixes[network] || [];
     return prefixes.some(prefix => trimmed.startsWith(prefix));
   }
   
-  // Sin red especificada, aceptar cualquier prefijo válido
+  // Sin network especificada, aceptar cualquier prefijo válido
   const allValidPrefixes = [...validPrefixes.mainnet, ...validPrefixes.testnet];
   return allValidPrefixes.some(prefix => trimmed.startsWith(prefix));
 };
@@ -531,44 +531,44 @@ const executeCompleteSetup = async (req, res) => {
     const criptomonedas = {};
     
     for (const config of CRIPTOMONEDAS_BASICAS) {
-      let criptomoneda = await Criptomoneda.findOne({
+      let crypto = await Crypto.findOne({
         where: { symbol: config.symbol },
         transaction
       });
       
-      if (!criptomoneda) {
-        // Crear criptomoneda con iconUrl auto-generado
-        criptomoneda = await Criptomoneda.create({
+      if (!crypto) {
+        // Crear crypto con iconUrl auto-generado
+        crypto = await Crypto.create({
           symbol: config.symbol,
-          nombre: config.nombre,
-          red: config.red,
-          decimales: config.decimales,
-          direccionContrato: config.direccionContrato,
+          name: config.name,
+          network: config.network,
+          decimals: config.decimals,
+          contractAddress: config.contractAddress,
           active: true
           // iconUrl se genera automáticamente en el modelo
         }, { transaction });
-        console.log(`✅ Criptomoneda ${config.symbol} creada con icono`);
+        console.log(`✅ Crypto ${config.symbol} creada con icono`);
       } else {
-        // Actualizar iconUrl Y direccionContrato si no existen
+        // Actualizar iconUrl Y contractAddress si no existen
         const updateData = {};
         
-        if (!criptomoneda.iconUrl) {
+        if (!crypto.iconUrl) {
           updateData.iconUrl = `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/svg/color/${config.symbol.toLowerCase()}.svg`;
         }
         
-        // ✨ AGREGADO: Actualizar direccionContrato si no existe
-        if (!criptomoneda.direccionContrato && config.direccionContrato) {
-          updateData.direccionContrato = config.direccionContrato;
+        // ✨ AGREGADO: Actualizar contractAddress si no existe
+        if (!crypto.contractAddress && config.contractAddress) {
+          updateData.contractAddress = config.contractAddress;
         }
         
         if (Object.keys(updateData).length > 0) {
-          await criptomoneda.update(updateData, { transaction });
+          await crypto.update(updateData, { transaction });
           console.log(`✅ Datos actualizados para ${config.symbol} (${Object.keys(updateData).join(', ')})`);
         } else {
-          console.log(`✅ Criptomoneda ${config.symbol} ya existe completa`);
+          console.log(`✅ Crypto ${config.symbol} ya existe completa`);
         }
       }
-      criptomonedas[config.symbol] = criptomoneda;
+      criptomonedas[config.symbol] = crypto;
     }
     
     // PASO 2: Crear wallets maestras (solo para las que tienen derivationPath de wallet)
@@ -579,7 +579,7 @@ const executeCompleteSetup = async (req, res) => {
     const walletsToCreate = CRIPTOMONEDAS_BASICAS.filter(c => c.tieneWallet === true);
 
     for (const config of walletsToCreate) {
-      const criptomoneda = criptomonedas[config.symbol];
+      const crypto = criptomonedas[config.symbol];
       
       try {
         console.log(`⚡ Procesando ${config.symbol}...`);
@@ -606,9 +606,9 @@ const executeCompleteSetup = async (req, res) => {
         
         // Crear wallet en base de datos
         const nuevaWallet = await WalletMaestra.create({
-          criptomonedaId: criptomoneda.id,
-          nombre: `${config.nombre} Master Wallet`,
-          red: config.red,
+          criptomonedaId: crypto.id,
+          name: `${config.name} Master Wallet`,
+          network: config.network,
           symbol: config.symbol,
           xpub: walletData.xpub,
           // Fix 2026-08-19 (AUDITORIA_BACKEND.md Altos #8): antes se
@@ -627,7 +627,7 @@ const executeCompleteSetup = async (req, res) => {
           direccionPublica: walletData.address,
           balanceTotal: 0,
           active: true,
-          descripcion: `Wallet maestra para ${config.nombre} (${method})`,
+          descripcion: `Wallet maestra para ${config.name} (${method})`,
           nextDerivationIndex: 0,
           metadata: {
             createdAt: new Date(),
@@ -642,8 +642,8 @@ const executeCompleteSetup = async (req, res) => {
         resultados.push({
           id: nuevaWallet.id,
           symbol: config.symbol,
-          nombre: nuevaWallet.nombre,
-          red: config.red,
+          name: nuevaWallet.name,
+          network: config.network,
           address: walletData.address,
           method: method,
           created_at: nuevaWallet.created_at
@@ -702,10 +702,10 @@ const executeCompleteSetup = async (req, res) => {
         criptomonedas: Object.values(criptomonedas).map(c => ({
           id: c.id,
           symbol: c.symbol,
-          nombre: c.nombre,
-          red: c.red,
-          decimales: c.decimales,
-          direccionContrato: c.direccionContrato,
+          name: c.name,
+          network: c.network,
+          decimals: c.decimals,
+          contractAddress: c.contractAddress,
           iconUrl: c.iconUrl
         })),
         timestamp: new Date(),
@@ -729,20 +729,20 @@ const executeCompleteSetup = async (req, res) => {
 const checkSetupStatus = async (req, res) => {
   try {
     const walletCount = await WalletMaestra.count();
-    const cryptoCount = await Criptomoneda.count();
+    const cryptoCount = await Crypto.count();
     
     const wallets = await WalletMaestra.findAll({
       include: [{
-        model: Criptomoneda,
-        as: 'criptomoneda',
-        attributes: ['symbol', 'nombre', 'red', 'iconUrl']
+        model: Crypto,
+        as: 'crypto',
+        attributes: ['symbol', 'name', 'network', 'iconUrl']
       }],
-      attributes: ['id', 'nombre', 'symbol', 'red', 'active', 'created_at', 'balanceTotal'],
+      attributes: ['id', 'name', 'symbol', 'network', 'active', 'created_at', 'balanceTotal'],
       order: [['symbol', 'ASC']]
     });
     
-    const criptomonedas = await Criptomoneda.findAll({
-      attributes: ['id', 'symbol', 'nombre', 'red', 'decimales', 'direccionContrato', 'iconUrl', 'active'],
+    const criptomonedas = await Crypto.findAll({
+      attributes: ['id', 'symbol', 'name', 'network', 'decimals', 'contractAddress', 'iconUrl', 'active'],
       order: [['symbol', 'ASC']]
     });
     
@@ -767,20 +767,20 @@ const checkSetupStatus = async (req, res) => {
         wallets: wallets.map(w => ({
           id: w.id,
           symbol: w.symbol,
-          nombre: w.nombre,
-          red: w.red,
+          name: w.name,
+          network: w.network,
           active: w.active,
           balance: w.balanceTotal,
           created_at: w.created_at,
-          iconUrl: w.criptomoneda?.iconUrl
+          iconUrl: w.crypto?.iconUrl
         })),
         criptomonedas: criptomonedas.map(c => ({
           id: c.id,
           symbol: c.symbol,
-          nombre: c.nombre,
-          red: c.red,
-          decimales: c.decimales,
-          direccionContrato: c.direccionContrato,
+          name: c.name,
+          network: c.network,
+          decimals: c.decimals,
+          contractAddress: c.contractAddress,
           iconUrl: c.iconUrl,
           active: c.active
         })),
@@ -820,7 +820,7 @@ const resetCompleteSetup = async (req, res) => {
     });
     
     console.log('🧹 Eliminando todas las criptomonedas...');
-    const criptomonedasEliminadas = await Criptomoneda.destroy({
+    const criptomonedasEliminadas = await Crypto.destroy({
       where: {},
       transaction
     });

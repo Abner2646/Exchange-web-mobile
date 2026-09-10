@@ -36,7 +36,7 @@ jest.mock('../models/index.js', () => ({
     findOne: jest.fn(),
     addToBalance: jest.fn(),
   },
-  Criptomoneda: {},
+  Crypto: {},
   sequelize: {
     transaction: jest.fn(),
   },

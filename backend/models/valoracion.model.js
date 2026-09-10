@@ -189,7 +189,7 @@ function createValoracionModel(sequelize) {
           attributes: ['id', 'montoFiat', 'created_at'],
           include: [
             {
-              association: 'criptomoneda',
+              association: 'crypto',
               attributes: ['simbolo']
             }
           ]
@@ -270,7 +270,7 @@ function createValoracionModel(sequelize) {
           attributes: ['id', 'username']
         },
         {
-          association: 'criptomoneda',
+          association: 'crypto',
           attributes: ['simbolo']
         }
       ]
@@ -285,7 +285,7 @@ function createValoracionModel(sequelize) {
         transaccionId: tx.id,
         usuarioAValorar: otroUsuario,
         montoFiat: tx.montoFiat,
-        criptomoneda: tx.criptomoneda.simbolo,
+        crypto: tx.crypto.simbolo,
         fechaTransaccion: tx.created_at
       };
     });

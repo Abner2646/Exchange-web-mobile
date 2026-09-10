@@ -167,7 +167,7 @@ function createNotificacionModel(sequelize) {
       include: [
         {
           association: 'usuario',
-          attributes: ['id', 'nombre', 'email']
+          attributes: ['id', 'name', 'email']
         }
       ]
     });
@@ -208,7 +208,7 @@ function createNotificacionModel(sequelize) {
       include: [
         {
           association: 'usuario',
-          attributes: ['id', 'nombre']
+          attributes: ['id', 'name']
         }
       ],
       order: [[orderBy, orderDirection]],
@@ -431,7 +431,7 @@ function createNotificacionModel(sequelize) {
 
   // 🆕 Método actualizado para notificar cambios de transacción
   Notificacion.notifyTransactionUpdate = async (usuarioId, transaccionData, estado) => {
-    const { id: transaccionId, cantidad, criptomoneda, montoFiat, monedaFiat } = transaccionData;
+    const { id: transaccionId, cantidad, crypto, montoFiat, monedaFiat } = transaccionData;
     
     const templates = {
       'iniciada': 'P2P_TRANSACCION_INICIADA',
@@ -449,7 +449,7 @@ function createNotificacionModel(sequelize) {
       templateData: { 
         transaccionId,
         cantidad,
-        simbolo: criptomoneda?.symbol || 'crypto',
+        simbolo: crypto?.symbol || 'crypto',
         montoFiat,
         monedaFiat
       }
@@ -474,7 +474,7 @@ function createNotificacionModel(sequelize) {
 
   // 🆕 Nuevo método para notificar a AMBAS partes de la transacción
   Notificacion.notifyBothParties = async (compradorId, vendedorId, transaccionData, estado) => {
-    const { id: transaccionId, cantidad, criptomoneda, montoFiat, monedaFiat } = transaccionData;
+    const { id: transaccionId, cantidad, crypto, montoFiat, monedaFiat } = transaccionData;
     
     const templates = {
       'iniciada': {
@@ -501,7 +501,7 @@ function createNotificacionModel(sequelize) {
     const templateData = { 
       transaccionId,
       cantidad,
-      simbolo: criptomoneda?.symbol || 'crypto',
+      simbolo: crypto?.symbol || 'crypto',
       montoFiat,
       monedaFiat
     };

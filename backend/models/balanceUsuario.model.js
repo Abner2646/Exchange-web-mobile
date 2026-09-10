@@ -105,10 +105,10 @@ async function leerProyeccionUsuario(userId, propositos, { criptomonedaId = null
 function createBalanceUserModel(sequelize) {
   // Paso C: BalanceUsuario ya NO es un modelo Sequelize — la tabla balances_users
   // se eliminó. Es una FACHADA de operaciones de saldo respaldada por el ledger de
-  // partida doble (los métodos postean/leen del ledger). Se conserva el nombre y
+  // partida doble (los métodos postean/leen del ledger). Se conserva el name y
   // la API estática para no tocar los ~40 call sites (swap/trading/P2P/depósitos/
   // retiros); el rename a un servicio de saldos queda para Fase 6.2. `sequelize`
-  // se usa sólo para sequelize.models.Criptomoneda en reclamarBtcGratis.
+  // se usa sólo para sequelize.models.Crypto en reclamarBtcGratis.
   const BalanceUsuario = {};
 
   // getById se retiro en el write-flip (Paso B): leia balances_users por PK de
@@ -121,7 +121,7 @@ function createBalanceUserModel(sequelize) {
   // las de saldo 0 que crea el provisioning), aca solo aparecen las criptos con
   // movimiento en el ledger — el mirror saltea deltas en cero. Es un cambio de
   // display aceptable (no listar saldos en 0). Devuelve objetos planos (sin la
-  // asociacion .criptomoneda, igual que el viejo findAll sin include).
+  // asociacion .crypto, igual que el viejo findAll sin include).
   BalanceUsuario.getByUserId = async (userId) => {
     try {
       // Guard anti-fuga: agregarFundingLedger SIN userId devuelve TODOS los usuarios
@@ -249,7 +249,7 @@ function createBalanceUserModel(sequelize) {
   BalanceUsuario.getBalancesConCompartimentos = async (userId) => {
     try {
       const { PROPOSITOS: P } = require('../services/ledger/ledgerAccounts');
-      // Presentación a 8 decimales uniformes: money.add strippea trailing zeros
+      // Presentación a 8 decimals uniformes: money.add strippea trailing zeros
       // ('1' en vez de '1.00000000'), así que la suma+formato va por
       // money.format8 (único punto de esa regla de presentación).
       const fmt8 = (x) => money.format8(x);
@@ -279,17 +279,17 @@ function createBalanceUserModel(sequelize) {
           },
         });
       }
-      // Enriquecer con el objeto criptomoneda (una query) para que ésta sea la
+      // Enriquecer con el objeto crypto (una query) para que ésta sea la
       // forma unificada de "mis balances" que consumen los 3 endpoints (balances/
       // intercambio/usuario), sin que cada controller re-adjunte la asociación.
       if (salida.length > 0) {
-        const { Criptomoneda } = require('./index');
-        const cripts = await Criptomoneda.findAll({
+        const { Crypto } = require('./index');
+        const cripts = await Crypto.findAll({
           where: { id: salida.map((s) => s.criptomonedaId) },
-          attributes: ['id', 'symbol', 'nombre', 'red', 'decimales'],
+          attributes: ['id', 'symbol', 'name', 'network', 'decimals'],
         });
         const porId = new Map(cripts.map((c) => [c.id, c]));
-        for (const s of salida) s.criptomoneda = porId.get(s.criptomonedaId) || null;
+        for (const s of salida) s.crypto = porId.get(s.criptomonedaId) || null;
       }
       return salida;
     } catch (error) {
@@ -433,8 +433,8 @@ function createBalanceUserModel(sequelize) {
       }
 
       // 2. Buscar el BTC en la base de datos
-      const Criptomoneda = sequelize.models.Criptomoneda;
-      const btc = await Criptomoneda.getBySymbol('BTC');
+      const Crypto = sequelize.models.Crypto;
+      const btc = await Crypto.getBySymbol('BTC');
       
       if (!btc) {
         throw new Error('BTC no está disponible en el sistema');

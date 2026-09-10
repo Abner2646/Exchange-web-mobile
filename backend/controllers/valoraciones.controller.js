@@ -254,7 +254,7 @@ const createMultipleRatings = async (req, res) => {
 // Fix 2026-08-19 (AUDITORIA_BACKEND.md Código muerto #4, extendido a
 // Altos #11): esta función usaba `sequelize` y `Op` sin importarlos —
 // ReferenceError garantizado si se llamaba. También pedía columnas que
-// User no tiene: 'nombre' (el campo real es 'username') y
+// User no tiene: 'name' (el campo real es 'username') y
 // 'reputacion' (el campo real es 'averageRating').
 const getTopRatedUsers = async (req, res) => {
   try {
@@ -297,7 +297,7 @@ const getTopRatedUsers = async (req, res) => {
 
 // Obtener resumen de valoraciones entre dos usuarios
 // Fix 2026-08-19 (AUDITORIA_BACKEND.md Código muerto #4, extendido a
-// Altos #11): usaba Op sin importarlo, y pedía 'nombre' de User (el
+// Altos #11): usaba Op sin importarlo, y pedía 'name' de User (el
 // campo real es 'username').
 const getUsersRatingSummary = async (req, res) => {
   try {

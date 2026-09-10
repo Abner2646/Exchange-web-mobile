@@ -4,7 +4,7 @@ const router = express.Router();
 // Import routes
 const authRoutes = require('../modules/users/auth.routes.js')
 const balanceUsuarioRoutes = require('./balanceUsuario.routes.js')
-const criptomonedaRoutes = require('./criptomoneda.routes.js')
+const cryptoRoutes = require('../modules/crypto/crypto.routes.js')
 const direccionDepositoRoutes = require('./direccionDeposito.routes.js')
 const intercambioExchangeRoutes = require('./intercambioExchange.routes.js')
 const metodoPagoRoutes = require('./metodoPago.routes.js')
@@ -20,13 +20,13 @@ const tradingRoutes = require('./trading.routes');
 const userRoutes = require('../modules/users/user.routes.js')
 const valoracionRoutes = require('./valoraciones.routes.js')
 const walletMaestraRoutes = require('./walletMaestra.routes.js')
-const configuracionNegocioRoutes = require('./configuracionNegocio.routes.js')
+const businessConfigRoutes = require('../modules/config/businessConfig.routes.js')
 
 // Derive routes
 router.use('/auth', authRoutes)
 router.use('/balances', balanceUsuarioRoutes)
-router.use('/config', configuracionNegocioRoutes)
-router.use('/criptomoneda', criptomonedaRoutes)
+router.use('/config', businessConfigRoutes)
+router.use('/crypto', cryptoRoutes)
 router.use('/direccionDeposito', direccionDepositoRoutes)
 router.use('/intercambioExchange', intercambioExchangeRoutes)
 router.use('/metodoPago', metodoPagoRoutes)
@@ -44,7 +44,7 @@ router.use('/user', userRoutes)
 // que el modelo/controller ya estaban completos y activos en
 // models/index.js — reactivada. También se corrigieron bugs reales que
 // hubieran roto varios endpoints al usarse (Op/sequelize sin importar en
-// el controller, y 'nombre'/'reputacion' en vez de 'username'/
+// el controller, y 'name'/'reputacion' en vez de 'username'/
 // 'averageRating' en las queries del modelo).
 router.use('/valoracion', valoracionRoutes)
 router.use('/walletMaestra', walletMaestraRoutes)

@@ -1,12 +1,12 @@
 const { Op } = require('sequelize');
-const { TransaccionBlockchain, Criptomoneda } = require('../../models');
+const { TransaccionBlockchain, Crypto } = require('../../models');
 
 // Recovers stuck 'procesando' withdrawals left by a crash between the atomic
 // claim and recording the send. Reverts ONLY when the tx is provably absent
 // on-chain — never a withdrawal that may have gone out (that would double-spend
 // from the user's side). See spec 2026-08-24-fase2-withdrawal-reaper-onchain.
 //
-// getClientForNetwork(red) → an EvmChainClient (getConfirmations). Injected so
+// getClientForNetwork(network) → an EvmChainClient (getConfirmations). Injected so
 // tests pass a fake; the job scheduler wires the real BlockchainServiceManager.
 async function reapStaleWithdrawals({ getClientForNetwork, staleMinutes = 15, now = new Date() } = {}) {
   const cutoff = new Date(now.getTime() - staleMinutes * 60000);
@@ -20,7 +20,7 @@ async function reapStaleWithdrawals({ getClientForNetwork, staleMinutes = 15, no
       // created_at); the camelCase attribute is not mapped in where clauses here.
       updated_at: { [Op.lt]: cutoff },
     },
-    include: [{ model: Criptomoneda, as: 'criptomoneda' }],
+    include: [{ model: Crypto, as: 'crypto' }],
   });
 
   let reverted = 0;
@@ -35,7 +35,7 @@ async function reapStaleWithdrawals({ getClientForNetwork, staleMinutes = 15, no
       continue;
     }
 
-    const client = getClientForNetwork ? getClientForNetwork(row.criptomoneda.red) : null;
+    const client = getClientForNetwork ? getClientForNetwork(row.crypto.network) : null;
     // Without a client we cannot verify — be conservative and leave it.
     if (!client) { left++; continue; }
 
@@ -64,15 +64,15 @@ async function reapStaleWithdrawals({ getClientForNetwork, staleMinutes = 15, no
   return { reverted, left };
 }
 
-// Adapts a BlockchainServiceManager to the reaper's getClientForNetwork(red)
+// Adapts a BlockchainServiceManager to the reaper's getClientForNetwork(network)
 // contract: an object with getConfirmations(txHash). EVM services expose it on
 // their `.chain` client; the Bitcoin service implements it directly. A network
 // with no service, or one that cannot report confirmations, resolves to null so
 // the reaper leaves the row rather than guessing.
 function makeGetClientForNetwork(manager) {
   const canConfirm = (o) => o && typeof o.getConfirmations === 'function';
-  return (red) => {
-    const service = manager.getService(red);
+  return (network) => {
+    const service = manager.getService(network);
     if (!service) return null;
     if (canConfirm(service.chain)) return service.chain;
     if (canConfirm(service)) return service;

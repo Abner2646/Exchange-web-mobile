@@ -13,16 +13,16 @@ function createWalletMaestraModel(sequelize) {
     try {
       // 🔍 DEBUG: Verificar qué modelos están disponibles
       console.log('Modelos disponibles:', Object.keys(sequelize.models));
-      console.log('¿Existe Criptomoneda?', !!sequelize.models.Criptomoneda);
+      console.log('¿Existe Crypto?', !!sequelize.models.Crypto);
       console.log('¿Existe DireccionDeposito?', !!sequelize.models.DireccionDeposito);
       console.log('¿Existe User?', !!sequelize.models.User);
 
       const wallet = await WalletMaestra.findByPk(id, {
         include: [
           {
-            model: sequelize.models.Criptomoneda,
-            as: 'criptomoneda',
-            attributes: ['id', 'symbol', 'nombre', 'red', 'decimales', 'active']
+            model: sequelize.models.Crypto,
+            as: 'crypto',
+            attributes: ['id', 'symbol', 'name', 'network', 'decimals', 'active']
           },
           {
             model: sequelize.models.DireccionDeposito,
@@ -49,9 +49,9 @@ function createWalletMaestraModel(sequelize) {
       const whereClause = {};
       const includeClause = [
         {
-          model: sequelize.models.Criptomoneda,
-          as: 'criptomoneda',
-          attributes: ['id', 'symbol', 'nombre', 'red', 'active']
+          model: sequelize.models.Crypto,
+          as: 'crypto',
+          attributes: ['id', 'symbol', 'name', 'network', 'active']
         }
       ];
       
@@ -64,8 +64,8 @@ function createWalletMaestraModel(sequelize) {
         whereClause.active = filters.active === 'true';
       }
 
-      if (filters.red) {
-        whereClause.red = filters.red.toLowerCase();
+      if (filters.network) {
+        whereClause.network = filters.network.toLowerCase();
       }
 
       if (filters.symbol) {
@@ -142,17 +142,17 @@ function createWalletMaestraModel(sequelize) {
       const wallets = await WalletMaestra.findAll({
         where: {
           [Op.or]: [
-            { nombre: { [Op.iLike]: `%${term}%` } },
+            { name: { [Op.iLike]: `%${term}%` } },
             { direccionPublica: { [Op.iLike]: `%${term}%` } },
             { symbol: { [Op.iLike]: `%${term}%` } },
-            { red: { [Op.iLike]: `%${term}%` } }
+            { network: { [Op.iLike]: `%${term}%` } }
           ]
         },
         include: [
           {
-            model: sequelize.models.Criptomoneda,
-            as: 'criptomoneda',
-            attributes: ['id', 'symbol', 'nombre', 'red']
+            model: sequelize.models.Crypto,
+            as: 'crypto',
+            attributes: ['id', 'symbol', 'name', 'network']
           }
         ],
         limit: parseInt(limit),
@@ -173,13 +173,13 @@ function createWalletMaestraModel(sequelize) {
         where: { criptomonedaId: criptomonedaId },
         include: [
           {
-            model: sequelize.models.Criptomoneda,
-            as: 'criptomoneda',
+            model: sequelize.models.Crypto,
+            as: 'crypto',
             // NOTE: no 'derivationPath' / 'addressFormat' — those are NOT columns
-            // on Criptomoneda (the HD derivation path lives on WalletMaestra).
-            // Selecting them made Postgres throw "column criptomoneda.derivationPath
+            // on Crypto (the HD derivation path lives on WalletMaestra).
+            // Selecting them made Postgres throw "column crypto.derivationPath
             // does not exist" on every call, breaking deposit-address provisioning.
-            attributes: ['id', 'symbol', 'nombre', 'red', 'decimales']
+            attributes: ['id', 'symbol', 'name', 'network', 'decimals']
           },
           {
             model: sequelize.models.DireccionDeposito,
@@ -201,7 +201,7 @@ function createWalletMaestraModel(sequelize) {
       });
       return wallet;
     } catch (error) {
-      throw new Error(`Error al obtener wallet por criptomoneda: ${error.message}`);
+      throw new Error(`Error al obtener wallet por crypto: ${error.message}`);
     }
   };
 
@@ -211,9 +211,9 @@ function createWalletMaestraModel(sequelize) {
         where: { direccionPublica: direccionPublica },
         include: [
           {
-            model: sequelize.models.Criptomoneda,
-            as: 'criptomoneda',
-            attributes: ['id', 'symbol', 'nombre', 'red']
+            model: sequelize.models.Crypto,
+            as: 'crypto',
+            attributes: ['id', 'symbol', 'name', 'network']
           }
         ]
       });
@@ -229,9 +229,9 @@ function createWalletMaestraModel(sequelize) {
         where: { xpub: xpub },
         include: [
           {
-            model: sequelize.models.Criptomoneda,
-            as: 'criptomoneda',
-            attributes: ['id', 'symbol', 'nombre', 'red']
+            model: sequelize.models.Crypto,
+            as: 'crypto',
+            attributes: ['id', 'symbol', 'name', 'network']
           }
         ]
       });
@@ -245,17 +245,17 @@ function createWalletMaestraModel(sequelize) {
     try {
       const whereClause = { active: true };
       
-      if (options.red) {
-        whereClause.red = options.red;
+      if (options.network) {
+        whereClause.network = options.network;
       }
 
       const wallets = await WalletMaestra.findAll({
         where: whereClause,
         include: [
           {
-            model: sequelize.models.Criptomoneda,
-            as: 'criptomoneda',
-            attributes: ['id', 'symbol', 'nombre', 'red', 'active'],
+            model: sequelize.models.Crypto,
+            as: 'crypto',
+            attributes: ['id', 'symbol', 'name', 'network', 'active'],
             where: options.soloActivasCrypto !== false ? { active: true } : undefined
           }
         ],
@@ -276,9 +276,9 @@ function createWalletMaestraModel(sequelize) {
         },
         include: [
           {
-            model: sequelize.models.Criptomoneda,
-            as: 'criptomoneda',
-            attributes: ['id', 'symbol', 'nombre', 'red']
+            model: sequelize.models.Crypto,
+            as: 'crypto',
+            attributes: ['id', 'symbol', 'name', 'network']
           }
         ],
         order: [['balance_total', 'ASC']]
@@ -298,9 +298,9 @@ function createWalletMaestraModel(sequelize) {
         },
         include: [
           {
-            model: sequelize.models.Criptomoneda,
-            as: 'criptomoneda',
-            attributes: ['id', 'symbol', 'nombre', 'red']
+            model: sequelize.models.Crypto,
+            as: 'crypto',
+            attributes: ['id', 'symbol', 'name', 'network']
           }
         ],
         order: [['balance_total', 'DESC']]
@@ -406,8 +406,8 @@ function createWalletMaestraModel(sequelize) {
     try {
       const whereClause = { active: true };
       
-      if (options.red) {
-        whereClause.red = options.red;
+      if (options.network) {
+        whereClause.network = options.network;
       }
 
       if (options.fechaDesde) {
@@ -418,7 +418,7 @@ function createWalletMaestraModel(sequelize) {
 
       const summary = await WalletMaestra.findAll({
         attributes: [
-          'red',
+          'network',
           'symbol',
           [sequelize.fn('COUNT', sequelize.col('WalletMaestra.id')), 'walletCount'],
           [sequelize.fn('SUM', sequelize.col('balance_total')), 'totalBalance'],
@@ -428,9 +428,9 @@ function createWalletMaestraModel(sequelize) {
         ],
         include: [
           {
-            model: sequelize.models.Criptomoneda,
-            as: 'criptomoneda',
-            attributes: ['symbol', 'nombre', 'red', 'decimales']
+            model: sequelize.models.Crypto,
+            as: 'crypto',
+            attributes: ['symbol', 'name', 'network', 'decimals']
           }
         ],
         where: whereClause,
@@ -469,15 +469,15 @@ function createWalletMaestraModel(sequelize) {
         where: { ...baseWhere, active: false }
       });
 
-      // Balance total por red
+      // Balance total por network
       const balancesPorRed = await WalletMaestra.findAll({
         attributes: [
-          'red',
+          'network',
           [sequelize.fn('COUNT', sequelize.col('id')), 'walletCount'],
           [sequelize.fn('SUM', sequelize.col('balance_total')), 'totalBalance']
         ],
         where: { ...baseWhere, active: true },
-        group: ['red'],
+        group: ['network'],
         order: [[sequelize.fn('SUM', sequelize.col('balance_total')), 'DESC']],
         raw: true
       });
@@ -486,7 +486,7 @@ function createWalletMaestraModel(sequelize) {
       const direccionesPorWallet = await sequelize.query(`
         SELECT 
           wm.id,
-          wm.nombre,
+          wm.name,
           wm.symbol,
           COUNT(dd.id) as "direccionesCount"
         FROM wallets_maestras wm
@@ -494,7 +494,7 @@ function createWalletMaestraModel(sequelize) {
         WHERE wm.id IS NOT NULL
         ${filters.fechaDesde ? `AND wm.created_at >= '${new Date(filters.fechaDesde).toISOString()}'` : ''}
         ${filters.fechaHasta ? `AND wm.created_at <= '${new Date(filters.fechaHasta).toISOString()}'` : ''}
-        GROUP BY wm.id, wm.nombre, wm.symbol
+        GROUP BY wm.id, wm.name, wm.symbol
         ORDER BY COUNT(dd.id) DESC
         LIMIT 10
       `, {
@@ -553,7 +553,7 @@ function createWalletMaestraModel(sequelize) {
         throw new Error('XPUB es requerido para crear una wallet maestra');
       }
 
-      // Verificar unicidad de criptomoneda
+      // Verificar unicidad de crypto
       const existingWallet = await WalletMaestra.findOne({
         where: { criptomonedaId: data.criptomonedaId },
         transaction
@@ -574,20 +574,20 @@ function createWalletMaestraModel(sequelize) {
       }
 
       // Verificar que la criptomoneda existe
-      const criptomoneda = await sequelize.models.Criptomoneda.findByPk(data.criptomonedaId, {
+      const crypto = await sequelize.models.Crypto.findByPk(data.criptomonedaId, {
         transaction
       });
       
-      if (!criptomoneda) {
+      if (!crypto) {
         throw new Error('Criptomoneda no encontrada');
       }
 
       // Completar datos faltantes
       const walletData = {
         ...data,
-        red: data.red || criptomoneda.red,
-        symbol: data.symbol || criptomoneda.symbol,
-        derivationPath: data.derivationPath || criptomoneda.derivationPath || "m/44'/0'/0'",
+        network: data.network || crypto.network,
+        symbol: data.symbol || crypto.symbol,
+        derivationPath: data.derivationPath || crypto.derivationPath || "m/44'/0'/0'",
         nextDerivationIndex: 0,
         metadata: {
           ...data.metadata,
@@ -616,7 +616,7 @@ function createWalletMaestraModel(sequelize) {
         throw new Error('Wallet maestra no encontrada');
       }
 
-      // Validar cambio de criptomoneda
+      // Validar cambio de crypto
       if (data.criptomonedaId && data.criptomonedaId !== wallet.criptomonedaId) {
         const existingWallet = await WalletMaestra.findOne({
           where: { 
@@ -827,7 +827,7 @@ function createWalletMaestraModel(sequelize) {
             const syncResult = await WalletMaestra.syncBalance(wallet.id, balanceData.balance);
             results.push({
               walletId: wallet.id,
-              criptomoneda: wallet.criptomoneda?.symbol || wallet.symbol,
+              crypto: wallet.crypto?.symbol || wallet.symbol,
               ...syncResult
             });
           } else {
@@ -865,9 +865,9 @@ function createWalletMaestraModel(sequelize) {
       const distribution = await WalletMaestra.findAll({
         attributes: [
           'id',
-          'nombre',
+          'name',
           'symbol',
-          'red',
+          'network',
           'balanceTotal',
           'direccionPublica',
           [
@@ -882,9 +882,9 @@ function createWalletMaestraModel(sequelize) {
         ],
         include: [
           {
-            model: sequelize.models.Criptomoneda,
-            as: 'criptomoneda',
-            attributes: ['symbol', 'nombre', 'red', 'decimales']
+            model: sequelize.models.Crypto,
+            as: 'crypto',
+            attributes: ['symbol', 'name', 'network', 'decimals']
           }
         ],
         where: { active: true },
@@ -975,10 +975,10 @@ function createWalletMaestraModel(sequelize) {
         return acc + parseFloat(item.dataValues.totalBalance || 0);
       }, 0);
 
-      // Distribución por blockchain/red
+      // Distribución por blockchain/network
       const networkDistribution = {};
       for (const balance of balanceSummary) {
-        const network = balance.red;
+        const network = balance.network;
         if (!networkDistribution[network]) {
           networkDistribution[network] = {
             count: 0,
@@ -1006,8 +1006,8 @@ function createWalletMaestraModel(sequelize) {
         },
         include: [
           {
-            model: sequelize.models.Criptomoneda,
-            as: 'criptomoneda'
+            model: sequelize.models.Crypto,
+            as: 'crypto'
           }
         ],
         order: [['last_sync_at', 'ASC']]

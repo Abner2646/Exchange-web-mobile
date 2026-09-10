@@ -56,7 +56,7 @@ class PriceServiceInitializer {
       
       // Buscar pares que tengan ambas monedas en CoinGecko pero estén configurados como manuales
       const { Op } = require('sequelize');
-      const { Criptomoneda } = require('../models/index.js');
+      const { Crypto } = require('../models/index.js');
       
       const paresParaActualizar = await ParExchange.findAll({
         where: {
@@ -65,12 +65,12 @@ class PriceServiceInitializer {
         },
         include: [
           {
-            model: Criptomoneda,
+            model: Crypto,
             as: 'criptoBase',
             where: { symbol: { [Op.in]: coingeckoSymbols } }
           },
           {
-            model: Criptomoneda,
+            model: Crypto,
             as: 'criptoQuote',
             where: { symbol: { [Op.in]: coingeckoSymbols } }
           }
@@ -149,20 +149,20 @@ class PriceServiceInitializer {
       console.log('🔨 Creando pares de ejemplo...');
 
       // Obtener o crear criptomonedas necesarias
-      const { Criptomoneda } = require('../models/index.js');
+      const { Crypto } = require('../models/index.js');
       
       const cryptos = [
-        { symbol: 'BTC', nombre: 'Bitcoin', red: 'bitcoin' },
-        { symbol: 'ETH', nombre: 'Ethereum', red: 'ethereum' },
-        { symbol: 'USDT', nombre: 'Tether', red: 'ethereum' },
-        { symbol: 'USDC', nombre: 'USD Coin', red: 'ethereum' },
-        { symbol: 'BNB', nombre: 'Binance Coin', red: 'bsc' }
+        { symbol: 'BTC', name: 'Bitcoin', network: 'bitcoin' },
+        { symbol: 'ETH', name: 'Ethereum', network: 'ethereum' },
+        { symbol: 'USDT', name: 'Tether', network: 'ethereum' },
+        { symbol: 'USDC', name: 'USD Coin', network: 'ethereum' },
+        { symbol: 'BNB', name: 'Binance Coin', network: 'bsc' }
       ];
 
       const createdCryptos = {};
       
       for (const crypto of cryptos) {
-        let [cryptoInstance] = await Criptomoneda.findOrCreate({
+        let [cryptoInstance] = await Crypto.findOrCreate({
           where: { symbol: crypto.symbol },
           defaults: crypto
         });

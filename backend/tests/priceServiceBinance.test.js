@@ -1,7 +1,7 @@
 // tests/priceServiceBinance.test.js
 //
 // Fase 1 — precisión monetaria en el feed de precios (path Binance de
-// priceService). Binance devuelve strings decimales exactos; el parseFloat los
+// priceService). Binance devuelve strings decimals exactos; el parseFloat los
 // contaminaba con float binario antes de guardarlos en ParExchange (DECIMAL).
 // El precio inverso (1/precio) se calculaba con división float. Ahora: strings
 // canónicos y money.divide para el inverso. (CoinGecko/CryptoCompare quedan como

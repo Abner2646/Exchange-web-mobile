@@ -2,7 +2,7 @@
 //
 // Fase 1 — resiliencia de transferencia.reenviarCodigo. reenviarCodigo llama a
 // Transferencia.reenviarCodigo(id), que YA COMMITEA un código nuevo + expiración
-// en la DB. Después hace 3 lookups (remitente/destinatario/criptomoneda) solo
+// en la DB. Después hace 3 lookups (remitente/destinatario/crypto) solo
 // para armar el email. Esos lookups estaban FUERA del try/catch del envío: si
 // alguno rechazaba (hiccup de DB), la excepción propagaba un 500 aunque el
 // código ya se había regenerado y persistido — el usuario veía un error de una
@@ -19,13 +19,13 @@ jest.mock('../models/index.js', () => ({
     reenviarCodigo: jest.fn(),
   },
   User: { findByPk: jest.fn() },
-  Criptomoneda: { getById: jest.fn() },
+  Crypto: { getById: jest.fn() },
   BalanceUsuario: {},
   Notificaciones: {},
   sequelize: { transaction: jest.fn() },
 }));
 
-const { Transferencia, User, Criptomoneda } = require('../models/index.js');
+const { Transferencia, User, Crypto } = require('../models/index.js');
 
 const asyncHandler = require('../utils/asyncHandler');
 const errorHandler = require('../middleware/errorHandler');
@@ -91,7 +91,7 @@ describe('reenviarCodigo — resiliencia post-commit', () => {
     User.findByPk
       .mockResolvedValueOnce({ email: 'sender@x.com', username: 'sender' })
       .mockResolvedValueOnce({ username: 'dest' });
-    Criptomoneda.getById.mockResolvedValue({ symbol: 'BTC' });
+    Crypto.getById.mockResolvedValue({ symbol: 'BTC' });
 
     const res = await request(buildApp()).post('/transfers/tx-id/resend-code').send({});
 

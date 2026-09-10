@@ -25,7 +25,7 @@ const ofertaP2PController = require('../controllers/ofertaP2P.controller.js');
  *     summary: Ofertas por tipo (compra/venta)
  *     parameters: [{ in: path, name: tipo, required: true, schema: { type: string, enum: [compra, venta] } }]
  *     responses: { 200: { description: Ofertas } }
- * /ofertaP2P/criptomoneda/{criptomonedaId}:
+ * /ofertaP2P/crypto/{criptomonedaId}:
  *   get:
  *     tags: [P2P ofertas]
  *     summary: Ofertas por cripto
@@ -114,7 +114,7 @@ router.get('/search', authenticateToken, asyncHandler(ofertaP2PController.search
 router.get('/tipo/:tipo', authenticateToken, asyncHandler(ofertaP2PController.getOfertasByTipo));
 
 // Get offers by crypto
-router.get('/criptomoneda/:criptomonedaId', authenticateToken, asyncHandler(ofertaP2PController.getOfertasByCrypto));
+router.get('/crypto/:criptomonedaId', authenticateToken, asyncHandler(ofertaP2PController.getOfertasByCrypto));
 
 // --------------------- BASIC CRUD ROUTES ---------------------
 

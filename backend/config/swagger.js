@@ -41,8 +41,8 @@ const options = {
             },
           },
         },
-        // Monto de dinero: SIEMPRE string decimal canónico (8 decimales), nunca number.
-        MoneyString: { type: 'string', example: '123.45000000', description: 'Decimal canónico (string, 8 decimales)' },
+        // Monto de dinero: SIEMPRE string decimal canónico (8 decimals), nunca number.
+        MoneyString: { type: 'string', example: '123.45000000', description: 'Decimal canónico (string, 8 decimals)' },
         // Una entrada de "mis balances" (forma compartimentada unificada).
         BalanceEntry: {
           type: 'object',
@@ -72,15 +72,15 @@ const options = {
                 },
               },
             },
-            criptomoneda: {
+            crypto: {
               type: 'object',
               nullable: true,
               properties: {
                 id: { type: 'string', format: 'uuid' },
                 symbol: { type: 'string', example: 'BTC' },
-                nombre: { type: 'string', example: 'Bitcoin' },
-                red: { type: 'string', example: 'bitcoin' },
-                decimales: { type: 'integer', example: 8 },
+                name: { type: 'string', example: 'Bitcoin' },
+                network: { type: 'string', example: 'bitcoin' },
+                decimals: { type: 'integer', example: 8 },
               },
             },
           },

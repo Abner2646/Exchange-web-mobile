@@ -23,14 +23,14 @@ function createIntercambioExchangeModel(sequelize) {
             attributes: ['id', 'active', 'comisionPorcentaje', 'precioActual'],
             include: [
               {
-                model: sequelize.models.Criptomoneda,
+                model: sequelize.models.Crypto,
                 as: 'criptoBase',
-                attributes: ['id', 'symbol', 'nombre', 'decimales']
+                attributes: ['id', 'symbol', 'name', 'decimals']
               },
               {
-                model: sequelize.models.Criptomoneda,
+                model: sequelize.models.Crypto,
                 as: 'criptoQuote',
-                attributes: ['id', 'symbol', 'nombre', 'decimales']
+                attributes: ['id', 'symbol', 'name', 'decimals']
               }
             ]
           }
@@ -97,14 +97,14 @@ function createIntercambioExchangeModel(sequelize) {
             attributes: ['id', 'active'],
             include: [
               {
-                model: sequelize.models.Criptomoneda,
+                model: sequelize.models.Crypto,
                 as: 'criptoBase',
-                attributes: ['id', 'symbol', 'nombre']
+                attributes: ['id', 'symbol', 'name']
               },
               {
-                model: sequelize.models.Criptomoneda,
+                model: sequelize.models.Crypto,
                 as: 'criptoQuote',
-                attributes: ['id', 'symbol', 'nombre']
+                attributes: ['id', 'symbol', 'name']
               }
             ]
           }
@@ -152,14 +152,14 @@ function createIntercambioExchangeModel(sequelize) {
             attributes: ['id', 'active', 'precioActual'],
             include: [
               {
-                model: sequelize.models.Criptomoneda,
+                model: sequelize.models.Crypto,
                 as: 'criptoBase',
-                attributes: ['id', 'symbol', 'nombre']
+                attributes: ['id', 'symbol', 'name']
               },
               {
-                model: sequelize.models.Criptomoneda,
+                model: sequelize.models.Crypto,
                 as: 'criptoQuote',
-                attributes: ['id', 'symbol', 'nombre']
+                attributes: ['id', 'symbol', 'name']
               }
             ]
           }
@@ -200,14 +200,14 @@ function createIntercambioExchangeModel(sequelize) {
             attributes: ['id', 'active'],
             include: [
               {
-                model: sequelize.models.Criptomoneda,
+                model: sequelize.models.Crypto,
                 as: 'criptoBase',
-                attributes: ['id', 'symbol', 'nombre']
+                attributes: ['id', 'symbol', 'name']
               },
               {
-                model: sequelize.models.Criptomoneda,
+                model: sequelize.models.Crypto,
                 as: 'criptoQuote',
-                attributes: ['id', 'symbol', 'nombre']
+                attributes: ['id', 'symbol', 'name']
               }
             ]
           }
@@ -521,14 +521,14 @@ function createIntercambioExchangeModel(sequelize) {
             attributes: ['id', 'precioActual'],
             include: [
               {
-                model: sequelize.models.Criptomoneda,
+                model: sequelize.models.Crypto,
                 as: 'criptoBase',
-                attributes: ['symbol', 'nombre']
+                attributes: ['symbol', 'name']
               },
               {
-                model: sequelize.models.Criptomoneda,
+                model: sequelize.models.Crypto,
                 as: 'criptoQuote',
-                attributes: ['symbol', 'nombre']
+                attributes: ['symbol', 'name']
               }
             ]
           }
@@ -545,7 +545,7 @@ function createIntercambioExchangeModel(sequelize) {
     }
   };
 
-  // Método para obtener estadísticas por criptomoneda
+  // Método para obtener estadísticas por crypto
   IntercambioExchange.getStatsByCrypto = async (filters = {}) => {
     try {
       const where = { estado: 'completado' };
@@ -557,7 +557,7 @@ function createIntercambioExchangeModel(sequelize) {
         where.created_at = { ...where.created_at, [Op.lte]: new Date(filters.fechaHasta) };
       }
 
-      // Estadísticas por criptomoneda base
+      // Estadísticas por crypto base
       const statsBase = await IntercambioExchange.findAll({
         attributes: [
           [sequelize.col('par.criptoBase.symbol'), 'criptoSymbol'],
@@ -574,7 +574,7 @@ function createIntercambioExchangeModel(sequelize) {
             attributes: [],
             include: [
               {
-                model: sequelize.models.Criptomoneda,
+                model: sequelize.models.Crypto,
                 as: 'criptoBase',
                 attributes: []
               }
@@ -589,7 +589,7 @@ function createIntercambioExchangeModel(sequelize) {
 
       return statsBase;
     } catch (error) {
-      throw new Error(`Error al obtener estadísticas por criptomoneda: ${error.message}`);
+      throw new Error(`Error al obtener estadísticas por crypto: ${error.message}`);
     }
   };
 
