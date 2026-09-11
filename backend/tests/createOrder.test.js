@@ -29,24 +29,24 @@ jest.mock('../models/index.js', () => ({
   IntercambioExchange: { create: jest.fn(), getDailyVolume: jest.fn() },
   User: { findByPk: jest.fn() },
   ParExchange: { findByPk: jest.fn() },
-  BalanceUsuario: { getSaldoCompartimento: jest.fn() },
+  UserBalance: { getCompartmentBalance: jest.fn() },
   Crypto: {},
   sequelize: { transaction: jest.fn() },
 }));
 
-// Paso D: el swap liquida en el ledger vía liquidarSwap (usuario↔treasury,
+// Paso D: el swap liquida en el ledger vía settleSwap (usuario↔treasury,
 // comisión→fee_revenue). El unit test mockea esa operación de dominio y asevera
 // la delegación; el resultado real en el ledger lo cubre el test de integración.
-jest.mock('../services/ledger/operations', () => ({ liquidarSwap: jest.fn() }));
+jest.mock('../modules/balances/ledger/operations', () => ({ settleSwap: jest.fn() }));
 
 const {
   IntercambioExchange,
   User,
   ParExchange,
-  BalanceUsuario,
+  UserBalance,
   sequelize,
 } = require('../models/index.js');
-const { liquidarSwap } = require('../services/ledger/operations');
+const { settleSwap } = require('../modules/balances/ledger/operations');
 
 const asyncHandler = require('../utils/asyncHandler');
 const errorHandler = require('../middleware/errorHandler');
@@ -118,7 +118,7 @@ describe('createOrder', () => {
   test('tipo "compra" debita quote y acredita base (no al revés)', async () => {
     setupCommonMocks();
     // Balance quote suficiente para pagar 1 BTC * 100 + 1% comisión = 101
-    BalanceUsuario.getSaldoCompartimento.mockResolvedValue({ disponible: '200', bloqueado: '0', pendiente: '0' });
+    UserBalance.getCompartmentBalance.mockResolvedValue({ available: '200', blocked: '0', pending: '0' });
 
     const req = { user: { id: USER_ID }, body: { parId: PAR_ID, tipo: 'compra', cantidadBase: 1 } };
     const res = mockRes();
@@ -128,9 +128,9 @@ describe('createOrder', () => {
     expect(res.statusCode).toBe(201);
     expect(res.body.data.tipo).toBe('compra');
 
-    // Comprar: liquidarSwap recibe requiredQuote (valor+comisión) en quote y
+    // Comprar: settleSwap recibe requiredQuote (valor+comisión) en quote y
     // cantidadBase en base — la dirección correcta del swap.
-    expect(liquidarSwap).toHaveBeenCalledWith(
+    expect(settleSwap).toHaveBeenCalledWith(
       expect.objectContaining({
         usuarioId: USER_ID,
         criptoQuoteId: CRIPTO_QUOTE_ID,
@@ -147,7 +147,7 @@ describe('createOrder', () => {
 
   test('tipo "venta" debita base y acredita quote', async () => {
     setupCommonMocks();
-    BalanceUsuario.getSaldoCompartimento.mockResolvedValue({ disponible: '200', bloqueado: '0', pendiente: '0' });
+    UserBalance.getCompartmentBalance.mockResolvedValue({ available: '200', blocked: '0', pending: '0' });
 
     const req = { user: { id: USER_ID }, body: { parId: PAR_ID, tipo: 'venta', cantidadBase: 1 } };
     const res = mockRes();
@@ -157,9 +157,9 @@ describe('createOrder', () => {
     expect(res.statusCode).toBe(201);
     expect(res.body.data.tipo).toBe('venta');
 
-    // Vender: liquidarSwap recibe cantidadBase en base y netQuote (valor−comisión)
+    // Vender: settleSwap recibe cantidadBase en base y netQuote (valor−comisión)
     // en quote.
-    expect(liquidarSwap).toHaveBeenCalledWith(
+    expect(settleSwap).toHaveBeenCalledWith(
       expect.objectContaining({
         usuarioId: USER_ID,
         criptoBaseId: CRIPTO_BASE_ID,
@@ -176,12 +176,12 @@ describe('createOrder', () => {
 
   test('la liquidación (incluida la comisión → fee_revenue) corre en la transacción de la orden', async () => {
     const transaction = setupCommonMocks();
-    BalanceUsuario.getSaldoCompartimento.mockResolvedValue({ disponible: '200', bloqueado: '0', pendiente: '0' });
+    UserBalance.getCompartmentBalance.mockResolvedValue({ available: '200', blocked: '0', pending: '0' });
 
     const req = { user: { id: USER_ID }, body: { parId: PAR_ID, tipo: 'venta', cantidadBase: 1 } };
     await createOrder(req, mockRes());
 
-    expect(liquidarSwap).toHaveBeenCalledWith(
+    expect(settleSwap).toHaveBeenCalledWith(
       expect.objectContaining({ comisionMonto: '1', tipo: 'venta' }),
       transaction
     );
@@ -191,7 +191,7 @@ describe('createOrder', () => {
     // Migrated to HTTP layer: createOrder now throws AppError for business
     // failures so the assertion must go through asyncHandler + errorHandler.
     setupCommonMocks({ dailyLimitUsd: 50, dailyVolume: 0 });
-    BalanceUsuario.getSaldoCompartimento.mockResolvedValue({ disponible: '200', bloqueado: '0', pendiente: '0' });
+    UserBalance.getCompartmentBalance.mockResolvedValue({ available: '200', blocked: '0', pending: '0' });
 
     // cantidadQuote = 1 * 100 = 100, supera el límite de 50
     const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
@@ -202,7 +202,7 @@ describe('createOrder', () => {
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('EXCHANGE_DAILY_LIMIT_EXCEEDED');
-    expect(liquidarSwap).not.toHaveBeenCalled();
+    expect(settleSwap).not.toHaveBeenCalled();
   });
 });
 

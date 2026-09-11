@@ -3,10 +3,10 @@ const { installAuthHarness, app } = require('../helpers/authHarness');
 const request = require('supertest');
 const f = require('../helpers/factories');
 const balanceManager = require('../../services/trading/balanceManager.service');
-const { BalanceUsuario } = require('../../models');
-const recon = require('../../services/ledger/reconciliation');
-const { PROPOSITOS } = require('../../services/ledger/ledgerAccounts');
-const posting = require('../../services/ledger/postingService');
+const { UserBalance } = require('../../models');
+const recon = require('../../modules/balances/ledger/reconciliation');
+const { PURPOSES } = require('../../modules/balances/ledger/ledgerAccounts');
+const posting = require('../../modules/balances/ledger/postingService');
 const money = require('../../utils/money');
 
 // Swap y transferencia Funding↔Spot son money-path → exigen Idempotency-Key.
@@ -42,13 +42,13 @@ describe('Trading reserva y lee en el compartimento Spot', () => {
     });
     expect(res.success).toBe(true);
 
-    const spot = await BalanceUsuario.getSaldoCompartimento(user.id, usdt.id, 'spot');
-    expect(spot.disponible).toBe('900.00000000');
-    expect(spot.bloqueado).toBe('100.00000000');
+    const spot = await UserBalance.getCompartmentBalance(user.id, usdt.id, 'spot');
+    expect(spot.available).toBe('900.00000000');
+    expect(spot.blocked).toBe('100.00000000');
     // Funding intacto.
-    const funding = await BalanceUsuario.getSaldoCompartimento(user.id, usdt.id, 'funding');
-    expect(funding.disponible).toBe('0');
-    expect((await recon.reconciliarInterno()).ok).toBe(true);
+    const funding = await UserBalance.getCompartmentBalance(user.id, usdt.id, 'funding');
+    expect(funding.available).toBe('0');
+    expect((await recon.reconcileInternal()).ok).toBe(true);
   });
 });
 
@@ -62,13 +62,13 @@ describe('POST /api/balances/my/transfer (Funding↔Spot)', () => {
       .post('/api/balances/my/transfer')
       .set(f.authHeader(user))
       .set('Idempotency-Key', idemKey())
-      .send({ criptomonedaId: usdt.id, cantidad: '200', origen: 'funding', destino: 'spot' });
+      .send({ cryptoId: usdt.id, amount: '200', from: 'funding', to: 'spot' });
     expect(res.status).toBe(200);
 
-    expect((await BalanceUsuario.getSaldoCompartimento(user.id, usdt.id, 'funding')).disponible).toBe('300.00000000');
-    expect((await BalanceUsuario.getSaldoCompartimento(user.id, usdt.id, 'spot')).disponible).toBe('200.00000000');
-    expect(await posting.getSaldoCuenta({ ownerId: null, proposito: PROPOSITOS.SUSPENSE, criptomonedaId: usdt.id })).toBe('0');
-    expect((await recon.reconciliarInterno()).ok).toBe(true);
+    expect((await UserBalance.getCompartmentBalance(user.id, usdt.id, 'funding')).available).toBe('300.00000000');
+    expect((await UserBalance.getCompartmentBalance(user.id, usdt.id, 'spot')).available).toBe('200.00000000');
+    expect(await posting.getAccountBalance({ ownerId: null, purpose: PURPOSES.SUSPENSE, cryptoId: usdt.id })).toBe('0');
+    expect((await recon.reconcileInternal()).ok).toBe(true);
   });
 
   test('sobregiro → 400, sin mover fondos', async () => {
@@ -80,9 +80,9 @@ describe('POST /api/balances/my/transfer (Funding↔Spot)', () => {
       .post('/api/balances/my/transfer')
       .set(f.authHeader(user))
       .set('Idempotency-Key', idemKey())
-      .send({ criptomonedaId: usdt.id, cantidad: '200', origen: 'funding', destino: 'spot' });
+      .send({ cryptoId: usdt.id, amount: '200', from: 'funding', to: 'spot' });
     expect(res.status).toBe(400);
-    expect((await BalanceUsuario.getSaldoCompartimento(user.id, usdt.id, 'funding')).disponible).toBe('10.00000000');
+    expect((await UserBalance.getCompartmentBalance(user.id, usdt.id, 'funding')).available).toBe('10.00000000');
   });
 
   test('mismo compartimento → 400', async () => {
@@ -93,7 +93,7 @@ describe('POST /api/balances/my/transfer (Funding↔Spot)', () => {
       .post('/api/balances/my/transfer')
       .set(f.authHeader(user))
       .set('Idempotency-Key', idemKey())
-      .send({ criptomonedaId: usdt.id, cantidad: '1', origen: 'funding', destino: 'funding' });
+      .send({ cryptoId: usdt.id, amount: '1', from: 'funding', to: 'funding' });
     expect(res.status).toBe(400);
   });
 });
@@ -109,9 +109,9 @@ describe('GET /api/balances/my/balances es aditivo (totales = suma + desglose)',
     expect(res.status).toBe(200);
     const fila = res.body.find((b) => b.criptomonedaId === usdt.id);
     expect(fila).toBeDefined();
-    expect(fila.balanceDisponible).toBe('500.00000000'); // 300 + 200
-    expect(fila.compartimentos.funding.disponible).toBe('300.00000000');
-    expect(fila.compartimentos.spot.disponible).toBe('200.00000000');
+    expect(fila.availableBalance).toBe('500.00000000'); // 300 + 200
+    expect(fila.compartments.funding.available).toBe('300.00000000');
+    expect(fila.compartments.spot.available).toBe('200.00000000');
   });
 
   test('caso mixto: solo funding — valores cero de spot deben tener 8 decimales', async () => {
@@ -124,16 +124,16 @@ describe('GET /api/balances/my/balances es aditivo (totales = suma + desglose)',
     const fila = res.body.find((b) => b.criptomonedaId === usdt.id);
     expect(fila).toBeDefined();
     // root: 300 funding + 0 spot = 300, siempre 8dp
-    expect(fila.balanceDisponible).toBe('300.00000000');
+    expect(fila.availableBalance).toBe('300.00000000');
     // funding compartimento: valor real, 8dp
-    expect(fila.compartimentos.funding.disponible).toBe('300.00000000');
-    expect(fila.compartimentos.funding.bloqueado).toBe('0.00000000');
-    expect(fila.compartimentos.funding.pendiente).toBe('0.00000000');
+    expect(fila.compartments.funding.available).toBe('300.00000000');
+    expect(fila.compartments.funding.blocked).toBe('0.00000000');
+    expect(fila.compartments.funding.pending).toBe('0.00000000');
     // root pendiente: 8dp (no bare '0')
-    expect(fila.balancePendiente).toBe('0.00000000');
-    // spot compartimento: sin cuenta → getSaldoCuenta devuelve '0' → debe emitirse como '0.00000000'
-    expect(fila.compartimentos.spot.disponible).toBe('0.00000000');
-    expect(fila.compartimentos.spot.bloqueado).toBe('0.00000000');
+    expect(fila.pendingBalance).toBe('0.00000000');
+    // spot compartimento: sin cuenta → getAccountBalance devuelve '0' → debe emitirse como '0.00000000'
+    expect(fila.compartments.spot.available).toBe('0.00000000');
+    expect(fila.compartments.spot.blocked).toBe('0.00000000');
   });
 });
 
@@ -160,22 +160,22 @@ describe('Swap respeta el compartimento origen', () => {
     expect(res.status).toBe(201);
 
     // Recibió BTC en Spot (no en Funding)
-    const spotBtc = await BalanceUsuario.getSaldoCompartimento(user.id, btc.id, 'spot');
-    expect(money.compare(spotBtc.disponible, '0')).toBeGreaterThan(0);
+    const spotBtc = await UserBalance.getCompartmentBalance(user.id, btc.id, 'spot');
+    expect(money.compare(spotBtc.available, '0')).toBeGreaterThan(0);
 
     // Pagó USDT desde Spot (200 - 101 = 99)
-    const spotUsdt = await BalanceUsuario.getSaldoCompartimento(user.id, usdt.id, 'spot');
-    expect(spotUsdt.disponible).toBe('99.00000000');
+    const spotUsdt = await UserBalance.getCompartmentBalance(user.id, usdt.id, 'spot');
+    expect(spotUsdt.available).toBe('99.00000000');
 
     // Funding completamente intacto (cero en ambas criptos)
-    const fundingBtc = await BalanceUsuario.getSaldoCompartimento(user.id, btc.id, 'funding');
-    expect(fundingBtc.disponible).toBe('0');
-    const fundingUsdt = await BalanceUsuario.getSaldoCompartimento(user.id, usdt.id, 'funding');
-    expect(fundingUsdt.disponible).toBe('0');
+    const fundingBtc = await UserBalance.getCompartmentBalance(user.id, btc.id, 'funding');
+    expect(fundingBtc.available).toBe('0');
+    const fundingUsdt = await UserBalance.getCompartmentBalance(user.id, usdt.id, 'funding');
+    expect(fundingUsdt.available).toBe('0');
   });
 });
 
-describe('getByUserIdCompartimento — lista por cripto scopeada a un compartimento', () => {
+describe('getByUserIdCompartment — lista por cripto scopeada a un compartimento', () => {
   test('spot: una entrada por cripto con cuenta spot; funding no aparece', async () => {
     const usdt = await f.seedCripto('USDT');
     const btc = await f.seedCripto('BTC');
@@ -184,13 +184,13 @@ describe('getByUserIdCompartimento — lista por cripto scopeada a un compartime
     await f.seedSpotBalance(user, btc, '2');
     await f.seedBalance(user, usdt, '999'); // funding: no debe influir en la lista spot
 
-    const filas = await BalanceUsuario.getByUserIdCompartimento(user.id, 'spot');
+    const filas = await UserBalance.getByUserIdCompartment(user.id, 'spot');
     expect(filas).toHaveLength(2); // sólo las cripto con cuenta spot
     const u = filas.find((r) => r.criptomonedaId === usdt.id);
     const b = filas.find((r) => r.criptomonedaId === btc.id);
-    expect(u.disponible).toBe('150.00000000');
-    expect(u.bloqueado).toBe('0');
-    expect(u.pendiente).toBe('0'); // spot no tiene pendiente
-    expect(b.disponible).toBe('2.00000000');
+    expect(u.available).toBe('150.00000000');
+    expect(u.blocked).toBe('0');
+    expect(u.pending).toBe('0'); // spot no tiene pendiente
+    expect(b.available).toBe('2.00000000');
   });
 });

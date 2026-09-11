@@ -203,8 +203,8 @@ function createTransaccionBlockchainModel(sequelize) {
       // Paso D: depósito detectado → acreditar en estado PENDIENTE en el ledger
       // (external_onchain → funding:pendiente). Al confirmar, _acreditarDeposito
       // lo mueve a disponible.
-      const { registrarDepositoPendiente } = require('../services/ledger/operations');
-      await registrarDepositoPendiente({
+      const { registerPendingDeposit } = require('../modules/balances/ledger/operations');
+      await registerPendingDeposit({
         userId: data.userId,
         criptomonedaId: data.criptomonedaId,
         cantidad: String(data.cantidad),
@@ -272,8 +272,8 @@ function createTransaccionBlockchainModel(sequelize) {
       // 'procesando' sin confirmar vía failWithdrawal (bloqueado→disponible), y si
       // ya hubiéramos debitado a external eso quedaría inconsistente.
       if (transaccion.tipo === 'retiro' && updateData.estado === 'confirmado' && transaccion.estado !== 'confirmado') {
-        const { marcarRetiroTransmitido } = require('../services/ledger/operations');
-        await marcarRetiroTransmitido({
+        const { markWithdrawalTransmitted } = require('../modules/balances/ledger/operations');
+        await markWithdrawalTransmitted({
           userId: transaccion.userId,
           criptomonedaId: transaccion.criptomonedaId,
           cantidad: String(transaccion.cantidad),
@@ -291,7 +291,7 @@ function createTransaccionBlockchainModel(sequelize) {
 
   TransaccionBlockchain._acreditarDeposito = async (transaccion, transaction) => {
     // Fix 2026-08-19 (AUDITORIA_BACKEND.md Altos #10): antes este archivo
-    // re-inicializaba la entidad BalanceUsuario cruda a nivel de módulo
+    // re-inicializaba la entidad UserBalance cruda a nivel de módulo
     // (initBalanceUsuario(sequelize)) en vez de importar el modelo que
     // models/index.js ya inicializó y ya asoció — funcionaba porque es la
     // misma clase JS (require cachea el módulo), pero era frágil ante
@@ -311,8 +311,8 @@ function createTransaccionBlockchainModel(sequelize) {
 
       // Paso D: el depósito ya está en funding:pendiente (registrado al detectarse
       // en createDeposit). Al confirmar, se mueve pendiente → disponible.
-      const { confirmarDeposito } = require('../services/ledger/operations');
-      await confirmarDeposito({
+      const { confirmDeposit } = require('../modules/balances/ledger/operations');
+      await confirmDeposit({
         userId: transaccion.userId,
         criptomonedaId: transaccion.criptomonedaId,
         cantidad: String(transaccion.cantidad),
@@ -358,7 +358,7 @@ function createTransaccionBlockchainModel(sequelize) {
   TransaccionBlockchain.createWithdrawal = async (data, { finalize } = {}) => {
     // Ver el comentario de _acreditarDeposito sobre por qué este require
     // es lazy (Altos #10).
-    const { BalanceUsuario } = require('./index');
+    const { UserBalance } = require('./index');
     const transaction = await sequelize.transaction();
 
     try {
@@ -371,7 +371,7 @@ function createTransaccionBlockchainModel(sequelize) {
       // en el ledger; el guard de sobregiro del ledger rechaza si no alcanza). Su
       // mensaje /insuficiente/ preserva la semantica de "Balance insuficiente para
       // retiro" para el caller.
-      await BalanceUsuario.blockBalance(data.userId, data.criptomonedaId, String(data.cantidad), transaction);
+      await UserBalance.blockBalance(data.userId, data.criptomonedaId, String(data.cantidad), transaction);
 
       // Crear transacción de retiro
       const retiroData = {
@@ -472,12 +472,12 @@ function createTransaccionBlockchainModel(sequelize) {
 
   // (Paso D: completeWithdrawal se eliminó — era código muerto sin callers. El
   // débito de los fondos bloqueados al mundo on-chain ahora lo hace
-  // updateConfirmations al confirmarse el retiro, vía marcarRetiroTransmitido
+  // updateConfirmations al confirmarse el retiro, vía markWithdrawalTransmitted
   // (funding:bloqueado → external_onchain), simétrico a _acreditarDeposito.)
 
   TransaccionBlockchain.failWithdrawal = async (id, razon) => {
     // Ver el comentario de _acreditarDeposito (Altos #10).
-    const { BalanceUsuario } = require('./index');
+    const { UserBalance } = require('./index');
     const transaction = await sequelize.transaction();
 
     try {
@@ -489,7 +489,7 @@ function createTransaccionBlockchainModel(sequelize) {
 
       // Guard de estado (simétrico a markWithdrawalAsSent): solo se puede fallar
       // un retiro que sigue 'pendiente' o 'procesando'. Fallar uno ya
-      // 'confirmado'/'completado' es peligroso: marcarRetiroTransmitido ya movió
+      // 'confirmado'/'completado' es peligroso: markWithdrawalTransmitted ya movió
       // los fondos a external_onchain (salieron on-chain), y unblockBalance los
       // devolvería a disponible consumiendo el bloqueado de OTRA reserva del
       // mismo usuario → creación de dinero. Fallar uno ya 'fallido' duplicaría el
@@ -499,7 +499,7 @@ function createTransaccionBlockchainModel(sequelize) {
       }
 
       // Write-flip (Paso B): retiro fallido → devolver bloqueado a disponible.
-      await BalanceUsuario.unblockBalance(retiro.userId, retiro.criptomonedaId, String(retiro.cantidad), transaction);
+      await UserBalance.unblockBalance(retiro.userId, retiro.criptomonedaId, String(retiro.cantidad), transaction);
 
       // Marcar como fallido
       await TransaccionBlockchain.update(
@@ -659,7 +659,7 @@ function createTransaccionBlockchainModel(sequelize) {
 
   TransaccionBlockchain.validateWithdrawal = async (userId, criptomonedaId, cantidad, direccionDestino) => {
     // Ver el comentario de _acreditarDeposito (Altos #10).
-    const { BalanceUsuario } = require('./index');
+    const { UserBalance } = require('./index');
     try {
       // Validar usuario active
       const usuario = await sequelize.models.User.findByPk(userId);
@@ -678,7 +678,7 @@ function createTransaccionBlockchainModel(sequelize) {
 
       // ESTO DE ACÁ ABAJO ESTÁ BIEN, AUNQUE NO TESTEADO, PERO POR AHORA SON VALIDACIONES INNECESARIAS
 
-      /*if (!balance || parseFloat(balance.balanceDisponible) < parseFloat(cantidad)) {
+      /*if (!balance || parseFloat(balance.availableBalance) < parseFloat(cantidad)) {
         return { valid: false, message: 'Balance insuficiente' }; //<----- Llega a acá bien
       }*/
 

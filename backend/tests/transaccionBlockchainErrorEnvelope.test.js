@@ -29,7 +29,7 @@ jest.mock('../models', () => ({
   },
   User: { findByPk: jest.fn() },
   Crypto: { findByPk: jest.fn() },
-  BalanceUsuario: { findAll: jest.fn() },
+  UserBalance: { findAll: jest.fn() },
   DireccionDeposito: {
     getByUserAndCrypto: jest.fn(),
     generateAddressForUser: jest.fn(),

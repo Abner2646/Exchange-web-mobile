@@ -72,8 +72,8 @@ describe('transactional idempotency — swap (POST /intercambioExchange/)', () =
   });
 });
 
-describe('transactional idempotency — createTransferencia (POST /transferencias/)', () => {
-  const transferencia = require('../../controllers/transferencia.controller');
+describe('transactional idempotency — createTransfer (POST /transferencias/)', () => {
+  const transferencia = require('../../modules/balances/transfer.controller');
   const fakeEmail = { locals: { emailService: { enviarCodigoTransferencia: async () => {} } } };
 
   test('completed row is committed inside the transfer tx (survives a missing finish handler)', async () => {
@@ -85,13 +85,13 @@ describe('transactional idempotency — createTransferencia (POST /transferencia
 
     const req = {
       user: { id: sender.id },
-      body: { usuarioDestinatarioId: dest.id, criptomonedaId: btc.id, cantidad: '1' },
+      body: { recipientId: dest.id, cryptoId: btc.id, amount: '1' },
       app: fakeEmail,
       _idempotency,
     };
     const res = resNoFinish();
 
-    await transferencia.createTransferencia(req, res);
+    await transferencia.createTransfer(req, res);
 
     expect(res.statusCode).toBe(201);
     const row = await IdempotencyKey.findOne({ where });
@@ -100,8 +100,8 @@ describe('transactional idempotency — createTransferencia (POST /transferencia
   });
 });
 
-describe('transactional idempotency — transferMisCompartimentos (POST /balances/my/transfer)', () => {
-  const balanceCtrl = require('../../controllers/balanceUsuario.controller');
+describe('transactional idempotency — transferMyCompartments (POST /balances/my/transfer)', () => {
+  const balanceCtrl = require('../../modules/balances/userBalance.controller');
 
   test('completed row is committed inside the compartment-transfer tx (survives a missing finish handler)', async () => {
     const user = await f.seedUser();
@@ -111,13 +111,13 @@ describe('transactional idempotency — transferMisCompartimentos (POST /balance
 
     const req = {
       user: { id: user.id },
-      body: { criptomonedaId: btc.id, cantidad: '2', origen: 'funding', destino: 'spot' },
+      body: { cryptoId: btc.id, amount: '2', from: 'funding', to: 'spot' },
       app: { locals: {} },
       _idempotency,
     };
     const res = resNoFinish();
 
-    await balanceCtrl.transferMisCompartimentos(req, res);
+    await balanceCtrl.transferMyCompartments(req, res);
 
     expect(res.statusCode).toBe(200);
     const row = await IdempotencyKey.findOne({ where });

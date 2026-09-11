@@ -184,7 +184,7 @@ class BalanceCheckCleanup {
       // saldo es el ledger de partida doble, no una fila mutable derivada de tx. Las
       // tx problemáticas eran balance-checks fantasma que nunca postearon dinero, así
       // que borrarlas no afecta el ledger. La verificación de saldos es la
-      // reconciliación del ledger (reconciliarInterno/Externo).
+      // reconciliación del ledger (reconcileInternal/Externo).
 
       await transaction.commit();
       

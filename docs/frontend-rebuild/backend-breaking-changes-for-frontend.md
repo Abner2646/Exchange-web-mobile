@@ -179,3 +179,42 @@ Also disable the submit button + show a "sending…" state (cheap first-line def
 - **Business config (admin):** model `ConfiguracionNegocio`→`BusinessConfig`; columns
   `clave|valor|tipo|categoria|descripcion` → **`key|value|type|category|description`**;
   route param `/config/:clave` → **`/config/:key`** (`type` enum values unchanged).
+
+### ✅ balances / ledger  (chunk 3 — done)
+
+- **Transfer route base:** `/api/transferencia/*` → **`/api/transfer/*`** (`/`, `/:id/process`,
+  `/my`, `/:id`, `/:id/cancel`, `/:id/resend-code`, `/verify-funds`, `/stats`).
+- **Transfer create/verify-funds request body:** `criptomonedaId`→`cryptoId`, `cantidad`→`amount`,
+  `concepto`→`concept` (`recipientId`, `verificationCode` unchanged).
+- **Transfer object / responses:** `estado`→`status` with enum values
+  **`pendiente|completada|fallida|cancelada` → `pending|completed|failed|cancelled`**;
+  response keys `destinatario`→`recipient`, `cantidad`→`amount`, `estado`→`status`,
+  `fecha`→`date`; list key `{ transferencias: [...] }` → **`{ transfers: [...] }`**;
+  verify-funds keys `tieneFondos`→`hasFunds`, `cantidadSolicitada`→`requestedAmount`,
+  `suficiente`→`sufficient`. Transfer include aliases `remitente/destinatario` →
+  **`sender/recipient`**, `criptomonedaTransferencia` → **`crypto`**.
+- **Balances — my balances (`GET /balances/my/balances`):** per-crypto breakdown key
+  `compartimentos` → **`compartments`**; inner compartment keys
+  `disponible/bloqueado/pendiente` → **`available/blocked/pending`** (root totals
+  `availableBalance/blockedBalance/pendingBalance` unchanged). The `criptomonedaId` key
+  on balance objects is still Spanish (deferred FK-echo, renamed with the crypto FK).
+- **Balances — compartment transfer (`POST /balances/my/transfer`):** body
+  `criptomonedaId`→`cryptoId`, `cantidad`→`amount`, `origen`→`from`, `destino`→`to`;
+  response `data.{origen,destino}` → **`data.{from,to}`**.
+- **Balances — admin ledger reads:** `getTotalBalance`/compartment reads now return
+  `available/blocked/pending` (was `disponible/bloqueado/pendiente`); admin transfer body
+  `criptomonedaId`→`cryptoId`; route params `/:criptomonedaId` → **`/:cryptoId`**;
+  faucet response `cantidad`→`amount`. `updateBalance` `type` value
+  `'disponible'|'bloqueado'` → **`'available'|'blocked'`**.
+- **Internal (not client-facing, noted for parity):** models `BalanceUsuario`→`UserBalance`
+  (ledger facade), `Transferencia`→`Transfer`, `CuentaLedger`→`LedgerAccount`,
+  `AsientoLedger`→`LedgerEntry`, `MovimientoLedger`→`LedgerMovement`,
+  `SaldoLedger`→`LedgerBalance`; ledger tables' columns to English
+  (`proposito→purpose`, `cuenta_id→account_id`, `asiento_id→entry_id`, `monto→amount`,
+  `saldo→balance`, `criptomoneda_id→crypto_id`, `referencia→reference`, `tipo→type`);
+  ledger `proposito`/`tipo`/`referencia` **stored values are unchanged** (e.g.
+  `'funding:disponible'`, `'reserva_orden'`), only names changed.
+- **Still Spanish (deferred to owning domains):** the ledger's public operation param keys
+  (`services/…/operations`: `usuarioId`, `criptomonedaId`, `cantidad`, `referencia`, …) —
+  they carry data from not-yet-renamed domains (trading/p2p/blockchain/swap) and rename
+  with those chunks; the `criptomonedaId` FK column echo on balance/transfer response objects.

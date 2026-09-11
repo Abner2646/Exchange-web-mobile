@@ -1,11 +1,11 @@
 require('../helpers/testEnv');
 const request = require('supertest');
 const { app, installAuthHarness } = require('../helpers/authHarness');
-const { Transferencia } = require('../../models');
+const { Transfer } = require('../../models');
 const f = require('../helpers/factories');
-const posting = require('../../services/ledger/postingService');
-const recon = require('../../services/ledger/reconciliation');
-const { PROPOSITOS } = require('../../services/ledger/ledgerAccounts');
+const posting = require('../../modules/balances/ledger/postingService');
+const recon = require('../../modules/balances/ledger/reconciliation');
+const { PURPOSES } = require('../../modules/balances/ledger/ledgerAccounts');
 
 const h = installAuthHarness();
 
@@ -22,19 +22,19 @@ async function seedScenario({ senderBalance = '100' } = {}) {
   return { crypto, sender, recipient };
 }
 
-function createTransfer(sender, { recipientId, cryptoId, cantidad }) {
+function createTransfer(sender, { recipientId, cryptoId, amount }) {
   return request(app)
-    .post('/api/transferencia/')
+    .post('/api/transfer/')
     .set(f.authHeader(sender))
     .set('Idempotency-Key', idemKey())
-    .send({ usuarioDestinatarioId: recipientId, criptomonedaId: cryptoId, cantidad });
+    .send({ recipientId: recipientId, cryptoId, amount });
 }
 
-describe('POST /api/transferencia/ (create) → /:id/process', () => {
+describe('POST /api/transfer/ (create) → /:id/process', () => {
   test('create emails a code to the sender; processing with it moves funds', async () => {
     const { crypto, sender, recipient } = await seedScenario();
 
-    const create = await createTransfer(sender, { recipientId: recipient.id, cryptoId: crypto.id, cantidad: '50' });
+    const create = await createTransfer(sender, { recipientId: recipient.id, cryptoId: crypto.id, amount: '50' });
     expect(create.status).toBe(201);
     const transferId = create.body.data.id;
 
@@ -46,58 +46,58 @@ describe('POST /api/transferencia/ (create) → /:id/process', () => {
     expect(JSON.stringify(create.body)).not.toContain(code); // not leaked in the response
 
     const process = await request(app)
-      .post(`/api/transferencia/${transferId}/process`)
+      .post(`/api/transfer/${transferId}/process`)
       .set(f.authHeader(sender))
-      .send({ codigoVerificacion: code });
+      .send({ verificationCode: code });
     expect(process.status).toBe(200);
 
     // Funds moved atomically: sender 100 -> 50, recipient 0 -> 50.
-    expect((await f.getBalance(sender, crypto)).balanceDisponible).toBe('50.00000000');
-    expect((await f.getBalance(recipient, crypto)).balanceDisponible).toBe('50.00000000');
-    expect((await Transferencia.findByPk(transferId)).estado).toBe('completada');
+    expect((await f.getBalance(sender, crypto)).availableBalance).toBe('50.00000000');
+    expect((await f.getBalance(recipient, crypto)).availableBalance).toBe('50.00000000');
+    expect((await Transfer.findByPk(transferId)).status).toBe('completed');
 
     // Paso D: la transferencia es un asiento user↔user sin suspense; el libro cierra.
-    expect(await posting.getSaldoCuenta({ ownerId: null, proposito: PROPOSITOS.SUSPENSE, criptomonedaId: crypto.id })).toBe('0');
-    expect((await recon.reconciliarInterno()).ok).toBe(true);
-    expect((await recon.reconciliarExterno()).ok).toBe(true);
+    expect(await posting.getAccountBalance({ ownerId: null, purpose: PURPOSES.SUSPENSE, cryptoId: crypto.id })).toBe('0');
+    expect((await recon.reconcileInternal()).ok).toBe(true);
+    expect((await recon.reconcileExternal()).ok).toBe(true);
   });
 
   test('create with insufficient funds → 400 INSUFFICIENT_FUNDS, no transfer created', async () => {
     const { crypto, sender, recipient } = await seedScenario({ senderBalance: '10' });
 
-    const create = await createTransfer(sender, { recipientId: recipient.id, cryptoId: crypto.id, cantidad: '50' });
+    const create = await createTransfer(sender, { recipientId: recipient.id, cryptoId: crypto.id, amount: '50' });
 
     expect(create.status).toBe(400);
     expect(create.body.error.code).toBe('INSUFFICIENT_FUNDS');
-    expect(await Transferencia.count()).toBe(0);
+    expect(await Transfer.count()).toBe(0);
   });
 
   test('process with a wrong code → 400, funds unchanged', async () => {
     const { crypto, sender, recipient } = await seedScenario();
-    const create = await createTransfer(sender, { recipientId: recipient.id, cryptoId: crypto.id, cantidad: '50' });
+    const create = await createTransfer(sender, { recipientId: recipient.id, cryptoId: crypto.id, amount: '50' });
     const transferId = create.body.data.id;
 
     const process = await request(app)
-      .post(`/api/transferencia/${transferId}/process`)
+      .post(`/api/transfer/${transferId}/process`)
       .set(f.authHeader(sender))
-      .send({ codigoVerificacion: '000000' });
+      .send({ verificationCode: '000000' });
 
     expect(process.status).toBe(400);
-    expect((await f.getBalance(sender, crypto)).balanceDisponible).toBe('100.00000000');
-    expect((await f.getBalance(recipient, crypto)).balanceDisponible).toBe('0.00000000');
+    expect((await f.getBalance(sender, crypto)).availableBalance).toBe('100.00000000');
+    expect((await f.getBalance(recipient, crypto)).availableBalance).toBe('0.00000000');
   });
 
   test('cancel a pending transfer → 200, state cancelled, funds unchanged', async () => {
     const { crypto, sender, recipient } = await seedScenario();
-    const create = await createTransfer(sender, { recipientId: recipient.id, cryptoId: crypto.id, cantidad: '50' });
+    const create = await createTransfer(sender, { recipientId: recipient.id, cryptoId: crypto.id, amount: '50' });
     const transferId = create.body.data.id;
 
     const cancel = await request(app)
-      .put(`/api/transferencia/${transferId}/cancel`)
+      .put(`/api/transfer/${transferId}/cancel`)
       .set(f.authHeader(sender));
 
     expect(cancel.status).toBe(200);
-    expect((await Transferencia.findByPk(transferId)).estado).toBe('cancelada');
-    expect((await f.getBalance(sender, crypto)).balanceDisponible).toBe('100.00000000');
+    expect((await Transfer.findByPk(transferId)).status).toBe('cancelled');
+    expect((await f.getBalance(sender, crypto)).availableBalance).toBe('100.00000000');
   });
 });

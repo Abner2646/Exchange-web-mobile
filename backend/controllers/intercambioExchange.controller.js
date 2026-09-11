@@ -1,11 +1,11 @@
 // controllers/intercambioExchange.controller.js
 
-const { IntercambioExchange, User, ParExchange, BalanceUsuario, Crypto, sequelize } = require('../models/index.js');
+const { IntercambioExchange, User, ParExchange, UserBalance, Crypto, sequelize } = require('../models/index.js');
 const AppError = require('../utils/AppError');
 const errorCodes = require('../utils/errorCodes');
 const money = require('../utils/money');
 const { calculateSettlement } = require('../services/intercambioSettlement.service');
-const { liquidarSwap } = require('../services/ledger/operations');
+const { settleSwap } = require('../modules/balances/ledger/operations');
 const idempotency = require('../middleware/idempotency.middleware');
 
 // Función auxiliar para validar fechas
@@ -125,17 +125,17 @@ const createOrder = async (req, res) => {
 
     // Chequeo de suficiencia sobre la proyección del ledger (da el error code de
     // dominio correcto). El anti-sobregiro atómico real es el FOR UPDATE de
-    // postTransaction dentro de liquidarSwap.
+    // postTransaction dentro de settleSwap.
     if (tipo === 'compra') {
-      const balanceQuote = await BalanceUsuario.getSaldoCompartimento(usuarioId, criptoQuoteId, compartimento, { transaction });
-      if (money.compare(String(balanceQuote.disponible), requiredQuote) < 0) {
+      const balanceQuote = await UserBalance.getCompartmentBalance(usuarioId, criptoQuoteId, compartimento, { transaction });
+      if (money.compare(String(balanceQuote.available), requiredQuote) < 0) {
         await transaction.rollback();
         throw new AppError(400, errorCodes.EXCHANGE_INSUFFICIENT_BALANCE, 'Saldo insuficiente en moneda quote para realizar la operación');
       }
       netAmount = String(cantidadBase);
     } else {
-      const balanceBase = await BalanceUsuario.getSaldoCompartimento(usuarioId, criptoBaseId, compartimento, { transaction });
-      if (money.compare(String(balanceBase.disponible), String(cantidadBase)) < 0) {
+      const balanceBase = await UserBalance.getCompartmentBalance(usuarioId, criptoBaseId, compartimento, { transaction });
+      if (money.compare(String(balanceBase.available), String(cantidadBase)) < 0) {
         await transaction.rollback();
         throw new AppError(400, errorCodes.EXCHANGE_INSUFFICIENT_BALANCE, 'Saldo insuficiente en moneda base para realizar la operación');
       }
@@ -158,7 +158,7 @@ const createOrder = async (req, res) => {
     // Paso D: liquidación rica en el ledger. User ↔ treasury (inventario de la
     // casa); la comisión (en quote) acredita fee_revenue. Reemplaza los
     // updateBalance (funding+suspense) y el crédito a WalletMaestra.balanceTotal.
-    await liquidarSwap({
+    await settleSwap({
       usuarioId,
       criptoBaseId,
       criptoQuoteId,
@@ -317,13 +317,13 @@ const checkTransactionLimit = async (req, res) => {
 
 // Obtener mis balances — forma UNIFICADA (2026-09-03): los tres endpoints de
 // "mis balances" (balances/intercambio/usuario) devuelven la misma forma aditiva
-// compartimentada de getBalancesConCompartimentos (totales de raíz Funding+Spot +
+// compartimentada de getBalancesWithCompartments (totales de raíz Funding+Spot +
 // desglose por compartimento + objeto `crypto`). Antes este endpoint era
 // funding-only y re-adjuntaba la cripto a mano. Cambio de contrato documentado en
 // docs/frontend-rebuild/backend-contract-changes.md. El orden no está garantizado.
 const getMyBalances = async (req, res) => {
   const usuarioId = req.user.id;
-  const balances = await BalanceUsuario.getBalancesConCompartimentos(usuarioId);
+  const balances = await UserBalance.getBalancesWithCompartments(usuarioId);
   res.json(balances);
 };
 

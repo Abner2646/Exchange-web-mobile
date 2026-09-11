@@ -2,19 +2,19 @@
 //
 // Fase 1 — precisión monetaria en el P2P. createTransaction computaba el monto
 // fiat con `cantidad * parseFloat(precioUnitario)` (float binario) y bloqueaba
-// los fondos pasando `parseFloat(cantidad)` a BalanceUsuario.updateBalance,
+// los fondos pasando `parseFloat(cantidad)` a UserBalance.updateBalance,
 // contaminando el monto antes del borde exacto. cantidad/montoFiat son DECIMAL:
 // con money.js el fiat y los montos bloqueados son exactos como string.
 
 jest.mock('../models/entities/transaccionP2P.entity');
 jest.mock('../models/index', () => ({
   OfertaP2P: {},
-  BalanceUsuario: {},
+  UserBalance: {},
   Notificaciones: {},
 }));
 
 const initTransaccionP2P = require('../models/entities/transaccionP2P.entity');
-const { OfertaP2P, BalanceUsuario, Notificaciones } = require('../models/index');
+const { OfertaP2P, UserBalance, Notificaciones } = require('../models/index');
 const createTransaccionP2PModel = require('../models/transaccionesP2P.model');
 
 const fakeModel = {};
@@ -31,8 +31,8 @@ describe('TransaccionP2P.createTransaction — montoFiat y bloqueo exactos', () 
       active: true, cantidadMin: '0.01', cantidadMax: '10',
       crypto: { symbol: 'BTC' }, monedaFiat: 'USD',
     });
-    BalanceUsuario.getByUserAndCrypto = jest.fn().mockResolvedValue({ balanceDisponible: '5' });
-    BalanceUsuario.blockBalance = jest.fn().mockResolvedValue();
+    UserBalance.getByUserAndCrypto = jest.fn().mockResolvedValue({ availableBalance: '5' });
+    UserBalance.blockBalance = jest.fn().mockResolvedValue();
     TransaccionP2P.create = jest.fn().mockResolvedValue({ id: 'tx1' });
     TransaccionP2P.getById = jest.fn().mockResolvedValue({ id: 'tx1' });
     Notificaciones.notifyBothParties = jest.fn().mockResolvedValue();
@@ -49,6 +49,6 @@ describe('TransaccionP2P.createTransaction — montoFiat y bloqueo exactos', () 
 
     // Paso D: el bloqueo de fondos del vendedor delega en blockBalance (dos patas
     // de usuario, sin suspense) con la cantidad exacta como string.
-    expect(BalanceUsuario.blockBalance).toHaveBeenCalledWith('v', 'crypto', '0.1', expect.anything());
+    expect(UserBalance.blockBalance).toHaveBeenCalledWith('v', 'crypto', '0.1', expect.anything());
   });
 });

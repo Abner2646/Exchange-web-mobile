@@ -11,7 +11,7 @@ jest.mock('../models', () => ({
   User: { findByPk: jest.fn() },
   TransaccionBlockchain: {},
   Crypto: {},
-  BalanceUsuario: {},
+  UserBalance: {},
   DireccionDeposito: {},
 }));
 

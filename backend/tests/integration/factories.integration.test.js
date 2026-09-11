@@ -21,6 +21,6 @@ describe('factories + auth helper', () => {
     const btc = await f.seedCripto('BTC');
     await f.seedBalance(user, btc, '1.5');
     const bal = await f.getBalance(user, btc);
-    expect(bal.balanceDisponible).toBe('1.50000000');
+    expect(bal.availableBalance).toBe('1.50000000');
   });
 });

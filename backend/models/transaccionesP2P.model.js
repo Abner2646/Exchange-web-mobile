@@ -58,8 +58,8 @@ TransaccionP2P.createTransaction = async (data) => {
       );
     }
 
-    const { BalanceUsuario } = require('./index');
-    const balance = await BalanceUsuario.getByUserAndCrypto(vendedorId, criptomonedaId, { transaction });
+    const { UserBalance } = require('./index');
+    const balance = await UserBalance.getByUserAndCrypto(vendedorId, criptomonedaId, { transaction });
     
     if (!balance) {
       throw new Error(
@@ -68,19 +68,19 @@ TransaccionP2P.createTransaction = async (data) => {
       );
     }
 
-    const balanceDisponible = String(balance.balanceDisponible);
+    const availableBalance = String(balance.availableBalance);
 
-    if (money.compare(balanceDisponible, cantidadNum) < 0) {
+    if (money.compare(availableBalance, cantidadNum) < 0) {
       throw new Error(
         `Fondos insuficientes del vendedor. ` +
-        `Disponible: ${balanceDisponible} ${oferta.crypto?.symbol || ''}, ` +
+        `Disponible: ${availableBalance} ${oferta.crypto?.symbol || ''}, ` +
         `Requerido: ${cantidadNum} ${oferta.crypto?.symbol || ''}`
       );
     }
 
     // 🔒 BLOQUEAR FONDOS — Paso D: blockBalance postea dos patas de usuario
     // (disponible→bloqueado), sin suspense.
-    await BalanceUsuario.blockBalance(vendedorId, criptomonedaId, cantidadNum, transaction);
+    await UserBalance.blockBalance(vendedorId, criptomonedaId, cantidadNum, transaction);
 
     const montoFiat = money.multiply(cantidadNum, String(precioUnitario));
 
@@ -157,8 +157,8 @@ TransaccionP2P.completeTransaction = async (id, usuarioId) => {
 
     // 💸 TRANSFERIR FONDOS — Paso D: un asiento P2P user↔user (cripto bloqueado
     // del vendedor → disponible del comprador), sin suspense.
-    const { liquidarP2P } = require('../services/ledger/operations');
-    await liquidarP2P({
+    const { settleP2P } = require('../modules/balances/ledger/operations');
+    await settleP2P({
       vendedorId: transaccion.vendedorId,
       compradorId: transaccion.compradorId,
       criptomonedaId: transaccion.criptomonedaId,
@@ -230,13 +230,13 @@ TransaccionP2P.cancelTransaction = async (id, usuarioId) => {
       throw new Error('La transacción ya está cancelada');
     }
 
-    const { BalanceUsuario } = require('./index');
+    const { UserBalance } = require('./index');
     const cantidad = String(transaccion.cantidad);
 
     // 🔓 DESBLOQUEAR FONDOS — Paso D: unblockBalance postea dos patas de usuario
     // (bloqueado→disponible), sin suspense.
     if (transaccion.estado === 'iniciada' || transaccion.estado === 'pago_confirmado') {
-      await BalanceUsuario.unblockBalance(transaccion.vendedorId, transaccion.criptomonedaId, cantidad, transaction);
+      await UserBalance.unblockBalance(transaccion.vendedorId, transaccion.criptomonedaId, cantidad, transaction);
     }
 
     await transaccion.update({

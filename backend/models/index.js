@@ -6,7 +6,7 @@ const dbConfig = config[env];
 
 
 // Import models
-const balanceUsuarioModel = require('./balanceUsuario.model');
+const userBalanceModel = require('../modules/balances/userBalance.model');
 const createBlockchainStateModel = require('./blockchainState.model');
 const cryptoModel = require('../modules/crypto/crypto.model.js');
 const direccionDepositoModel = require('./direccionDeposito.model');
@@ -18,7 +18,7 @@ const ofertaP2PModel = require('./ofertaP2P.model');
 const parExchangeModel = require('./parExchange.model');
 const transaccionBlockchainModel = require('./transaccionBlockchain.model');
 const transaccionP2PModel = require('./transaccionesP2P.model');
-const transferenciaModel = require('./transferencia.model.js')
+const transferModel = require('../modules/balances/transfer.model')
 const userModel = require('../modules/users/user.model');
 const valoracionModel = require('./valoracion.model');
 const walletMaestraModel = require('./walletMaestra.model');
@@ -31,10 +31,10 @@ const priceCandleModel = require('./priceCandle.model');
 const idempotencyKeyModel = require('./idempotencyKey.model');
 
 // LEDGER (partida doble) — Radar #1 + #10
-const initCuentaLedger = require('./entities/cuentaLedger.entity');
-const initAsientoLedger = require('./entities/asientoLedger.entity');
-const initMovimientoLedger = require('./entities/movimientoLedger.entity');
-const initSaldoLedger = require('./entities/saldoLedger.entity');
+const initLedgerAccount = require('../modules/balances/ledger/ledgerAccount.entity');
+const initLedgerEntry = require('../modules/balances/ledger/ledgerEntry.entity');
+const initLedgerMovement = require('../modules/balances/ledger/ledgerMovement.entity');
+const initLedgerBalance = require('../modules/balances/ledger/ledgerBalance.entity');
 
 // Config de negocio (Radar #13)
 const initBusinessConfig = require('../modules/config/businessConfig.entity');
@@ -58,7 +58,7 @@ const sequelize = new Sequelize(
 
 
 //Initialize models
-const BalanceUsuario = balanceUsuarioModel(sequelize);
+const UserBalance = userBalanceModel(sequelize);
 const BlockchainState = createBlockchainStateModel(sequelize);
 const Crypto = cryptoModel(sequelize);
 const DireccionDeposito = direccionDepositoModel(sequelize);
@@ -70,7 +70,7 @@ const OfertaP2P = ofertaP2PModel(sequelize);
 const ParExchange = parExchangeModel(sequelize);
 const TransaccionBlockchain = transaccionBlockchainModel(sequelize);
 const TransaccionP2P = transaccionP2PModel(sequelize);
-const Transferencia = transferenciaModel(sequelize);
+const Transfer = transferModel(sequelize);
 const User = userModel(sequelize);
 const Valoracion = valoracionModel(sequelize);
 const WalletMaestra = walletMaestraModel(sequelize);
@@ -83,10 +83,10 @@ const PriceCandle = priceCandleModel(sequelize);
 const IdempotencyKey = idempotencyKeyModel(sequelize);
 
 // 🆕 LEDGER MODELS (partida doble)
-const CuentaLedger = initCuentaLedger(sequelize);
-const AsientoLedger = initAsientoLedger(sequelize);
-const MovimientoLedger = initMovimientoLedger(sequelize);
-const SaldoLedger = initSaldoLedger(sequelize);
+const LedgerAccount = initLedgerAccount(sequelize);
+const LedgerEntry = initLedgerEntry(sequelize);
+const LedgerMovement = initLedgerMovement(sequelize);
+const LedgerBalance = initLedgerBalance(sequelize);
 const BusinessConfig = initBusinessConfig(sequelize);
 
 // (Write-flip Paso B: el shim CDC balanceMirror se eliminó — todas las escrituras
@@ -100,7 +100,7 @@ const BusinessConfig = initBusinessConfig(sequelize);
 // RELACIONES DE USUARIOS
 // ================================
 
-// (Paso C: User↔BalanceUsuario se eliminó — BalanceUsuario ya no es un modelo
+// (Paso C: User↔UserBalance se eliminó — UserBalance ya no es un modelo
 // Sequelize sino una fachada del ledger; los saldos se leen de la proyección del
 // ledger, no de una asociación.)
 
@@ -169,7 +169,7 @@ WalletMaestra.belongsTo(Crypto, { foreignKey: 'criptomonedaId', as: 'crypto' });
 Crypto.hasMany(DireccionDeposito, { foreignKey: 'criptomonedaId', as: 'direccionesDeposito' });
 DireccionDeposito.belongsTo(Crypto, { foreignKey: 'criptomonedaId', as: 'crypto' });
 
-// (Paso C: Crypto↔BalanceUsuario se eliminó junto con la tabla balances_users.)
+// (Paso C: Crypto↔UserBalance se eliminó junto con la tabla balances_users.)
 
 // Crypto puede estar en muchas ofertas P2P
 Crypto.hasMany(OfertaP2P, { foreignKey: 'criptomonedaId', as: 'ofertas' });
@@ -291,34 +291,34 @@ Valoracion.belongsTo(TransaccionP2P, { foreignKey: 'transaccionP2PId', as: 'tran
 // ================================
 
 // User puede ser remitente en muchas transferencias
-User.hasMany(Transferencia, { foreignKey: 'usuarioRemitenteId', as: 'transferenciasEnviadas' });
-Transferencia.belongsTo(User, { foreignKey: 'usuarioRemitenteId', as: 'remitente' });
+User.hasMany(Transfer, { foreignKey: 'senderId', as: 'sentTransfers' });
+Transfer.belongsTo(User, { foreignKey: 'senderId', as: 'sender' });
 
 // User puede ser destinatario en muchas transferencias
-User.hasMany(Transferencia, { foreignKey: 'usuarioDestinatarioId', as: 'transferenciasRecibidas' });
-Transferencia.belongsTo(User, { foreignKey: 'usuarioDestinatarioId', as: 'destinatario' });
+User.hasMany(Transfer, { foreignKey: 'recipientId', as: 'receivedTransfers' });
+Transfer.belongsTo(User, { foreignKey: 'recipientId', as: 'recipient' });
 
 // Transferencia pertenece a una criptomoneda
-Crypto.hasMany(Transferencia, { foreignKey: 'criptomonedaId', as: 'transferencias' });
-Transferencia.belongsTo(Crypto, { foreignKey: 'criptomonedaId', as: 'criptomonedaTransferencia' }); // Alias único
+Crypto.hasMany(Transfer, { foreignKey: 'cryptoId', as: 'transfers' });
+Transfer.belongsTo(Crypto, { foreignKey: 'cryptoId', as: 'crypto' }); // Alias único
 
 
 // ================================
 // RELACIONES DEL LEDGER (partida doble)
 // ================================
-AsientoLedger.hasMany(MovimientoLedger, { foreignKey: 'asientoId', as: 'movimientos' });
-MovimientoLedger.belongsTo(AsientoLedger, { foreignKey: 'asientoId', as: 'asiento' });
-MovimientoLedger.belongsTo(CuentaLedger, { foreignKey: 'cuentaId', as: 'cuenta' });
-CuentaLedger.hasMany(MovimientoLedger, { foreignKey: 'cuentaId', as: 'movimientos' });
-CuentaLedger.hasOne(SaldoLedger, { foreignKey: 'cuentaId', as: 'saldoProyectado' });
-SaldoLedger.belongsTo(CuentaLedger, { foreignKey: 'cuentaId', as: 'cuenta' });
+LedgerEntry.hasMany(LedgerMovement, { foreignKey: 'entryId', as: 'movements' });
+LedgerMovement.belongsTo(LedgerEntry, { foreignKey: 'entryId', as: 'entry' });
+LedgerMovement.belongsTo(LedgerAccount, { foreignKey: 'accountId', as: 'account' });
+LedgerAccount.hasMany(LedgerMovement, { foreignKey: 'accountId', as: 'movements' });
+LedgerAccount.hasOne(LedgerBalance, { foreignKey: 'accountId', as: 'projectedBalance' });
+LedgerBalance.belongsTo(LedgerAccount, { foreignKey: 'accountId', as: 'account' });
 
 
 
 module.exports = {
   sequelize,
   Sequelize,
-  BalanceUsuario,
+  UserBalance,
   BlockchainState,
   Crypto,
   DireccionDeposito,
@@ -330,7 +330,7 @@ module.exports = {
   ParExchange,
   TransaccionBlockchain,
   TransaccionP2P,
-  Transferencia,
+  Transfer,
   User,
   Valoracion,
   WalletMaestra,
@@ -341,9 +341,9 @@ module.exports = {
   PriceCandle,
   IdempotencyKey,
   // 🆕 LEDGER MODELS (partida doble)
-  CuentaLedger,
-  AsientoLedger,
-  MovimientoLedger,
-  SaldoLedger,
+  LedgerAccount,
+  LedgerEntry,
+  LedgerMovement,
+  LedgerBalance,
   BusinessConfig,
 };

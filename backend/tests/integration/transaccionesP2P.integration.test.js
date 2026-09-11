@@ -68,8 +68,8 @@ describe('P2P transaction — happy path (create → confirm → complete)', () 
 
     // Seller funds: 5 → 3 available, 2 blocked.
     let sellerBal = await f.getBalance(seller, btc);
-    expect(sellerBal.balanceDisponible).toBe('3.00000000');
-    expect(sellerBal.balanceBloqueado).toBe('2.00000000');
+    expect(sellerBal.availableBalance).toBe('3.00000000');
+    expect(sellerBal.blockedBalance).toBe('2.00000000');
 
     // Buyer confirms fiat payment.
     const confirmed = await confirm(buyer, txId);
@@ -81,10 +81,10 @@ describe('P2P transaction — happy path (create → confirm → complete)', () 
 
     // Seller: 3 available, 0 blocked. Buyer: 2 available.
     sellerBal = await f.getBalance(seller, btc);
-    expect(sellerBal.balanceDisponible).toBe('3.00000000');
-    expect(sellerBal.balanceBloqueado).toBe('0.00000000');
+    expect(sellerBal.availableBalance).toBe('3.00000000');
+    expect(sellerBal.blockedBalance).toBe('0.00000000');
     const buyerBal = await f.getBalance(buyer, btc);
-    expect(buyerBal.balanceDisponible).toBe('2.00000000');
+    expect(buyerBal.availableBalance).toBe('2.00000000');
 
     const row = await TransaccionP2P.findByPk(txId);
     expect(row.estado).toBe('completada');
@@ -99,8 +99,8 @@ describe('P2P transaction — happy path (create → confirm → complete)', () 
     expect(cancelled.status).toBe(200);
 
     const sellerBal = await f.getBalance(seller, btc);
-    expect(sellerBal.balanceDisponible).toBe('5.00000000');
-    expect(sellerBal.balanceBloqueado).toBe('0.00000000');
+    expect(sellerBal.availableBalance).toBe('5.00000000');
+    expect(sellerBal.blockedBalance).toBe('0.00000000');
   });
 });
 

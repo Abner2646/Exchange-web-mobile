@@ -1,5 +1,5 @@
 // controllers/user.controller.js
-const { User, Crypto, WalletMaestra, DireccionDeposito, BalanceUsuario, Notificaciones } = require('../../models/index.js');
+const { User, Crypto, WalletMaestra, DireccionDeposito, UserBalance, Notificaciones } = require('../../models/index.js');
 const { Op } = require('sequelize');
 const { sequelize } = require('../../models/index.js');
 const emailService = require('../../services/email.service.js');
@@ -117,7 +117,7 @@ Para comenzar a operar:
     return {
       direccionesCreadas,
       balancesCreados,
-      notificacionEnviada: true
+      notificationSent: true
     };
   } catch (error) {
     throw new Error(`Error en inicialización completa: ${error.message}`);
@@ -169,7 +169,7 @@ const registerUsuario = async (req, res) => {
   
   try {
     const userData = req.body;
-    const { user, codigoVerificacion } = await User.createWithPassword(userData);
+    const { user, verificationCode } = await User.createWithPassword(userData);
     
     // Generar JWT NORMAL (no temporal)
     const jwt = require('jsonwebtoken');
@@ -198,7 +198,7 @@ const registerUsuario = async (req, res) => {
     try {
       await req.app.locals.emailService.enviarCodigoVerificacionEmail(
         user.email,
-        codigoVerificacion,
+        verificationCode,
         user.username
       );
       console.log(`✅ Código de verificación enviado a ${user.email}`);
@@ -831,13 +831,13 @@ const getMyDepositAddresses = async (req, res) => {
 };
 
 // Forma UNIFICADA (2026-09-03): misma respuesta compartimentada que
-// /balances/my/balances y /intercambioExchange/me/balances (getBalancesConCompartimentos:
+// /balances/my/balances y /intercambioExchange/me/balances (getBalancesWithCompartments:
 // totales de raíz Funding+Spot + desglose + objeto crypto). Antes era
 // funding-only. Cambio de contrato documentado en el contract doc.
 const getMyBalances = async (req, res) => {
   try {
     const userId = req.user.id;
-    const balances = await BalanceUsuario.getBalancesConCompartimentos(userId);
+    const balances = await UserBalance.getBalancesWithCompartments(userId);
     res.json(balances);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -1001,7 +1001,7 @@ const checkUserInitialization = async (req, res) => {
     const userId = req.user.id;
     
     const direcciones = await DireccionDeposito.getByUser(userId);
-    const balances = await BalanceUsuario.getByUserId(userId);
+    const balances = await UserBalance.getByUserId(userId);
     const notificaciones = await Notificaciones.getUserNotifications(userId, { limit: 1 });
     
     const criptomonedasActivas = await Crypto.getActive();

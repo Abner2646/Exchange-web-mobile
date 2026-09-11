@@ -3,7 +3,7 @@ const router = express.Router();
 
 // Import routes
 const authRoutes = require('../modules/users/auth.routes.js')
-const balanceUsuarioRoutes = require('./balanceUsuario.routes.js')
+const balanceUsuarioRoutes = require('../modules/balances/userBalance.routes')
 const cryptoRoutes = require('../modules/crypto/crypto.routes.js')
 const direccionDepositoRoutes = require('./direccionDeposito.routes.js')
 const intercambioExchangeRoutes = require('./intercambioExchange.routes.js')
@@ -15,7 +15,7 @@ const parExchangeRoutes = require('./parExchange.routes.js')
 const setupWalletsRoutes = require('./setupWallets.routes.js')
 const transaccionBlockchainRoutes = require('./transaccionBlockchain.routes.js')
 const transaccionP2PRoutes = require('./transaccionesP2P.routes.js')
-const transferencia = require('./transferencia.routes.js')
+const transferRoutes = require('../modules/balances/transfer.routes')
 const tradingRoutes = require('./trading.routes');
 const userRoutes = require('../modules/users/user.routes.js')
 const valoracionRoutes = require('./valoraciones.routes.js')
@@ -37,7 +37,7 @@ router.use('/parExchange', parExchangeRoutes)
 router.use('/setupWallets', setupWalletsRoutes)
 router.use('/transaccionBlockchain', transaccionBlockchainRoutes)
 router.use('/transaccionP2P', transaccionP2PRoutes)
-router.use('/transferencia', transferencia)
+router.use('/transfer', transferRoutes)
 router.use('/trading', tradingRoutes);
 router.use('/user', userRoutes)
 // Fix 2026-08-19 (AUDITORIA_BACKEND.md Altos #11): estaba comentada pese a

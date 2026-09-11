@@ -4,16 +4,16 @@ const app = require('../../app');
 const { sequelize, resetDb } = require('../helpers/db');
 const f = require('../helpers/factories');
 const { IntercambioExchange, WalletMaestra } = require('../../models');
-const posting = require('../../services/ledger/postingService');
-const recon = require('../../services/ledger/reconciliation');
-const { PROPOSITOS } = require('../../services/ledger/ledgerAccounts');
+const posting = require('../../modules/balances/ledger/postingService');
+const recon = require('../../modules/balances/ledger/reconciliation');
+const { PURPOSES } = require('../../modules/balances/ledger/ledgerAccounts');
 
 // El swap es money-path → exige Idempotency-Key. Cada request usa una key única.
 let idem = 0;
 const idemKey = () => `idem-${Date.now()}-${idem++}`;
 
-const casa = (proposito, criptomonedaId) =>
-  posting.getSaldoCuenta({ ownerId: null, proposito, criptomonedaId });
+const casa = (purpose, cryptoId) =>
+  posting.getAccountBalance({ ownerId: null, purpose, cryptoId });
 
 beforeEach(async () => { await resetDb(); });
 afterAll(async () => { await sequelize.close(); });
@@ -45,14 +45,14 @@ describe('POST /api/intercambioExchange (swap) — buy', () => {
     expect(res.status).toBe(201);
 
     // Exact canonical strings through the DECIMAL(28,8) round-trip.
-    expect((await f.getBalance(user, usdt)).balanceDisponible).toBe('0.69700000'); // 1 - 0.303
-    expect((await f.getBalance(user, btc)).balanceDisponible).toBe('3.00000000');  // 0 + 3
+    expect((await f.getBalance(user, usdt)).availableBalance).toBe('0.69700000'); // 1 - 0.303
+    expect((await f.getBalance(user, btc)).availableBalance).toBe('3.00000000');  // 0 + 3
 
     // Paso D enrichment: the commission goes to the ledger fee_revenue account
     // (in quote), and the house inventory (treasury) is the explicit counterparty.
-    expect(await casa(PROPOSITOS.FEE_REVENUE, usdt.id)).toBe('0.00300000'); // commission
-    expect(await casa(PROPOSITOS.TREASURY, usdt.id)).toBe('0.30000000');    // house receives value
-    expect(await casa(PROPOSITOS.TREASURY, btc.id)).toBe('-3.00000000');    // house hands out base
+    expect(await casa(PURPOSES.FEE_REVENUE, usdt.id)).toBe('0.00300000'); // commission
+    expect(await casa(PURPOSES.TREASURY, usdt.id)).toBe('0.30000000');    // house receives value
+    expect(await casa(PURPOSES.TREASURY, btc.id)).toBe('-3.00000000');    // house hands out base
 
     // The master wallet is NO LONGER credited with the commission.
     const walletAfter = await WalletMaestra.findByPk(wallet.id);
@@ -63,8 +63,8 @@ describe('POST /api/intercambioExchange (swap) — buy', () => {
     expect(row.estado).toBe('completado');
 
     // El libro cierra: interno (proyección==SUM) y externo (net-zero por cripto).
-    expect((await recon.reconciliarInterno()).ok).toBe(true);
-    expect((await recon.reconciliarExterno()).ok).toBe(true);
+    expect((await recon.reconcileInternal()).ok).toBe(true);
+    expect((await recon.reconcileExternal()).ok).toBe(true);
   });
 
   test('GET /me/balances returns the post-trade balances as canonical strings', async () => {
@@ -77,16 +77,16 @@ describe('POST /api/intercambioExchange (swap) — buy', () => {
     const res = await request(app).get('/api/intercambioExchange/me/balances').set(f.authHeader(user));
     expect(res.status).toBe(200);
     const usdtEntry = res.body.find((b) => b.crypto.symbol === 'USDT');
-    expect(usdtEntry.balanceDisponible).toBe('0.69700000');
+    expect(usdtEntry.availableBalance).toBe('0.69700000');
     // Forma unificada (2026-09-03): este endpoint ahora expone el desglose por
-    // compartimento, igual que /balances/my/balances. Sin saldo Spot → funding
+    // compartimento, igual que /balances/my/balances. Sin balance Spot → funding
     // == total.
-    expect(usdtEntry.compartimentos.funding.disponible).toBe('0.69700000');
-    expect(usdtEntry.compartimentos.spot.disponible).toBe('0.00000000');
+    expect(usdtEntry.compartments.funding.available).toBe('0.69700000');
+    expect(usdtEntry.compartments.spot.available).toBe('0.00000000');
   });
 
   // Paso C: /me/balances lee la proyección del ledger (balances_users ya no
-  // existe). Sólo aparecen las criptos con saldo real en el ledger.
+  // existe). Sólo aparecen las criptos con balance real en el ledger.
   test('GET /me/balances lists only cryptos with a real ledger balance', async () => {
     const user = await f.seedUser();
     const btc = await f.seedCripto('BTC');
@@ -99,7 +99,7 @@ describe('POST /api/intercambioExchange (swap) — buy', () => {
     expect(symbols).toContain('BTC');
     expect(symbols).not.toContain('USDT'); // sin movimiento en el ledger
     const btcEntry = res.body.find((b) => b.crypto.symbol === 'BTC');
-    expect(btcEntry.balanceDisponible).toBe('2.00000000');
+    expect(btcEntry.availableBalance).toBe('2.00000000');
   });
 });
 
@@ -122,13 +122,13 @@ describe('POST /api/intercambioExchange (swap) — sell', () => {
       .send({ parId: par.id, tipo: 'venta', cantidadBase: 0.29 });
 
     expect(res.status).toBe(201);
-    expect((await f.getBalance(user, btc)).balanceDisponible).toBe('0.00000000');
-    expect((await f.getBalance(user, usdt)).balanceDisponible).toBe('0.28710000');
+    expect((await f.getBalance(user, btc)).availableBalance).toBe('0.00000000');
+    expect((await f.getBalance(user, usdt)).availableBalance).toBe('0.28710000');
 
     // Fee (in quote) to fee_revenue; treasury is the counterparty on both sides.
-    expect(await casa(PROPOSITOS.FEE_REVENUE, usdt.id)).toBe('0.00290000'); // 0.29 * 1%
-    expect(await casa(PROPOSITOS.TREASURY, btc.id)).toBe('0.29000000');     // house receives base
-    expect(await casa(PROPOSITOS.TREASURY, usdt.id)).toBe('-0.29000000');   // house hands out quote value
+    expect(await casa(PURPOSES.FEE_REVENUE, usdt.id)).toBe('0.00290000'); // 0.29 * 1%
+    expect(await casa(PURPOSES.TREASURY, btc.id)).toBe('0.29000000');     // house receives base
+    expect(await casa(PURPOSES.TREASURY, usdt.id)).toBe('-0.29000000');   // house hands out quote value
   });
 });
 
@@ -153,7 +153,7 @@ describe('POST /api/intercambioExchange (swap) — rejections', () => {
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('EXCHANGE_INSUFFICIENT_BALANCE');
-    expect((await f.getBalance(user, usdt)).balanceDisponible).toBe('0.10000000'); // rolled back
+    expect((await f.getBalance(user, usdt)).availableBalance).toBe('0.10000000'); // rolled back
   });
 
   test('daily limit exceeded → 400 EXCHANGE_DAILY_LIMIT_EXCEEDED, balances unchanged', async () => {
@@ -167,7 +167,7 @@ describe('POST /api/intercambioExchange (swap) — rejections', () => {
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('EXCHANGE_DAILY_LIMIT_EXCEEDED');
-    expect((await f.getBalance(user, usdt)).balanceDisponible).toBe('1.00000000'); // rolled back
+    expect((await f.getBalance(user, usdt)).availableBalance).toBe('1.00000000'); // rolled back
   });
 
   test('pair not found → 404 EXCHANGE_PAIR_NOT_FOUND', async () => {

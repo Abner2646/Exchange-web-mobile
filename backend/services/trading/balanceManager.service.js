@@ -1,9 +1,9 @@
 // services/trading/balanceManager.service.js
-const { BalanceUsuario, TradingPair } = require('../../models');
+const { UserBalance, TradingPair } = require('../../models');
 const { sequelize } = require('../../models');
 const money = require('../../utils/money');
 const crypto = require('crypto');
-const { liquidarTrade, reservarParaOrden, liberarReserva } = require('../ledger/operations');
+const { settleTrade, reserveForOrder, releaseReservation } = require('../../modules/balances/ledger/operations');
 
 // Modelo de fee (alineado 2026-08-31, antes Radar #12a): el fee taker se cobra
 // del ASSET RECIBIDO al liquidar (compra → fee en base; venta → fee en quote),
@@ -17,9 +17,9 @@ class BalanceManagerService {
   /**
    * Bloquea balance para una orden de trading.
    *
-   * Repoint Spot (2026-09-02): usa reservarParaOrden (spot:disponible →
-   * spot:bloqueado) en vez de BalanceUsuario.blockBalance (Funding). El check
-   * rápido hasAvailableEnCompartimento también lee de Spot. El guard real contra
+   * Repoint Spot (2026-09-02): usa reserveForOrder (spot:disponible →
+   * spot:bloqueado) en vez de UserBalance.blockBalance (Funding). El check
+   * rápido hasAvailableInCompartment también lee de Spot. El guard real contra
    * condiciones de carrera sigue siendo el FOR UPDATE de postTransaction.
    */
   async lockBalanceForOrder(data, transaction = null) {
@@ -54,7 +54,7 @@ class BalanceManagerService {
       }
 
       // Verificar saldo disponible en Spot (early-error amigable).
-      const hasBalance = await BalanceUsuario.hasAvailableEnCompartimento(
+      const hasBalance = await UserBalance.hasAvailableInCompartment(
         userId, assetToLock, amountToLock, 'spot', transaction
       );
 
@@ -66,7 +66,7 @@ class BalanceManagerService {
       }
 
       // Reservar en Spot (atómico: FOR UPDATE dentro de postTransaction).
-      await reservarParaOrden(
+      await reserveForOrder(
         { userId, criptomonedaId: assetToLock, cantidad: amountToLock, referencia: `reserva:${crypto.randomUUID()}` },
         transaction
       );
@@ -115,7 +115,7 @@ class BalanceManagerService {
       }
 
       // Liberar la reserva en Spot.
-      await liberarReserva(
+      await releaseReservation(
         { userId: order.userId, criptomonedaId: assetToUnlock, cantidad: amountToUnlock, referencia: `liberacion:${crypto.randomUUID()}` },
         transaction
       );
@@ -142,7 +142,7 @@ class BalanceManagerService {
 
       // Paso D: liquidación rica en el ledger (un asiento). Comprador↔vendedor
       // (spot: bloqueado→disponible por cripto) + ambas comisiones a fee_revenue.
-      await liquidarTrade({
+      await settleTrade({
         compradorId: trade.buyerId,
         vendedorId: trade.sellerId,
         baseAssetId: tradingPair.baseAssetId,
@@ -189,8 +189,8 @@ class BalanceManagerService {
         amountNeeded = String(quantity);
       }
 
-      const balance = await BalanceUsuario.getSaldoCompartimento(userId, assetNeeded, 'spot');
-      const available = String(balance.disponible);
+      const balance = await UserBalance.getCompartmentBalance(userId, assetNeeded, 'spot');
+      const available = String(balance.available);
       const sufficient = money.compare(available, amountNeeded) >= 0;
 
       return {
@@ -214,9 +214,9 @@ class BalanceManagerService {
    */
   async getTradingBalance(userId, criptomonedaId) {
     try {
-      const balance = await BalanceUsuario.getSaldoCompartimento(userId, criptomonedaId, 'spot');
-      const available = String(balance.disponible);
-      const locked = String(balance.bloqueado);
+      const balance = await UserBalance.getCompartmentBalance(userId, criptomonedaId, 'spot');
+      const available = String(balance.available);
+      const locked = String(balance.blocked);
 
       return {
         available,
@@ -234,11 +234,11 @@ class BalanceManagerService {
    */
   async getAllTradingBalances(userId) {
     try {
-      const balances = await BalanceUsuario.getByUserIdCompartimento(userId, 'spot');
+      const balances = await UserBalance.getByUserIdCompartment(userId, 'spot');
 
       return balances.map(balance => {
-        const available = String(balance.disponible);
-        const locked = String(balance.bloqueado);
+        const available = String(balance.available);
+        const locked = String(balance.blocked);
         return {
           criptomonedaId: balance.criptomonedaId,
           available,

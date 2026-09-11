@@ -41,7 +41,7 @@ test('stuck with no txHash → reverted (never broadcast)', async () => {
   expect(res.reverted).toBe(1);
   const row = await TransaccionBlockchain.findByPk(w.id);
   expect(row.estado).toBe('fallido');
-  expect((await f.getBalance(user, eth)).balanceDisponible).toBe('5.00000000');
+  expect((await f.getBalance(user, eth)).availableBalance).toBe('5.00000000');
 });
 
 test('stuck with txHash, tx absent on-chain → reverted', async () => {
@@ -54,7 +54,7 @@ test('stuck with txHash, tx absent on-chain → reverted', async () => {
 
   const row = await TransaccionBlockchain.findByPk(w.id);
   expect(row.estado).toBe('fallido');
-  expect((await f.getBalance(user, eth)).balanceDisponible).toBe('5.00000000');
+  expect((await f.getBalance(user, eth)).availableBalance).toBe('5.00000000');
 });
 
 test('stuck with txHash, tx present on-chain → left untouched', async () => {
@@ -68,7 +68,7 @@ test('stuck with txHash, tx present on-chain → left untouched', async () => {
   expect(res.left).toBe(1);
   const row = await TransaccionBlockchain.findByPk(w.id);
   expect(row.estado).toBe('procesando');
-  expect((await f.getBalance(user, eth)).balanceBloqueado).toBe('1.00000000');
+  expect((await f.getBalance(user, eth)).blockedBalance).toBe('1.00000000');
 });
 
 test('a tx in mempool (0 confirmations) is treated as present → left', async () => {

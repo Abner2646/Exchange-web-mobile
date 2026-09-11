@@ -14,7 +14,7 @@ process.env.JWT_SECRET = 'test-secret';
 jest.mock('../models', () => ({
   User: { findByPk: jest.fn() },
   sequelize: {},
-  TransaccionBlockchain: {}, Crypto: {}, BalanceUsuario: {}, DireccionDeposito: {},
+  TransaccionBlockchain: {}, Crypto: {}, UserBalance: {}, DireccionDeposito: {},
   // Required by idempotency.middleware (now wired into /withdraw)
   IdempotencyKey: { create: jest.fn().mockResolvedValue({}), findOne: jest.fn(), update: jest.fn(), destroy: jest.fn() },
 }));

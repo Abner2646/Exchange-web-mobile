@@ -1,4 +1,4 @@
-// Covers AUDITORIA_BACKEND.md Críticos #9: the User↔BalanceUsuario,
+// Covers AUDITORIA_BACKEND.md Críticos #9: the User↔UserBalance,
 // User↔DireccionDeposito and User↔TransaccionBlockchain associations were
 // declared with foreignKey: 'usuarioId', but the real column in all three
 // tables is user_id (userId in the model). Sequelize synthesized a phantom
@@ -21,7 +21,7 @@ beforeEach(async () => { await resetDb(); });
 afterAll(async () => { await sequelize.close(); });
 
 describe('Usuario associations -> direccionesDeposito / transaccionesBlockchain', () => {
-  // (Paso C: el test de User.include('balances') se retiró — BalanceUsuario ya
+  // (Paso C: el test de User.include('balances') se retiró — UserBalance ya
   // no es un modelo Sequelize; los saldos viven en el ledger, no en una asociación.)
 
   test("Usuario.include('direccionesDeposito') returns the real address", async () => {

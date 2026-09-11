@@ -1,18 +1,18 @@
 const express = require('express');
 const router = express.Router();
-const transferenciaController = require('../controllers/transferencia.controller');
+const transferController = require('./transfer.controller');
 
 // Middleware
-const { authenticateToken, requireEmailVerified } = require('../middleware/authMiddleware.js');
-const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
-const idempotency = require('../middleware/idempotency.middleware');
-const asyncHandler = require('../utils/asyncHandler');
+const { authenticateToken, requireEmailVerified } = require('../../middleware/authMiddleware.js');
+const { isAdmin, isSuperAdmin } = require('../../middleware/adminMiddleware.js');
+const idempotency = require('../../middleware/idempotency.middleware');
+const asyncHandler = require('../../utils/asyncHandler');
 
 // =============== RUTAS DE USUARIO AUTENTICADO ===============
 
 /**
  * @openapi
- * /transferencia:
+ * /transfer:
  *   post:
  *     tags: [Transferencias (usuario↔usuario)]
  *     summary: Crear una transferencia interna (requiere verificación por código)
@@ -25,22 +25,22 @@ const asyncHandler = require('../utils/asyncHandler');
  *         application/json:
  *           schema:
  *             type: object
- *             required: [usuarioDestinatarioId, criptomonedaId, cantidad]
+ *             required: [recipientId, cryptoId, amount]
  *             properties:
- *               usuarioDestinatarioId: { type: string, format: uuid }
- *               criptomonedaId: { type: string, format: uuid }
- *               cantidad: { type: number, example: 0.5 }
- *               concepto: { type: string }
+ *               recipientId: { type: string, format: uuid }
+ *               cryptoId: { type: string, format: uuid }
+ *               amount: { type: number, example: 0.5 }
+ *               concept: { type: string }
  *     responses:
  *       201: { description: Transferencia creada (pendiente de verificación) }
  *       400: { $ref: '#/components/responses/BadRequest' }
  *       401: { $ref: '#/components/responses/Unauthorized' }
  */
-router.post('/', authenticateToken, requireEmailVerified, idempotency, asyncHandler(transferenciaController.createTransferencia));
+router.post('/', authenticateToken, requireEmailVerified, idempotency, asyncHandler(transferController.createTransfer));
 
 /**
  * @openapi
- * /transferencia/{id}/process:
+ * /transfer/{id}/process:
  *   post:
  *     tags: [Transferencias (usuario↔usuario)]
  *     summary: Confirmar una transferencia con el código de verificación
@@ -52,18 +52,18 @@ router.post('/', authenticateToken, requireEmailVerified, idempotency, asyncHand
  *         application/json:
  *           schema:
  *             type: object
- *             required: [codigoVerificacion]
+ *             required: [verificationCode]
  *             properties:
- *               codigoVerificacion: { type: string, example: "123456" }
+ *               verificationCode: { type: string, example: "123456" }
  *     responses:
  *       200: { description: Transferencia completada }
  *       400: { $ref: '#/components/responses/BadRequest' }
  */
-router.post('/:id/process', authenticateToken, requireEmailVerified, asyncHandler(transferenciaController.procesarTransferencia));
+router.post('/:id/process', authenticateToken, requireEmailVerified, asyncHandler(transferController.processTransfer));
 
 /**
  * @openapi
- * /transferencia/my:
+ * /transfer/my:
  *   get:
  *     tags: [Transferencias (usuario↔usuario)]
  *     summary: Mis transferencias
@@ -71,11 +71,11 @@ router.post('/:id/process', authenticateToken, requireEmailVerified, asyncHandle
  *       200: { description: Lista de transferencias del usuario }
  *       401: { $ref: '#/components/responses/Unauthorized' }
  */
-router.get('/my', authenticateToken, requireEmailVerified, asyncHandler(transferenciaController.getMyTransferencias));
+router.get('/my', authenticateToken, requireEmailVerified, asyncHandler(transferController.getMyTransfers));
 
 /**
  * @openapi
- * /transferencia/stats:
+ * /transfer/stats:
  *   get:
  *     tags: [Transferencias (usuario↔usuario) - admin]
  *     summary: Estadísticas de transferencias (admin)
@@ -83,25 +83,25 @@ router.get('/my', authenticateToken, requireEmailVerified, asyncHandler(transfer
  *       200: { description: Estadísticas }
  */
 // NOTE: must be registered BEFORE /:id to avoid Express matching "stats" as an id param
-router.get('/stats', authenticateToken, isAdmin, asyncHandler(transferenciaController.getTransferenciaStats));
+router.get('/stats', authenticateToken, isAdmin, asyncHandler(transferController.getTransferStats));
 
 /**
  * @openapi
- * /transferencia/{id}:
+ * /transfer/{id}:
  *   get:
  *     tags: [Transferencias (usuario↔usuario)]
  *     summary: Obtener una transferencia por id
  *     parameters:
  *       - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
  *     responses:
- *       200: { description: Transferencia }
+ *       200: { description: Transfer }
  *       404: { $ref: '#/components/responses/BadRequest' }
  */
-router.get('/:id', authenticateToken, requireEmailVerified, asyncHandler(transferenciaController.getTransferenciaById));
+router.get('/:id', authenticateToken, requireEmailVerified, asyncHandler(transferController.getTransferById));
 
 /**
  * @openapi
- * /transferencia/{id}/cancel:
+ * /transfer/{id}/cancel:
  *   put:
  *     tags: [Transferencias (usuario↔usuario)]
  *     summary: Cancelar una transferencia
@@ -111,11 +111,11 @@ router.get('/:id', authenticateToken, requireEmailVerified, asyncHandler(transfe
  *       200: { description: Transferencia cancelada }
  *       400: { $ref: '#/components/responses/BadRequest' }
  */
-router.put('/:id/cancel', authenticateToken, requireEmailVerified, asyncHandler(transferenciaController.cancelarTransferencia));
+router.put('/:id/cancel', authenticateToken, requireEmailVerified, asyncHandler(transferController.cancelTransfer));
 
 /**
  * @openapi
- * /transferencia/{id}/resend-code:
+ * /transfer/{id}/resend-code:
  *   post:
  *     tags: [Transferencias (usuario↔usuario)]
  *     summary: Reenviar el código de verificación de una transferencia
@@ -125,11 +125,11 @@ router.put('/:id/cancel', authenticateToken, requireEmailVerified, asyncHandler(
  *       200: { description: Código reenviado }
  *       400: { $ref: '#/components/responses/BadRequest' }
  */
-router.post('/:id/resend-code', authenticateToken, requireEmailVerified, asyncHandler(transferenciaController.reenviarCodigo));
+router.post('/:id/resend-code', authenticateToken, requireEmailVerified, asyncHandler(transferController.resendCode));
 
 /**
  * @openapi
- * /transferencia/verify-funds:
+ * /transfer/verify-funds:
  *   post:
  *     tags: [Transferencias (usuario↔usuario)]
  *     summary: Verificar fondos antes de transferir
@@ -139,27 +139,27 @@ router.post('/:id/resend-code', authenticateToken, requireEmailVerified, asyncHa
  *         application/json:
  *           schema:
  *             type: object
- *             required: [criptomonedaId, cantidad]
+ *             required: [cryptoId, amount]
  *             properties:
- *               criptomonedaId: { type: string, format: uuid }
- *               cantidad: { type: number, example: 0.5 }
+ *               cryptoId: { type: string, format: uuid }
+ *               amount: { type: number, example: 0.5 }
  *     responses:
  *       200: { description: Resultado de la verificación }
  *       400: { $ref: '#/components/responses/BadRequest' }
  */
-router.post('/verify-funds', authenticateToken, requireEmailVerified, asyncHandler(transferenciaController.verificarFondos));
+router.post('/verify-funds', authenticateToken, requireEmailVerified, asyncHandler(transferController.verifyFunds));
 
 // =============== RUTAS ADMINISTRATIVAS ===============
 
 /**
  * @openapi
- * /transferencia:
+ * /transfer:
  *   get:
  *     tags: [Transferencias (usuario↔usuario) - admin]
  *     summary: Listar todas las transferencias (admin)
  *     responses:
  *       200: { description: Lista de transferencias }
  */
-router.get('/', authenticateToken, isAdmin, asyncHandler(transferenciaController.getAllTransferencias));
+router.get('/', authenticateToken, isAdmin, asyncHandler(transferController.getAllTransfers));
 
 module.exports = router;

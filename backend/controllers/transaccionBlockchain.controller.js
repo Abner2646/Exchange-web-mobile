@@ -1,5 +1,5 @@
 // controllers/transaccionBlockchain.controller.js
-const { TransaccionBlockchain, User, Crypto, BalanceUsuario, DireccionDeposito } = require('../models');
+const { TransaccionBlockchain, User, Crypto, UserBalance, DireccionDeposito } = require('../models');
 const BlockchainServiceManager = require('../services/blockchain');
 // Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #8): estos endpoints
 // llamaban a scanAllNetworksForDeposits/processAllPendingWithdrawals/
@@ -135,7 +135,7 @@ class TransaccionBlockchainController {
   async getMyBalances(req, res) {
     const userId = req.user.id;
 
-    const balances = await BalanceUsuario.getByUserId(userId);
+    const balances = await UserBalance.getByUserId(userId);
     const criptomonedas = await Crypto.findAll({
       where: { id: balances.map((b) => b.criptomonedaId), active: true },
       attributes: ['id', 'symbol', 'name', 'network', 'decimals']
@@ -146,9 +146,9 @@ class TransaccionBlockchainController {
       .filter((b) => criptoPorId.has(b.criptomonedaId)) // solo criptos activas
       .map((b) => ({
         crypto: criptoPorId.get(b.criptomonedaId),
-        balanceDisponible: b.balanceDisponible,
-        balanceBloqueado: b.balanceBloqueado,
-        balanceTotal: money.add(b.balanceDisponible, b.balanceBloqueado)
+        availableBalance: b.availableBalance,
+        blockedBalance: b.blockedBalance,
+        balanceTotal: money.add(b.availableBalance, b.blockedBalance)
       }))
       .sort((a, b) => a.crypto.symbol.localeCompare(b.crypto.symbol));
 

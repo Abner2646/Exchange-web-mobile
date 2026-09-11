@@ -39,12 +39,12 @@ describe('POST /api/usuario/verify-email', () => {
   });
 });
 
-describe('requireEmailVerified gate (GET /api/transferencia/my)', () => {
+describe('requireEmailVerified gate (GET /api/transfer/my)', () => {
   test('unverified user is 403, then 200 after verifying (same token)', async () => {
     const { token, code } = await h.registerAndGetCode({ email: 'gated@test.local', username: 'gateduser' });
 
     const before = await request(app)
-      .get('/api/transferencia/my')
+      .get('/api/transfer/my')
       .set('Authorization', `Bearer ${token}`);
     expect(before.status).toBe(403);
     expect(before.body.requiresEmailVerification).toBe(true);
@@ -56,7 +56,7 @@ describe('requireEmailVerified gate (GET /api/transferencia/my)', () => {
     expect(verify.status).toBe(200);
 
     const after = await request(app)
-      .get('/api/transferencia/my')
+      .get('/api/transfer/my')
       .set('Authorization', `Bearer ${token}`);
     expect(after.status).toBe(200);
   });

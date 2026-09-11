@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const {
-  User, Crypto, ParExchange, BalanceUsuario, WalletMaestra, TradingPair,
+  User, Crypto, ParExchange, UserBalance, WalletMaestra, TradingPair,
 } = require('../../models');
 
 let seq = 0;
@@ -50,15 +50,15 @@ async function seedPar({ base, quote, precio, comision }) {
 // un asiento 'apertura' (contrapartida en la cuenta de casa 'apertura') que
 // acredita funding:disponible del usuario. El saldo autoritativo es el ledger.
 async function seedBalance(user, cripto, monto) {
-  const { postTransaction } = require('../../services/ledger/postingService');
-  const { PROPOSITOS } = require('../../services/ledger/ledgerAccounts');
+  const { postTransaction } = require('../../modules/balances/ledger/postingService');
+  const { PURPOSES } = require('../../modules/balances/ledger/ledgerAccounts');
   const cryptoMod = require('crypto');
   return postTransaction({
-    tipo: 'apertura',
-    referencia: `seed:${cryptoMod.randomUUID()}`,
-    lineas: [
-      { ownerId: null, proposito: PROPOSITOS.APERTURA, criptomonedaId: cripto.id, monto: `-${monto}` },
-      { ownerId: user.id, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: cripto.id, monto: String(monto) },
+    type: 'apertura',
+    reference: `seed:${cryptoMod.randomUUID()}`,
+    lines: [
+      { ownerId: null, purpose: PURPOSES.APERTURA, cryptoId: cripto.id, amount: `-${monto}` },
+      { ownerId: user.id, purpose: PURPOSES.FUNDING_AVAILABLE, cryptoId: cripto.id, amount: String(monto) },
     ],
   });
 }
@@ -66,15 +66,15 @@ async function seedBalance(user, cripto, monto) {
 // Siembra saldo directo en spot:disponible (apertura → spot). Para tests que
 // necesitan fondos ya en el compartimento de trading sin pasar por la transferencia.
 async function seedSpotBalance(user, cripto, monto) {
-  const { postTransaction } = require('../../services/ledger/postingService');
-  const { PROPOSITOS } = require('../../services/ledger/ledgerAccounts');
+  const { postTransaction } = require('../../modules/balances/ledger/postingService');
+  const { PURPOSES } = require('../../modules/balances/ledger/ledgerAccounts');
   const cryptoMod = require('crypto');
   return postTransaction({
-    tipo: 'apertura',
-    referencia: `seed-spot:${cryptoMod.randomUUID()}`,
-    lineas: [
-      { ownerId: null, proposito: PROPOSITOS.APERTURA, criptomonedaId: cripto.id, monto: `-${monto}` },
-      { ownerId: user.id, proposito: PROPOSITOS.SPOT_DISPONIBLE, criptomonedaId: cripto.id, monto: String(monto) },
+    type: 'apertura',
+    reference: `seed-spot:${cryptoMod.randomUUID()}`,
+    lines: [
+      { ownerId: null, purpose: PURPOSES.APERTURA, cryptoId: cripto.id, amount: `-${monto}` },
+      { ownerId: user.id, purpose: PURPOSES.SPOT_AVAILABLE, cryptoId: cripto.id, amount: String(monto) },
     ],
   });
 }
@@ -82,7 +82,7 @@ async function seedSpotBalance(user, cripto, monto) {
 // Lee spot:disponible y spot:bloqueado desde la proyeccion del ledger. Para tests
 // que verifican balances del compartimento de trading.
 async function getSpotBalance(user, cripto) {
-  return BalanceUsuario.getSaldoCompartimento(user.id, cripto.id, 'spot');
+  return UserBalance.getCompartmentBalance(user.id, cripto.id, 'spot');
 }
 
 // network 'test' sidesteps the network-specific xpub validation; the swap only
@@ -99,10 +99,10 @@ async function seedWalletMaestra(cripto) {
 
 // Write-flip (Paso B): el saldo autoritativo es el ledger, no balances_users
 // (las escrituras postean al ledger directo). getBalance lee la proyeccion via
-// getByUserAndCrypto → devuelve { userId, criptomonedaId, balanceDisponible,
-// balanceBloqueado } con strings canonicos, mismo shape que usan los tests.
+// getByUserAndCrypto → devuelve { userId, criptomonedaId, availableBalance,
+// blockedBalance } con strings canonicos, mismo shape que usan los tests.
 async function getBalance(user, cripto) {
-  return BalanceUsuario.getByUserAndCrypto(user.id, cripto.id);
+  return UserBalance.getByUserAndCrypto(user.id, cripto.id);
 }
 
 // Spot trading pair. lastPrice defaults to 0 so the order validator's

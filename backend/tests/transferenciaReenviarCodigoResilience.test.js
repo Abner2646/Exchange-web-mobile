@@ -1,7 +1,7 @@
 // backend/tests/transferenciaReenviarCodigoResilience.test.js
 //
-// Fase 1 — resiliencia de transferencia.reenviarCodigo. reenviarCodigo llama a
-// Transferencia.reenviarCodigo(id), que YA COMMITEA un código nuevo + expiración
+// Fase 1 — resiliencia de transferencia.resendCode. resendCode llama a
+// Transfer.resendCode(id), que YA COMMITEA un código nuevo + expiración
 // en la DB. Después hace 3 lookups (remitente/destinatario/crypto) solo
 // para armar el email. Esos lookups estaban FUERA del try/catch del envío: si
 // alguno rechazaba (hiccup de DB), la excepción propagaba un 500 aunque el
@@ -14,22 +14,22 @@ const request = require('supertest');
 const express = require('express');
 
 jest.mock('../models/index.js', () => ({
-  Transferencia: {
+  Transfer: {
     getById: jest.fn(),
-    reenviarCodigo: jest.fn(),
+    resendCode: jest.fn(),
   },
   User: { findByPk: jest.fn() },
   Crypto: { getById: jest.fn() },
-  BalanceUsuario: {},
+  UserBalance: {},
   Notificaciones: {},
   sequelize: { transaction: jest.fn() },
 }));
 
-const { Transferencia, User, Crypto } = require('../models/index.js');
+const { Transfer, User, Crypto } = require('../models/index.js');
 
 const asyncHandler = require('../utils/asyncHandler');
 const errorHandler = require('../middleware/errorHandler');
-const { reenviarCodigo } = require('../controllers/transferencia.controller');
+const { resendCode } = require('../modules/balances/transfer.controller');
 
 // The controller sends through the injectable seam (req.app.locals.emailService),
 // so the test injects a fake there and asserts on it — same pattern as the auth
@@ -44,7 +44,7 @@ function buildApp() {
     req.user = { id: 'user-sender-id' };
     next();
   });
-  app.post('/transfers/:id/resend-code', asyncHandler(reenviarCodigo));
+  app.post('/transfers/:id/resend-code', asyncHandler(resendCode));
   app.use(errorHandler);
   return app;
 }
@@ -55,23 +55,23 @@ beforeEach(() => {
 });
 
 function setupHappyPathUntilLookups() {
-  Transferencia.getById.mockResolvedValue({
+  Transfer.getById.mockResolvedValue({
     id: 'tx-id',
-    usuarioRemitenteId: 'user-sender-id',
+    senderId: 'user-sender-id',
   });
-  Transferencia.reenviarCodigo.mockResolvedValue({
-    transferencia: {
+  Transfer.resendCode.mockResolvedValue({
+    transfer: {
       id: 'tx-id',
-      usuarioDestinatarioId: 'dest-id',
-      criptomonedaId: 'crypto-id',
-      cantidad: '0.5',
-      expiracionCodigo: new Date('2026-01-01T00:00:00Z'),
+      recipientId: 'dest-id',
+      cryptoId: 'crypto-id',
+      amount: '0.5',
+      codeExpiration: new Date('2026-01-01T00:00:00Z'),
     },
-    codigo: '654321',
+    code: '654321',
   });
 }
 
-describe('reenviarCodigo — resiliencia post-commit', () => {
+describe('resendCode — resiliencia post-commit', () => {
   test('un lookup de email-prep que rechaza NO vuelve fatal la operación (código ya regenerado)', async () => {
     setupHappyPathUntilLookups();
     // remitente lookup rechaza (hiccup de DB) — pero el código ya se commiteó.

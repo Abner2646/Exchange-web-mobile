@@ -67,7 +67,7 @@ const errorCodes = Object.freeze({
   OFFER_COMPATIBLE_PARAMS_REQUIRED: 'OFFER_COMPATIBLE_PARAMS_REQUIRED',
   OFFER_CANTIDAD_REQUIRED: 'OFFER_CANTIDAD_REQUIRED',
 
-  // BalanceUsuario (admin balance ops + Funding↔Spot self-transfer)
+  // UserBalance (admin balance ops + Funding↔Spot self-transfer)
   BALANCE_INVALID_INPUT: 'BALANCE_INVALID_INPUT',
   BALANCE_INSUFFICIENT: 'BALANCE_INSUFFICIENT',
 

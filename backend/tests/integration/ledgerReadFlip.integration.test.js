@@ -1,5 +1,5 @@
 require('../helpers/testEnv');
-const { sequelize, BalanceUsuario } = require('../../models');
+const { sequelize, UserBalance } = require('../../models');
 const { resetDb } = require('../helpers/db');
 const f = require('../helpers/factories');
 
@@ -14,11 +14,11 @@ describe('read: getTotalBalance + hasAvailableBalance from the ledger projection
     const cripto = await f.seedCripto('BTC');
     const user = await f.seedUser();
     await f.seedBalance(user, cripto, '10');
-    await BalanceUsuario.blockBalance(user.id, cripto.id, '4.00000000');
+    await UserBalance.blockBalance(user.id, cripto.id, '4.00000000');
 
-    const total = await BalanceUsuario.getTotalBalance(user.id, cripto.id);
-    expect(total.disponible).toBe('6.00000000');
-    expect(total.bloqueado).toBe('4.00000000');
+    const total = await UserBalance.getTotalBalance(user.id, cripto.id);
+    expect(total.available).toBe('6.00000000');
+    expect(total.blocked).toBe('4.00000000');
     expect(total.total).toBe('10'); // money.add sin escala fija
   });
 
@@ -26,8 +26,8 @@ describe('read: getTotalBalance + hasAvailableBalance from the ledger projection
     const cripto = await f.seedCripto('BTC');
     const user = await f.seedUser();
     await f.seedBalance(user, cripto, '5');
-    expect(await BalanceUsuario.hasAvailableBalance(user.id, cripto.id, '5.00000000')).toBe(true);
-    expect(await BalanceUsuario.hasAvailableBalance(user.id, cripto.id, '5.00000001')).toBe(false);
+    expect(await UserBalance.hasAvailableBalance(user.id, cripto.id, '5.00000000')).toBe(true);
+    expect(await UserBalance.hasAvailableBalance(user.id, cripto.id, '5.00000001')).toBe(false);
   });
 });
 
@@ -36,11 +36,11 @@ describe('read: getByUserAndCrypto / getByUserId from the ledger projection', ()
     const cripto = await f.seedCripto('BTC');
     const user = await f.seedUser();
     await f.seedBalance(user, cripto, '8');
-    await BalanceUsuario.blockBalance(user.id, cripto.id, '3.00000000');
+    await UserBalance.blockBalance(user.id, cripto.id, '3.00000000');
 
-    const b = await BalanceUsuario.getByUserAndCrypto(user.id, cripto.id);
-    expect(b.balanceDisponible).toBe('5.00000000');
-    expect(b.balanceBloqueado).toBe('3.00000000');
+    const b = await UserBalance.getByUserAndCrypto(user.id, cripto.id);
+    expect(b.availableBalance).toBe('5.00000000');
+    expect(b.blockedBalance).toBe('3.00000000');
     expect(b.userId).toBe(user.id);
     expect(b.criptomonedaId).toBe(cripto.id);
   });
@@ -48,9 +48,9 @@ describe('read: getByUserAndCrypto / getByUserId from the ledger projection', ()
   test('getByUserAndCrypto returns a zero object when the account does not exist', async () => {
     const cripto = await f.seedCripto('BTC');
     const user = await f.seedUser();
-    const b = await BalanceUsuario.getByUserAndCrypto(user.id, cripto.id);
-    expect(b.balanceDisponible).toBe('0');
-    expect(b.balanceBloqueado).toBe('0');
+    const b = await UserBalance.getByUserAndCrypto(user.id, cripto.id);
+    expect(b.availableBalance).toBe('0');
+    expect(b.blockedBalance).toBe('0');
   });
 
   test('getByUserId aggregates the ledger funding balances per crypto (no zero rows)', async () => {
@@ -60,10 +60,10 @@ describe('read: getByUserAndCrypto / getByUserId from the ledger projection', ()
     const user = await f.seedUser();
     await f.seedBalance(user, btc, '2');
     await f.seedBalance(user, usdt, '100');
-    // ETH sin movimiento en el ledger → no aparece (no hay cuenta con saldo 0).
+    // ETH sin movimiento en el ledger → no aparece (no hay cuenta con balance 0).
 
-    const balances = await BalanceUsuario.getByUserId(user.id);
-    const porCripto = Object.fromEntries(balances.map((b) => [b.criptomonedaId, b.balanceDisponible]));
+    const balances = await UserBalance.getByUserId(user.id);
+    const porCripto = Object.fromEntries(balances.map((b) => [b.criptomonedaId, b.availableBalance]));
     expect(balances).toHaveLength(2);
     expect(porCripto[btc.id]).toBe('2.00000000');
     expect(porCripto[usdt.id]).toBe('100.00000000');
@@ -78,7 +78,7 @@ describe('read: admin aggregates and the reclaimBtc check from the ledger', () =
     await f.seedBalance(withBalance, cripto, '5');
     const withoutBalance = await f.seedUser(); // sin saldo
 
-    const rows = await BalanceUsuario.getUsersWithBalance(cripto.id, '0');
+    const rows = await UserBalance.getUsersWithBalance(cripto.id, '0');
     const userIds = rows.map((r) => r.userId);
     expect(userIds).toContain(withBalance.id);
     expect(userIds).not.toContain(withoutBalance.id);
@@ -91,17 +91,17 @@ describe('read: admin aggregates and the reclaimBtc check from the ledger', () =
     await f.seedBalance(u1, btc, '2');
     await f.seedBalance(u2, btc, '3');
 
-    const stats = await BalanceUsuario.getBalanceStats();
+    const stats = await UserBalance.getBalanceStats();
     const btcStat = stats.find((s) => s.criptomonedaId === btc.id);
     expect(btcStat.totalUsers).toBe(2);
-    expect(btcStat.totalDisponible).toBe('5'); // money.add sin escala fija
+    expect(btcStat.totalAvailable).toBe('5'); // money.add sin escala fija
   });
 
-  test('reclamarBtcGratis is blocked when the ledger shows a balance', async () => {
+  test('claimFreeBtc is blocked when the ledger shows a balance', async () => {
     const btc = await f.seedCripto('BTC');
     const user = await f.seedUser();
     await f.seedBalance(user, btc, '1'); // saldo en el ledger
 
-    await expect(BalanceUsuario.reclamarBtcGratis(user.id)).rejects.toThrow(/ya tienes saldo/i);
+    await expect(UserBalance.claimFreeBtc(user.id)).rejects.toThrow(/ya tienes saldo/i);
   });
 });

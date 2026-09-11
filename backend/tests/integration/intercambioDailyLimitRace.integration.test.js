@@ -24,7 +24,7 @@ afterAll(async () => { await sequelize.close(); });
 // BTC/USDT precio 100, comisión 1%. Compra 1 BTC → cantidadQuote 100 (lo que
 // cuenta para el límite diario), requiredQuote 101. dailyLimitUsd = 100: un
 // swap pasa (100 <= 100), dos lo exceden (200 > 100). Saldo holgado (250) para
-// que lo único que frene al segundo sea el límite diario, no el balance.
+// que lo único que frene al segundo sea el límite diario, no el saldo.
 async function seedScenario() {
   const user = await f.seedUser({ dailyLimitUsd: 100 });
   const btc = await f.seedCripto('BTC');
@@ -59,6 +59,6 @@ describe('swap daily limit under concurrency (real Postgres)', () => {
     const volume = await IntercambioExchange.getDailyVolume(user.id, new Date());
     expect(volume).toBe(100);
     // 250 - 101 (una sola compra: cantidadQuote 100 + comisión 1).
-    expect((await f.getBalance(user, usdt)).balanceDisponible).toBe('149.00000000');
+    expect((await f.getBalance(user, usdt)).availableBalance).toBe('149.00000000');
   }, 20000);
 });

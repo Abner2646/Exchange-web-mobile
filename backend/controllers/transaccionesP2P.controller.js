@@ -18,7 +18,7 @@ const authz = require('../utils/authz');
 // Traduce los errores de negocio que lanzan los métodos del modelo (plain Error
 // con mensaje en español, incl. la máquina de estados) al envelope canónico
 // AppError, para que un rechazo de regla de negocio devuelva su 4xx tipado y no
-// un 500 sanitizado (mismo patrón que transferencia.controller.cancelarTransferencia).
+// un 500 sanitizado (mismo patrón que transferencia.controller.cancelTransfer).
 // Lo desconocido se re-lanza tal cual → el handler central lo sanitiza a 500
 // (guardrail: no filtrar internals). El match es por fragmento estable del mensaje;
 // los AppError ya tipados (los que lanza este controller) pasan sin tocar.

@@ -43,7 +43,7 @@ jest.mock('../controllers/intercambioExchange.controller', () => ({
 }));
 
 // balanceUsuario.controller: transferMisCompartimentos is the Funding<->Spot transfer.
-jest.mock('../controllers/balanceUsuario.controller', () => ({
+jest.mock('../modules/balances/userBalance.controller', () => ({
   getMyBalances: noop,
   transferMisCompartimentos: (_req, res) => res.status(200).json({ ok: true }),
   updateBalance: noop,
@@ -61,7 +61,7 @@ jest.mock('../controllers/balanceUsuario.controller', () => ({
 }));
 
 const intercambioRoutes = require('../routes/intercambioExchange.routes');
-const balanceRoutes = require('../routes/balanceUsuario.routes');
+const balanceRoutes = require('../modules/balances/userBalance.routes');
 
 test('POST /intercambioExchange/ (swap) without Idempotency-Key -> 400', async () => {
   const app = express();

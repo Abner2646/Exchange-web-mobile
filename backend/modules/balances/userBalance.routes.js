@@ -3,15 +3,15 @@
 
 const express = require('express');
 const router = express.Router();
-const balanceUserController = require('../controllers/balanceUsuario.controller');
+const balanceUserController = require('./userBalance.controller');
 
 // Middleware
-const { authenticateToken } = require('../middleware/authMiddleware.js');
-const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
-const rateLimitMiddleware = require('../middleware/rateLimit.middleware.js');
-const idempotency = require('../middleware/idempotency.middleware');
-const requireOperatorMFA = require('../middleware/operatorMFA.middleware');
-const asyncHandler = require('../utils/asyncHandler');
+const { authenticateToken } = require('../../middleware/authMiddleware.js');
+const { isAdmin, isSuperAdmin } = require('../../middleware/adminMiddleware.js');
+const rateLimitMiddleware = require('../../middleware/rateLimit.middleware.js');
+const idempotency = require('../../middleware/idempotency.middleware');
+const requireOperatorMFA = require('../../middleware/operatorMFA.middleware');
+const asyncHandler = require('../../utils/asyncHandler');
 
 // =============== ÚTILES POR AHORA ===============
 /**
@@ -55,12 +55,12 @@ router.get('/my/balances', authenticateToken, asyncHandler(balanceUserController
  *         application/json:
  *           schema:
  *             type: object
- *             required: [criptomonedaId, cantidad, origen, destino]
+ *             required: [cryptoId, amount, from, to]
  *             properties:
- *               criptomonedaId: { type: string, format: uuid }
- *               cantidad: { $ref: '#/components/schemas/MoneyString' }
- *               origen: { type: string, enum: [funding, spot] }
- *               destino: { type: string, enum: [funding, spot] }
+ *               cryptoId: { type: string, format: uuid }
+ *               amount: { $ref: '#/components/schemas/MoneyString' }
+ *               from: { type: string, enum: [funding, spot] }
+ *               to: { type: string, enum: [funding, spot] }
  *     responses:
  *       200:
  *         description: Transferencia entre compartimentos completada
@@ -70,16 +70,16 @@ router.get('/my/balances', authenticateToken, asyncHandler(balanceUserController
 // POST /api/balances/my/transfer - Transferir entre mis compartimentos (Funding↔Spot)
 // Money-path → idempotencia obligatoria (mismo patrón que swap/withdraw/transferencia).
 // idempotency NO se envuelve en asyncHandler (maneja sus propios errores vía next).
-router.post('/my/transfer', authenticateToken, idempotency, asyncHandler(balanceUserController.transferMisCompartimentos));
+router.post('/my/transfer', authenticateToken, idempotency, asyncHandler(balanceUserController.transferMyCompartments));
 
-// PUT /api/balances/user/:userId/crypto/:criptomonedaId - Actualizar balance
-router.put('/user/:userId/crypto/:criptomonedaId', authenticateToken, isAdmin, requireOperatorMFA, asyncHandler(balanceUserController.updateBalance));
+// PUT /api/balances/user/:userId/crypto/:cryptoId - Actualizar balance
+router.put('/user/:userId/crypto/:cryptoId', authenticateToken, isAdmin, requireOperatorMFA, asyncHandler(balanceUserController.updateBalance));
 // {"amount": 100}
 
 // PUT /api/reclamarBTC - Faucet de testnet (una sola vez por usuario, ver
 // AUDITORIA_BACKEND.md Críticos #12). Se desactiva sola en producción
 // (controller-level check) y ahora tiene rate limit.
-router.put('/reclamarBTC', authenticateToken, rateLimitMiddleware.general, asyncHandler(balanceUserController.reclamarBtc));
+router.put('/reclamarBTC', authenticateToken, rateLimitMiddleware.general, asyncHandler(balanceUserController.claimBtc));
 
 // =============== NO TESTEADO ===============
 
@@ -99,30 +99,30 @@ router.get('/stats', authenticateToken, isSuperAdmin, asyncHandler(balanceUserCo
 // GET /api/balances/user/:userId - Obtener balances de un usuario específico
 router.get('/user/:userId', authenticateToken, isAdmin, asyncHandler(balanceUserController.getBalancesByUser));
 
-// GET /api/balances/user/:userId/crypto/:criptomonedaId - Balance específico usuario+crypto
-router.get('/user/:userId/crypto/:criptomonedaId', authenticateToken, isAdmin, asyncHandler(balanceUserController.getBalanceByUserAndCrypto));
+// GET /api/balances/user/:userId/crypto/:cryptoId - Balance específico usuario+crypto
+router.get('/user/:userId/crypto/:cryptoId', authenticateToken, isAdmin, asyncHandler(balanceUserController.getBalanceByUserAndCrypto));
 
-// GET /api/balances/user/:userId/crypto/:criptomonedaId/total - Balance total (disponible + bloqueado)
-router.get('/user/:userId/crypto/:criptomonedaId/total', authenticateToken, isAdmin, asyncHandler(balanceUserController.getTotalBalance));
+// GET /api/balances/user/:userId/crypto/:cryptoId/total - Balance total (disponible + bloqueado)
+router.get('/user/:userId/crypto/:cryptoId/total', authenticateToken, isAdmin, asyncHandler(balanceUserController.getTotalBalance));
 
-// GET /api/balances/user/:userId/crypto/:criptomonedaId/check - Verificar balance disponible
-router.get('/user/:userId/crypto/:criptomonedaId/check', authenticateToken, isAdmin, asyncHandler(balanceUserController.checkAvailableBalance));
+// GET /api/balances/user/:userId/crypto/:cryptoId/check - Verificar balance disponible
+router.get('/user/:userId/crypto/:cryptoId/check', authenticateToken, isAdmin, asyncHandler(balanceUserController.checkAvailableBalance));
 
 // =============== RUTAS DE MODIFICACIÓN (admin) ===============
 
-// POST /api/balances/user/:userId/crypto/:criptomonedaId/block - Bloquear balance
-router.post('/user/:userId/crypto/:criptomonedaId/block', authenticateToken, isAdmin, requireOperatorMFA, asyncHandler(balanceUserController.blockBalance));
+// POST /api/balances/user/:userId/crypto/:cryptoId/block - Bloquear balance
+router.post('/user/:userId/crypto/:cryptoId/block', authenticateToken, isAdmin, requireOperatorMFA, asyncHandler(balanceUserController.blockBalance));
 
-// POST /api/balances/user/:userId/crypto/:criptomonedaId/unblock - Desbloquear balance
-router.post('/user/:userId/crypto/:criptomonedaId/unblock', authenticateToken, isAdmin, requireOperatorMFA, asyncHandler(balanceUserController.unblockBalance));
+// POST /api/balances/user/:userId/crypto/:cryptoId/unblock - Desbloquear balance
+router.post('/user/:userId/crypto/:cryptoId/unblock', authenticateToken, isAdmin, requireOperatorMFA, asyncHandler(balanceUserController.unblockBalance));
 
 // POST /api/balances/transfer - Transferir balance entre usuarios
 router.post('/transfer', authenticateToken, isAdmin, requireOperatorMFA, asyncHandler(balanceUserController.transferBalance));
 
 // RUTAS POR CRIPTOMONEDA
-// GET /api/balances/crypto/:criptomonedaId/users - Usuarios con balance en una criptomoneda
+// GET /api/balances/crypto/:cryptoId/users - Usuarios con balance en una criptomoneda
 // Fix: faltaba authenticateToken antes de isAdmin (isAdmin sin req.user rechazaba
 // hasta a un admin válido → la ruta estaba de hecho rota). Agregado.
-router.get('/crypto/:criptomonedaId/users', authenticateToken, isAdmin, asyncHandler(balanceUserController.getUsersWithBalance));
+router.get('/crypto/:cryptoId/users', authenticateToken, isAdmin, asyncHandler(balanceUserController.getUsersWithBalance));
 
 module.exports = router;

@@ -1,7 +1,7 @@
 require('../helpers/testEnv');
 const request = require('supertest');
 const { app, installAuthHarness } = require('../helpers/authHarness');
-const { WalletMaestra, DireccionDeposito, BalanceUsuario, User } = require('../../models');
+const { WalletMaestra, DireccionDeposito, UserBalance, User } = require('../../models');
 const f = require('../helpers/factories');
 
 const h = installAuthHarness(); // resetDb + email-fake seam + sequelize close
@@ -41,7 +41,7 @@ describe('deposit-address provisioning on email verification', () => {
     // was created with `usuarioId` instead of the entity's `userId` field. Either
     // one made provisioning throw, and verify-email swallows that error → the user
     // ended up verified but with no deposit addresses.
-    // Write-flip (Paso B): el provisioning ya NO crea filas de balance en 0 (en el
+    // Write-flip (Paso B): el provisioning ya NO crea filas de saldo en 0 (en el
     // ledger, 0 == cuenta inexistente, creada lazy al primer movimiento); por eso
     // se asevera la direccion de deposito, que es el entregable real del provisioning.
     const user = await User.findOne({ where: { email: 'prov@test.local' } });

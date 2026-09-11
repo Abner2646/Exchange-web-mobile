@@ -53,8 +53,8 @@ describe('BNB native withdrawal — processPendingWithdrawals (fake chain)', () 
     expect(row.estado).toBe('fallido');
     expect(fake.signCalls).toHaveLength(0);
     const bal = await f.getBalance(user, bnb);
-    expect(bal.balanceDisponible).toBe('5.00000000');
-    expect(bal.balanceBloqueado).toBe('0.00000000');
+    expect(bal.availableBalance).toBe('5.00000000');
+    expect(bal.blockedBalance).toBe('0.00000000');
   });
 
   test('BEP20 token withdrawal goes through sendTokenTransfer', async () => {

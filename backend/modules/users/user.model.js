@@ -132,9 +132,9 @@ function createUserModel(sequelize) {
     const newUser = await User.create(userData);
     
     // Generar código de verificación de email
-    const codigoVerificacion = await newUser.generateEmailVerificationCode();
+    const verificationCode = await newUser.generateEmailVerificationCode();
 
-    return { user: newUser, codigoVerificacion };
+    return { user: newUser, verificationCode };
   };
 
   // --------------------- MÉTODOS PARA RECUPERACIÓN DE CONTRASEÑA --------------------- //
@@ -554,7 +554,7 @@ User.toggle2FA = async (id, nuevoEstado) => {
     const user = await User.findByPk(id, {
       attributes: { exclude: ['passwordHash'] },
       include: [
-        // (Paso C: se quitó el include 'balances' — BalanceUsuario ya no es un
+        // (Paso C: se quitó el include 'balances' — UserBalance ya no es un
         // modelo/asociación; los saldos se consultan por separado en GET
         // /me/balances, respaldados por la proyección del ledger.)
         {

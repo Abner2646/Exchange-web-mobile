@@ -4,12 +4,12 @@ const f = require('../helpers/factories');
 const FakeEvmClient = require('../helpers/fakeEvmClient');
 const EthereumService = require('../../services/blockchain/ethereum.service');
 const { TransaccionBlockchain } = require('../../models');
-const posting = require('../../services/ledger/postingService');
-const recon = require('../../services/ledger/reconciliation');
-const { PROPOSITOS } = require('../../services/ledger/ledgerAccounts');
+const posting = require('../../modules/balances/ledger/postingService');
+const recon = require('../../modules/balances/ledger/reconciliation');
+const { PURPOSES } = require('../../modules/balances/ledger/ledgerAccounts');
 
-const casa = (proposito, criptomonedaId) =>
-  posting.getSaldoCuenta({ ownerId: null, proposito, criptomonedaId });
+const casa = (purpose, cryptoId) =>
+  posting.getAccountBalance({ ownerId: null, purpose, cryptoId });
 
 beforeEach(async () => { await resetDb(); });
 afterAll(async () => { await sequelize.close(); });
@@ -65,8 +65,8 @@ describe('ETH native withdrawal — processPendingWithdrawals (fake chain)', () 
 
     // failWithdrawal returns the locked funds to available.
     const bal = await f.getBalance(user, eth);
-    expect(bal.balanceDisponible).toBe('5.00000000');
-    expect(bal.balanceBloqueado).toBe('0.00000000');
+    expect(bal.availableBalance).toBe('5.00000000');
+    expect(bal.blockedBalance).toBe('0.00000000');
   });
 
   test('a second run does not re-send an already-processing withdrawal', async () => {
@@ -126,12 +126,12 @@ describe('withdrawal ledger settlement — confirmed debits blocked funds to ext
 
     // The blocked funds have left to the on-chain world.
     const bal = await f.getBalance(user, eth);
-    expect(bal.balanceDisponible).toBe('4.00000000');
-    expect(bal.balanceBloqueado).toBe('0.00000000'); // no longer stuck in blocked
-    expect(await casa(PROPOSITOS.EXTERNAL_ONCHAIN, eth.id)).toBe('1.00000000');
+    expect(bal.availableBalance).toBe('4.00000000');
+    expect(bal.blockedBalance).toBe('0.00000000'); // no longer stuck in blocked
+    expect(await casa(PURPOSES.EXTERNAL_ONCHAIN, eth.id)).toBe('1.00000000');
 
-    expect((await recon.reconciliarInterno()).ok).toBe(true);
-    expect((await recon.reconciliarExterno()).ok).toBe(true);
+    expect((await recon.reconcileInternal()).ok).toBe(true);
+    expect((await recon.reconcileExternal()).ok).toBe(true);
   });
 });
 

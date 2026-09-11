@@ -3,7 +3,7 @@
 // Fase 1 — precisión monetaria. La wallet maestra custodia TODOS los fondos
 // on-chain; addToBalance/subtractFromBalance acumulaban el balance con
 // `parseFloat(balanceTotal) ± parseFloat(cantidad)` (float binario) — mismo bug
-// de coma que tenía BalanceUsuario. syncBalance reconciliaba contra la
+// de coma que tenía UserBalance. syncBalance reconciliaba contra la
 // blockchain con resta/abs float. balanceTotal es DECIMAL(28,8): con money.js la
 // acumulación y la diferencia son exactas y se guardan como string canónico.
 

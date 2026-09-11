@@ -1,5 +1,5 @@
 require('../helpers/testEnv');
-const { sequelize, CuentaLedger, AsientoLedger, MovimientoLedger, SaldoLedger } = require('../../models');
+const { sequelize, LedgerAccount, LedgerEntry, LedgerMovement, LedgerBalance } = require('../../models');
 const { resetDb } = require('../helpers/db');
 
 beforeEach(resetDb);
@@ -7,19 +7,19 @@ afterAll(async () => { await sequelize.close(); });
 
 describe('ledger schema', () => {
   test('the four ledger models are registered and their tables exist', async () => {
-    expect(CuentaLedger).toBeDefined();
-    expect(AsientoLedger).toBeDefined();
-    expect(MovimientoLedger).toBeDefined();
-    expect(SaldoLedger).toBeDefined();
+    expect(LedgerAccount).toBeDefined();
+    expect(LedgerEntry).toBeDefined();
+    expect(LedgerMovement).toBeDefined();
+    expect(LedgerBalance).toBeDefined();
     // Tables created by sync: a count query must not throw.
-    await expect(CuentaLedger.count()).resolves.toBe(0);
-    await expect(AsientoLedger.count()).resolves.toBe(0);
-    await expect(MovimientoLedger.count()).resolves.toBe(0);
-    await expect(SaldoLedger.count()).resolves.toBe(0);
+    await expect(LedgerAccount.count()).resolves.toBe(0);
+    await expect(LedgerEntry.count()).resolves.toBe(0);
+    await expect(LedgerMovement.count()).resolves.toBe(0);
+    await expect(LedgerBalance.count()).resolves.toBe(0);
   });
 });
 
-const ledgerAccounts = require('../../services/ledger/ledgerAccounts');
+const ledgerAccounts = require('../../modules/balances/ledger/ledgerAccounts');
 const f = require('../helpers/factories');
 
 describe('ledgerAccounts.resolveAccount', () => {
@@ -28,28 +28,28 @@ describe('ledgerAccounts.resolveAccount', () => {
     const user = await f.seedUser();
 
     const first = await ledgerAccounts.resolveAccount(
-      { ownerId: user.id, proposito: ledgerAccounts.PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: cripto.id }
+      { ownerId: user.id, purpose: ledgerAccounts.PURPOSES.FUNDING_AVAILABLE, cryptoId: cripto.id }
     );
     const again = await ledgerAccounts.resolveAccount(
-      { ownerId: user.id, proposito: ledgerAccounts.PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: cripto.id }
+      { ownerId: user.id, purpose: ledgerAccounts.PURPOSES.FUNDING_AVAILABLE, cryptoId: cripto.id }
     );
 
     expect(first.id).toBe(again.id);
-    expect(await CuentaLedger.count()).toBe(1);
-    expect(ledgerAccounts.isCuentaUsuario(first)).toBe(true);
+    expect(await LedgerAccount.count()).toBe(1);
+    expect(ledgerAccounts.isUserAccount(first)).toBe(true);
   });
 
   test('a house account resolves under the sentinel owner', async () => {
     const cripto = await f.seedCripto('USDT');
     const casa = await ledgerAccounts.resolveAccount(
-      { ownerId: null, proposito: ledgerAccounts.PROPOSITOS.FEE_REVENUE, criptomonedaId: cripto.id }
+      { ownerId: null, purpose: ledgerAccounts.PURPOSES.FEE_REVENUE, cryptoId: cripto.id }
     );
     expect(casa.ownerId).toBe(ledgerAccounts.HOUSE_OWNER_ID);
-    expect(ledgerAccounts.isCuentaUsuario(casa)).toBe(false);
+    expect(ledgerAccounts.isUserAccount(casa)).toBe(false);
   });
 });
 
-const posting = require('../../services/ledger/postingService');
+const posting = require('../../modules/balances/ledger/postingService');
 
 describe('postTransaction', () => {
   async function seedCryptoAndUser() {
@@ -62,61 +62,61 @@ describe('postTransaction', () => {
     const { cripto, user } = await seedCryptoAndUser();
     // Fund the user first (apertura -> funding:disponible +10).
     await posting.postTransaction({
-      tipo: 'apertura', referencia: 'seed-1', lineas: [
-        { ownerId: null, proposito: ledgerAccounts.PROPOSITOS.APERTURA, criptomonedaId: cripto.id, monto: '-10.00000000' },
-        { ownerId: user.id, proposito: ledgerAccounts.PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: cripto.id, monto: '10.00000000' },
+      type: 'apertura', reference: 'seed-1', lines: [
+        { ownerId: null, purpose: ledgerAccounts.PURPOSES.APERTURA, cryptoId: cripto.id, amount: '-10.00000000' },
+        { ownerId: user.id, purpose: ledgerAccounts.PURPOSES.FUNDING_AVAILABLE, cryptoId: cripto.id, amount: '10.00000000' },
       ],
     });
 
     // Block 4: disponible -> bloqueado.
     await posting.postTransaction({
-      tipo: 'reserva_orden', referencia: 'block-1', lineas: [
-        { ownerId: user.id, proposito: ledgerAccounts.PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: cripto.id, monto: '-4.00000000' },
-        { ownerId: user.id, proposito: ledgerAccounts.PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId: cripto.id, monto: '4.00000000' },
+      type: 'reserva_orden', reference: 'block-1', lines: [
+        { ownerId: user.id, purpose: ledgerAccounts.PURPOSES.FUNDING_AVAILABLE, cryptoId: cripto.id, amount: '-4.00000000' },
+        { ownerId: user.id, purpose: ledgerAccounts.PURPOSES.FUNDING_BLOCKED, cryptoId: cripto.id, amount: '4.00000000' },
       ],
     });
 
-    const disp = await posting.getSaldoCuenta({ ownerId: user.id, proposito: ledgerAccounts.PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: cripto.id });
-    const bloq = await posting.getSaldoCuenta({ ownerId: user.id, proposito: ledgerAccounts.PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId: cripto.id });
+    const disp = await posting.getAccountBalance({ ownerId: user.id, purpose: ledgerAccounts.PURPOSES.FUNDING_AVAILABLE, cryptoId: cripto.id });
+    const bloq = await posting.getAccountBalance({ ownerId: user.id, purpose: ledgerAccounts.PURPOSES.FUNDING_BLOCKED, cryptoId: cripto.id });
     expect(disp).toBe('6.00000000');
     expect(bloq).toBe('4.00000000');
   });
 
   test('is idempotent on referencia (a replay posts nothing)', async () => {
     const { cripto, user } = await seedCryptoAndUser();
-    const lineas = [
-      { ownerId: null, proposito: ledgerAccounts.PROPOSITOS.APERTURA, criptomonedaId: cripto.id, monto: '-3.00000000' },
-      { ownerId: user.id, proposito: ledgerAccounts.PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: cripto.id, monto: '3.00000000' },
+    const lines = [
+      { ownerId: null, purpose: ledgerAccounts.PURPOSES.APERTURA, cryptoId: cripto.id, amount: '-3.00000000' },
+      { ownerId: user.id, purpose: ledgerAccounts.PURPOSES.FUNDING_AVAILABLE, cryptoId: cripto.id, amount: '3.00000000' },
     ];
-    await posting.postTransaction({ tipo: 'apertura', referencia: 'dup-1', lineas });
-    await posting.postTransaction({ tipo: 'apertura', referencia: 'dup-1', lineas }); // replay
+    await posting.postTransaction({ type: 'apertura', reference: 'dup-1', lines });
+    await posting.postTransaction({ type: 'apertura', reference: 'dup-1', lines }); // replay
 
-    expect(await AsientoLedger.count()).toBe(1);
-    const disp = await posting.getSaldoCuenta({ ownerId: user.id, proposito: ledgerAccounts.PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: cripto.id });
+    expect(await LedgerEntry.count()).toBe(1);
+    const disp = await posting.getAccountBalance({ ownerId: user.id, purpose: ledgerAccounts.PURPOSES.FUNDING_AVAILABLE, cryptoId: cripto.id });
     expect(disp).toBe('3.00000000');
   });
 
   test('rejects an overdraw on a user account and rolls back the whole asiento', async () => {
     const { cripto, user } = await seedCryptoAndUser();
     await expect(posting.postTransaction({
-      tipo: 'reserva_orden', referencia: 'over-1', lineas: [
-        { ownerId: user.id, proposito: ledgerAccounts.PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: cripto.id, monto: '-5.00000000' },
-        { ownerId: user.id, proposito: ledgerAccounts.PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId: cripto.id, monto: '5.00000000' },
+      type: 'reserva_orden', reference: 'over-1', lines: [
+        { ownerId: user.id, purpose: ledgerAccounts.PURPOSES.FUNDING_AVAILABLE, cryptoId: cripto.id, amount: '-5.00000000' },
+        { ownerId: user.id, purpose: ledgerAccounts.PURPOSES.FUNDING_BLOCKED, cryptoId: cripto.id, amount: '5.00000000' },
       ],
-    })).rejects.toThrow(/sobregiro/i);
+    })).rejects.toThrow(/overdraft/i);
 
-    expect(await AsientoLedger.count()).toBe(0); // rolled back
-    expect(await MovimientoLedger.count()).toBe(0);
+    expect(await LedgerEntry.count()).toBe(0); // rolled back
+    expect(await LedgerMovement.count()).toBe(0);
   });
 
   test('rejects an unbalanced asiento before touching the DB', async () => {
     const { cripto, user } = await seedCryptoAndUser();
     await expect(posting.postTransaction({
-      tipo: 'apertura', referencia: 'bad-1', lineas: [
-        { ownerId: user.id, proposito: ledgerAccounts.PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: cripto.id, monto: '5.00000000' },
+      type: 'apertura', reference: 'bad-1', lines: [
+        { ownerId: user.id, purpose: ledgerAccounts.PURPOSES.FUNDING_AVAILABLE, cryptoId: cripto.id, amount: '5.00000000' },
       ],
-    })).rejects.toThrow(/desbalanceado/i);
-    expect(await AsientoLedger.count()).toBe(0);
+    })).rejects.toThrow(/unbalanced/i);
+    expect(await LedgerEntry.count()).toBe(0);
   });
 });
 
@@ -125,14 +125,14 @@ describe('postTransaction concurrency (Criticos #5 regression)', () => {
     const cripto = await f.seedCripto('BTC');
     const user = await f.seedUser();
     // Fund with exactly 5.
-    await posting.postTransaction({ tipo: 'apertura', referencia: 'conc-seed', lineas: [
-      { ownerId: null, proposito: ledgerAccounts.PROPOSITOS.APERTURA, criptomonedaId: cripto.id, monto: '-5.00000000' },
-      { ownerId: user.id, proposito: ledgerAccounts.PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: cripto.id, monto: '5.00000000' },
+    await posting.postTransaction({ type: 'apertura', reference: 'conc-seed', lines: [
+      { ownerId: null, purpose: ledgerAccounts.PURPOSES.APERTURA, cryptoId: cripto.id, amount: '-5.00000000' },
+      { ownerId: user.id, purpose: ledgerAccounts.PURPOSES.FUNDING_AVAILABLE, cryptoId: cripto.id, amount: '5.00000000' },
     ] });
 
-    const bloquear = (ref) => posting.postTransaction({ tipo: 'reserva_orden', referencia: ref, lineas: [
-      { ownerId: user.id, proposito: ledgerAccounts.PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: cripto.id, monto: '-5.00000000' },
-      { ownerId: user.id, proposito: ledgerAccounts.PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId: cripto.id, monto: '5.00000000' },
+    const bloquear = (ref) => posting.postTransaction({ type: 'reserva_orden', reference: ref, lines: [
+      { ownerId: user.id, purpose: ledgerAccounts.PURPOSES.FUNDING_AVAILABLE, cryptoId: cripto.id, amount: '-5.00000000' },
+      { ownerId: user.id, purpose: ledgerAccounts.PURPOSES.FUNDING_BLOCKED, cryptoId: cripto.id, amount: '5.00000000' },
     ] });
 
     const results = await Promise.allSettled([bloquear('conc-a'), bloquear('conc-b')]);
@@ -141,8 +141,8 @@ describe('postTransaction concurrency (Criticos #5 regression)', () => {
     expect(ok).toBe(1);
     expect(failed).toBe(1);
 
-    const disp = await posting.getSaldoCuenta({ ownerId: user.id, proposito: ledgerAccounts.PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: cripto.id });
-    const bloq = await posting.getSaldoCuenta({ ownerId: user.id, proposito: ledgerAccounts.PROPOSITOS.FUNDING_BLOQUEADO, criptomonedaId: cripto.id });
+    const disp = await posting.getAccountBalance({ ownerId: user.id, purpose: ledgerAccounts.PURPOSES.FUNDING_AVAILABLE, cryptoId: cripto.id });
+    const bloq = await posting.getAccountBalance({ ownerId: user.id, purpose: ledgerAccounts.PURPOSES.FUNDING_BLOCKED, cryptoId: cripto.id });
     expect(disp).toBe('0.00000000');
     expect(bloq).toBe('5.00000000');
   });

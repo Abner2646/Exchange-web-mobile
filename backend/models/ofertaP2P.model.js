@@ -124,21 +124,21 @@ class OfertaP2P extends Model {
 
     // 🆕 VALIDAR FONDOS AL PUBLICAR OFERTA DE VENTA
     if (tipo === 'venta') {
-      const { BalanceUsuario } = require('./index');
+      const { UserBalance } = require('./index');
       
       // Verificar que el usuario tenga fondos suficientes para la cantidad máxima
-      const balance = await BalanceUsuario.getByUserAndCrypto(usuarioId, criptomonedaId);
+      const balance = await UserBalance.getByUserAndCrypto(usuarioId, criptomonedaId);
       
       if (!balance) {
         throw new Error('No tienes balance en esta criptomoneda');
       }
 
-      const balanceDisponible = String(balance.balanceDisponible);
+      const availableBalance = String(balance.availableBalance);
       const cantidadMaxima = String(cantidadMax);
 
-      if (money.compare(balanceDisponible, cantidadMaxima) < 0) {
+      if (money.compare(availableBalance, cantidadMaxima) < 0) {
         throw new Error(
-          `Fondos insuficientes. Tienes ${balanceDisponible} disponible pero la oferta requiere ${cantidadMaxima}`
+          `Fondos insuficientes. Tienes ${availableBalance} disponible pero la oferta requiere ${cantidadMaxima}`
         );
       }
     }
