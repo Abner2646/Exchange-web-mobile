@@ -139,7 +139,7 @@ describe('GET /api/balances/my/balances es aditivo (totales = suma + desglose)',
 
 // Task 9: swap endpoint acepta compartimento fuente (funding|spot).
 // BTC/USDT, precio 100, comision 1%. Compra 1 BTC desde Spot:
-//   cantidadQuote = 1 * 100    = 100
+//   quoteAmount = 1 * 100    = 100
 //   comision      = 100 * 1%   = 1
 //   requiredQuote = 100 + 1    = 101
 describe('Swap respeta el compartimento origen', () => {
@@ -148,7 +148,7 @@ describe('Swap respeta el compartimento origen', () => {
     const usdt = await f.seedCripto('USDT');
     await f.seedWalletMaestra(btc);
     await f.seedWalletMaestra(usdt);
-    const par = await f.seedPar({ base: btc, quote: usdt, precio: '100', comision: '1' });
+    const par = await f.seedPar({ base: btc, quote: usdt, price: '100', comision: '1' });
     const user = await f.seedUser({ email: 'swapspot@test.local', username: 'swapspot' });
     await f.seedSpotBalance(user, usdt, '200'); // 200 USDT en Spot, cubre los 101 requeridos
 
@@ -156,7 +156,7 @@ describe('Swap respeta el compartimento origen', () => {
       .post('/api/intercambioExchange/')
       .set(f.authHeader(user))
       .set('Idempotency-Key', idemKey())
-      .send({ parId: par.id, tipo: 'compra', cantidadBase: 1, compartimento: 'spot' });
+      .send({ pairId: par.id, type: 'buy', baseAmount: 1, compartimento: 'spot' });
     expect(res.status).toBe(201);
 
     // Recibió BTC en Spot (no en Funding)

@@ -20,9 +20,9 @@ beforeEach(() => jest.clearAllMocks());
 describe('settleSwap arma el asiento del swap (net-zero por cripto)', () => {
   test('compra: paga requiredQuote en quote, recibe base; treasury + fee_revenue', async () => {
     await settleSwap({
-      usuarioId: 'u', criptoBaseId: 'BTC', criptoQuoteId: 'USDT',
-      cantidadBase: '3', cantidadQuote: '0.3', comisionMonto: '0.003',
-      requiredQuote: '0.303', netQuote: '0.297', tipo: 'compra', referencia: 'swap:1',
+      userId: 'u', baseCryptoId: 'BTC', quoteCryptoId: 'USDT',
+      baseAmount: '3', quoteAmount: '0.3', feeAmount: '0.003',
+      requiredQuote: '0.303', netQuote: '0.297', type: 'buy', referencia: 'swap:1',
     }, 'tx');
 
     expect(postTransaction).toHaveBeenCalledTimes(1);
@@ -30,7 +30,7 @@ describe('settleSwap arma el asiento del swap (net-zero por cripto)', () => {
     expect(transaction).toBe('tx');
     expect(asiento.type).toBe('swap');
     expect(asiento.reference).toBe('swap:1');
-    expect(asiento.description).toBe('Swap compra');
+    expect(asiento.description).toBe('Swap buy');
     expect(asiento.lines).toContainEqual({ ownerId: 'u', purpose: PURPOSES.FUNDING_AVAILABLE, cryptoId: 'USDT', amount: '-0.303' });
     expect(asiento.lines).toContainEqual({ ownerId: null, purpose: PURPOSES.TREASURY, cryptoId: 'USDT', amount: '0.3' });
     expect(asiento.lines).toContainEqual({ ownerId: null, purpose: PURPOSES.FEE_REVENUE, cryptoId: 'USDT', amount: '0.003' });
@@ -40,13 +40,13 @@ describe('settleSwap arma el asiento del swap (net-zero por cripto)', () => {
 
   test('venta: paga base, recibe netQuote en quote; treasury + fee_revenue', async () => {
     await settleSwap({
-      usuarioId: 'u', criptoBaseId: 'BTC', criptoQuoteId: 'USDT',
-      cantidadBase: '0.29', cantidadQuote: '0.29', comisionMonto: '0.0029',
-      requiredQuote: '0.2929', netQuote: '0.2871', tipo: 'venta', referencia: 'swap:2',
+      userId: 'u', baseCryptoId: 'BTC', quoteCryptoId: 'USDT',
+      baseAmount: '0.29', quoteAmount: '0.29', feeAmount: '0.0029',
+      requiredQuote: '0.2929', netQuote: '0.2871', type: 'sell', referencia: 'swap:2',
     }, 'tx');
 
     const asiento = postTransaction.mock.calls[0][0];
-    expect(asiento.description).toBe('Swap venta');
+    expect(asiento.description).toBe('Swap sell');
     const { lines } = asiento;
     expect(lines).toContainEqual({ ownerId: 'u', purpose: PURPOSES.FUNDING_AVAILABLE, cryptoId: 'BTC', amount: '-0.29' });
     expect(lines).toContainEqual({ ownerId: null, purpose: PURPOSES.TREASURY, cryptoId: 'BTC', amount: '0.29' });
@@ -247,9 +247,9 @@ describe('reserveForOrder / releaseReservation mueven disponible↔bloqueado en 
 describe('settleSwap respeta el compartimento origen', () => {
   test("compartimento 'spot': las patas del usuario van a spot:disponible", async () => {
     await settleSwap({
-      usuarioId: 'u', criptoBaseId: 'BTC', criptoQuoteId: 'USDT',
-      cantidadBase: '3', cantidadQuote: '0.3', comisionMonto: '0.003',
-      requiredQuote: '0.303', netQuote: '0.297', tipo: 'compra',
+      userId: 'u', baseCryptoId: 'BTC', quoteCryptoId: 'USDT',
+      baseAmount: '3', quoteAmount: '0.3', feeAmount: '0.003',
+      requiredQuote: '0.303', netQuote: '0.297', type: 'buy',
       compartimento: 'spot', referencia: 'swap:spot:1',
     });
     const { lines } = postTransaction.mock.calls[0][0];
@@ -264,9 +264,9 @@ describe('settleSwap respeta el compartimento origen', () => {
 
   test('sin compartimento explícito, default = funding (comportamiento actual)', async () => {
     await settleSwap({
-      usuarioId: 'u', criptoBaseId: 'BTC', criptoQuoteId: 'USDT',
-      cantidadBase: '3', cantidadQuote: '0.3', comisionMonto: '0.003',
-      requiredQuote: '0.303', netQuote: '0.297', tipo: 'compra', referencia: 'swap:def:1',
+      userId: 'u', baseCryptoId: 'BTC', quoteCryptoId: 'USDT',
+      baseAmount: '3', quoteAmount: '0.3', feeAmount: '0.003',
+      requiredQuote: '0.303', netQuote: '0.297', type: 'buy', referencia: 'swap:def:1',
     });
     const { lines } = postTransaction.mock.calls[0][0];
     expect(lines).toContainEqual({ ownerId: 'u', purpose: PURPOSES.FUNDING_AVAILABLE, cryptoId: 'BTC', amount: '3' });
@@ -274,9 +274,9 @@ describe('settleSwap respeta el compartimento origen', () => {
 
   test('compartimento desconocido → error, sin postear', async () => {
     await expect(settleSwap({
-      usuarioId: 'u', criptoBaseId: 'BTC', criptoQuoteId: 'USDT',
-      cantidadBase: '3', cantidadQuote: '0.3', comisionMonto: '0.003',
-      requiredQuote: '0.303', netQuote: '0.297', tipo: 'compra',
+      userId: 'u', baseCryptoId: 'BTC', quoteCryptoId: 'USDT',
+      baseAmount: '3', quoteAmount: '0.3', feeAmount: '0.003',
+      requiredQuote: '0.303', netQuote: '0.297', type: 'buy',
       compartimento: 'earn', referencia: 'swap:bad:1',
     })).rejects.toThrow(/compartimento/i);
     expect(postTransaction).not.toHaveBeenCalled();

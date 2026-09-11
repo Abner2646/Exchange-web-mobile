@@ -3,7 +3,7 @@ const request = require('supertest');
 const app = require('../../app');
 const { sequelize, resetDb } = require('../helpers/db');
 const f = require('../helpers/factories');
-const { IntercambioExchange, MasterWallet } = require('../../models');
+const { Swap, MasterWallet } = require('../../models');
 const posting = require('../../modules/balances/ledger/postingService');
 const recon = require('../../modules/balances/ledger/reconciliation');
 const { PURPOSES } = require('../../modules/balances/ledger/ledgerAccounts');
@@ -18,15 +18,15 @@ const casa = (purpose, cryptoId) =>
 beforeEach(async () => { await resetDb(); });
 afterAll(async () => { await sequelize.close(); });
 
-// BTC/USDT, precio 0.1, commission 1%. Buy 3 BTC:
-//   cantidadQuote = 3 * 0.1    = 0.3
+// BTC/USDT, price 0.1, commission 1%. Buy 3 BTC:
+//   quoteAmount = 3 * 0.1    = 0.3
 //   comision      = 0.3 * 1%   = 0.003
 //   required USDT = 0.3 + 0.003 = 0.303
 async function seedBuyScenario() {
   const user = await f.seedUser();
   const btc = await f.seedCripto('BTC');
   const usdt = await f.seedCripto('USDT');
-  const par = await f.seedPar({ base: btc, quote: usdt, precio: '0.1', comision: '1' });
+  const par = await f.seedPar({ base: btc, quote: usdt, price: '0.1', comision: '1' });
   const wallet = await f.seedWalletMaestra(usdt);
   await f.seedBalance(user, usdt, '1');   // enough to cover 0.303
   return { user, btc, usdt, par, wallet };
@@ -40,7 +40,7 @@ describe('POST /api/intercambioExchange (swap) — buy', () => {
       .post('/api/intercambioExchange/')
       .set(f.authHeader(user))
       .set('Idempotency-Key', idemKey())
-      .send({ parId: par.id, tipo: 'compra', cantidadBase: 3 });
+      .send({ pairId: par.id, type: 'buy', baseAmount: 3 });
 
     expect(res.status).toBe(201);
 
@@ -58,9 +58,9 @@ describe('POST /api/intercambioExchange (swap) — buy', () => {
     const walletAfter = await MasterWallet.findByPk(wallet.id);
     expect(walletAfter.totalBalance).toBe('0.00000000');
 
-    const row = await IntercambioExchange.findOne({ where: { usuarioId: user.id } });
+    const row = await Swap.findOne({ where: { userId: user.id } });
     expect(row).not.toBeNull();
-    expect(row.estado).toBe('completado');
+    expect(row.status).toBe('completed');
 
     // El libro cierra: interno (proyección==SUM) y externo (net-zero por cripto).
     expect((await recon.reconcileInternal()).ok).toBe(true);
@@ -72,7 +72,7 @@ describe('POST /api/intercambioExchange (swap) — buy', () => {
     await request(app).post('/api/intercambioExchange/')
       .set(f.authHeader(user))
       .set('Idempotency-Key', idemKey())
-      .send({ parId: par.id, tipo: 'compra', cantidadBase: 3 });
+      .send({ pairId: par.id, type: 'buy', baseAmount: 3 });
 
     const res = await request(app).get('/api/intercambioExchange/me/balances').set(f.authHeader(user));
     expect(res.status).toBe(200);
@@ -104,22 +104,22 @@ describe('POST /api/intercambioExchange (swap) — buy', () => {
 });
 
 describe('POST /api/intercambioExchange (swap) — sell', () => {
-  // BTC/USDT, precio 1, commission 1%. Sell 0.29 BTC:
-  //   cantidadQuote = 0.29 * 1   = 0.29
+  // BTC/USDT, price 1, commission 1%. Sell 0.29 BTC:
+  //   quoteAmount = 0.29 * 1   = 0.29
   //   comision      = 0.29 * 1%  = 0.0029
   //   net USDT      = 0.29 - 0.0029 = 0.2871
   test('debits base, credits quote by net (value - commission)', async () => {
     const user = await f.seedUser();
     const btc = await f.seedCripto('BTC');
     const usdt = await f.seedCripto('USDT');
-    const par = await f.seedPar({ base: btc, quote: usdt, precio: '1', comision: '1' });
+    const par = await f.seedPar({ base: btc, quote: usdt, price: '1', comision: '1' });
     await f.seedWalletMaestra(usdt);
     await f.seedBalance(user, btc, '0.29');
 
     const res = await request(app).post('/api/intercambioExchange/')
       .set(f.authHeader(user))
       .set('Idempotency-Key', idemKey())
-      .send({ parId: par.id, tipo: 'venta', cantidadBase: 0.29 });
+      .send({ pairId: par.id, type: 'sell', baseAmount: 0.29 });
 
     expect(res.status).toBe(201);
     expect((await f.getBalance(user, btc)).availableBalance).toBe('0.00000000');
@@ -137,7 +137,7 @@ describe('POST /api/intercambioExchange (swap) — rejections', () => {
     const user = await f.seedUser(userOverrides);
     const btc = await f.seedCripto('BTC');
     const usdt = await f.seedCripto('USDT');
-    const par = await f.seedPar({ base: btc, quote: usdt, precio: '0.1', comision: '1' });
+    const par = await f.seedPar({ base: btc, quote: usdt, price: '0.1', comision: '1' });
     await f.seedWalletMaestra(usdt);
     return { user, btc, usdt, par };
   }
@@ -149,7 +149,7 @@ describe('POST /api/intercambioExchange (swap) — rejections', () => {
     const res = await request(app).post('/api/intercambioExchange/')
       .set(f.authHeader(user))
       .set('Idempotency-Key', idemKey())
-      .send({ parId: par.id, tipo: 'compra', cantidadBase: 3 });
+      .send({ pairId: par.id, type: 'buy', baseAmount: 3 });
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('EXCHANGE_INSUFFICIENT_BALANCE');
@@ -163,7 +163,7 @@ describe('POST /api/intercambioExchange (swap) — rejections', () => {
     const res = await request(app).post('/api/intercambioExchange/')
       .set(f.authHeader(user))
       .set('Idempotency-Key', idemKey())
-      .send({ parId: par.id, tipo: 'compra', cantidadBase: 3 });
+      .send({ pairId: par.id, type: 'buy', baseAmount: 3 });
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('EXCHANGE_DAILY_LIMIT_EXCEEDED');
@@ -175,7 +175,7 @@ describe('POST /api/intercambioExchange (swap) — rejections', () => {
     const res = await request(app).post('/api/intercambioExchange/')
       .set(f.authHeader(user))
       .set('Idempotency-Key', idemKey())
-      .send({ parId: '00000000-0000-4000-8000-000000000000', tipo: 'compra', cantidadBase: 1 });
+      .send({ pairId: '00000000-0000-4000-8000-000000000000', type: 'buy', baseAmount: 1 });
 
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe('EXCHANGE_PAIR_NOT_FOUND');
@@ -183,7 +183,7 @@ describe('POST /api/intercambioExchange (swap) — rejections', () => {
 
   test('no token → 401 (legacy auth shape, not the canonical envelope)', async () => {
     const res = await request(app).post('/api/intercambioExchange/')
-      .send({ parId: '00000000-0000-4000-8000-000000000000', tipo: 'compra', cantidadBase: 1 });
+      .send({ pairId: '00000000-0000-4000-8000-000000000000', type: 'buy', baseAmount: 1 });
 
     expect(res.status).toBe(401);
     expect(res.body.success).toBe(false);  // authMiddleware returns { success:false, message }

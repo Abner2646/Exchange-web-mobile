@@ -250,3 +250,34 @@ Also disable the submit button + show a "sending…" state (cheap first-line def
 - **Still Spanish (deferred to owning domains):** the ledger's `operations()` param keys
   (`criptomonedaId`/`cantidad`/`referencia`) that the blockchain deposit/withdrawal flows pass —
   they belong to the ledger boundary and rename in a later ledger-interface pass.
+
+### ✅ swap  (chunk 5 — done)
+
+- **HTTP mount paths UNCHANGED** (deferred to the `/api/v1` versioning pass, same as chunk 4):
+  the swap-execution endpoint stays `POST /api/intercambioExchange/` and the pair endpoints stay
+  under `/api/parExchange/*`. Only field names, enum values, DB columns and internal names changed.
+- **Swap execution** `POST /api/intercambioExchange/` request body:
+  `tipo`→`type` with enum values **`compra|venta` → `buy|sell`**; `cantidadBase`→`baseAmount`
+  (`pairId`, `compartimento` unchanged). Validation messages now name the English field/values.
+- **Swap object / responses:** `tipo`→`type` (`buy|sell`), `estado`→`status` with enum values
+  **`pendiente|completado|fallido` → `pending|completed|failed`**; `cantidadBase`→`baseAmount`,
+  `cantidadQuote`→`quoteAmount`, `precio`→`price`, `comisionMonto`→`feeAmount`,
+  `comisionPorcentaje`→`feePercent`; FK `usuarioId`→`userId`, `parId`→`pairId`.
+- **List/filter query params:** `?estado=`→`?status=`, `?tipo=`→`?type=` (enum `buy|sell`),
+  `?usuarioId=`→`?userId=`. (`fechaDesde`/`fechaHasta` date filters kept as-is.)
+- **SwapPair object / responses:** `criptoBaseId`→`baseCryptoId`, `criptoQuoteId`→`quoteCryptoId`,
+  `precioActual`→`currentPrice`, `precioAnterior`→`previousPrice`, `volumen24h`→`volume24h`,
+  `volumenBase24h`→`volumeBase24h`, `cantidadOperaciones24h`→`operationsCount24h`,
+  `precioMaximo24h`→`maxPrice24h`, `precioMinimo24h`→`minPrice24h`,
+  `cambiosPorcentaje24h`→`changePercent24h`, `comisionPorcentaje`→`feePercent`,
+  `ultimaActualizacion`→`lastUpdated`, `fuentePrecio`→`priceSource`, `simboloExterno`→`externalSymbol`
+  (`active` unchanged).
+- **Association aliases (embed on User/Crypto/SwapPair):** `intercambios`→`swaps`, `usuario`→`user`,
+  `par`→`pair`, `criptoBase`→`baseCrypto`, `criptoQuote`→`quoteCrypto`,
+  `paresComoBase`→`pairsAsBase`, `paresComoQuote`→`pairsAsQuote`.
+- **Internal:** models `IntercambioExchange`→`Swap`, `ParExchange`→`SwapPair`; tables
+  `intercambios_exchange`→`swaps`, `pares_exchange`→`swap_pairs`, and their columns to English;
+  `intercambioSettlement.service`→`modules/swap/swapSettlement.service` (return key
+  `cantidadFinal`→`finalAmount`). The ledger's swap-only `settleSwap()` now takes English params
+  (`userId`/`baseCryptoId`/`baseAmount`/`type` with `buy|sell`); `compartimento`/`referencia`
+  stay Spanish (shared ledger vocabulary). `priceService` stays under `services/` (shared infra).

@@ -21,7 +21,7 @@ jest.mock('../middleware/rateLimit.middleware.js', () => ({ general: (_q, _s, n)
 const noop = (_req, res) => res.status(200).json({});
 
 // intercambioExchange.controller: createOrder is the swap execution (POST /).
-jest.mock('../controllers/intercambioExchange.controller', () => ({
+jest.mock('../modules/swap/swap.controller', () => ({
   createOrder: (_req, res) => res.status(201).json({ ok: true }),
   calculateExchange: noop,
   checkTransactionLimit: noop,
@@ -60,7 +60,7 @@ jest.mock('../modules/balances/userBalance.controller', () => ({
   getUsersWithBalance: noop
 }));
 
-const intercambioRoutes = require('../routes/intercambioExchange.routes');
+const intercambioRoutes = require('../modules/swap/swap.routes');
 const balanceRoutes = require('../modules/balances/userBalance.routes');
 
 test('POST /intercambioExchange/ (swap) without Idempotency-Key -> 400', async () => {
@@ -69,9 +69,9 @@ test('POST /intercambioExchange/ (swap) without Idempotency-Key -> 400', async (
   app.use('/intercambioExchange', intercambioRoutes);
 
   const res = await request(app).post('/intercambioExchange/').send({
-    parId: '123e4567-e89b-12d3-a456-426614174000',
-    tipo: 'compra',
-    cantidadBase: 0.5
+    pairId: '123e4567-e89b-12d3-a456-426614174000',
+    type: 'buy',
+    baseAmount: 0.5
   });
 
   expect(res.status).toBe(400);

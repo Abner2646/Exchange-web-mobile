@@ -38,13 +38,13 @@ async function claim(userId, key) {
 }
 
 describe('transactional idempotency — swap (POST /intercambioExchange/)', () => {
-  const intercambio = require('../../controllers/intercambioExchange.controller');
+  const intercambio = require('../../modules/swap/swap.controller');
 
   async function seedBuyScenario() {
     const user = await f.seedUser();
     const btc = await f.seedCripto('BTC');
     const usdt = await f.seedCripto('USDT');
-    const par = await f.seedPar({ base: btc, quote: usdt, precio: '0.1', comision: '1' });
+    const par = await f.seedPar({ base: btc, quote: usdt, price: '0.1', comision: '1' });
     await f.seedWalletMaestra(usdt);
     await f.seedBalance(user, usdt, '1');
     return { user, btc, usdt, par };
@@ -56,7 +56,7 @@ describe('transactional idempotency — swap (POST /intercambioExchange/)', () =
 
     const req = {
       user: { id: user.id },
-      body: { parId: par.id, tipo: 'compra', cantidadBase: 3 },
+      body: { pairId: par.id, type: 'buy', baseAmount: 3 },
       app: { locals: {} },
       _idempotency,
     };

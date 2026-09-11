@@ -1,35 +1,35 @@
 // models/intercambioExchange.model.js
 
-const initIntercambioExchange = require('./entities/intercambioExchange.entity');
+const initIntercambioExchange = require('./swap.entity');
 const { Op } = require('sequelize');
-const { startOfUtcDay, endOfUtcDay } = require('../utils/time');
+const { startOfUtcDay, endOfUtcDay } = require('../../utils/time');
 
 function createIntercambioExchangeModel(sequelize) {
-  const IntercambioExchange = initIntercambioExchange(sequelize);
+  const Swap = initIntercambioExchange(sequelize);
 
   // Métodos de consulta básicos
-  IntercambioExchange.getById = async (id) => {
+  Swap.getById = async (id) => {
     try {
-      return await IntercambioExchange.findByPk(id, {
+      return await Swap.findByPk(id, {
         include: [
           {
             model: sequelize.models.User,
-            as: 'usuario',
+            as: 'user',
             attributes: ['id', 'username', 'email', 'averageRating']
           },
           {
-            model: sequelize.models.ParExchange,
-            as: 'par',
-            attributes: ['id', 'active', 'comisionPorcentaje', 'precioActual'],
+            model: sequelize.models.SwapPair,
+            as: 'pair',
+            attributes: ['id', 'active', 'feePercent', 'currentPrice'],
             include: [
               {
                 model: sequelize.models.Crypto,
-                as: 'criptoBase',
+                as: 'baseCrypto',
                 attributes: ['id', 'symbol', 'name', 'decimals']
               },
               {
                 model: sequelize.models.Crypto,
-                as: 'criptoQuote',
+                as: 'quoteCrypto',
                 attributes: ['id', 'symbol', 'name', 'decimals']
               }
             ]
@@ -41,18 +41,18 @@ function createIntercambioExchangeModel(sequelize) {
     }
   };
 
-  IntercambioExchange.getAll = async (filters = {}) => {
+  Swap.getAll = async (filters = {}) => {
     try {
       const where = {};
       
-      if (filters.usuarioId) where.usuarioId = filters.usuarioId;
-      if (filters.parId) where.parId = filters.parId;
-      if (filters.tipo) where.tipo = filters.tipo;
-      if (filters.estado) {
-        if (Array.isArray(filters.estado)) {
-          where.estado = { [Op.in]: filters.estado };
+      if (filters.userId) where.userId = filters.userId;
+      if (filters.pairId) where.pairId = filters.pairId;
+      if (filters.type) where.type = filters.type;
+      if (filters.status) {
+        if (Array.isArray(filters.status)) {
+          where.status = { [Op.in]: filters.status };
         } else {
-          where.estado = filters.estado;
+          where.status = filters.status;
         }
       }
       
@@ -64,46 +64,46 @@ function createIntercambioExchangeModel(sequelize) {
         where.created_at = { ...where.created_at, [Op.lte]: new Date(filters.fechaHasta) };
       }
       
-      // Filtros de precio
+      // Filtros de price
       if (filters.precioMin) {
-        where.precio = { ...where.precio, [Op.gte]: parseFloat(filters.precioMin) };
+        where.price = { ...where.price, [Op.gte]: parseFloat(filters.precioMin) };
       }
       if (filters.precioMax) {
-        where.precio = { ...where.precio, [Op.lte]: parseFloat(filters.precioMax) };
+        where.price = { ...where.price, [Op.lte]: parseFloat(filters.precioMax) };
       }
 
       // Filtros de cantidad
       if (filters.cantidadMin) {
-        where.cantidadBase = { ...where.cantidadBase, [Op.gte]: parseFloat(filters.cantidadMin) };
+        where.baseAmount = { ...where.baseAmount, [Op.gte]: parseFloat(filters.cantidadMin) };
       }
       if (filters.cantidadMax) {
-        where.cantidadBase = { ...where.cantidadBase, [Op.lte]: parseFloat(filters.cantidadMax) };
+        where.baseAmount = { ...where.baseAmount, [Op.lte]: parseFloat(filters.cantidadMax) };
       }
       
       const limit = Math.min(parseInt(filters.limit) || 50, 100);
       const offset = parseInt(filters.offset) || 0;
       
-      return await IntercambioExchange.findAndCountAll({
+      return await Swap.findAndCountAll({
         where,
         include: [
           {
             model: sequelize.models.User,
-            as: 'usuario',
+            as: 'user',
             attributes: ['id', 'username', 'averageRating']
           },
           {
-            model: sequelize.models.ParExchange,
-            as: 'par',
+            model: sequelize.models.SwapPair,
+            as: 'pair',
             attributes: ['id', 'active'],
             include: [
               {
                 model: sequelize.models.Crypto,
-                as: 'criptoBase',
+                as: 'baseCrypto',
                 attributes: ['id', 'symbol', 'name']
               },
               {
                 model: sequelize.models.Crypto,
-                as: 'criptoQuote',
+                as: 'quoteCrypto',
                 attributes: ['id', 'symbol', 'name']
               }
             ]
@@ -118,19 +118,19 @@ function createIntercambioExchangeModel(sequelize) {
     }
   };
 
-  IntercambioExchange.getByUserId = async (usuarioId, filters = {}) => {
+  Swap.getByUserId = async (userId, filters = {}) => {
     try {
-      const where = { usuarioId };
+      const where = { userId };
       
-      if (filters.tipo) where.tipo = filters.tipo;
-      if (filters.estado) {
-        if (Array.isArray(filters.estado)) {
-          where.estado = { [Op.in]: filters.estado };
+      if (filters.type) where.type = filters.type;
+      if (filters.status) {
+        if (Array.isArray(filters.status)) {
+          where.status = { [Op.in]: filters.status };
         } else {
-          where.estado = filters.estado;
+          where.status = filters.status;
         }
       }
-      if (filters.parId) where.parId = filters.parId;
+      if (filters.pairId) where.pairId = filters.pairId;
       
       // Filtros de fecha
       if (filters.fechaDesde) {
@@ -143,22 +143,22 @@ function createIntercambioExchangeModel(sequelize) {
       const limit = Math.min(parseInt(filters.limit) || 50, 100);
       const offset = parseInt(filters.offset) || 0;
       
-      return await IntercambioExchange.findAndCountAll({
+      return await Swap.findAndCountAll({
         where,
         include: [
           {
-            model: sequelize.models.ParExchange,
-            as: 'par',
-            attributes: ['id', 'active', 'precioActual'],
+            model: sequelize.models.SwapPair,
+            as: 'pair',
+            attributes: ['id', 'active', 'currentPrice'],
             include: [
               {
                 model: sequelize.models.Crypto,
-                as: 'criptoBase',
+                as: 'baseCrypto',
                 attributes: ['id', 'symbol', 'name']
               },
               {
                 model: sequelize.models.Crypto,
-                as: 'criptoQuote',
+                as: 'quoteCrypto',
                 attributes: ['id', 'symbol', 'name']
               }
             ]
@@ -173,17 +173,17 @@ function createIntercambioExchangeModel(sequelize) {
     }
   };
 
-  IntercambioExchange.search = async (term, limit = 10) => {
+  Swap.search = async (term, limit = 10) => {
     try {
       const searchLimit = Math.min(limit, 50);
       
-      return await IntercambioExchange.findAll({
+      return await Swap.findAll({
         where: {
           [Op.or]: [
-            { '$usuario.username$': { [Op.iLike]: `%${term}%` } },
-            { '$usuario.email$': { [Op.iLike]: `%${term}%` } },
-            { '$par.criptoBase.symbol$': { [Op.iLike]: `%${term}%` } },
-            { '$par.criptoQuote.symbol$': { [Op.iLike]: `%${term}%` } },
+            { '$user.username$': { [Op.iLike]: `%${term}%` } },
+            { '$user.email$': { [Op.iLike]: `%${term}%` } },
+            { '$par.baseCrypto.symbol$': { [Op.iLike]: `%${term}%` } },
+            { '$par.quoteCrypto.symbol$': { [Op.iLike]: `%${term}%` } },
             // Buscar por ID si el término parece un UUID
             ...(term.length >= 8 ? [{ id: { [Op.iLike]: `%${term}%` } }] : [])
           ]
@@ -191,22 +191,22 @@ function createIntercambioExchangeModel(sequelize) {
         include: [
           {
             model: sequelize.models.User,
-            as: 'usuario',
+            as: 'user',
             attributes: ['id', 'username', 'email']
           },
           {
-            model: sequelize.models.ParExchange,
-            as: 'par',
+            model: sequelize.models.SwapPair,
+            as: 'pair',
             attributes: ['id', 'active'],
             include: [
               {
                 model: sequelize.models.Crypto,
-                as: 'criptoBase',
+                as: 'baseCrypto',
                 attributes: ['id', 'symbol', 'name']
               },
               {
                 model: sequelize.models.Crypto,
-                as: 'criptoQuote',
+                as: 'quoteCrypto',
                 attributes: ['id', 'symbol', 'name']
               }
             ]
@@ -221,12 +221,12 @@ function createIntercambioExchangeModel(sequelize) {
   };
 
   // Métodos estadísticos
-  IntercambioExchange.getStats = async (filters = {}) => {
+  Swap.getStats = async (filters = {}) => {
     try {
       const where = {};
       
-      if (filters.usuarioId) where.usuarioId = filters.usuarioId;
-      if (filters.parId) where.parId = filters.parId;
+      if (filters.userId) where.userId = filters.userId;
+      if (filters.pairId) where.pairId = filters.pairId;
       
       if (filters.fechaDesde) {
         where.created_at = { ...where.created_at, [Op.gte]: new Date(filters.fechaDesde) };
@@ -235,48 +235,48 @@ function createIntercambioExchangeModel(sequelize) {
         where.created_at = { ...where.created_at, [Op.lte]: new Date(filters.fechaHasta) };
       }
       
-      const total = await IntercambioExchange.count({ where });
-      const completados = await IntercambioExchange.count({ 
-        where: { ...where, estado: 'completado' } 
+      const total = await Swap.count({ where });
+      const completados = await Swap.count({ 
+        where: { ...where, status: 'completed' } 
       });
-      const pendientes = await IntercambioExchange.count({ 
-        where: { ...where, estado: 'pendiente' } 
+      const pendientes = await Swap.count({ 
+        where: { ...where, status: 'pending' } 
       });
-      const fallidos = await IntercambioExchange.count({ 
-        where: { ...where, estado: 'fallido' } 
+      const fallidos = await Swap.count({ 
+        where: { ...where, status: 'failed' } 
       });
       
-      const compras = await IntercambioExchange.count({ 
-        where: { ...where, tipo: 'compra' } 
+      const compras = await Swap.count({ 
+        where: { ...where, type: 'buy' } 
       });
-      const ventas = await IntercambioExchange.count({ 
-        where: { ...where, tipo: 'venta' } 
+      const ventas = await Swap.count({ 
+        where: { ...where, type: 'sell' } 
       });
       
       // Volúmenes (solo órdenes completadas)
-      const whereCompleted = { ...where, estado: 'completado' };
+      const whereCompleted = { ...where, status: 'completed' };
       
-      const volumenTotal = await IntercambioExchange.sum('cantidadQuote', { where: whereCompleted });
-      const comisionTotal = await IntercambioExchange.sum('comisionMonto', { where: whereCompleted });
+      const volumenTotal = await Swap.sum('quoteAmount', { where: whereCompleted });
+      const comisionTotal = await Swap.sum('feeAmount', { where: whereCompleted });
       
-      // Volúmenes por tipo
-      const volumenCompras = await IntercambioExchange.sum('cantidadQuote', { 
-        where: { ...whereCompleted, tipo: 'compra' } 
+      // Volúmenes por type
+      const volumenCompras = await Swap.sum('quoteAmount', { 
+        where: { ...whereCompleted, type: 'buy' } 
       });
-      const volumenVentas = await IntercambioExchange.sum('cantidadQuote', { 
-        where: { ...whereCompleted, tipo: 'venta' } 
+      const volumenVentas = await Swap.sum('quoteAmount', { 
+        where: { ...whereCompleted, type: 'sell' } 
       });
       
       // Promedios
-      const promedioCompra = compras > 0 ? await IntercambioExchange.findAll({
-        where: { ...whereCompleted, tipo: 'compra' },
-        attributes: [[sequelize.fn('AVG', sequelize.col('precio')), 'avgPrice']],
+      const promedioCompra = compras > 0 ? await Swap.findAll({
+        where: { ...whereCompleted, type: 'buy' },
+        attributes: [[sequelize.fn('AVG', sequelize.col('price')), 'avgPrice']],
         raw: true
       }) : [{ avgPrice: 0 }];
       
-      const promedioVenta = ventas > 0 ? await IntercambioExchange.findAll({
-        where: { ...whereCompleted, tipo: 'venta' },
-        attributes: [[sequelize.fn('AVG', sequelize.col('precio')), 'avgPrice']],
+      const promedioVenta = ventas > 0 ? await Swap.findAll({
+        where: { ...whereCompleted, type: 'sell' },
+        attributes: [[sequelize.fn('AVG', sequelize.col('price')), 'avgPrice']],
         raw: true
       }) : [{ avgPrice: 0 }];
       
@@ -300,7 +300,7 @@ function createIntercambioExchangeModel(sequelize) {
     }
   };
 
-  IntercambioExchange.getDailyVolume = async (usuarioId, date = new Date(), transaction = null) => {
+  Swap.getDailyVolume = async (userId, date = new Date(), transaction = null) => {
     try {
       // Ventana del día en UTC: created_at se guarda en UTC, así que el borde
       // del "día" del límite diario debe ser el día UTC, no el día local del
@@ -308,13 +308,13 @@ function createIntercambioExchangeModel(sequelize) {
       const startOfDay = startOfUtcDay(date);
       const endOfDay = endOfUtcDay(date);
 
-      const volumen = await IntercambioExchange.sum('cantidadQuote', {
+      const volumen = await Swap.sum('quoteAmount', {
         where: {
-          usuarioId,
+          userId,
           created_at: {
             [Op.between]: [startOfDay, endOfDay]
           },
-          estado: { [Op.in]: ['completado', 'pendiente'] }
+          status: { [Op.in]: ['completed', 'pending'] }
         },
         transaction
       });
@@ -325,9 +325,9 @@ function createIntercambioExchangeModel(sequelize) {
     }
   };
 
-  IntercambioExchange.getVolumeByPair = async (parId, filters = {}) => {
+  Swap.getVolumeByPair = async (pairId, filters = {}) => {
     try {
-      const where = { parId };
+      const where = { pairId };
       
       if (filters.fechaDesde) {
         where.created_at = { ...where.created_at, [Op.gte]: new Date(filters.fechaDesde) };
@@ -335,22 +335,22 @@ function createIntercambioExchangeModel(sequelize) {
       if (filters.fechaHasta) {
         where.created_at = { ...where.created_at, [Op.lte]: new Date(filters.fechaHasta) };
       }
-      if (filters.estado) {
-        where.estado = filters.estado;
+      if (filters.status) {
+        where.status = filters.status;
       } else {
-        where.estado = 'completado'; // Por defecto solo completados
+        where.status = 'completed'; // Por defecto solo completados
       }
       
-      const volumenCompras = await IntercambioExchange.sum('cantidadQuote', {
-        where: { ...where, tipo: 'compra' }
+      const volumenCompras = await Swap.sum('quoteAmount', {
+        where: { ...where, type: 'buy' }
       });
       
-      const volumenVentas = await IntercambioExchange.sum('cantidadQuote', {
-        where: { ...where, tipo: 'venta' }
+      const volumenVentas = await Swap.sum('quoteAmount', {
+        where: { ...where, type: 'sell' }
       });
       
-      const volumenBase = await IntercambioExchange.sum('cantidadBase', { where });
-      const operaciones = await IntercambioExchange.count({ where });
+      const volumenBase = await Swap.sum('baseAmount', { where });
+      const operaciones = await Swap.count({ where });
       
       return {
         volumenTotal: parseFloat((volumenCompras || 0) + (volumenVentas || 0)).toFixed(8),
@@ -365,11 +365,11 @@ function createIntercambioExchangeModel(sequelize) {
   };
 
   // Métodos de análisis de precios
-  IntercambioExchange.getPriceHistory = async (parId, filters = {}) => {
+  Swap.getPriceHistory = async (pairId, filters = {}) => {
     try {
       const where = { 
-        parId,
-        estado: 'completado'
+        pairId,
+        status: 'completed'
       };
       
       if (filters.fechaDesde) {
@@ -381,14 +381,14 @@ function createIntercambioExchangeModel(sequelize) {
       
       const limit = Math.min(parseInt(filters.limit) || 1000, 5000);
       
-      const history = await IntercambioExchange.findAll({
+      const history = await Swap.findAll({
         where,
         attributes: [
-          'precio', 
-          'cantidadBase', 
-          'cantidadQuote', 
+          'price', 
+          'baseAmount', 
+          'quoteAmount', 
           'completedAt', 
-          'tipo',
+          'type',
           'id'
         ],
         order: [['completedAt', filters.order === 'ASC' ? 'ASC' : 'DESC']],
@@ -397,61 +397,61 @@ function createIntercambioExchangeModel(sequelize) {
       
       return history.map(order => ({
         id: order.id,
-        price: parseFloat(order.precio),
-        baseAmount: parseFloat(order.cantidadBase),
-        quoteAmount: parseFloat(order.cantidadQuote),
+        price: parseFloat(order.price),
+        baseAmount: parseFloat(order.baseAmount),
+        quoteAmount: parseFloat(order.quoteAmount),
         timestamp: order.completedAt,
-        type: order.tipo
+        type: order.type
       }));
     } catch (error) {
       throw new Error(`Error al obtener historial de precios: ${error.message}`);
     }
   };
 
-  IntercambioExchange.getLastPrice = async (parId) => {
+  Swap.getLastPrice = async (pairId) => {
     try {
-      const lastOrder = await IntercambioExchange.findOne({
+      const lastOrder = await Swap.findOne({
         where: { 
-          parId,
-          estado: 'completado'
+          pairId,
+          status: 'completed'
         },
         order: [['completedAt', 'DESC']]
       });
       
-      return lastOrder ? parseFloat(lastOrder.precio) : null;
+      return lastOrder ? parseFloat(lastOrder.price) : null;
     } catch (error) {
-      throw new Error(`Error al obtener último precio: ${error.message}`);
+      throw new Error(`Error al obtener último price: ${error.message}`);
     }
   };
 
   // Métodos administrativos
-  IntercambioExchange.updateStatus = async (id, newStatus) => {
+  Swap.updateStatus = async (id, newStatus) => {
     try {
-      const validStatuses = ['pendiente', 'completado', 'fallido'];
+      const validStatuses = ['pending', 'completed', 'failed'];
       
       if (!validStatuses.includes(newStatus)) {
         throw new Error('Estado inválido. Estados válidos: ' + validStatuses.join(', '));
       }
       
-      const updateData = { estado: newStatus };
-      if (newStatus === 'completado') {
+      const updateData = { status: newStatus };
+      if (newStatus === 'completed') {
         updateData.completedAt = new Date();
       }
       
-      const [updatedRowsCount] = await IntercambioExchange.update(updateData, { where: { id } });
+      const [updatedRowsCount] = await Swap.update(updateData, { where: { id } });
       
       if (updatedRowsCount === 0) {
         throw new Error('Intercambio no encontrado');
       }
       
-      return await IntercambioExchange.getById(id);
+      return await Swap.getById(id);
     } catch (error) {
-      throw new Error(`Error al actualizar estado: ${error.message}`);
+      throw new Error(`Error al actualizar status: ${error.message}`);
     }
   };
 
   // Métodos para reportes y análisis
-  IntercambioExchange.getTopTraders = async (limit = 10, period = '30d') => {
+  Swap.getTopTraders = async (limit = 10, period = '30d') => {
     try {
       const fechaDesde = new Date();
       switch (period) {
@@ -466,26 +466,26 @@ function createIntercambioExchangeModel(sequelize) {
           break;
       }
 
-      const topTraders = await IntercambioExchange.findAll({
+      const topTraders = await Swap.findAll({
         attributes: [
-          'usuarioId',
-          [sequelize.fn('COUNT', sequelize.col('IntercambioExchange.id')), 'totalOperaciones'],
-          [sequelize.fn('SUM', sequelize.col('cantidadQuote')), 'volumenTotal'],
-          [sequelize.fn('SUM', sequelize.col('comisionMonto')), 'comisionesTotales']
+          'userId',
+          [sequelize.fn('COUNT', sequelize.col('Swap.id')), 'totalOperaciones'],
+          [sequelize.fn('SUM', sequelize.col('quoteAmount')), 'volumenTotal'],
+          [sequelize.fn('SUM', sequelize.col('feeAmount')), 'comisionesTotales']
         ],
         include: [
           {
             model: sequelize.models.User,
-            as: 'usuario',
+            as: 'user',
             attributes: ['id', 'username', 'averageRating']
           }
         ],
         where: {
-          estado: 'completado',
+          status: 'completed',
           created_at: { [Op.gte]: fechaDesde }
         },
-        group: ['usuarioId', 'usuario.id'],
-        order: [[sequelize.fn('SUM', sequelize.col('cantidadQuote')), 'DESC']],
+        group: ['userId', 'user.id'],
+        order: [[sequelize.fn('SUM', sequelize.col('quoteAmount')), 'DESC']],
         limit: parseInt(limit),
         subQuery: false
       });
@@ -496,46 +496,46 @@ function createIntercambioExchangeModel(sequelize) {
     }
   };
 
-  IntercambioExchange.getMarketSummary = async (parId = null) => {
+  Swap.getMarketSummary = async (pairId = null) => {
     try {
-      const where = { estado: 'completado' };
-      if (parId) where.parId = parId;
+      const where = { status: 'completed' };
+      if (pairId) where.pairId = pairId;
       
       // Obtener datos de las últimas 24 horas
       const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
       const whereRecent = { ...where, created_at: { [Op.gte]: yesterday } };
       
-      const summary = await IntercambioExchange.findAll({
+      const summary = await Swap.findAll({
         attributes: [
-          'parId',
-          [sequelize.fn('COUNT', sequelize.col('IntercambioExchange.id')), 'operaciones24h'],
-          [sequelize.fn('SUM', sequelize.col('cantidadQuote')), 'volumen24h'],
-          [sequelize.fn('MIN', sequelize.col('precio')), 'precioMin24h'],
-          [sequelize.fn('MAX', sequelize.col('precio')), 'precioMax24h'],
-          [sequelize.fn('AVG', sequelize.col('precio')), 'precioPromedio24h']
+          'pairId',
+          [sequelize.fn('COUNT', sequelize.col('Swap.id')), 'operaciones24h'],
+          [sequelize.fn('SUM', sequelize.col('quoteAmount')), 'volume24h'],
+          [sequelize.fn('MIN', sequelize.col('price')), 'precioMin24h'],
+          [sequelize.fn('MAX', sequelize.col('price')), 'precioMax24h'],
+          [sequelize.fn('AVG', sequelize.col('price')), 'precioPromedio24h']
         ],
         include: [
           {
-            model: sequelize.models.ParExchange,
-            as: 'par',
-            attributes: ['id', 'precioActual'],
+            model: sequelize.models.SwapPair,
+            as: 'pair',
+            attributes: ['id', 'currentPrice'],
             include: [
               {
                 model: sequelize.models.Crypto,
-                as: 'criptoBase',
+                as: 'baseCrypto',
                 attributes: ['symbol', 'name']
               },
               {
                 model: sequelize.models.Crypto,
-                as: 'criptoQuote',
+                as: 'quoteCrypto',
                 attributes: ['symbol', 'name']
               }
             ]
           }
         ],
         where: whereRecent,
-        group: ['parId', 'par.id', 'par.criptoBase.id', 'par.criptoQuote.id'],
-        order: [[sequelize.fn('SUM', sequelize.col('cantidadQuote')), 'DESC']],
+        group: ['pairId', 'pair.id', 'pair.baseCrypto.id', 'pair.quoteCrypto.id'],
+        order: [[sequelize.fn('SUM', sequelize.col('quoteAmount')), 'DESC']],
         subQuery: false
       });
 
@@ -546,9 +546,9 @@ function createIntercambioExchangeModel(sequelize) {
   };
 
   // Método para obtener estadísticas por crypto
-  IntercambioExchange.getStatsByCrypto = async (filters = {}) => {
+  Swap.getStatsByCrypto = async (filters = {}) => {
     try {
-      const where = { estado: 'completado' };
+      const where = { status: 'completed' };
       
       if (filters.fechaDesde) {
         where.created_at = { ...where.created_at, [Op.gte]: new Date(filters.fechaDesde) };
@@ -558,32 +558,32 @@ function createIntercambioExchangeModel(sequelize) {
       }
 
       // Estadísticas por crypto base
-      const statsBase = await IntercambioExchange.findAll({
+      const statsBase = await Swap.findAll({
         attributes: [
-          [sequelize.col('par.criptoBase.symbol'), 'criptoSymbol'],
-          [sequelize.col('par.criptoBase.nombre'), 'criptoNombre'],
-          [sequelize.fn('COUNT', sequelize.col('IntercambioExchange.id')), 'totalOperaciones'],
-          [sequelize.fn('SUM', sequelize.col('cantidadBase')), 'volumenBase'],
-          [sequelize.fn('SUM', sequelize.col('cantidadQuote')), 'volumenQuote'],
-          [sequelize.fn('SUM', sequelize.col('comisionMonto')), 'comisionesGeneradas']
+          [sequelize.col('pair.baseCrypto.symbol'), 'criptoSymbol'],
+          [sequelize.col('pair.baseCrypto.name'), 'criptoNombre'],
+          [sequelize.fn('COUNT', sequelize.col('Swap.id')), 'totalOperaciones'],
+          [sequelize.fn('SUM', sequelize.col('baseAmount')), 'volumenBase'],
+          [sequelize.fn('SUM', sequelize.col('quoteAmount')), 'volumenQuote'],
+          [sequelize.fn('SUM', sequelize.col('feeAmount')), 'comisionesGeneradas']
         ],
         include: [
           {
-            model: sequelize.models.ParExchange,
-            as: 'par',
+            model: sequelize.models.SwapPair,
+            as: 'pair',
             attributes: [],
             include: [
               {
                 model: sequelize.models.Crypto,
-                as: 'criptoBase',
+                as: 'baseCrypto',
                 attributes: []
               }
             ]
           }
         ],
         where,
-        group: ['par.criptoBase.id'],
-        order: [[sequelize.fn('SUM', sequelize.col('cantidadQuote')), 'DESC']],
+        group: ['pair.baseCrypto.id'],
+        order: [[sequelize.fn('SUM', sequelize.col('quoteAmount')), 'DESC']],
         raw: true
       });
 
@@ -593,7 +593,7 @@ function createIntercambioExchangeModel(sequelize) {
     }
   };
 
-  return IntercambioExchange;
+  return Swap;
 }
 
 module.exports = createIntercambioExchangeModel;

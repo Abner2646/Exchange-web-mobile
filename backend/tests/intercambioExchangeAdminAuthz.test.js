@@ -3,14 +3,14 @@
 // Cubre AUDITORIA_BACKEND.md Críticos #7: router.use(isAdmin) estaba
 // comentado en las rutas administrativas de intercambioExchange, así que
 // cualquier usuario autenticado (no solo admins) podía listar todos los
-// intercambios y cambiar el estado de intercambios ajenos.
+// intercambios y cambiar el status de intercambios ajenos.
 
 process.env.JWT_SECRET = 'test-secret';
 
 jest.mock('../models', () => ({
   User: { findByPk: jest.fn() },
-  IntercambioExchange: { getAll: jest.fn().mockResolvedValue({ intercambios: [], total: 0 }) },
-  ParExchange: {},
+  Swap: { getAll: jest.fn().mockResolvedValue({ intercambios: [], total: 0 }) },
+  SwapPair: {},
   UserBalance: {},
   MasterWallet: {},
   Crypto: {},
@@ -21,7 +21,7 @@ const jwt = require('jsonwebtoken');
 const express = require('express');
 const request = require('supertest');
 const { User } = require('../models');
-const intercambioRoutes = require('../routes/intercambioExchange.routes');
+const intercambioRoutes = require('../modules/swap/swap.routes');
 
 function buildApp() {
   const app = express();

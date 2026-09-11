@@ -1,117 +1,117 @@
-// models/entities/parExchange.entity.js
+// modules/swap/swapPair.entity.js
 
 const { DataTypes, Model } = require('sequelize');
 
-class ParExchange extends Model {}
+class SwapPair extends Model {}
 
-function initParExchange(sequelize) {
-  ParExchange.init({
+function initSwapPair(sequelize) {
+  SwapPair.init({
     id: {
       type: DataTypes.UUID,
       primaryKey: true,
       defaultValue: DataTypes.UUIDV4
     },
-    criptoBaseId: {
+    baseCryptoId: {
       type: DataTypes.UUID,
       allowNull: false,
-      field: 'cripto_base_id'
+      field: 'base_crypto_id'
     },
-    criptoQuoteId: {
+    quoteCryptoId: {
       type: DataTypes.UUID,
       allowNull: false,
-      field: 'cripto_quote_id'
+      field: 'quote_crypto_id'
     },
-    precioActual: {
+    currentPrice: {
       type: DataTypes.DECIMAL(18, 8),
       allowNull: false,
-      field: 'precio_actual'
+      field: 'current_price'
     },
-    precioAnterior: {
+    previousPrice: {
       type: DataTypes.DECIMAL(18, 8),
       allowNull: true,
-      field: 'precio_anterior'
+      field: 'previous_price'
     },
-    volumen24h: {
+    volume24h: {
       type: DataTypes.DECIMAL(18, 8),
       defaultValue: 0,
-      field: 'volumen_24h'
+      field: 'volume_24h'
     },
-    volumenBase24h: {
+    volumeBase24h: {
       type: DataTypes.DECIMAL(18, 8),
       defaultValue: 0,
-      field: 'volumen_base_24h'
+      field: 'volume_base_24h'
     },
-    cantidadOperaciones24h: {
+    operationsCount24h: {
       type: DataTypes.INTEGER,
       defaultValue: 0,
-      field: 'cantidad_operaciones_24h'
+      field: 'operations_count_24h'
     },
-    precioMaximo24h: {
+    maxPrice24h: {
       type: DataTypes.DECIMAL(18, 8),
       allowNull: true,
-      field: 'precio_maximo_24h'
+      field: 'max_price_24h'
     },
-    precioMinimo24h: {
+    minPrice24h: {
       type: DataTypes.DECIMAL(18, 8),
       allowNull: true,
-      field: 'precio_minimo_24h'
+      field: 'min_price_24h'
     },
-    cambiosPorcentaje24h: {
+    changePercent24h: {
       type: DataTypes.DECIMAL(10, 4),
       defaultValue: 0,
-      field: 'cambios_porcentaje_24h'
+      field: 'change_percent_24h'
     },
-    comisionPorcentaje: {
+    feePercent: {
       type: DataTypes.DECIMAL(5, 4),
       allowNull: false,
-      field: 'comision_porcentaje'
+      field: 'fee_percent'
     },
     active: {
       type: DataTypes.BOOLEAN,
       defaultValue: true
     },
-    ultimaActualizacion: {
+    lastUpdated: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
-      field: 'ultima_actualizacion'
+      field: 'last_updated'
     },
-    fuentePrecio: {
+    priceSource: {
       type: DataTypes.STRING(50),
       defaultValue: 'manual',
-      field: 'fuente_precio',
+      field: 'price_source',
       comment: 'coingecko, binance, manual, chainlink'
     },
-    simboloExterno: {
+    externalSymbol: {
       type: DataTypes.STRING(20),
       allowNull: true,
-      field: 'simbolo_externo',
-      comment: 'ID del par en la fuente externa'
+      field: 'external_symbol',
+      comment: 'ID del par en la fuente externa (pair id in the external source)'
     }
   }, {
     sequelize,
-    modelName: 'ParExchange',
-    tableName: 'pares_exchange',
+    modelName: 'SwapPair',
+    tableName: 'swap_pairs',
     timestamps: true,
     createdAt: 'created_at',
     updatedAt: 'updated_at',
     indexes: [
       {
         unique: true,
-        fields: ['cripto_base_id', 'cripto_quote_id']
+        fields: ['base_crypto_id', 'quote_crypto_id']
       },
       {
         fields: ['active']
       },
       {
-        fields: ['volumen_24h']
+        fields: ['volume_24h']
       },
       {
-        fields: ['ultima_actualizacion']
+        fields: ['last_updated']
       }
     ]
   });
 
-  return ParExchange;
+  return SwapPair;
 }
 
-module.exports = initParExchange;
+module.exports = initSwapPair;

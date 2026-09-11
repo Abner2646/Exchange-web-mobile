@@ -1,12 +1,12 @@
 // controllers/intercambioExchange.controller.js
 
-const { IntercambioExchange, User, ParExchange, UserBalance, Crypto, sequelize } = require('../models/index.js');
-const AppError = require('../utils/AppError');
-const errorCodes = require('../utils/errorCodes');
-const money = require('../utils/money');
-const { calculateSettlement } = require('../services/intercambioSettlement.service');
-const { settleSwap } = require('../modules/balances/ledger/operations');
-const idempotency = require('../middleware/idempotency.middleware');
+const { Swap, User, SwapPair, UserBalance, Crypto, sequelize } = require('../../models/index.js');
+const AppError = require('../../utils/AppError');
+const errorCodes = require('../../utils/errorCodes');
+const money = require('../../utils/money');
+const { calculateSettlement } = require('./swapSettlement.service');
+const { settleSwap } = require('../balances/ledger/operations');
+const idempotency = require('../../middleware/idempotency.middleware');
 
 // Función auxiliar para validar fechas
 const isValidDate = (dateString) => {
@@ -27,9 +27,9 @@ const isValidUUID = (uuid) => {
 // Crear nueva orden.
 //
 // Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #4 y #6): esta función
-// llegó a estar hardcodeada para ejecutar siempre "venta" sin importar el
-// `tipo` recibido, con el chequeo de límite diario comentado. Ahora respeta
-// `tipo`, revalida el límite diario, y pasa la transacción de forma
+// llegó a estar hardcodeada para ejecutar siempre "sell" sin importar el
+// `type` recibido, con el chequeo de límite diario comentado. Ahora respeta
+// `type`, revalida el límite diario, y pasa la transacción de forma
 // consistente a cada escritura (incluida la comisión a la wallet maestra,
 // que antes se confirmaba en su propia transacción aparte — ver el fix de
 // MasterWallet.updateBalance en este mismo commit).
@@ -37,13 +37,13 @@ const createOrder = async (req, res) => {
   const transaction = await sequelize.transaction();
 
   try {
-    const usuarioId = req.user.id;
-    const { parId, tipo, cantidadBase } = req.body;
+    const userId = req.user.id;
+    const { pairId, type, baseAmount } = req.body;
     const compartimento = req.body.compartimento || 'funding';
 
-    if (!parId || !tipo || !cantidadBase) {
+    if (!pairId || !type || !baseAmount) {
       await transaction.rollback();
-      throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'parId, tipo y cantidadBase son requeridos');
+      throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'pairId, type y baseAmount son requeridos');
     }
 
     if (!['funding', 'spot'].includes(compartimento)) {
@@ -51,31 +51,31 @@ const createOrder = async (req, res) => {
       throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'Compartimento inválido (funding|spot)');
     }
 
-    if (!isValidUUID(parId)) {
+    if (!isValidUUID(pairId)) {
       await transaction.rollback();
-      throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'parId debe ser un UUID válido');
+      throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'pairId debe ser un UUID válido');
     }
 
-    if (!['compra', 'venta'].includes(tipo)) {
+    if (!['buy', 'sell'].includes(type)) {
       await transaction.rollback();
-      throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'tipo debe ser "compra" o "venta"');
+      throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'type debe ser "buy" o "sell"');
     }
 
-    if (typeof cantidadBase !== 'number' || cantidadBase <= 0) {
+    if (typeof baseAmount !== 'number' || baseAmount <= 0) {
       await transaction.rollback();
-      throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'cantidadBase debe ser un número mayor a 0');
+      throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'baseAmount debe ser un número mayor a 0');
     }
 
-    const baseDecimals = (cantidadBase.toString().split('.')[1] || '').length;
+    const baseDecimals = (baseAmount.toString().split('.')[1] || '').length;
     if (baseDecimals > 8) {
       await transaction.rollback();
-      throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'cantidadBase no puede tener más de 8 decimales');
+      throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'baseAmount no puede tener más de 8 decimales');
     }
 
-    const par = await ParExchange.findByPk(parId, {
+    const par = await SwapPair.findByPk(pairId, {
       include: [
-        { model: Crypto, as: 'criptoBase' },
-        { model: Crypto, as: 'criptoQuote' }
+        { model: Crypto, as: 'baseCrypto' },
+        { model: Crypto, as: 'quoteCrypto' }
       ],
       transaction
     });
@@ -85,10 +85,10 @@ const createOrder = async (req, res) => {
       throw new AppError(404, errorCodes.EXCHANGE_PAIR_NOT_FOUND, 'Par de intercambio no encontrado o inactivo');
     }
 
-    // precio canónico (string): par.precioActual es DECIMAL — pasarlo por
+    // price canónico (string): par.currentPrice es DECIMAL — pasarlo por
     // parseFloat perdería dígitos en precios de alta precisión antes de operar.
-    const precio = String(par.precioActual);
-    if (!par.precioActual || money.compare(precio, '0') <= 0) {
+    const price = String(par.currentPrice);
+    if (!par.currentPrice || money.compare(price, '0') <= 0) {
       await transaction.rollback();
       throw new AppError(400, errorCodes.EXCHANGE_PAIR_NO_PRICE, 'El par no tiene un precio válido configurado');
     }
@@ -101,57 +101,57 @@ const createOrder = async (req, res) => {
     // per-usuario (distintos usuarios lockean filas distintas, sin contención) y
     // se toma ANTES de los locks de saldo del ledger (orden consistente → sin
     // deadlock). El anti-sobregiro del ledger no cubre este agregado.
-    const usuario = await User.findByPk(usuarioId, { transaction, lock: transaction.LOCK.UPDATE });
+    const usuario = await User.findByPk(userId, { transaction, lock: transaction.LOCK.UPDATE });
     if (!usuario || !usuario.active) {
       await transaction.rollback();
       throw new AppError(404, errorCodes.EXCHANGE_USER_NOT_FOUND, 'Usuario no encontrado o inactivo');
     }
 
-    const comisionPorcentaje = String(par.comisionPorcentaje || '0.1');
-    const { cantidadQuote, comisionMonto, requiredQuote, netQuote } =
-      calculateSettlement({ cantidadBase, precio, comisionPorcentaje, tipo });
+    const feePercent = String(par.feePercent || '0.1');
+    const { quoteAmount, feeAmount, requiredQuote, netQuote } =
+      calculateSettlement({ baseAmount, price, feePercent, type });
 
-    const dailyVolume = await IntercambioExchange.getDailyVolume(usuarioId, new Date(), transaction);
-    const newDailyVolume = money.add(String(dailyVolume), cantidadQuote);
+    const dailyVolume = await Swap.getDailyVolume(userId, new Date(), transaction);
+    const newDailyVolume = money.add(String(dailyVolume), quoteAmount);
 
     if (money.compare(newDailyVolume, String(usuario.dailyLimitUsd)) > 0) {
       await transaction.rollback();
       throw new AppError(400, errorCodes.EXCHANGE_DAILY_LIMIT_EXCEEDED, 'Límite diario de operaciones excedido');
     }
 
-    const criptoBaseId = par.criptoBaseId;
-    const criptoQuoteId = par.criptoQuoteId;
+    const baseCryptoId = par.baseCryptoId;
+    const quoteCryptoId = par.quoteCryptoId;
     let netAmount;
 
     // Chequeo de suficiencia sobre la proyección del ledger (da el error code de
     // dominio correcto). El anti-sobregiro atómico real es el FOR UPDATE de
     // postTransaction dentro de settleSwap.
-    if (tipo === 'compra') {
-      const balanceQuote = await UserBalance.getCompartmentBalance(usuarioId, criptoQuoteId, compartimento, { transaction });
+    if (type === 'buy') {
+      const balanceQuote = await UserBalance.getCompartmentBalance(userId, quoteCryptoId, compartimento, { transaction });
       if (money.compare(String(balanceQuote.available), requiredQuote) < 0) {
         await transaction.rollback();
         throw new AppError(400, errorCodes.EXCHANGE_INSUFFICIENT_BALANCE, 'Saldo insuficiente en moneda quote para realizar la operación');
       }
-      netAmount = String(cantidadBase);
+      netAmount = String(baseAmount);
     } else {
-      const balanceBase = await UserBalance.getCompartmentBalance(usuarioId, criptoBaseId, compartimento, { transaction });
-      if (money.compare(String(balanceBase.available), String(cantidadBase)) < 0) {
+      const balanceBase = await UserBalance.getCompartmentBalance(userId, baseCryptoId, compartimento, { transaction });
+      if (money.compare(String(balanceBase.available), String(baseAmount)) < 0) {
         await transaction.rollback();
         throw new AppError(400, errorCodes.EXCHANGE_INSUFFICIENT_BALANCE, 'Saldo insuficiente en moneda base para realizar la operación');
       }
       netAmount = netQuote;
     }
 
-    const newOrder = await IntercambioExchange.create({
-      usuarioId,
-      parId,
-      tipo,
-      cantidadBase,
-      cantidadQuote,
-      precio,
-      comisionMonto,
-      comisionPorcentaje,
-      estado: 'completado',
+    const newOrder = await Swap.create({
+      userId,
+      pairId,
+      type,
+      baseAmount,
+      quoteAmount,
+      price,
+      feeAmount,
+      feePercent,
+      status: 'completed',
       completedAt: new Date()
     }, { transaction });
 
@@ -159,15 +159,15 @@ const createOrder = async (req, res) => {
     // casa); la comisión (en quote) acredita fee_revenue. Reemplaza los
     // updateBalance (funding+suspense) y el crédito a MasterWallet.totalBalance.
     await settleSwap({
-      usuarioId,
-      criptoBaseId,
-      criptoQuoteId,
-      cantidadBase,
-      cantidadQuote,
-      comisionMonto,
+      userId,
+      baseCryptoId,
+      quoteCryptoId,
+      baseAmount,
+      quoteAmount,
+      feeAmount,
       requiredQuote,
       netQuote,
-      tipo,
+      type,
       compartimento,
       referencia: `swap:${newOrder.id}`,
     }, transaction);
@@ -176,8 +176,8 @@ const createOrder = async (req, res) => {
       message: 'Intercambio realizado exitosamente',
       data: {
         ...newOrder.toJSON(),
-        precioUsado: precio,
-        comisionCalculada: comisionMonto,
+        precioUsado: price,
+        comisionCalculada: feeAmount,
         netAmount
       }
     };
@@ -209,35 +209,35 @@ const createOrder = async (req, res) => {
 
 // Calcular intercambio antes de ejecutar
 const calculateExchange = async (req, res) => {
-  const { parId, cantidadBase, tipo } = req.body;
+  const { pairId, baseAmount, type } = req.body;
 
   // Validaciones
-  if (!parId || !cantidadBase || !tipo) {
-    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'parId, cantidadBase y tipo son requeridos');
+  if (!pairId || !baseAmount || !type) {
+    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'pairId, baseAmount y type son requeridos');
   }
 
-  if (!isValidUUID(parId)) {
-    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'parId debe ser un UUID válido');
+  if (!isValidUUID(pairId)) {
+    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'pairId debe ser un UUID válido');
   }
 
-  if (!['compra', 'venta'].includes(tipo)) {
-    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'tipo debe ser "compra" o "venta"');
+  if (!['buy', 'sell'].includes(type)) {
+    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'type debe ser "buy" o "sell"');
   }
 
-  if (typeof cantidadBase !== 'number' || cantidadBase <= 0.00000001) {
-    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'cantidadBase debe ser un número mayor a 0.00000001');
+  if (typeof baseAmount !== 'number' || baseAmount <= 0.00000001) {
+    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'baseAmount debe ser un número mayor a 0.00000001');
   }
 
-  const decimals = (cantidadBase.toString().split('.')[1] || '').length;
+  const decimals = (baseAmount.toString().split('.')[1] || '').length;
   if (decimals > 8) {
-    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'cantidadBase no puede tener más de 8 decimales');
+    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'baseAmount no puede tener más de 8 decimales');
   }
 
-  // Obtener el par para usar su precio actual
-  const par = await ParExchange.findByPk(parId, {
+  // Obtener el par para usar su price actual
+  const par = await SwapPair.findByPk(pairId, {
     include: [
-      { model: Crypto, as: 'criptoBase' },
-      { model: Crypto, as: 'criptoQuote' }
+      { model: Crypto, as: 'baseCrypto' },
+      { model: Crypto, as: 'quoteCrypto' }
     ]
   });
 
@@ -245,38 +245,38 @@ const calculateExchange = async (req, res) => {
     throw new AppError(404, errorCodes.EXCHANGE_PAIR_NOT_FOUND, 'Par de intercambio no encontrado o inactivo');
   }
 
-  const precio = String(par.precioActual);
-  if (!par.precioActual || money.compare(precio, '0') <= 0) {
+  const price = String(par.currentPrice);
+  if (!par.currentPrice || money.compare(price, '0') <= 0) {
     throw new AppError(400, errorCodes.EXCHANGE_PAIR_NO_PRICE, 'El par no tiene un precio válido configurado');
   }
 
   // Mismo settlement exacto que usa la ejecución (createExchange): así el monto
   // mostrado en el preview coincide con el ejecutado, no dos cálculos float
   // independientes que podían divergir.
-  const comisionPorcentaje = String(par.comisionPorcentaje || '0.1');
-  const { cantidadQuote, comisionMonto, cantidadFinal } =
-    calculateSettlement({ cantidadBase, precio, comisionPorcentaje, tipo });
+  const feePercent = String(par.feePercent || '0.1');
+  const { quoteAmount, feeAmount, finalAmount } =
+    calculateSettlement({ baseAmount, price, feePercent, type });
 
   const impactoSlippage = 0;
 
   const calculation = {
     par: {
       id: par.id,
-      base: par.criptoBase.symbol,
-      quote: par.criptoQuote.symbol,
-      precio: precio,
-      volumen24h: par.volumen24h || 0,
-      ultimaActualizacion: par.ultimaActualizacion
+      base: par.baseCrypto.symbol,
+      quote: par.quoteCrypto.symbol,
+      price: price,
+      volume24h: par.volume24h || 0,
+      lastUpdated: par.lastUpdated
     },
     calculo: {
-      cantidadBase: cantidadBase,
-      cantidadQuote: cantidadQuote,
-      comisionPorcentaje: comisionPorcentaje,
-      comisionMonto: comisionMonto,
+      baseAmount: baseAmount,
+      quoteAmount: quoteAmount,
+      feePercent: feePercent,
+      feeAmount: feeAmount,
       impactoSlippage: impactoSlippage,
-      cantidadFinal: cantidadFinal,
-      direccion: tipo,
-      precioEfectivo: precio
+      finalAmount: finalAmount,
+      direccion: type,
+      precioEfectivo: price
     },
     advertencias: []
   };
@@ -286,15 +286,15 @@ const calculateExchange = async (req, res) => {
 
 // Verificar límite de transacción
 const checkTransactionLimit = async (req, res) => {
-  const usuarioId = req.user.id;
-  const { cantidadQuote } = req.body;
+  const userId = req.user.id;
+  const { quoteAmount } = req.body;
 
-  if (!cantidadQuote || typeof cantidadQuote !== 'number' || cantidadQuote <= 0) {
-    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'cantidadQuote debe ser un número positivo');
+  if (!quoteAmount || typeof quoteAmount !== 'number' || quoteAmount <= 0) {
+    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'quoteAmount debe ser un número positivo');
   }
 
-  const dailyVolume = await IntercambioExchange.getDailyVolume(usuarioId);
-  const usuario = await User.findByPk(usuarioId);
+  const dailyVolume = await Swap.getDailyVolume(userId);
+  const usuario = await User.findByPk(userId);
 
   if (!usuario) {
     throw new AppError(404, errorCodes.EXCHANGE_USER_NOT_FOUND, 'Usuario no encontrado');
@@ -302,7 +302,7 @@ const checkTransactionLimit = async (req, res) => {
 
   const remainingLimit = usuario.dailyLimitUsd - dailyVolume;
 
-  if (remainingLimit < cantidadQuote) {
+  if (remainingLimit < quoteAmount) {
     throw new AppError(400, errorCodes.EXCHANGE_DAILY_LIMIT_EXCEEDED, 'Límite diario de operaciones excedido');
   }
 
@@ -311,7 +311,7 @@ const checkTransactionLimit = async (req, res) => {
     dailyVolume,
     limit: usuario.dailyLimitUsd,
     remainingLimit,
-    requestedAmount: cantidadQuote
+    requestedAmount: quoteAmount
   });
 };
 
@@ -322,8 +322,8 @@ const checkTransactionLimit = async (req, res) => {
 // funding-only y re-adjuntaba la cripto a mano. Cambio de contrato documentado en
 // docs/frontend-rebuild/backend-contract-changes.md. El orden no está garantizado.
 const getMyBalances = async (req, res) => {
-  const usuarioId = req.user.id;
-  const balances = await UserBalance.getBalancesWithCompartments(usuarioId);
+  const userId = req.user.id;
+  const balances = await UserBalance.getBalancesWithCompartments(userId);
   res.json(balances);
 };
 
@@ -332,16 +332,16 @@ const getIntercambios = async (req, res) => {
   const filters = { ...req.query };
 
   // Validar filtros opcionales
-  if (filters.estado && !['pendiente', 'completado', 'fallido'].includes(filters.estado)) {
-    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'estado debe ser pendiente, completado o fallido');
+  if (filters.status && !['pending', 'completed', 'failed'].includes(filters.status)) {
+    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'status debe ser pending, completed o failed');
   }
 
-  if (filters.tipo && !['compra', 'venta'].includes(filters.tipo)) {
-    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'tipo debe ser compra o venta');
+  if (filters.type && !['buy', 'sell'].includes(filters.type)) {
+    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'type debe ser buy o sell');
   }
 
-  if (filters.usuarioId && !isValidUUID(filters.usuarioId)) {
-    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'usuarioId debe ser un UUID válido');
+  if (filters.userId && !isValidUUID(filters.userId)) {
+    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'userId debe ser un UUID válido');
   }
 
   if (filters.limit) {
@@ -365,7 +365,7 @@ const getIntercambios = async (req, res) => {
     throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'fechaHasta debe ser una fecha válida en formato ISO8601');
   }
 
-  const result = await IntercambioExchange.getAll(filters);
+  const result = await Swap.getAll(filters);
   res.json(result);
 };
 
@@ -377,26 +377,26 @@ const getIntercambioById = async (req, res) => {
     throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'ID debe ser un UUID válido');
   }
 
-  const result = await IntercambioExchange.getById(id);
+  const result = await Swap.getById(id);
   if (!result) throw new AppError(404, errorCodes.EXCHANGE_NOT_FOUND, 'Intercambio no encontrado');
   res.json(result);
 };
 
 // Obtener mis intercambios
 const getMyIntercambios = async (req, res) => {
-  const usuarioId = req.user.id;
+  const userId = req.user.id;
   const filters = { ...req.query };
 
-  if (filters.tipo && !['compra', 'venta'].includes(filters.tipo)) {
-    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'tipo debe ser compra o venta');
+  if (filters.type && !['buy', 'sell'].includes(filters.type)) {
+    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'type debe ser buy o sell');
   }
 
-  if (filters.estado && !['pendiente', 'completado', 'fallido'].includes(filters.estado)) {
-    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'estado debe ser pendiente, completado o fallido');
+  if (filters.status && !['pending', 'completed', 'failed'].includes(filters.status)) {
+    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'status debe ser pending, completed o failed');
   }
 
-  if (filters.parId && !isValidUUID(filters.parId)) {
-    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'parId debe ser un UUID válido');
+  if (filters.pairId && !isValidUUID(filters.pairId)) {
+    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'pairId debe ser un UUID válido');
   }
 
   if (filters.limit) {
@@ -420,7 +420,7 @@ const getMyIntercambios = async (req, res) => {
     throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'fechaHasta debe ser una fecha válida en formato ISO8601');
   }
 
-  const result = await IntercambioExchange.getByUserId(usuarioId, filters);
+  const result = await Swap.getByUserId(userId, filters);
   res.json(result);
 };
 
@@ -444,7 +444,7 @@ const searchIntercambios = async (req, res) => {
     }
   }
 
-  const results = await IntercambioExchange.search(q.trim(), searchLimit);
+  const results = await Swap.search(q.trim(), searchLimit);
   res.json(results);
 };
 
@@ -452,12 +452,12 @@ const searchIntercambios = async (req, res) => {
 const getIntercambioStats = async (req, res) => {
   const filters = { ...req.query };
 
-  if (filters.usuarioId && !isValidUUID(filters.usuarioId)) {
-    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'usuarioId debe ser un UUID válido');
+  if (filters.userId && !isValidUUID(filters.userId)) {
+    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'userId debe ser un UUID válido');
   }
 
-  if (filters.parId && !isValidUUID(filters.parId)) {
-    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'parId debe ser un UUID válido');
+  if (filters.pairId && !isValidUUID(filters.pairId)) {
+    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'pairId debe ser un UUID válido');
   }
 
   if (filters.fechaDesde && !isValidDate(filters.fechaDesde)) {
@@ -467,16 +467,16 @@ const getIntercambioStats = async (req, res) => {
     throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'fechaHasta debe ser una fecha válida en formato ISO8601');
   }
 
-  const stats = await IntercambioExchange.getStats(filters);
+  const stats = await Swap.getStats(filters);
   res.json(stats);
 };
 
 // Obtener volumen por par
 const getVolumeByPair = async (req, res) => {
-  const { parId } = req.params;
+  const { pairId } = req.params;
 
-  if (!isValidUUID(parId)) {
-    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'parId debe ser un UUID válido');
+  if (!isValidUUID(pairId)) {
+    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'pairId debe ser un UUID válido');
   }
 
   const filters = { ...req.query };
@@ -487,20 +487,20 @@ const getVolumeByPair = async (req, res) => {
     throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'fechaHasta debe ser una fecha válida en formato ISO8601');
   }
 
-  if (filters.estado && !['pendiente', 'completado', 'fallido'].includes(filters.estado)) {
-    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'estado debe ser pendiente, completado o fallido');
+  if (filters.status && !['pending', 'completed', 'failed'].includes(filters.status)) {
+    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'status debe ser pending, completed o failed');
   }
 
-  const volume = await IntercambioExchange.getVolumeByPair(parId, filters);
+  const volume = await Swap.getVolumeByPair(pairId, filters);
   res.json(volume);
 };
 
 // Obtener historial de precios
 const getPriceHistory = async (req, res) => {
-  const { parId } = req.params;
+  const { pairId } = req.params;
 
-  if (!isValidUUID(parId)) {
-    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'parId debe ser un UUID válido');
+  if (!isValidUUID(pairId)) {
+    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'pairId debe ser un UUID válido');
   }
 
   const filters = { ...req.query };
@@ -523,26 +523,26 @@ const getPriceHistory = async (req, res) => {
     throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'order debe ser ASC o DESC');
   }
 
-  const history = await IntercambioExchange.getPriceHistory(parId, filters);
+  const history = await Swap.getPriceHistory(pairId, filters);
   res.json(history);
 };
 
-// Obtener último precio
+// Obtener último price
 const getLastPrice = async (req, res) => {
-  const { parId } = req.params;
+  const { pairId } = req.params;
 
-  if (!isValidUUID(parId)) {
-    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'parId debe ser un UUID válido');
+  if (!isValidUUID(pairId)) {
+    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'pairId debe ser un UUID válido');
   }
 
-  const lastPrice = await IntercambioExchange.getLastPrice(parId);
+  const lastPrice = await Swap.getLastPrice(pairId);
 
   if (lastPrice === null) {
     throw new AppError(404, errorCodes.EXCHANGE_NOT_FOUND, 'No hay intercambios completados para este par');
   }
 
   res.json({
-    parId,
+    pairId,
     lastPrice,
     timestamp: new Date()
   });
@@ -550,10 +550,10 @@ const getLastPrice = async (req, res) => {
 
 // Obtener volumen diario del usuario
 const getMyDailyVolume = async (req, res) => {
-  const usuarioId = req.user.id;
+  const userId = req.user.id;
   const { date } = req.query;
 
-  if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+  if (date && !/^.{4}-.{2}-.{2}$/.test(date)) {
     throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'date debe tener formato YYYY-MM-DD');
   }
 
@@ -563,7 +563,7 @@ const getMyDailyVolume = async (req, res) => {
     throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'Fecha inválida');
   }
 
-  const volume = await IntercambioExchange.getDailyVolume(usuarioId, targetDate);
+  const volume = await Swap.getDailyVolume(userId, targetDate);
 
   res.json({
     date: targetDate.toISOString().split('T')[0],
@@ -573,7 +573,7 @@ const getMyDailyVolume = async (req, res) => {
 
 // Obtener resumen del trading del usuario
 const getMyTradingSummary = async (req, res) => {
-  const usuarioId = req.user.id;
+  const userId = req.user.id;
   const { period } = req.query;
 
   if (period && !['day', 'week', 'month', 'year'].includes(period)) {
@@ -598,10 +598,10 @@ const getMyTradingSummary = async (req, res) => {
 
   const filters = {
     fechaDesde: fechaDesde.toISOString(),
-    usuarioId
+    userId
   };
 
-  const summary = await IntercambioExchange.getStats(filters);
+  const summary = await Swap.getStats(filters);
 
   res.json({
     period: period || 'day',
@@ -613,7 +613,7 @@ const getMyTradingSummary = async (req, res) => {
   });
 };
 
-// Actualizar estado de intercambio (admin)
+// Actualizar status de intercambio (admin)
 const updateIntercambioStatus = async (req, res) => {
   const { id } = req.params;
   const { newStatus } = req.body;
@@ -622,11 +622,11 @@ const updateIntercambioStatus = async (req, res) => {
     throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'ID debe ser un UUID válido');
   }
 
-  if (!newStatus || !['pendiente', 'completado', 'fallido'].includes(newStatus)) {
-    throw new AppError(400, errorCodes.EXCHANGE_INVALID_STATUS, 'newStatus debe ser pendiente, completado o fallido');
+  if (!newStatus || !['pending', 'completed', 'failed'].includes(newStatus)) {
+    throw new AppError(400, errorCodes.EXCHANGE_INVALID_STATUS, 'newStatus debe ser pending, completed o failed');
   }
 
-  const updated = await IntercambioExchange.updateStatus(id, newStatus);
+  const updated = await Swap.updateStatus(id, newStatus);
   res.json({
     message: 'Estado actualizado exitosamente',
     data: updated
@@ -648,19 +648,19 @@ const getTopTraders = async (req, res) => {
   const validPeriods = ['7d', '30d', '90d'];
   const traderPeriod = validPeriods.includes(period) ? period : '30d';
 
-  const topTraders = await IntercambioExchange.getTopTraders(traderLimit, traderPeriod);
+  const topTraders = await Swap.getTopTraders(traderLimit, traderPeriod);
   res.json(topTraders);
 };
 
 // Resumen de mercado (analytics)
 const getMarketSummary = async (req, res) => {
-  const { parId } = req.query;
+  const { pairId } = req.query;
 
-  if (parId && !isValidUUID(parId)) {
-    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'parId debe ser un UUID válido');
+  if (pairId && !isValidUUID(pairId)) {
+    throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'pairId debe ser un UUID válido');
   }
 
-  const summary = await IntercambioExchange.getMarketSummary(parId);
+  const summary = await Swap.getMarketSummary(pairId);
   res.json(summary);
 };
 
@@ -675,7 +675,7 @@ const getStatsByCrypto = async (req, res) => {
     throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'fechaHasta debe ser una fecha válida en formato ISO8601');
   }
 
-  const stats = await IntercambioExchange.getStatsByCrypto(filters);
+  const stats = await Swap.getStatsByCrypto(filters);
   res.json(stats);
 };
 

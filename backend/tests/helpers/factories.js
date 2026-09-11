@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const {
-  User, Crypto, ParExchange, UserBalance, MasterWallet, TradingPair,
+  User, Crypto, SwapPair, UserBalance, MasterWallet, TradingPair,
 } = require('../../models');
 
 let seq = 0;
@@ -36,12 +36,12 @@ async function seedCripto(symbol) {
   return Crypto.create({ symbol, name: symbol, network: 'test' });
 }
 
-async function seedPar({ base, quote, precio, comision }) {
-  return ParExchange.create({
-    criptoBaseId: base.id,
-    criptoQuoteId: quote.id,
-    precioActual: precio,
-    comisionPorcentaje: comision,
+async function seedPar({ base, quote, price, comision }) {
+  return SwapPair.create({
+    baseCryptoId: base.id,
+    quoteCryptoId: quote.id,
+    currentPrice: price,
+    feePercent: comision,
     active: true,
   });
 }

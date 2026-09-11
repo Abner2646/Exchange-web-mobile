@@ -9,11 +9,12 @@
 // postingService hace require('../../../models') al tope → romper el ciclo.
 //
 // NOTA (Fase 6.2 chunk 3): los NOMBRES de parámetro de estas funciones-borde
-// (usuarioId, criptomonedaId, cantidad, referencia, remitenteId, …) se DIFIEREN
-// a inglés al chunk de cada dominio consumidor (trading/p2p/blockchain/swap),
-// igual que las FK cruzadas — así este chunk no toca los ~20 call-sites de esos
-// dominios aún en español. Las PRIMITIVAS internas del ledger (líneas, cuentas,
-// postTransaction) ya son inglés puro; acá se mapea param→primitiva.
+// (criptomonedaId, cantidad, referencia, remitenteId, …) se DIFIEREN a inglés al
+// chunk de cada dominio consumidor (trading/p2p aún en español), igual que las
+// FK cruzadas — así este chunk no toca sus call-sites. Las PRIMITIVAS internas
+// del ledger (líneas, cuentas, postTransaction) ya son inglés puro; acá se mapea
+// param→primitiva. settleSwap ya migró a inglés (chunk 5); compartimento y
+// referencia siguen en español (vocabulario compartido del ledger).
 
 const money = require('../../../utils/money');
 
@@ -26,13 +27,13 @@ const money = require('../../../utils/money');
 // lado de la casa pasa de `suspense`/MasterWallet a treasury+fee_revenue.
 //
 // Montos (strings canónicos desde calculateSettlement):
-//   cantidadQuote  = base * precio            (valor de la operación en quote)
-//   comisionMonto  = cantidadQuote * comision (siempre en quote)
-//   requiredQuote  = cantidadQuote + comision (quote que paga el comprador)
-//   netQuote       = cantidadQuote - comision (quote que recibe el vendedor)
+//   quoteAmount  = base * precio            (valor de la operación en quote)
+//   feeAmount  = quoteAmount * comision (siempre en quote)
+//   requiredQuote  = quoteAmount + comision (quote que paga el comprador)
+//   netQuote       = quoteAmount - comision (quote que recibe el vendedor)
 async function settleSwap({
-  usuarioId, criptoBaseId, criptoQuoteId, cantidadBase,
-  cantidadQuote, comisionMonto, requiredQuote, netQuote, tipo, referencia,
+  userId, baseCryptoId, quoteCryptoId, baseAmount,
+  quoteAmount, feeAmount, requiredQuote, netQuote, type, referencia,
   compartimento = 'funding',
 }, transaction = null) {
   const { postTransaction } = require('./postingService');
@@ -41,30 +42,30 @@ async function settleSwap({
   if (!userPurpose) {
     throw new Error(`Compartimento inválido para swap: ${compartimento}`);
   }
-  const base = String(cantidadBase);
+  const base = String(baseAmount);
 
   let lines;
-  if (tipo === 'compra') {
-    // Paga requiredQuote (valor+comisión) en quote, recibe cantidadBase en base.
+  if (type === 'buy') {
+    // Paga requiredQuote (valor+comisión) en quote, recibe baseAmount en base.
     lines = [
-      { ownerId: usuarioId, purpose: userPurpose, cryptoId: criptoQuoteId, amount: money.negate(String(requiredQuote)) },
-      { ownerId: null, purpose: PURPOSES.TREASURY, cryptoId: criptoQuoteId, amount: String(cantidadQuote) },
-      { ownerId: null, purpose: PURPOSES.FEE_REVENUE, cryptoId: criptoQuoteId, amount: String(comisionMonto) },
-      { ownerId: null, purpose: PURPOSES.TREASURY, cryptoId: criptoBaseId, amount: money.negate(base) },
-      { ownerId: usuarioId, purpose: userPurpose, cryptoId: criptoBaseId, amount: base },
+      { ownerId: userId, purpose: userPurpose, cryptoId: quoteCryptoId, amount: money.negate(String(requiredQuote)) },
+      { ownerId: null, purpose: PURPOSES.TREASURY, cryptoId: quoteCryptoId, amount: String(quoteAmount) },
+      { ownerId: null, purpose: PURPOSES.FEE_REVENUE, cryptoId: quoteCryptoId, amount: String(feeAmount) },
+      { ownerId: null, purpose: PURPOSES.TREASURY, cryptoId: baseCryptoId, amount: money.negate(base) },
+      { ownerId: userId, purpose: userPurpose, cryptoId: baseCryptoId, amount: base },
     ];
   } else {
-    // Paga cantidadBase en base, recibe netQuote (valor−comisión) en quote.
+    // Paga baseAmount en base, recibe netQuote (valor−comisión) en quote.
     lines = [
-      { ownerId: usuarioId, purpose: userPurpose, cryptoId: criptoBaseId, amount: money.negate(base) },
-      { ownerId: null, purpose: PURPOSES.TREASURY, cryptoId: criptoBaseId, amount: base },
-      { ownerId: null, purpose: PURPOSES.TREASURY, cryptoId: criptoQuoteId, amount: money.negate(String(cantidadQuote)) },
-      { ownerId: usuarioId, purpose: userPurpose, cryptoId: criptoQuoteId, amount: String(netQuote) },
-      { ownerId: null, purpose: PURPOSES.FEE_REVENUE, cryptoId: criptoQuoteId, amount: String(comisionMonto) },
+      { ownerId: userId, purpose: userPurpose, cryptoId: baseCryptoId, amount: money.negate(base) },
+      { ownerId: null, purpose: PURPOSES.TREASURY, cryptoId: baseCryptoId, amount: base },
+      { ownerId: null, purpose: PURPOSES.TREASURY, cryptoId: quoteCryptoId, amount: money.negate(String(quoteAmount)) },
+      { ownerId: userId, purpose: userPurpose, cryptoId: quoteCryptoId, amount: String(netQuote) },
+      { ownerId: null, purpose: PURPOSES.FEE_REVENUE, cryptoId: quoteCryptoId, amount: String(feeAmount) },
     ];
   }
 
-  return postTransaction({ type: 'swap', reference: referencia, description: `Swap ${tipo}`, lines }, transaction);
+  return postTransaction({ type: 'swap', reference: referencia, description: `Swap ${type}`, lines }, transaction);
 }
 
 // Liquida un trade spot user↔user (order book). Un solo asiento, net-zero por

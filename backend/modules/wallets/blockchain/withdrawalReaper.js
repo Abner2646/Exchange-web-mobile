@@ -16,7 +16,7 @@ async function reapStaleWithdrawals({ getClientForNetwork, staleMinutes = 15, no
       type: 'withdrawal',
       status: 'processing',
       // Column name (snake_case) on purpose — this codebase queries the timestamp
-      // columns by their DB name (see IntercambioExchange.getDailyVolume with
+      // columns by their DB name (see Swap.getDailyVolume with
       // created_at); the camelCase attribute is not mapped in where clauses here.
       updated_at: { [Op.lt]: cutoff },
     },

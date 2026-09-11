@@ -1,13 +1,13 @@
 // controllers/parExchange.controller.js
 
-const { ParExchange, Crypto } = require('../models/index.js');
-const priceService = require('../services/priceService');
+const { SwapPair, Crypto } = require('../../models/index.js');
+const priceService = require('../../services/priceService');
 
 // Listar pares de exchange
 const getParesExchange = async (req, res) => {
   try {
     const filters = { ...req.query };
-    const result = await ParExchange.getAll(filters);
+    const result = await SwapPair.getAll(filters);
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -20,42 +20,42 @@ const getParExchangeById = async (req, res) => {
     const { id } = req.params;
     const { updatePrice = 'force' } = req.query; // Cambio: force por defecto
     
-    let result = await ParExchange.getById(id);
+    let result = await SwapPair.getById(id);
     if (!result) return res.status(404).json({ error: 'Par de exchange no encontrado' });
 
     // ACTUALIZACIÓN EN TIEMPO REAL SIEMPRE
     // updatePrice acepta cualquier string que no sea 'never'; 'force' no tiene
     // semántica especial propia, se comporta igual que cualquier otro valor
     // (incluyendo el default). Solo 'never' desactiva la actualización en vivo.
-    if (result.active && result.fuentePrecio !== 'manual' && updatePrice !== 'never') {
-      console.log(`Actualizando precio en tiempo real para ${result.criptoBase.symbol}/${result.criptoQuote.symbol}...`);
+    if (result.active && result.priceSource !== 'manual' && updatePrice !== 'never') {
+      console.log(`Actualizando price en tiempo real para ${result.baseCrypto.symbol}/${result.quoteCrypto.symbol}...`);
       
       try {
-        const priceService = require('../services/priceService');
+        const priceService = require('../../services/priceService');
         const updated = await priceService.updatePairPriceRealTime(id);
         
         if (updated) {
           // Obtener el par actualizado
-          result = await ParExchange.getById(id);
+          result = await SwapPair.getById(id);
           console.log(`✓ Precio actualizado en tiempo real`);
         }
       } catch (error) {
-        console.warn(`⚠️ Error actualizando precio en tiempo real: ${error.message}`);
-        // Continuar con el precio que tenemos en BD, pero marcar como stale
+        console.warn(`⚠️ Error actualizando price en tiempo real: ${error.message}`);
+        // Continuar con el price que tenemos en BD, pero marcar como stale
       }
     }
 
     const ahora = new Date();
-    const ultimaActualizacion = new Date(result.ultimaActualizacion);
-    const segundosDesdeActualizacion = (ahora - ultimaActualizacion) / 1000;
+    const lastUpdated = new Date(result.lastUpdated);
+    const segundosDesdeActualizacion = (ahora - lastUpdated) / 1000;
 
     res.json({
       ...result.toJSON(),
       priceInfo: {
-        lastUpdated: result.ultimaActualizacion,
+        lastUpdated: result.lastUpdated,
         secondsOld: Math.round(segundosDesdeActualizacion),
-        source: result.fuentePrecio,
-        isRealTime: result.fuentePrecio !== 'manual',
+        source: result.priceSource,
+        isRealTime: result.priceSource !== 'manual',
         warning: segundosDesdeActualizacion > 30 ? 'Precio puede estar desactualizado' : null
       }
     });
@@ -70,33 +70,33 @@ const getParExchangeById = async (req, res) => {
 const createParExchange = async (req, res) => {
   try {
     const { 
-      criptoBaseId, 
-      criptoQuoteId, 
-      //precioActual,      // OPCIONAL - si no se proporciona, se obtiene automáticamente
-      comisionPorcentaje, 
+      baseCryptoId, 
+      quoteCryptoId, 
+      //currentPrice,      // OPCIONAL - si no se proporciona, se obtiene automáticamente
+      feePercent, 
       active = true,
-      //fuentePrecio,      // OPCIONAL - se auto-detecta si no se especifica
-      simboloExterno
+      //priceSource,      // OPCIONAL - se auto-detecta si no se especifica
+      externalSymbol
     } = req.body;
     
-    if (!criptoBaseId || !criptoQuoteId || comisionPorcentaje === undefined) {
+    if (!baseCryptoId || !quoteCryptoId || feePercent === undefined) {
       return res.status(400).json({ 
-        error: 'Los campos criptoBaseId, criptoQuoteId y comisionPorcentaje son requeridos' 
+        error: 'Los campos baseCryptoId, quoteCryptoId y feePercent son requeridos' 
       });
     }
 
-    if (parseFloat(comisionPorcentaje) < 0 || parseFloat(comisionPorcentaje) > 100) {
+    if (parseFloat(feePercent) < 0 || parseFloat(feePercent) > 100) {
       return res.status(400).json({ 
         error: 'La comisión debe estar entre 0 y 100%' 
       });
     }
 
     // Obtener información de las criptomonedas
-    const { Crypto } = require('../models/index.js');
-    const criptoBase = await Crypto.findByPk(criptoBaseId);
-    const criptoQuote = await Crypto.findByPk(criptoQuoteId);
+    const { Crypto } = require('../../models/index.js');
+    const baseCrypto = await Crypto.findByPk(baseCryptoId);
+    const quoteCrypto = await Crypto.findByPk(quoteCryptoId);
     
-    if (!criptoBase || !criptoQuote) {
+    if (!baseCrypto || !quoteCrypto) {
       return res.status(400).json({ 
         error: 'Una o ambas criptomonedas no existen' 
       });
@@ -106,13 +106,13 @@ const createParExchange = async (req, res) => {
     let finalSource = 'manual';
 
     // AUTO-DETECTAR FUENTE Y PRECIO si no se proporcionan
-    if (!precioActual || !fuentePrecio) {
-      console.log(`Detectando precio automático para ${criptoBase.symbol}/${criptoQuote.symbol}...`);
+    if (!currentPrice || !priceSource) {
+      console.log(`Detectando price automático para ${baseCrypto.symbol}/${quoteCrypto.symbol}...`);
       
-      // Intentar obtener precio automáticamente
+      // Intentar obtener price automáticamente
       try {
-        const priceService = require('../services/priceService');
-        const priceResult = await priceService.getPrice(criptoBase.symbol, criptoQuote.symbol);
+        const priceService = require('../../services/priceService');
+        const priceResult = await priceService.getPrice(baseCrypto.symbol, quoteCrypto.symbol);
         
         if (priceResult && priceResult.price > 0) {
           finalPrice = priceResult.price;
@@ -120,25 +120,25 @@ const createParExchange = async (req, res) => {
           console.log(`✓ Precio obtenido de ${priceResult.source}: ${finalPrice}`);
         }
       } catch (error) {
-        console.warn(`⚠️ No se pudo obtener precio automático: ${error.message}`);
+        console.warn(`⚠️ No se pudo obtener price automático: ${error.message}`);
       }
     }
 
-    // Si aún no hay precio, usar el proporcionado o calcular uno básico <----------- SIEMRE debería detectar precios automáticamente
+    // Si aún no hay price, usar el proporcionado o calcular uno básico <----------- SIEMRE debería detectar precios automáticamente
     if (!finalPrice) {
-      if (precioActual) {
-        if (parseFloat(precioActual) <= 0) {
+      if (currentPrice) {
+        if (parseFloat(currentPrice) <= 0) {
           return res.status(400).json({ 
             error: 'El precio actual debe ser mayor a 0' 
           });
         }
-        finalPrice = parseFloat(precioActual);
-        finalSource = fuentePrecio || 'manual';
+        finalPrice = parseFloat(currentPrice);
+        finalSource = priceSource || 'manual';
       } else {
         // Precio por defecto inteligente basado en el par
-        finalPrice = getDefaultPrice(criptoBase.symbol, criptoQuote.symbol);
+        finalPrice = getDefaultPrice(baseCrypto.symbol, quoteCrypto.symbol);
         finalSource = 'manual';
-        console.log(`ℹ️ Usando precio por defecto: ${finalPrice}`);
+        console.log(`ℹ️ Usando price por defecto: ${finalPrice}`);
       }
     }
 
@@ -148,23 +148,23 @@ const createParExchange = async (req, res) => {
       finalSource = 'manual';
     }
 
-    const nuevoPar = await ParExchange.createPar({
-      criptoBaseId,
-      criptoQuoteId,
-      precioActual: finalPrice,
-      comisionPorcentaje: parseFloat(comisionPorcentaje),
+    const nuevoPar = await SwapPair.createPar({
+      baseCryptoId,
+      quoteCryptoId,
+      currentPrice: finalPrice,
+      feePercent: parseFloat(feePercent),
       active,
-      fuentePrecio: finalSource,
-      simboloExterno: simboloExterno || `${criptoBase.symbol}${criptoQuote.symbol}`
+      priceSource: finalSource,
+      externalSymbol: externalSymbol || `${baseCrypto.symbol}${quoteCrypto.symbol}`
     });
     
     res.status(201).json({ 
       message: 'Par de exchange creado exitosamente', 
       data: nuevoPar,
       info: {
-        precioObtenidoAutomaticamente: !precioActual,
+        precioObtenidoAutomaticamente: !currentPrice,
         fuenteDetectada: finalSource,
-        simboloGenerado: !simboloExterno
+        simboloGenerado: !externalSymbol
       }
     });
   } catch (error) {
@@ -177,45 +177,45 @@ const createParExchange = async (req, res) => {
 const createParExchange = async (req, res) => {
   try {
     const { 
-      criptoBaseId, 
-      criptoQuoteId, 
-      comisionPorcentaje, 
+      baseCryptoId, 
+      quoteCryptoId, 
+      feePercent, 
       active = true,
-      simboloExterno
+      externalSymbol
     } = req.body;
     
-    if (!criptoBaseId || !criptoQuoteId || comisionPorcentaje === undefined) {
+    if (!baseCryptoId || !quoteCryptoId || feePercent === undefined) {
       return res.status(400).json({ 
-        error: 'Los campos criptoBaseId, criptoQuoteId y comisionPorcentaje son requeridos' 
+        error: 'Los campos baseCryptoId, quoteCryptoId y feePercent son requeridos' 
       });
     }
 
-    if (parseFloat(comisionPorcentaje) < 0 || parseFloat(comisionPorcentaje) > 100) {
+    if (parseFloat(feePercent) < 0 || parseFloat(feePercent) > 100) {
       return res.status(400).json({ 
         error: 'La comisión debe estar entre 0 y 100%' 
       });
     }
 
     // Obtener información de las criptomonedas
-    const { Crypto } = require('../models/index.js');
-    const criptoBase = await Crypto.findByPk(criptoBaseId);
-    const criptoQuote = await Crypto.findByPk(criptoQuoteId);
+    const { Crypto } = require('../../models/index.js');
+    const baseCrypto = await Crypto.findByPk(baseCryptoId);
+    const quoteCrypto = await Crypto.findByPk(quoteCryptoId);
     
-    if (!criptoBase || !criptoQuote) {
+    if (!baseCrypto || !quoteCrypto) {
       return res.status(400).json({ 
         error: 'Una o ambas criptomonedas no existen' 
       });
     }
 
     // OBTENER PRECIO AUTOMÁTICAMENTE DESDE LA API (OBLIGATORIO)
-    console.log(`Obteniendo precio automático para ${criptoBase.symbol}/${criptoQuote.symbol}...`);
+    console.log(`Obteniendo price automático para ${baseCrypto.symbol}/${quoteCrypto.symbol}...`);
     
     let finalPrice = null;
     let finalSource = null;
     
     try {
-      const priceService = require('../services/priceService');
-      const priceResult = await priceService.getPrice(criptoBase.symbol, criptoQuote.symbol);
+      const priceService = require('../../services/priceService');
+      const priceResult = await priceService.getPrice(baseCrypto.symbol, quoteCrypto.symbol);
       
       if (priceResult && priceResult.price > 0) {
         finalPrice = priceResult.price;
@@ -225,16 +225,16 @@ const createParExchange = async (req, res) => {
         throw new Error('El servicio de precios no devolvió un precio válido');
       }
     } catch (error) {
-      console.error(`❌ Error obteniendo precio automático: ${error.message}`);
+      console.error(`❌ Error obteniendo price automático: ${error.message}`);
       return res.status(400).json({ 
-        error: `No se pudo obtener el precio automáticamente para el par ${criptoBase.symbol}/${criptoQuote.symbol}. Error: ${error.message}` 
+        error: `No se pudo obtener el price automáticamente para el par ${baseCrypto.symbol}/${quoteCrypto.symbol}. Error: ${error.message}` 
       });
     }
 
     // Validar que se obtuvo un precio válido
     if (!finalPrice || finalPrice <= 0) {
       return res.status(400).json({ 
-        error: `No se pudo obtener un precio válido para el par ${criptoBase.symbol}/${criptoQuote.symbol}` 
+        error: `No se pudo obtener un precio válido para el par ${baseCrypto.symbol}/${quoteCrypto.symbol}` 
       });
     }
 
@@ -245,14 +245,14 @@ const createParExchange = async (req, res) => {
       finalSource = 'manual';
     }
 
-    const nuevoPar = await ParExchange.createPar({
-      criptoBaseId,
-      criptoQuoteId,
-      precioActual: finalPrice,
-      comisionPorcentaje: parseFloat(comisionPorcentaje),
+    const nuevoPar = await SwapPair.createPar({
+      baseCryptoId,
+      quoteCryptoId,
+      currentPrice: finalPrice,
+      feePercent: parseFloat(feePercent),
       active,
-      fuentePrecio: finalSource,
-      simboloExterno: simboloExterno || `${criptoBase.symbol}${criptoQuote.symbol}`
+      priceSource: finalSource,
+      externalSymbol: externalSymbol || `${baseCrypto.symbol}${quoteCrypto.symbol}`
     });
     
     res.status(201).json({ 
@@ -261,8 +261,8 @@ const createParExchange = async (req, res) => {
       info: {
         precioObtenidoAutomaticamente: true,
         fuenteDetectada: finalSource,
-        simboloGenerado: !simboloExterno,
-        precio: finalPrice
+        simboloGenerado: !externalSymbol,
+        price: finalPrice
       }
     });
   } catch (error) {
@@ -334,7 +334,7 @@ const searchParesExchange = async (req, res) => {
       return res.status(400).json({ error: 'Parámetro de búsqueda requerido' });
     }
 
-    const result = await ParExchange.search(term, limit);
+    const result = await SwapPair.search(term, limit);
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -347,7 +347,7 @@ const getParBySymbols = async (req, res) => {
     const { baseSymbol, quoteSymbol } = req.params;
     const { updatePrice = 'force' } = req.query; // Cambio: force por defecto
     
-    let par = await ParExchange.getBySymbols(baseSymbol, quoteSymbol);
+    let par = await SwapPair.getBySymbols(baseSymbol, quoteSymbol);
     
     if (!par) {
       return res.status(404).json({ 
@@ -358,34 +358,34 @@ const getParBySymbols = async (req, res) => {
     // updatePrice acepta cualquier string que no sea 'never'; 'force' no tiene
     // semántica especial propia, se comporta igual que cualquier otro valor
     // (incluyendo el default). Solo 'never' desactiva la actualización en vivo.
-    if (par.active && par.fuentePrecio !== 'manual' && updatePrice !== 'never') {
-      console.log(`Actualizando precio en tiempo real para ${baseSymbol}/${quoteSymbol}...`);
+    if (par.active && par.priceSource !== 'manual' && updatePrice !== 'never') {
+      console.log(`Actualizando price en tiempo real para ${baseSymbol}/${quoteSymbol}...`);
       
       try {
-        const priceService = require('../services/priceService');
+        const priceService = require('../../services/priceService');
         const updated = await priceService.updatePairPriceRealTime(par.id);
         
         if (updated) {
-          par = await ParExchange.getBySymbols(baseSymbol, quoteSymbol);
+          par = await SwapPair.getBySymbols(baseSymbol, quoteSymbol);
           console.log(`✓ Precio actualizado en tiempo real`);
         }
       } catch (error) {
-        console.warn(`⚠️ Error actualizando precio en tiempo real: ${error.message}`);
-        // Continuar con el precio que tenemos, pero marcar como stale
+        console.warn(`⚠️ Error actualizando price en tiempo real: ${error.message}`);
+        // Continuar con el price que tenemos, pero marcar como stale
       }
     }
 
     const ahora = new Date();
-    const ultimaActualizacion = new Date(par.ultimaActualizacion);
-    const segundosDesdeActualizacion = (ahora - ultimaActualizacion) / 1000;
+    const lastUpdated = new Date(par.lastUpdated);
+    const segundosDesdeActualizacion = (ahora - lastUpdated) / 1000;
     
     res.json({
       ...par.toJSON(),
       priceInfo: {
-        lastUpdated: par.ultimaActualizacion,
+        lastUpdated: par.lastUpdated,
         secondsOld: Math.round(segundosDesdeActualizacion),
-        source: par.fuentePrecio,
-        isRealTime: par.fuentePrecio !== 'manual',
+        source: par.priceSource,
+        isRealTime: par.priceSource !== 'manual',
         warning: segundosDesdeActualizacion > 30 ? 'Precio puede estar desactualizado' : null
       }
     });
@@ -397,8 +397,8 @@ const getParBySymbols = async (req, res) => {
 // Obtener pares por crypto base
 const getParesByBaseCrypto = async (req, res) => {
   try {
-    const { criptoBaseId } = req.params;
-    const pares = await ParExchange.getByBaseCrypto(criptoBaseId);
+    const { baseCryptoId } = req.params;
+    const pares = await SwapPair.getByBaseCrypto(baseCryptoId);
     res.json(pares);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -408,8 +408,8 @@ const getParesByBaseCrypto = async (req, res) => {
 // Obtener pares por crypto quote
 const getParesByQuoteCrypto = async (req, res) => {
   try {
-    const { criptoQuoteId } = req.params;
-    const pares = await ParExchange.getByQuoteCrypto(criptoQuoteId);
+    const { quoteCryptoId } = req.params;
+    const pares = await SwapPair.getByQuoteCrypto(quoteCryptoId);
     res.json(pares);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -419,7 +419,7 @@ const getParesByQuoteCrypto = async (req, res) => {
 // Obtener pares activos
 const getActiveExchangePairs = async (req, res) => {
   try {
-    const pares = await ParExchange.getActive();
+    const pares = await SwapPair.getActive();
     res.json(pares);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -430,7 +430,7 @@ const getActiveExchangePairs = async (req, res) => {
 const getTopPairsByVolume = async (req, res) => {
   try {
     const { limit = 10 } = req.query;
-    const pares = await ParExchange.getTopByVolume(parseInt(limit));
+    const pares = await SwapPair.getTopByVolume(parseInt(limit));
     res.json(pares);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -441,7 +441,7 @@ const getTopPairsByVolume = async (req, res) => {
 const getHighCommissionPairs = async (req, res) => {
   try {
     const { threshold = 0.01 } = req.query;
-    const pares = await ParExchange.getHighCommission(parseFloat(threshold));
+    const pares = await SwapPair.getHighCommission(parseFloat(threshold));
     
     res.json({
       threshold: parseFloat(threshold),
@@ -457,7 +457,7 @@ const getHighCommissionPairs = async (req, res) => {
 const getOutdatedPricePairs = async (req, res) => {
   try {
     const { minutes = 60 } = req.query;
-    const pares = await ParExchange.getOutdatedPrices(parseInt(minutes));
+    const pares = await SwapPair.getOutdatedPrices(parseInt(minutes));
     
     res.json({
       threshold: `${minutes} minutos`,
@@ -469,12 +469,12 @@ const getOutdatedPricePairs = async (req, res) => {
   }
 };
 
-// Obtener solo el precio en tiempo real (endpoint rápido para trading)
+// Obtener solo el price en tiempo real (endpoint rápido para trading)
 const getCurrentPrice = async (req, res) => {
   try {
     const { baseSymbol, quoteSymbol } = req.params;
     
-    const par = await ParExchange.getBySymbols(baseSymbol, quoteSymbol);
+    const par = await SwapPair.getBySymbols(baseSymbol, quoteSymbol);
     
     if (!par) {
       return res.status(404).json({ 
@@ -488,14 +488,14 @@ const getCurrentPrice = async (req, res) => {
       });
     }
 
-    let currentPrice = parseFloat(par.precioActual);
-    let source = par.fuentePrecio;
+    let currentPrice = parseFloat(par.currentPrice);
+    let source = par.priceSource;
     let updated = false;
 
-    // Si no es manual, obtener precio fresco SIEMPRE
+    // Si no es manual, obtener price fresco SIEMPRE
     if (source !== 'manual') {
       try {
-        const priceService = require('../services/priceService');
+        const priceService = require('../../services/priceService');
         const priceResult = await priceService.getPrice(baseSymbol, quoteSymbol);
         
         if (priceResult && priceResult.price > 0) {
@@ -509,8 +509,8 @@ const getCurrentPrice = async (req, res) => {
           );
         }
       } catch (error) {
-        console.warn(`Error obteniendo precio fresco: ${error.message}`);
-        // Usar precio de BD como fallback
+        console.warn(`Error obteniendo price fresco: ${error.message}`);
+        // Usar price de BD como fallback
       }
     }
 
@@ -520,7 +520,7 @@ const getCurrentPrice = async (req, res) => {
       source: source,
       timestamp: new Date().toISOString(),
       updated: updated,
-      commission: parseFloat(par.comisionPorcentaje)
+      commission: parseFloat(par.feePercent)
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -529,7 +529,7 @@ const getCurrentPrice = async (req, res) => {
 
   // ✨ NUEVA FUNCIÓN: Generar todos los pares automáticamente
   const generateAllPairs = async (req, res) => {
-    const { Crypto } = require('../models/index.js')  // ✅ BIEN
+    const { Crypto } = require('../../models/index.js')  // ✅ BIEN
     try {
       console.log('🚀 Iniciando generación automática de pares...');
       
@@ -571,10 +571,10 @@ const getCurrentPrice = async (req, res) => {
           
           try {
             // Verificar si ya existe el par
-            const existingPar = await ParExchange.findOne({
+            const existingPar = await SwapPair.findOne({
               where: {
-                criptoBaseId: base.id,
-                criptoQuoteId: quote.id
+                baseCryptoId: base.id,
+                quoteCryptoId: quote.id
               }
             });
             
@@ -588,8 +588,8 @@ const getCurrentPrice = async (req, res) => {
               continue;
             }
             
-            // Intentar obtener precio desde las APIs
-            console.log(`⚡ Verificando precio para ${base.symbol}/${quote.symbol}...`);
+            // Intentar obtener price desde las APIs
+            console.log(`⚡ Verificando price para ${base.symbol}/${quote.symbol}...`);
             
             let priceResult;
             try {
@@ -615,15 +615,15 @@ const getCurrentPrice = async (req, res) => {
             }
             
             // Crear el par
-            const nuevoPar = await ParExchange.create({
-              criptoBaseId: base.id,
-              criptoQuoteId: quote.id,
-              precioActual: priceResult.price,
-              comisionPorcentaje: defaultFee,
-              fuentePrecio: priceResult.source || 'binance',
-              simboloExterno: `${base.symbol}${quote.symbol}`,
+            const nuevoPar = await SwapPair.create({
+              baseCryptoId: base.id,
+              quoteCryptoId: quote.id,
+              currentPrice: priceResult.price,
+              feePercent: defaultFee,
+              priceSource: priceResult.source || 'binance',
+              externalSymbol: `${base.symbol}${quote.symbol}`,
               active: true,
-              ultimaActualizacion: new Date()
+              lastUpdated: new Date()
             });
             
             results.created++;

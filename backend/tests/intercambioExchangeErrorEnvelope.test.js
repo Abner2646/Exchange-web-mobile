@@ -9,7 +9,7 @@ const express = require('express');
 
 // ── Mocks (declared before any require of the modules they replace) ──────────
 jest.mock('../models/index.js', () => ({
-  IntercambioExchange: {
+  Swap: {
     create: jest.fn(),
     getDailyVolume: jest.fn(),
     getAll: jest.fn(),
@@ -26,7 +26,7 @@ jest.mock('../models/index.js', () => ({
     updateStatus: jest.fn(),
   },
   User: { findByPk: jest.fn() },
-  ParExchange: { findByPk: jest.fn() },
+  SwapPair: { findByPk: jest.fn() },
   UserBalance: {
     findOne: jest.fn(),
     getCompartmentBalance: jest.fn(),
@@ -46,15 +46,15 @@ jest.mock('../models/index.js', () => ({
 const {
   sequelize,
   User,
-  ParExchange,
+  SwapPair,
   UserBalance,
-  IntercambioExchange,
+  Swap,
   MasterWallet,
 } = require('../models/index.js');
 
 const asyncHandler = require('../utils/asyncHandler');
 const errorHandler = require('../middleware/errorHandler');
-const { createOrder } = require('../controllers/intercambioExchange.controller');
+const { createOrder } = require('../modules/swap/swap.controller');
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -87,19 +87,19 @@ const PAR_ID = '123e4567-e89b-12d3-a456-426614174000';
 const VALID_PAR = {
   id: PAR_ID,
   active: true,
-  precioActual: '50000',
-  comisionPorcentaje: '0.1',
-  criptoBaseId: '11111111-1111-1111-1111-111111111111',
-  criptoQuoteId: '22222222-2222-2222-2222-222222222222',
-  criptoBase: { symbol: 'BTC' },
-  criptoQuote: { symbol: 'USDT' },
+  currentPrice: '50000',
+  feePercent: '0.1',
+  baseCryptoId: '11111111-1111-1111-1111-111111111111',
+  quoteCryptoId: '22222222-2222-2222-2222-222222222222',
+  baseCrypto: { symbol: 'BTC' },
+  quoteCrypto: { symbol: 'USDT' },
 };
 
 /** Valid request body. */
 const VALID_BODY = {
-  parId: PAR_ID,
-  tipo: 'venta',
-  cantidadBase: 0.001,
+  pairId: PAR_ID,
+  type: 'sell',
+  baseAmount: 0.001,
 };
 
 beforeEach(() => {
@@ -110,17 +110,17 @@ beforeEach(() => {
 
 describe('createOrder — known business error → canonical envelope', () => {
 
-  test('insufficient balance (venta) → 400 EXCHANGE_INSUFFICIENT_BALANCE', async () => {
+  test('insufficient balance (sell) → 400 EXCHANGE_INSUFFICIENT_BALANCE', async () => {
     const tx = makeFakeTx();
     sequelize.transaction.mockResolvedValue(tx);
 
-    ParExchange.findByPk.mockResolvedValue(VALID_PAR);
+    SwapPair.findByPk.mockResolvedValue(VALID_PAR);
     User.findByPk.mockResolvedValue({
       id: 'user-uuid-001',
       active: true,
       dailyLimitUsd: 99999,
     });
-    IntercambioExchange.getDailyVolume.mockResolvedValue(0);
+    Swap.getDailyVolume.mockResolvedValue(0);
     // Read-flip: el controller lee el saldo via getCompartmentBalance (Task 9),
     // que devuelve available:'0' cuando no hay fondos (insuficiente).
     UserBalance.getCompartmentBalance.mockResolvedValue({ available: '0', blocked: '0', pending: '0' });
@@ -144,18 +144,18 @@ describe('createOrder — known business error → canonical envelope', () => {
     const tx = makeFakeTx();
     sequelize.transaction.mockResolvedValue(tx);
 
-    ParExchange.findByPk.mockResolvedValue(VALID_PAR);
+    SwapPair.findByPk.mockResolvedValue(VALID_PAR);
     User.findByPk.mockResolvedValue({
       id: 'user-uuid-001',
       active: true,
       dailyLimitUsd: 10, // tiny limit
     });
     // daily volume already at 5, request is 50 => 5+50 > 10
-    IntercambioExchange.getDailyVolume.mockResolvedValue(5);
+    Swap.getDailyVolume.mockResolvedValue(5);
 
     const res = await request(buildApp())
       .post('/intercambioExchange')
-      .send({ ...VALID_BODY, cantidadBase: 0.001 }); // cantidadQuote ~50 USDT
+      .send({ ...VALID_BODY, baseAmount: 0.001 }); // quoteAmount ~50 USDT
 
     expect(res.status).toBe(400);
     expect(res.body).toMatchObject({
@@ -168,7 +168,7 @@ describe('createOrder — known business error → canonical envelope', () => {
   test('pair not found → 404 EXCHANGE_PAIR_NOT_FOUND', async () => {
     const tx = makeFakeTx();
     sequelize.transaction.mockResolvedValue(tx);
-    ParExchange.findByPk.mockResolvedValue(null);
+    SwapPair.findByPk.mockResolvedValue(null);
 
     const res = await request(buildApp())
       .post('/intercambioExchange')
@@ -183,9 +183,9 @@ describe('createOrder — known business error → canonical envelope', () => {
   test('user not found → 404 EXCHANGE_USER_NOT_FOUND', async () => {
     const tx = makeFakeTx();
     sequelize.transaction.mockResolvedValue(tx);
-    ParExchange.findByPk.mockResolvedValue(VALID_PAR);
+    SwapPair.findByPk.mockResolvedValue(VALID_PAR);
     User.findByPk.mockResolvedValue(null);
-    IntercambioExchange.getDailyVolume.mockResolvedValue(0);
+    Swap.getDailyVolume.mockResolvedValue(0);
 
     const res = await request(buildApp())
       .post('/intercambioExchange')
@@ -203,7 +203,7 @@ describe('createOrder — known business error → canonical envelope', () => {
 
     const res = await request(buildApp())
       .post('/intercambioExchange')
-      .send({ parId: 'par-uuid-001' }); // missing tipo + cantidadBase
+      .send({ pairId: 'par-uuid-001' }); // missing type + baseAmount
 
     expect(res.status).toBe(400);
     expect(res.body).toMatchObject({
@@ -222,7 +222,7 @@ describe('createOrder — unexpected throw → sanitized 500 + rollback preserve
     sequelize.transaction.mockResolvedValue(tx);
 
     // Simulate an unexpected DB error after the transaction is opened
-    ParExchange.findByPk.mockRejectedValue(
+    SwapPair.findByPk.mockRejectedValue(
       new Error('SECRET: pg connection pool exhausted - host db.internal:5432')
     );
 

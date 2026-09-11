@@ -6,7 +6,7 @@
 // catch de getPrice() que cae a Binance sin que nadie note que CoinGecko
 // nunca funcionó.
 
-jest.mock('../models/index.js', () => ({ ParExchange: {} }));
+jest.mock('../models/index.js', () => ({ SwapPair: {} }));
 jest.mock('axios');
 
 const axios = require('axios');

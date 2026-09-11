@@ -1,65 +1,65 @@
-// models/entites/intercambioExchange.entity.js
+// modules/swap/swap.entity.js
 const { DataTypes, Model } = require('sequelize');
 
-class IntercambioExchange extends Model {}
+class Swap extends Model {}
 
-function initIntercambioExchange(sequelize) {
-  IntercambioExchange.init({
+function initSwap(sequelize) {
+  Swap.init({
     id: {
       type: DataTypes.UUID,
       primaryKey: true,
       defaultValue: DataTypes.UUIDV4
     },
-    usuarioId: {
+    userId: {
       type: DataTypes.UUID,
       allowNull: false,
-      field: 'usuario_id',
+      field: 'user_id',
       references: {
         model: 'users',
         key: 'id'
       }
     },
-    parId: {
+    pairId: {
       type: DataTypes.UUID,
       allowNull: false,
-      field: 'par_id',
+      field: 'pair_id',
       references: {
-        model: 'pares_exchange',
+        model: 'swap_pairs',
         key: 'id'
       }
     },
-    tipo: {
-      type: DataTypes.ENUM('compra', 'venta'),
+    type: {
+      type: DataTypes.ENUM('buy', 'sell'),
       allowNull: false
     },
-    cantidadBase: {
+    baseAmount: {
       type: DataTypes.DECIMAL(18, 8),
       allowNull: false,
-      field: 'cantidad_base'
+      field: 'base_amount'
     },
-    cantidadQuote: {
+    quoteAmount: {
       type: DataTypes.DECIMAL(18, 8),
       allowNull: false,
-      field: 'cantidad_quote'
+      field: 'quote_amount'
     },
-    precio: {
+    price: {
       type: DataTypes.DECIMAL(18, 8),
       allowNull: false
     },
-    comisionMonto: {
+    feeAmount: {
       type: DataTypes.DECIMAL(18, 8),
       allowNull: false,
-      field: 'comision_monto'
+      field: 'fee_amount'
     },
-    comisionPorcentaje: {
+    feePercent: {
       type: DataTypes.DECIMAL(5, 4),
       allowNull: false,
-      field: 'comision_porcentaje'
+      field: 'fee_percent'
     },
-    estado: {
-      type: DataTypes.ENUM('pendiente', 'completado', 'fallido'),
+    status: {
+      type: DataTypes.ENUM('pending', 'completed', 'failed'),
       allowNull: false,
-      defaultValue: 'pendiente'
+      defaultValue: 'pending'
     },
     completedAt: {
       type: DataTypes.DATE,
@@ -68,14 +68,14 @@ function initIntercambioExchange(sequelize) {
     }
   }, {
     sequelize,
-    modelName: 'IntercambioExchange',
-    tableName: 'intercambios_exchange',
+    modelName: 'Swap',
+    tableName: 'swaps',
     timestamps: true,
     createdAt: 'created_at',
     updatedAt: false
   });
 
-  return IntercambioExchange;
+  return Swap;
 }
 
-module.exports = initIntercambioExchange;
+module.exports = initSwap;

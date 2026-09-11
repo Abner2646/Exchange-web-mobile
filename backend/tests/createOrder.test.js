@@ -1,7 +1,7 @@
 // tests/createOrder.test.js
 //
-// Cubre AUDITORIA_BACKEND.md Críticos #4 y #6: createOrder tenía "tipo"
-// hardcodeado a venta (una compra debitaba y acreditaba al revés de lo
+// Cubre AUDITORIA_BACKEND.md Críticos #4 y #6: createOrder tenía "type"
+// hardcodeado a sell (una buy debitaba y acreditaba al revés de lo
 // pedido) y el límite diario estaba deshabilitado. También cubre Altos #3
 // (req.usuario vs req.user) en checkTransactionLimit.
 //
@@ -26,9 +26,9 @@ const request = require('supertest');
 const express = require('express');
 
 jest.mock('../models/index.js', () => ({
-  IntercambioExchange: { create: jest.fn(), getDailyVolume: jest.fn() },
+  Swap: { create: jest.fn(), getDailyVolume: jest.fn() },
   User: { findByPk: jest.fn() },
-  ParExchange: { findByPk: jest.fn() },
+  SwapPair: { findByPk: jest.fn() },
   UserBalance: { getCompartmentBalance: jest.fn() },
   Crypto: {},
   sequelize: { transaction: jest.fn() },
@@ -40,9 +40,9 @@ jest.mock('../models/index.js', () => ({
 jest.mock('../modules/balances/ledger/operations', () => ({ settleSwap: jest.fn() }));
 
 const {
-  IntercambioExchange,
+  Swap,
   User,
-  ParExchange,
+  SwapPair,
   UserBalance,
   sequelize,
 } = require('../models/index.js');
@@ -50,7 +50,7 @@ const { settleSwap } = require('../modules/balances/ledger/operations');
 
 const asyncHandler = require('../utils/asyncHandler');
 const errorHandler = require('../middleware/errorHandler');
-const { createOrder, checkTransactionLimit } = require('../controllers/intercambioExchange.controller');
+const { createOrder, checkTransactionLimit } = require('../modules/swap/swap.controller');
 
 function mockRes() {
   return {
@@ -91,19 +91,19 @@ function setupCommonMocks({ dailyLimitUsd = 1000000, dailyVolume = 0 } = {}) {
   const transaction = { commit: jest.fn(), rollback: jest.fn(), LOCK: { UPDATE: 'UPDATE' } };
   sequelize.transaction.mockResolvedValue(transaction);
 
-  ParExchange.findByPk.mockResolvedValue({
+  SwapPair.findByPk.mockResolvedValue({
     active: true,
-    precioActual: '100',
-    comisionPorcentaje: 1, // 1%
-    criptoBaseId: CRIPTO_BASE_ID,
-    criptoQuoteId: CRIPTO_QUOTE_ID,
-    criptoBase: { symbol: 'BTC' },
-    criptoQuote: { symbol: 'USDT' },
+    currentPrice: '100',
+    feePercent: 1, // 1%
+    baseCryptoId: CRIPTO_BASE_ID,
+    quoteCryptoId: CRIPTO_QUOTE_ID,
+    baseCrypto: { symbol: 'BTC' },
+    quoteCrypto: { symbol: 'USDT' },
   });
 
   User.findByPk.mockResolvedValue({ active: true, dailyLimitUsd });
-  IntercambioExchange.getDailyVolume.mockResolvedValue(dailyVolume);
-  IntercambioExchange.create.mockImplementation(async (data) => ({
+  Swap.getDailyVolume.mockResolvedValue(dailyVolume);
+  Swap.create.mockImplementation(async (data) => ({
     ...data,
     id: 'order-1',
     toJSON: () => data,
@@ -115,29 +115,29 @@ function setupCommonMocks({ dailyLimitUsd = 1000000, dailyVolume = 0 } = {}) {
 describe('createOrder', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  test('tipo "compra" debita quote y acredita base (no al revés)', async () => {
+  test('type "buy" debita quote y acredita base (no al revés)', async () => {
     setupCommonMocks();
     // Balance quote suficiente para pagar 1 BTC * 100 + 1% comisión = 101
     UserBalance.getCompartmentBalance.mockResolvedValue({ available: '200', blocked: '0', pending: '0' });
 
-    const req = { user: { id: USER_ID }, body: { parId: PAR_ID, tipo: 'compra', cantidadBase: 1 } };
+    const req = { user: { id: USER_ID }, body: { pairId: PAR_ID, type: 'buy', baseAmount: 1 } };
     const res = mockRes();
 
     await createOrder(req, res);
 
     expect(res.statusCode).toBe(201);
-    expect(res.body.data.tipo).toBe('compra');
+    expect(res.body.data.type).toBe('buy');
 
     // Comprar: settleSwap recibe requiredQuote (valor+comisión) en quote y
-    // cantidadBase en base — la dirección correcta del swap.
+    // baseAmount en base — la dirección correcta del swap.
     expect(settleSwap).toHaveBeenCalledWith(
       expect.objectContaining({
-        usuarioId: USER_ID,
-        criptoQuoteId: CRIPTO_QUOTE_ID,
-        criptoBaseId: CRIPTO_BASE_ID,
-        tipo: 'compra',
-        cantidadQuote: '100',
-        comisionMonto: '1',
+        userId: USER_ID,
+        quoteCryptoId: CRIPTO_QUOTE_ID,
+        baseCryptoId: CRIPTO_BASE_ID,
+        type: 'buy',
+        quoteAmount: '100',
+        feeAmount: '1',
         requiredQuote: '101',
         compartimento: 'funding',
       }),
@@ -145,28 +145,28 @@ describe('createOrder', () => {
     );
   });
 
-  test('tipo "venta" debita base y acredita quote', async () => {
+  test('type "sell" debita base y acredita quote', async () => {
     setupCommonMocks();
     UserBalance.getCompartmentBalance.mockResolvedValue({ available: '200', blocked: '0', pending: '0' });
 
-    const req = { user: { id: USER_ID }, body: { parId: PAR_ID, tipo: 'venta', cantidadBase: 1 } };
+    const req = { user: { id: USER_ID }, body: { pairId: PAR_ID, type: 'sell', baseAmount: 1 } };
     const res = mockRes();
 
     await createOrder(req, res);
 
     expect(res.statusCode).toBe(201);
-    expect(res.body.data.tipo).toBe('venta');
+    expect(res.body.data.type).toBe('sell');
 
-    // Vender: settleSwap recibe cantidadBase en base y netQuote (valor−comisión)
+    // Vender: settleSwap recibe baseAmount en base y netQuote (valor−comisión)
     // en quote.
     expect(settleSwap).toHaveBeenCalledWith(
       expect.objectContaining({
-        usuarioId: USER_ID,
-        criptoBaseId: CRIPTO_BASE_ID,
-        criptoQuoteId: CRIPTO_QUOTE_ID,
-        tipo: 'venta',
-        cantidadQuote: '100',
-        comisionMonto: '1',
+        userId: USER_ID,
+        baseCryptoId: CRIPTO_BASE_ID,
+        quoteCryptoId: CRIPTO_QUOTE_ID,
+        type: 'sell',
+        quoteAmount: '100',
+        feeAmount: '1',
         netQuote: '99',
         compartimento: 'funding',
       }),
@@ -178,11 +178,11 @@ describe('createOrder', () => {
     const transaction = setupCommonMocks();
     UserBalance.getCompartmentBalance.mockResolvedValue({ available: '200', blocked: '0', pending: '0' });
 
-    const req = { user: { id: USER_ID }, body: { parId: PAR_ID, tipo: 'venta', cantidadBase: 1 } };
+    const req = { user: { id: USER_ID }, body: { pairId: PAR_ID, type: 'sell', baseAmount: 1 } };
     await createOrder(req, mockRes());
 
     expect(settleSwap).toHaveBeenCalledWith(
-      expect.objectContaining({ comisionMonto: '1', tipo: 'venta' }),
+      expect.objectContaining({ feeAmount: '1', type: 'sell' }),
       transaction
     );
   });
@@ -193,11 +193,11 @@ describe('createOrder', () => {
     setupCommonMocks({ dailyLimitUsd: 50, dailyVolume: 0 });
     UserBalance.getCompartmentBalance.mockResolvedValue({ available: '200', blocked: '0', pending: '0' });
 
-    // cantidadQuote = 1 * 100 = 100, supera el límite de 50
+    // quoteAmount = 1 * 100 = 100, supera el límite de 50
     const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
     const res = await request(buildCreateOrderApp())
       .post('/')
-      .send({ parId: PAR_ID, tipo: 'venta', cantidadBase: 1 });
+      .send({ pairId: PAR_ID, type: 'sell', baseAmount: 1 });
     spy.mockRestore();
 
     expect(res.status).toBe(400);
@@ -210,10 +210,10 @@ describe('checkTransactionLimit', () => {
   beforeEach(() => jest.clearAllMocks());
 
   test('usa req.user.id (no req.usuario.id) y no revienta', async () => {
-    IntercambioExchange.getDailyVolume.mockResolvedValue(0);
+    Swap.getDailyVolume.mockResolvedValue(0);
     User.findByPk.mockResolvedValue({ dailyLimitUsd: 1000 });
 
-    const req = { user: { id: USER_ID }, body: { cantidadQuote: 100 } };
+    const req = { user: { id: USER_ID }, body: { quoteAmount: 100 } };
     const res = mockRes();
 
     await checkTransactionLimit(req, res);
@@ -226,12 +226,12 @@ describe('checkTransactionLimit', () => {
     // Migrated to HTTP layer: checkTransactionLimit now throws AppError instead
     // of responding directly. The canTransact:false field has been replaced by
     // the canonical error envelope in the 400 response.
-    IntercambioExchange.getDailyVolume.mockResolvedValue(950);
+    Swap.getDailyVolume.mockResolvedValue(950);
     User.findByPk.mockResolvedValue({ dailyLimitUsd: 1000 });
 
     const res = await request(buildCheckLimitApp())
       .post('/check-limit')
-      .send({ cantidadQuote: 100 });
+      .send({ quoteAmount: 100 });
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('EXCHANGE_DAILY_LIMIT_EXCEEDED');

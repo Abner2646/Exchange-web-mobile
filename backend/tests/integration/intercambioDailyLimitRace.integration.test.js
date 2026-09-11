@@ -13,7 +13,7 @@ const request = require('supertest');
 const app = require('../../app');
 const { sequelize, resetDb } = require('../helpers/db');
 const f = require('../helpers/factories');
-const { IntercambioExchange } = require('../../models');
+const { Swap } = require('../../models');
 
 let idem = 0;
 const idemKey = () => `idem-${Date.now()}-${idem++}`;
@@ -21,7 +21,7 @@ const idemKey = () => `idem-${Date.now()}-${idem++}`;
 beforeEach(async () => { await resetDb(); });
 afterAll(async () => { await sequelize.close(); });
 
-// BTC/USDT precio 100, comisión 1%. Compra 1 BTC → cantidadQuote 100 (lo que
+// BTC/USDT price 100, comisión 1%. Compra 1 BTC → quoteAmount 100 (lo que
 // cuenta para el límite diario), requiredQuote 101. dailyLimitUsd = 100: un
 // swap pasa (100 <= 100), dos lo exceden (200 > 100). Saldo holgado (250) para
 // que lo único que frene al segundo sea el límite diario, no el saldo.
@@ -29,7 +29,7 @@ async function seedScenario() {
   const user = await f.seedUser({ dailyLimitUsd: 100 });
   const btc = await f.seedCripto('BTC');
   const usdt = await f.seedCripto('USDT');
-  const par = await f.seedPar({ base: btc, quote: usdt, precio: '100', comision: '1' });
+  const par = await f.seedPar({ base: btc, quote: usdt, price: '100', comision: '1' });
   await f.seedWalletMaestra(btc);
   await f.seedWalletMaestra(usdt);
   await f.seedBalance(user, usdt, '250');
@@ -44,7 +44,7 @@ describe('swap daily limit under concurrency (real Postgres)', () => {
       .post('/api/intercambioExchange/')
       .set(f.authHeader(user))
       .set('Idempotency-Key', idemKey())
-      .send({ parId: par.id, tipo: 'compra', cantidadBase: 1 });
+      .send({ pairId: par.id, type: 'buy', baseAmount: 1 });
 
     const results = await Promise.all([fire(), fire()]);
     const statuses = results.map((r) => r.status).sort((a, b) => a - b);
@@ -56,9 +56,9 @@ describe('swap daily limit under concurrency (real Postgres)', () => {
     expect(rejected.body.error.code).toBe('EXCHANGE_DAILY_LIMIT_EXCEEDED');
 
     // Exactamente un swap liquidó; el volumen diario queda dentro del límite.
-    const volume = await IntercambioExchange.getDailyVolume(user.id, new Date());
+    const volume = await Swap.getDailyVolume(user.id, new Date());
     expect(volume).toBe(100);
-    // 250 - 101 (una sola compra: cantidadQuote 100 + comisión 1).
+    // 250 - 101 (una sola buy: quoteAmount 100 + comisión 1).
     expect((await f.getBalance(user, usdt)).availableBalance).toBe('149.00000000');
   }, 20000);
 });

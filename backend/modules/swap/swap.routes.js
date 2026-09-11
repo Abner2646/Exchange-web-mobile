@@ -3,11 +3,11 @@
 
 const express = require('express');
 const router = express.Router();
-const intercambioController = require('../controllers/intercambioExchange.controller');
-const { authenticateToken, requireEmailVerified } = require('../middleware/authMiddleware');
-const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware');
-const idempotency = require('../middleware/idempotency.middleware');
-const asyncHandler = require('../utils/asyncHandler');
+const intercambioController = require('./swap.controller');
+const { authenticateToken, requireEmailVerified } = require('../../middleware/authMiddleware');
+const { isAdmin, isSuperAdmin } = require('../../middleware/adminMiddleware');
+const idempotency = require('../../middleware/idempotency.middleware');
+const asyncHandler = require('../../utils/asyncHandler');
 
 // ================================
 // RUTAS PÚBLICAS
@@ -15,13 +15,13 @@ const asyncHandler = require('../utils/asyncHandler');
 
 /**
  * @openapi
- * /intercambioExchange/pairs/{parId}/price-history:
+ * /intercambioExchange/pairs/{pairId}/price-history:
  *   get:
  *     tags: [Exchange (swap)]
  *     summary: Historial de precios de un par (público)
  *     security: []
  *     parameters:
- *       - { in: path, name: parId, required: true, schema: { type: string, format: uuid } }
+ *       - { in: path, name: pairId, required: true, schema: { type: string, format: uuid } }
  *       - { in: query, name: fechaDesde, schema: { type: string, format: date-time } }
  *       - { in: query, name: fechaHasta, schema: { type: string, format: date-time } }
  *       - { in: query, name: limit, schema: { type: integer, default: 1000 } }
@@ -29,38 +29,38 @@ const asyncHandler = require('../utils/asyncHandler');
  *     responses:
  *       200: { description: Serie de precios }
  */
-router.get('/pairs/:parId/price-history', asyncHandler(intercambioController.getPriceHistory));
+router.get('/pairs/:pairId/price-history', asyncHandler(intercambioController.getPriceHistory));
 
 /**
  * @openapi
- * /intercambioExchange/pairs/{parId}/last-price:
+ * /intercambioExchange/pairs/{pairId}/last-price:
  *   get:
  *     tags: [Exchange (swap)]
  *     summary: Último precio de un par (público)
  *     security: []
  *     parameters:
- *       - { in: path, name: parId, required: true, schema: { type: string, format: uuid } }
+ *       - { in: path, name: pairId, required: true, schema: { type: string, format: uuid } }
  *     responses:
  *       200: { description: Último precio }
  */
-router.get('/pairs/:parId/last-price', asyncHandler(intercambioController.getLastPrice));
+router.get('/pairs/:pairId/last-price', asyncHandler(intercambioController.getLastPrice));
 
 /**
  * @openapi
- * /intercambioExchange/pairs/{parId}/volume:
+ * /intercambioExchange/pairs/{pairId}/volume:
  *   get:
  *     tags: [Exchange (swap)]
  *     summary: Volumen operado de un par (público)
  *     security: []
  *     parameters:
- *       - { in: path, name: parId, required: true, schema: { type: string, format: uuid } }
+ *       - { in: path, name: pairId, required: true, schema: { type: string, format: uuid } }
  *       - { in: query, name: fechaDesde, schema: { type: string, format: date-time } }
  *       - { in: query, name: fechaHasta, schema: { type: string, format: date-time } }
- *       - { in: query, name: estado, schema: { type: string } }
+ *       - { in: query, name: status, schema: { type: string } }
  *     responses:
  *       200: { description: Volumen }
  */
-router.get('/pairs/:parId/volume', asyncHandler(intercambioController.getVolumeByPair));
+router.get('/pairs/:pairId/volume', asyncHandler(intercambioController.getVolumeByPair));
 
 // ================================
 // RUTAS AUTENTICADAS (JWT + email verificado)
@@ -82,11 +82,11 @@ router.use(authenticateToken, requireEmailVerified);
  *         application/json:
  *           schema:
  *             type: object
- *             required: [parId, tipo, cantidadBase]
+ *             required: [pairId, type, baseAmount]
  *             properties:
- *               parId: { type: string, format: uuid }
- *               tipo: { type: string, enum: [compra, venta] }
- *               cantidadBase: { type: number, example: 0.5 }
+ *               pairId: { type: string, format: uuid }
+ *               type: { type: string, enum: [buy, sell] }
+ *               baseAmount: { type: number, example: 0.5 }
  *               compartimento: { type: string, enum: [funding, spot], default: funding }
  *     responses:
  *       201: { description: Swap ejecutado }
@@ -108,11 +108,11 @@ router.post('/', idempotency, asyncHandler(intercambioController.createOrder));
  *         application/json:
  *           schema:
  *             type: object
- *             required: [parId, cantidadBase, tipo]
+ *             required: [pairId, baseAmount, type]
  *             properties:
- *               parId: { type: string, format: uuid }
- *               cantidadBase: { type: number, example: 0.5 }
- *               tipo: { type: string, enum: [compra, venta] }
+ *               pairId: { type: string, format: uuid }
+ *               baseAmount: { type: number, example: 0.5 }
+ *               type: { type: string, enum: [buy, sell] }
  *     responses:
  *       200: { description: Cálculo del swap (montos como strings) }
  *       400: { $ref: '#/components/responses/BadRequest' }
@@ -131,9 +131,9 @@ router.post('/calculate', asyncHandler(intercambioController.calculateExchange))
  *         application/json:
  *           schema:
  *             type: object
- *             required: [cantidadQuote]
+ *             required: [quoteAmount]
  *             properties:
- *               cantidadQuote: { type: number, example: 1000.50 }
+ *               quoteAmount: { type: number, example: 1000.50 }
  *     responses:
  *       200: { description: Resultado del chequeo de límite }
  *       400: { $ref: '#/components/responses/BadRequest' }
@@ -147,11 +147,11 @@ router.post('/check-limit', asyncHandler(intercambioController.checkTransactionL
  *     tags: [Exchange (swap)]
  *     summary: Mis intercambios
  *     parameters:
- *       - { in: query, name: tipo, schema: { type: string, enum: [compra, venta] } }
- *       - { in: query, name: estado, schema: { type: string } }
+ *       - { in: query, name: type, schema: { type: string, enum: [buy, sell] } }
+ *       - { in: query, name: status, schema: { type: string } }
  *       - { in: query, name: limit, schema: { type: integer, default: 50 } }
  *       - { in: query, name: offset, schema: { type: integer, default: 0 } }
- *       - { in: query, name: parId, schema: { type: string, format: uuid } }
+ *       - { in: query, name: pairId, schema: { type: string, format: uuid } }
  *     responses:
  *       200: { description: Lista de intercambios del usuario }
  *       401: { $ref: '#/components/responses/Unauthorized' }
@@ -214,9 +214,9 @@ router.use(isAdmin);
  *     tags: [Exchange (swap) - admin]
  *     summary: Listar todos los intercambios (admin)
  *     parameters:
- *       - { in: query, name: estado, schema: { type: string } }
- *       - { in: query, name: tipo, schema: { type: string, enum: [compra, venta] } }
- *       - { in: query, name: usuarioId, schema: { type: string, format: uuid } }
+ *       - { in: query, name: status, schema: { type: string } }
+ *       - { in: query, name: type, schema: { type: string, enum: [buy, sell] } }
+ *       - { in: query, name: userId, schema: { type: string, format: uuid } }
  *       - { in: query, name: limit, schema: { type: integer, default: 50 } }
  *       - { in: query, name: offset, schema: { type: integer, default: 0 } }
  *     responses:
@@ -280,7 +280,7 @@ router.get('/:id', asyncHandler(intercambioController.getIntercambioById));
  *             type: object
  *             required: [newStatus]
  *             properties:
- *               newStatus: { type: string, example: completado }
+ *               newStatus: { type: string, example: completed }
  *     responses:
  *       200: { description: Estado actualizado }
  *       400: { $ref: '#/components/responses/BadRequest' }
@@ -308,7 +308,7 @@ router.get('/analytics/top-traders', asyncHandler(intercambioController.getTopTr
  *     tags: [Exchange (swap) - admin]
  *     summary: Resumen de mercado (admin)
  *     parameters:
- *       - { in: query, name: parId, schema: { type: string, format: uuid } }
+ *       - { in: query, name: pairId, schema: { type: string, format: uuid } }
  *     responses:
  *       200: { description: Resumen de mercado }
  */

@@ -5,9 +5,9 @@ const { Router } = require('express');
 const router = Router();
 
 // Importa el controlador de pares de exchange
-const parExchangeController = require('../controllers/parExchange.controller.js');
-const { authenticateToken } = require('../middleware/authMiddleware.js');
-const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
+const parExchangeController = require('./swapPair.controller.js');
+const { authenticateToken } = require('../../middleware/authMiddleware.js');
+const { isAdmin, isSuperAdmin } = require('../../middleware/adminMiddleware.js');
 
 /**
  * @openapi
@@ -22,7 +22,7 @@ const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
  *       required: true
  *       content:
  *         application/json:
- *           schema: { type: object, required: [criptoBaseId, criptoQuoteId], properties: { criptoBaseId: { type: string, format: uuid }, criptoQuoteId: { type: string, format: uuid }, comisionPorcentaje: { type: number }, simboloExterno: { type: string } } }
+ *           schema: { type: object, required: [baseCryptoId, quoteCryptoId], properties: { baseCryptoId: { type: string, format: uuid }, quoteCryptoId: { type: string, format: uuid }, feePercent: { type: number }, externalSymbol: { type: string } } }
  *     responses: { 201: { description: Par creado } }
  * /parExchange/{id}:
  *   get:
@@ -51,19 +51,19 @@ const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
  *       - { in: path, name: baseSymbol, required: true, schema: { type: string } }
  *       - { in: path, name: quoteSymbol, required: true, schema: { type: string } }
  *     responses: { 200: { description: Precio } }
- * /parExchange/base/{criptoBaseId}:
+ * /parExchange/base/{baseCryptoId}:
  *   get:
  *     tags: [Pares de Exchange (swap)]
  *     summary: Pares por cripto base (público)
  *     security: []
- *     parameters: [{ in: path, name: criptoBaseId, required: true, schema: { type: string, format: uuid } }]
+ *     parameters: [{ in: path, name: baseCryptoId, required: true, schema: { type: string, format: uuid } }]
  *     responses: { 200: { description: Pares } }
- * /parExchange/quote/{criptoQuoteId}:
+ * /parExchange/quote/{quoteCryptoId}:
  *   get:
  *     tags: [Pares de Exchange (swap)]
  *     summary: Pares por cripto quote (público)
  *     security: []
- *     parameters: [{ in: path, name: criptoQuoteId, required: true, schema: { type: string, format: uuid } }]
+ *     parameters: [{ in: path, name: quoteCryptoId, required: true, schema: { type: string, format: uuid } }]
  *     responses: { 200: { description: Pares } }
  * /parExchange/status/active:
  *   get: { tags: [Pares de Exchange (swap)], summary: Pares activos (público), security: [], responses: { 200: { description: Pares activos } } }
@@ -90,10 +90,10 @@ router.get('/:id', parExchangeController.getParExchangeById); // Bien
 router.post('/', isSuperAdmin, parExchangeController.createParExchange); // Bien
 /*
 {
-"criptoBaseId":""
-"criptoQuoteId":""
-"comisionPorcentaje":""
-"simboloExterno":""
+"baseCryptoId":""
+"quoteCryptoId":""
+"feePercent":""
+"externalSymbol":""
 }
 */
 
@@ -108,10 +108,10 @@ router.get('/symbols/:baseSymbol/:quoteSymbol', parExchangeController.getParBySy
 router.get('/price/:baseSymbol/:quoteSymbol', parExchangeController.getCurrentPrice);
 
 // Obtener pares por crypto base
-router.get('/base/:criptoBaseId', parExchangeController.getParesByBaseCrypto);
+router.get('/base/:baseCryptoId', parExchangeController.getParesByBaseCrypto);
 
 // Obtener pares por crypto quote
-router.get('/quote/:criptoQuoteId', parExchangeController.getParesByQuoteCrypto);
+router.get('/quote/:quoteCryptoId', parExchangeController.getParesByQuoteCrypto);
 
 // Obtener solo pares activos
 router.get('/status/active', parExchangeController.getActiveExchangePairs);

@@ -10,12 +10,12 @@ const userBalanceModel = require('../modules/balances/userBalance.model');
 const createBlockchainStateModel = require('../modules/wallets/blockchainState.model');
 const cryptoModel = require('../modules/crypto/crypto.model.js');
 const direccionDepositoModel = require('../modules/wallets/depositAddress.model');
-const intercambioExchangeModel = require('./intercambioExchange.model');
+const intercambioExchangeModel = require('../modules/swap/swap.model');
 const metodoPagoModel = require('./metodoPago.model');
 const notificacionesModel = require('./notificaciones.model');
 const ofertaMetodoPagoModel = require('./ofertaMetodoPago.model');
 const ofertaP2PModel = require('./ofertaP2P.model');
-const parExchangeModel = require('./parExchange.model');
+const parExchangeModel = require('../modules/swap/swapPair.model');
 const transaccionBlockchainModel = require('../modules/wallets/blockchainTransaction.model');
 const transaccionP2PModel = require('./transaccionesP2P.model');
 const transferModel = require('../modules/balances/transfer.model')
@@ -62,12 +62,12 @@ const UserBalance = userBalanceModel(sequelize);
 const BlockchainState = createBlockchainStateModel(sequelize);
 const Crypto = cryptoModel(sequelize);
 const DepositAddress = direccionDepositoModel(sequelize);
-const IntercambioExchange = intercambioExchangeModel(sequelize);
+const Swap = intercambioExchangeModel(sequelize);
 const MetodoPago = metodoPagoModel(sequelize);
 const Notificaciones = notificacionesModel(sequelize);
 const OfertaMetodoPago = ofertaMetodoPagoModel(sequelize);
 const OfertaP2P = ofertaP2PModel(sequelize);  
-const ParExchange = parExchangeModel(sequelize);
+const SwapPair = parExchangeModel(sequelize);
 const BlockchainTransaction = transaccionBlockchainModel(sequelize);
 const TransaccionP2P = transaccionP2PModel(sequelize);
 const Transfer = transferModel(sequelize);
@@ -124,8 +124,8 @@ TransaccionP2P.belongsTo(User, { foreignKey: 'vendedorId', as: 'vendedor' });
 
 
 // User puede hacer muchos intercambios con el exchange
-User.hasMany(IntercambioExchange, { foreignKey: 'usuarioId', as: 'intercambios' });
-IntercambioExchange.belongsTo(User, { foreignKey: 'usuarioId', as: 'usuario' });
+User.hasMany(Swap, { foreignKey: 'userId', as: 'swaps' });
+Swap.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
 // User puede evaluar a otros usuarios
 User.hasMany(Valoracion, { foreignKey: 'usuarioEvaluadorId', as: 'valoracionesDadas' });
@@ -180,12 +180,12 @@ Crypto.hasMany(TransaccionP2P, { foreignKey: 'criptomonedaId', as: 'transaccione
 TransaccionP2P.belongsTo(Crypto, { foreignKey: 'criptomonedaId', as: 'crypto' });
 
 // Crypto puede ser base en pares de exchange
-Crypto.hasMany(ParExchange, { foreignKey: 'criptoBaseId', as: 'paresComoBase' });
-ParExchange.belongsTo(Crypto, { foreignKey: 'criptoBaseId', as: 'criptoBase' });
+Crypto.hasMany(SwapPair, { foreignKey: 'baseCryptoId', as: 'pairsAsBase' });
+SwapPair.belongsTo(Crypto, { foreignKey: 'baseCryptoId', as: 'baseCrypto' });
 
 // Crypto puede ser quote en pares de exchange
-Crypto.hasMany(ParExchange, { foreignKey: 'criptoQuoteId', as: 'paresComoQuote' });
-ParExchange.belongsTo(Crypto, { foreignKey: 'criptoQuoteId', as: 'criptoQuote' });
+Crypto.hasMany(SwapPair, { foreignKey: 'quoteCryptoId', as: 'pairsAsQuote' });
+SwapPair.belongsTo(Crypto, { foreignKey: 'quoteCryptoId', as: 'quoteCrypto' });
 
 // Crypto puede estar en transacciones blockchain
 Crypto.hasMany(BlockchainTransaction, { foreignKey: 'cryptoId', as: 'blockchainTransactions' });
@@ -204,8 +204,8 @@ TradingPair.belongsTo(Crypto, { foreignKey: 'quoteAssetId', as: 'quoteAsset' });
 // ================================
 
 // Par exchange puede tener muchos intercambios
-ParExchange.hasMany(IntercambioExchange, { foreignKey: 'parId', as: 'intercambios' });
-IntercambioExchange.belongsTo(ParExchange, { foreignKey: 'parId', as: 'par' });
+SwapPair.hasMany(Swap, { foreignKey: 'pairId', as: 'swaps' });
+Swap.belongsTo(SwapPair, { foreignKey: 'pairId', as: 'pair' });
 
 // ================================
 // 🆕 RELACIONES DE TRADING
@@ -322,12 +322,12 @@ module.exports = {
   BlockchainState,
   Crypto,
   DepositAddress,
-  IntercambioExchange,
+  Swap,
   MetodoPago,
   Notificaciones,
   OfertaMetodoPago,
   OfertaP2P,
-  ParExchange,
+  SwapPair,
   BlockchainTransaction,
   TransaccionP2P,
   Transfer,

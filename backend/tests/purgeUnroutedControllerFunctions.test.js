@@ -8,7 +8,7 @@
 // reintrodujo a medias.
 
 describe('parExchange.controller.js ya no exporta las 13 funciones sin ruta (CÃ³digo muerto #7)', () => {
-  const controller = require('../controllers/parExchange.controller.js');
+  const controller = require('../modules/swap/swapPair.controller.js');
   const dead = [
     'updateParExchange', 'deleteParExchange', 'getParExchangeStats',
     'updateParStatus', 'toggleParStatus', 'updateParPrice',
@@ -75,7 +75,7 @@ describe('direccionDeposito.controller.js ya no exporta cleanupTestAddresses (CÃ
 describe('Los routers siguen registrando sus rutas activas sin errores', () => {
   test('parExchange.routes.js monta sin lanzar', () => {
     jest.isolateModules(() => {
-      expect(() => require('../routes/parExchange.routes.js')).not.toThrow();
+      expect(() => require('../modules/swap/swapPair.routes.js')).not.toThrow();
     });
   });
 
