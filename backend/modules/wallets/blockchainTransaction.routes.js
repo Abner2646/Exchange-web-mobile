@@ -1,18 +1,18 @@
 // routes/transaccionBlockchain.routes.js
 const express = require('express');
 const router = express.Router();
-const transaccionBlockchainController = require('../controllers/transaccionBlockchain.controller');
-const {authenticateToken, requireEmailVerified, requireRole} = require('../middleware/authMiddleware');
+const transaccionBlockchainController = require('./blockchainTransaction.controller');
+const {authenticateToken, requireEmailVerified, requireRole} = require('../../middleware/authMiddleware');
 // Antes apuntaba por error a rateLimit.middleware (mismo módulo que
 // rateLimitMiddleware) — validateUUID nunca existió ahí, solo en
 // validation.middleware.js. Ver AUDITORIA_BACKEND.md Altos #11.
-const validationMiddleware = require('../middleware/validation.middleware');
-const rateLimitMiddleware = require('../middleware/rateLimit.middleware');
-const { joiValidate } = require('../middleware/joiValidate.middleware');
-const transaccionBlockchainSchema = require('../schemas/transaccionBlockchain.schema');
-const idempotency = require('../middleware/idempotency.middleware');
-const requireOperatorMFA = require('../middleware/operatorMFA.middleware');
-const asyncHandler = require('../utils/asyncHandler');
+const validationMiddleware = require('../../middleware/validation.middleware');
+const rateLimitMiddleware = require('../../middleware/rateLimit.middleware');
+const { joiValidate } = require('../../middleware/joiValidate.middleware');
+const transaccionBlockchainSchema = require('./blockchainTransaction.schema');
+const idempotency = require('../../middleware/idempotency.middleware');
+const requireOperatorMFA = require('../../middleware/operatorMFA.middleware');
+const asyncHandler = require('../../utils/asyncHandler');
 
 // =================== RUTAS PÚBLICAS (con auth) ===================
 

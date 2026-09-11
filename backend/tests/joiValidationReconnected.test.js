@@ -22,13 +22,13 @@ jest.mock('../modules/users/user.controller.js', () => {
   const ok = (req, res) => res.json({ success: true, body: req.body });
   return new Proxy({}, { get: () => ok });
 });
-jest.mock('../controllers/transaccionBlockchain.controller', () => {
+jest.mock('../modules/wallets/blockchainTransaction.controller', () => {
   const ok = (req, res) => res.json({ success: true, body: req.body });
   return new Proxy({}, { get: () => ok });
 });
 
-test('schemas/transaccionBlockchain.schema.js carga sin lanzar (antes crasheaba por .uuid({version: 4}))', () => {
-  expect(() => require('../schemas/transaccionBlockchain.schema')).not.toThrow();
+test('modules/wallets/blockchainTransaction.schema.js carga sin lanzar (antes crasheaba por .uuid({version: 4}))', () => {
+  expect(() => require('../modules/wallets/blockchainTransaction.schema')).not.toThrow();
 });
 
 describe('POST /usuario/login valida el body con Joi antes del controller', () => {
@@ -81,7 +81,7 @@ describe('POST /transaccionBlockchain/withdraw valida el body con Joi antes del 
   const { User } = require('../models');
   const express = require('express');
   const request = require('supertest');
-  const transaccionBlockchainRoutes = require('../routes/transaccionBlockchain.routes');
+  const transaccionBlockchainRoutes = require('../modules/wallets/blockchainTransaction.routes');
 
   function buildApp() {
     const app = express();

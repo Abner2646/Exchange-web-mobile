@@ -12,8 +12,8 @@ const ecc = require('tiny-secp256k1');
 const { ethers } = require('ethers');
 
 const bip32 = BIP32Factory(ecc);
-const createDireccionDepositoModel = require('../models/direccionDeposito.model');
-const { WalletSetupGenerator } = require('../controllers/setupWallets.controller');
+const createDireccionDepositoModel = require('../modules/wallets/depositAddress.model');
+const { WalletSetupGenerator } = require('../modules/wallets/setupWallets.controller');
 
 // Sequelize nunca llega a conectar: Model.init() no requiere una conexión real,
 // solo un dialecto válido.

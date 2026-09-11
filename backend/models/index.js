@@ -7,21 +7,21 @@ const dbConfig = config[env];
 
 // Import models
 const userBalanceModel = require('../modules/balances/userBalance.model');
-const createBlockchainStateModel = require('./blockchainState.model');
+const createBlockchainStateModel = require('../modules/wallets/blockchainState.model');
 const cryptoModel = require('../modules/crypto/crypto.model.js');
-const direccionDepositoModel = require('./direccionDeposito.model');
+const direccionDepositoModel = require('../modules/wallets/depositAddress.model');
 const intercambioExchangeModel = require('./intercambioExchange.model');
 const metodoPagoModel = require('./metodoPago.model');
 const notificacionesModel = require('./notificaciones.model');
 const ofertaMetodoPagoModel = require('./ofertaMetodoPago.model');
 const ofertaP2PModel = require('./ofertaP2P.model');
 const parExchangeModel = require('./parExchange.model');
-const transaccionBlockchainModel = require('./transaccionBlockchain.model');
+const transaccionBlockchainModel = require('../modules/wallets/blockchainTransaction.model');
 const transaccionP2PModel = require('./transaccionesP2P.model');
 const transferModel = require('../modules/balances/transfer.model')
 const userModel = require('../modules/users/user.model');
 const valoracionModel = require('./valoracion.model');
-const walletMaestraModel = require('./walletMaestra.model');
+const walletMaestraModel = require('../modules/wallets/masterWallet.model');
 
 // TRADING MODELS
 const tradingPairModel = require('./tradingPair.model.js');

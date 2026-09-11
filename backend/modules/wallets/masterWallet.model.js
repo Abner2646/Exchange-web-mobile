@@ -1,8 +1,8 @@
 // models/walletMaestra.model.js
-const initWalletMaestra = require('./entities/walletMaestra.entity');
+const initWalletMaestra = require('./masterWallet.entity');
 const { Op, Transaction } = require('sequelize');
 const crypto = require('crypto');
-const money = require('../utils/money');
+const money = require('../../utils/money');
 
 function createWalletMaestraModel(sequelize) {
   const MasterWallet = initWalletMaestra(sequelize);

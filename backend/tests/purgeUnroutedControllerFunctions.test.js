@@ -31,7 +31,7 @@ describe('parExchange.controller.js ya no exporta las 13 funciones sin ruta (Có
 });
 
 describe('walletMaestra.controller.js ya no exporta las 19 funciones sin ruta (Código muerto #8)', () => {
-  const controller = require('../controllers/walletMaestra.controller.js');
+  const controller = require('../modules/wallets/masterWallet.controller.js');
   const dead = [
     'updateWalletMaestra', 'deleteWalletMaestra', 'searchWalletsMaestras',
     'getWalletByAddress', 'getWalletByXpub', 'getLowBalanceWallets',
@@ -59,13 +59,13 @@ describe('walletMaestra.controller.js ya no exporta las 19 funciones sin ruta (C
 describe('MasterWallet.consolidateFunds (model) ya no existe (huérfano tras borrar su único caller)', () => {
   test('el modelo ya no expone consolidateFunds', () => {
     const fs = require('fs');
-    const source = fs.readFileSync(require.resolve('../models/walletMaestra.model.js'), 'utf8');
+    const source = fs.readFileSync(require.resolve('../modules/wallets/masterWallet.model.js'), 'utf8');
     expect(source).not.toMatch(/MasterWallet\.consolidateFunds\s*=/);
   });
 });
 
 describe('direccionDeposito.controller.js ya no exporta cleanupTestAddresses (Código muerto #9)', () => {
-  const controller = require('../controllers/direccionDeposito.controller.js');
+  const controller = require('../modules/wallets/depositAddress.controller.js');
 
   test('cleanupTestAddresses (dirección hardcodeada, sin ruta) ya no está exportada', () => {
     expect(controller.cleanupTestAddresses).toBeUndefined();
@@ -81,13 +81,13 @@ describe('Los routers siguen registrando sus rutas activas sin errores', () => {
 
   test('walletMaestra.routes.js monta sin lanzar', () => {
     jest.isolateModules(() => {
-      expect(() => require('../routes/walletMaestra.routes.js')).not.toThrow();
+      expect(() => require('../modules/wallets/masterWallet.routes.js')).not.toThrow();
     });
   });
 
   test('setupWallets.routes.js monta sin lanzar (Código muerto #14: rutas comentadas apuntaban a funciones inexistentes)', () => {
     jest.isolateModules(() => {
-      expect(() => require('../routes/setupWallets.routes.js')).not.toThrow();
+      expect(() => require('../modules/wallets/setupWallets.routes.js')).not.toThrow();
     });
   });
 });

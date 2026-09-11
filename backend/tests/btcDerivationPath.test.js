@@ -24,7 +24,7 @@ describe('WalletSetupGenerator.getBTCWalletFromEnv', () => {
   });
 
   test('el derivationPath devuelto es el que realmente se usó para derivar (BIP44), no BIP84', () => {
-    const { WalletSetupGenerator } = require('../controllers/setupWallets.controller');
+    const { WalletSetupGenerator } = require('../modules/wallets/setupWallets.controller');
     const walletData = WalletSetupGenerator.getBTCWalletFromEnv();
 
     // BIP44 testnet, no BIP84 (que es lo que dice CRIPTOMONEDAS_BASICAS)
@@ -33,7 +33,7 @@ describe('WalletSetupGenerator.getBTCWalletFromEnv', () => {
   });
 
   test('re-derivar a mano con el path devuelto reproduce el mismo publicKey (el metadato es honesto)', () => {
-    const { WalletSetupGenerator } = require('../controllers/setupWallets.controller');
+    const { WalletSetupGenerator } = require('../modules/wallets/setupWallets.controller');
     const bip32 = require('bip32').BIP32Factory(require('tiny-secp256k1'));
     const bitcoin = require('bitcoinjs-lib');
 

@@ -26,7 +26,7 @@ process.env.BSC_TESTNET_RPC_URL = 'https://example-testnet-rpc.invalid';
 process.env.BNB_TESTNET_PRIVATE_KEY = 'a'.repeat(64);
 process.env.ETHERSCAN_API_KEY = 'fake-key';
 
-const BscService = require('../services/blockchain/bsc.service');
+const BscService = require('../modules/wallets/blockchain/bsc.service');
 
 describe('BscService.scanWithEtherscanV2API', () => {
   test('escanea desde el último bloque procesado directo, sin retroceder 10k bloques', async () => {

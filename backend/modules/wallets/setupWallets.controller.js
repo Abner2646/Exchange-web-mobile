@@ -1,5 +1,5 @@
 // controllers/setupWallets.controller.js
-const { MasterWallet, Crypto, sequelize } = require('../models');
+const { MasterWallet, Crypto, sequelize } = require('../../models');
 const bip39 = require('bip39');
 const bitcoin = require('bitcoinjs-lib');
 const ecc = require('tiny-secp256k1');

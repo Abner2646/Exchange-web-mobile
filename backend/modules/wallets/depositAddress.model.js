@@ -1,6 +1,6 @@
 // models/direccionDeposito.model.js - Versión completa con correcciones para direcciones únicas por usuario
 require('dotenv').config();
-const initDireccionDeposito = require('./entities/direccionDeposito.entity');
+const initDireccionDeposito = require('./depositAddress.entity');
 const { Op, Transaction } = require('sequelize');
 const crypto = require('crypto');
 const { ethers } = require('ethers');

@@ -2,12 +2,12 @@
 require('dotenv').config();
 const bitcoin = require('bitcoinjs-lib');
 const ECPair = require('ecpair');
-const { BlockchainTransaction, DepositAddress, Crypto, BlockchainState } = require('../../models');
+const { BlockchainTransaction, DepositAddress, Crypto, BlockchainState } = require('../../../models');
 
 const tinysecp = require('tiny-secp256k1');
 const ECPairFactory = ECPair.ECPairFactory(tinysecp);
-const money = require('../../utils/money');
-const { bitcoinNetworkProfile } = require('../../config/networks/bitcoin');
+const money = require('../../../utils/money');
+const { bitcoinNetworkProfile } = require('../../../config/networks/bitcoin');
 
 class BitcoinService {
   // Fase 3: el NetworkProfile (qué significa testnet/mainnet para BTC) se INYECTA

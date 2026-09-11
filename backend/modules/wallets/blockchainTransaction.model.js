@@ -1,8 +1,8 @@
 // models/transaccionBlockchain.model.js
 require('dotenv').config();
-const initTransaccionBlockchain = require('./entities/transaccionBlockchain.entity');
+const initTransaccionBlockchain = require('./blockchainTransaction.entity');
 const { Op } = require('sequelize');
-const money = require('../utils/money');
+const money = require('../../utils/money');
 
 function createTransaccionBlockchainModel(sequelize) {
   const BlockchainTransaction = initTransaccionBlockchain(sequelize);
@@ -203,7 +203,7 @@ function createTransaccionBlockchainModel(sequelize) {
       // Paso D: depósito detectado → acreditar en estado PENDIENTE en el ledger
       // (external_onchain → funding:pendiente). Al confirmar, _creditDeposit
       // lo mueve a disponible.
-      const { registerPendingDeposit } = require('../modules/balances/ledger/operations');
+      const { registerPendingDeposit } = require('../balances/ledger/operations');
       await registerPendingDeposit({
         userId: data.userId,
         criptomonedaId: data.cryptoId,
@@ -272,7 +272,7 @@ function createTransaccionBlockchainModel(sequelize) {
       // 'processing' sin confirmar vía failWithdrawal (bloqueado→disponible), y si
       // ya hubiéramos debitado a external eso quedaría inconsistente.
       if (transaccion.type === 'withdrawal' && updateData.status === 'confirmed' && transaccion.status !== 'confirmed') {
-        const { markWithdrawalTransmitted } = require('../modules/balances/ledger/operations');
+        const { markWithdrawalTransmitted } = require('../balances/ledger/operations');
         await markWithdrawalTransmitted({
           userId: transaccion.userId,
           criptomonedaId: transaccion.cryptoId,
@@ -311,7 +311,7 @@ function createTransaccionBlockchainModel(sequelize) {
 
       // Paso D: el depósito ya está en funding:pendiente (registrado al detectarse
       // en createDeposit). Al confirmar, se mueve pendiente → disponible.
-      const { confirmDeposit } = require('../modules/balances/ledger/operations');
+      const { confirmDeposit } = require('../balances/ledger/operations');
       await confirmDeposit({
         userId: transaccion.userId,
         criptomonedaId: transaccion.cryptoId,
@@ -358,7 +358,7 @@ function createTransaccionBlockchainModel(sequelize) {
   BlockchainTransaction.createWithdrawal = async (data, { finalize } = {}) => {
     // Ver el comentario de _creditDeposit sobre por qué este require
     // es lazy (Altos #10).
-    const { UserBalance } = require('./index');
+    const { UserBalance } = require('../../models/index');
     const transaction = await sequelize.transaction();
 
     try {
@@ -477,7 +477,7 @@ function createTransaccionBlockchainModel(sequelize) {
 
   BlockchainTransaction.failWithdrawal = async (id, razon) => {
     // Ver el comentario de _creditDeposit (Altos #10).
-    const { UserBalance } = require('./index');
+    const { UserBalance } = require('../../models/index');
     const transaction = await sequelize.transaction();
 
     try {
@@ -659,7 +659,7 @@ function createTransaccionBlockchainModel(sequelize) {
 
   BlockchainTransaction.validateWithdrawal = async (userId, cryptoId, amount, destinationAddress) => {
     // Ver el comentario de _creditDeposit (Altos #10).
-    const { UserBalance } = require('./index');
+    const { UserBalance } = require('../../models/index');
     try {
       // Validar usuario active
       const usuario = await sequelize.models.User.findByPk(userId);

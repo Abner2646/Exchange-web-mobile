@@ -7,10 +7,10 @@
 // blockchain con resta/abs float. totalBalance es DECIMAL(28,8): con money.js la
 // acumulación y la diferencia son exactas y se guardan como string canónico.
 
-jest.mock('../models/entities/walletMaestra.entity');
+jest.mock('../modules/wallets/masterWallet.entity');
 
-const initWalletMaestra = require('../models/entities/walletMaestra.entity');
-const createWalletMaestraModel = require('../models/walletMaestra.model');
+const initWalletMaestra = require('../modules/wallets/masterWallet.entity');
+const createWalletMaestraModel = require('../modules/wallets/masterWallet.model');
 
 const fakeModel = {};
 initWalletMaestra.mockReturnValue(fakeModel);

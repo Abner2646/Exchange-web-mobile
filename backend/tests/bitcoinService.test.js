@@ -15,7 +15,7 @@ jest.mock('../models', () => ({
 }));
 
 const { BlockchainTransaction } = require('../models');
-const BitcoinService = require('../services/blockchain/bitcoin.service');
+const BitcoinService = require('../modules/wallets/blockchain/bitcoin.service');
 const bitcoin = require('bitcoinjs-lib');
 const { BITCOIN_PROFILES } = require('../config/networks/bitcoin');
 

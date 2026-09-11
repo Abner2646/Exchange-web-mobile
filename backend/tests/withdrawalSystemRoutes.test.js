@@ -21,14 +21,14 @@ jest.mock('../jobs/blockchain.jobs', () => ({
   runConfirmationUpdateJob: jest.fn().mockResolvedValue([]),
 }));
 
-jest.mock('../services/blockchain', () => ({}));
+jest.mock('../modules/wallets/blockchain', () => ({}));
 
 const jwt = require('jsonwebtoken');
 const express = require('express');
 const request = require('supertest');
 const { User } = require('../models');
 const BlockchainJobManager = require('../jobs/blockchain.jobs');
-const transaccionBlockchainRoutes = require('../routes/transaccionBlockchain.routes');
+const transaccionBlockchainRoutes = require('../modules/wallets/blockchainTransaction.routes');
 const errorHandler = require('../middleware/errorHandler');
 
 function buildApp() {

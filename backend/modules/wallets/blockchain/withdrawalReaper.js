@@ -1,5 +1,5 @@
 const { Op } = require('sequelize');
-const { BlockchainTransaction, Crypto } = require('../../models');
+const { BlockchainTransaction, Crypto } = require('../../../models');
 
 // Recovers stuck 'processing' withdrawals left by a crash between the atomic
 // claim and recording the send. Reverts ONLY when the tx is provably absent

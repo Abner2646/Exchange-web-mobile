@@ -14,7 +14,7 @@ jest.mock('../models', () => ({
 }));
 
 const { BlockchainTransaction } = require('../models');
-const EthereumService = require('../services/blockchain/ethereum.service');
+const EthereumService = require('../modules/wallets/blockchain/ethereum.service');
 const { ETHEREUM_PROFILES } = require('../config/networks/evm');
 
 // Fase 3: el service toma su identidad de network del NetworkProfile inyectado (un

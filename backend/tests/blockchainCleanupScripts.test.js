@@ -16,7 +16,7 @@ jest.mock('../models', () => ({
   User: {},
   UserBalance: {},
 }));
-jest.mock('../services/blockchain', () => ({ getService: jest.fn() }));
+jest.mock('../modules/wallets/blockchain', () => ({ getService: jest.fn() }));
 
 const BlockchainJobManager = require('../jobs/blockchain.jobs');
 const { BlockchainTransaction } = require('../models');
@@ -35,7 +35,7 @@ describe('transaccionBlockchain.model.js', () => {
     // No hace falta una conexión real: Model.init() no requiere que el
     // dialecto exista de verdad hasta que se ejecuta una query.
     const sequelize = new Sequelize('postgres://test:test@localhost:5432/test', { logging: false });
-    const createTransaccionBlockchainModel = require('../models/transaccionBlockchain.model');
+    const createTransaccionBlockchainModel = require('../modules/wallets/blockchainTransaction.model');
     const TransaccionBlockchainModel = createTransaccionBlockchainModel(sequelize);
     expect(TransaccionBlockchainModel.cleanupBalanceCheckTransactions).toBeUndefined();
   });

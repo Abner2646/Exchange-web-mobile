@@ -1,4 +1,4 @@
-const EvmChainClient = require('../../services/blockchain/evmChainClient');
+const EvmChainClient = require('../../modules/wallets/blockchain/evmChainClient');
 
 // Test double: canned native balance + send result, records send calls.
 class FakeEvmClient extends EvmChainClient {

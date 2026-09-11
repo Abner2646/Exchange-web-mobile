@@ -2,7 +2,7 @@ require('../helpers/testEnv');
 const { sequelize, resetDb } = require('../helpers/db');
 const f = require('../helpers/factories');
 const FakeEvmClient = require('../helpers/fakeEvmClient');
-const { reapStaleWithdrawals } = require('../../services/blockchain/withdrawalReaper');
+const { reapStaleWithdrawals } = require('../../modules/wallets/blockchain/withdrawalReaper');
 const { BlockchainTransaction } = require('../../models');
 
 beforeEach(async () => { await resetDb(); });

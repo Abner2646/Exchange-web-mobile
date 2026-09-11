@@ -14,7 +14,7 @@ jest.mock('../models', () => ({
   sequelize: {},
 }));
 
-jest.mock('../controllers/setupWallets.controller', () => ({
+jest.mock('../modules/wallets/setupWallets.controller', () => ({
   checkSetupStatus: (req, res) => res.json({ success: true }),
   executeCompleteSetup: (req, res) => res.json({ success: true }),
   resetCompleteSetup: (req, res) => res.json({ success: true }),
@@ -24,7 +24,7 @@ const jwt = require('jsonwebtoken');
 const express = require('express');
 const request = require('supertest');
 const { User } = require('../models');
-const setupWalletsRoutes = require('../routes/setupWallets.routes');
+const setupWalletsRoutes = require('../modules/wallets/setupWallets.routes');
 
 function buildApp() {
   const app = express();

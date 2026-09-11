@@ -33,7 +33,7 @@ jest.mock('../models', () => ({
   IdempotencyKey: { create: jest.fn().mockResolvedValue({}), findOne: jest.fn(), update: jest.fn(), destroy: jest.fn() },
 }));
 
-jest.mock('../controllers/transaccionBlockchain.controller', () => {
+jest.mock('../modules/wallets/blockchainTransaction.controller', () => {
   const ok = (req, res) => res.json({ success: true });
   return new Proxy({}, { get: () => ok });
 });
@@ -41,7 +41,7 @@ jest.mock('../controllers/transaccionBlockchain.controller', () => {
 const { User } = require('../models');
 const express = require('express');
 const request = require('supertest');
-const transaccionBlockchainRoutes = require('../routes/transaccionBlockchain.routes');
+const transaccionBlockchainRoutes = require('../modules/wallets/blockchainTransaction.routes');
 
 function buildApp() {
   const app = express();

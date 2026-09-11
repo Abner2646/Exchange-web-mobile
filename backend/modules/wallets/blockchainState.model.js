@@ -1,5 +1,5 @@
 // models/blockchainState.model.js - Métodos para manejar el estado con estructura key-value
-const initBlockchainState = require('./entities/blockchainState.entity');
+const initBlockchainState = require('./blockchainState.entity');
 
 function createBlockchainStateModel(sequelize) {
   const BlockchainState = initBlockchainState(sequelize);

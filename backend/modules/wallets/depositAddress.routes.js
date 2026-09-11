@@ -5,11 +5,11 @@ const { Router } = require('express');
 const router = Router();
 
 // Importa el controlador de direcciones de depósito
-const direccionDepositoController = require('../controllers/direccionDeposito.controller.js');
+const direccionDepositoController = require('./depositAddress.controller.js');
 
 // Middleware de autenticación
-const { authenticateToken, requireEmailVerified } = require('../middleware/authMiddleware.js');
-const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
+const { authenticateToken, requireEmailVerified } = require('../../middleware/authMiddleware.js');
+const { isAdmin, isSuperAdmin } = require('../../middleware/adminMiddleware.js');
 
 /**
  * @openapi

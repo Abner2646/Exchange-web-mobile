@@ -1,6 +1,6 @@
 // jobs/blockchain.jobs.js - VERSIÓN MEJORADA CON DIAGNÓSTICOS
-const BlockchainServiceManager = require('../services/blockchain');
-const { reapStaleWithdrawals, makeGetClientForNetwork } = require('../services/blockchain/withdrawalReaper');
+const BlockchainServiceManager = require('../modules/wallets/blockchain');
+const { reapStaleWithdrawals, makeGetClientForNetwork } = require('../modules/wallets/blockchain/withdrawalReaper');
 const { BlockchainTransaction, DepositAddress, Crypto, BlockchainState } = require('../models');
 require('dotenv').config();
 

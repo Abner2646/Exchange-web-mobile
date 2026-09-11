@@ -36,7 +36,7 @@ jest.mock('../models', () => ({
   },
 }));
 
-jest.mock('../services/blockchain', () => ({
+jest.mock('../modules/wallets/blockchain', () => ({
   getService: jest.fn(),
 }));
 
@@ -51,11 +51,11 @@ jest.mock('../jobs/blockchain.jobs', () => ({
 jest.mock('../middleware/idempotency.middleware', () => (req, res, next) => next());
 
 const { BlockchainTransaction, Crypto, DepositAddress } = require('../models');
-const BlockchainServiceManager = require('../services/blockchain');
+const BlockchainServiceManager = require('../modules/wallets/blockchain');
 
 const asyncHandler = require('../utils/asyncHandler');
 const errorHandler = require('../middleware/errorHandler');
-const controller = require('../controllers/transaccionBlockchain.controller');
+const controller = require('../modules/wallets/blockchainTransaction.controller');
 
 // ── App builders ──────────────────────────────────────────────────────────────
 
@@ -81,7 +81,7 @@ function buildApp(method, path, handler) {
  */
 function buildWithdrawApp() {
   const joiValidate = require('../middleware/joiValidate.middleware').joiValidate;
-  const schema = require('../schemas/transaccionBlockchain.schema');
+  const schema = require('../modules/wallets/blockchainTransaction.schema');
   const idempotency = require('../middleware/idempotency.middleware');
 
   const app = express();

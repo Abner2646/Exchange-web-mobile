@@ -1,4 +1,4 @@
-const { MasterWallet } = require('../models/index.js');
+const { MasterWallet } = require('../../models/index.js');
 
 // =================== CONTROLADORES CRUD BÁSICOS ===================
 

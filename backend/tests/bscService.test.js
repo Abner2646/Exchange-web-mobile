@@ -14,7 +14,7 @@ jest.mock('../models', () => ({
 }));
 
 const { BlockchainTransaction } = require('../models');
-const BscService = require('../services/blockchain/bsc.service');
+const BscService = require('../modules/wallets/blockchain/bsc.service');
 const { BSC_PROFILES } = require('../config/networks/evm');
 
 // Fase 3: identidad de network desde el NetworkProfile inyectado (chainClient fake

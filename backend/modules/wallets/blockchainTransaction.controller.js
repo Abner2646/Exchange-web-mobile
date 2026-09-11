@@ -1,19 +1,19 @@
 // controllers/transaccionBlockchain.controller.js
-const { BlockchainTransaction, User, Crypto, UserBalance, DepositAddress } = require('../models');
-const BlockchainServiceManager = require('../services/blockchain');
+const { BlockchainTransaction, User, Crypto, UserBalance, DepositAddress } = require('../../models');
+const BlockchainServiceManager = require('./blockchain');
 // Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #8): estos endpoints
 // llamaban a scanAllNetworksForDeposits/processAllPendingWithdrawals/
 // updateAllConfirmations en BlockchainServiceManager, que nunca existieron
 // ahí — la lógica real vive en BlockchainJobManager (jobs/blockchain.jobs.js),
 // que es lo mismo que corre el scheduler. Estos endpoints ahora disparan
 // esos mismos jobs a demanda, en vez de apuntar a métodos inexistentes.
-const BlockchainJobManager = require('../jobs/blockchain.jobs');
-const AppError = require('../utils/AppError');
-const errorCodes = require('../utils/errorCodes');
-const money = require('../utils/money');
-const idempotency = require('../middleware/idempotency.middleware');
-const authz = require('../utils/authz');
-const businessConfig = require('../modules/config/businessConfig');
+const BlockchainJobManager = require('../../jobs/blockchain.jobs');
+const AppError = require('../../utils/AppError');
+const errorCodes = require('../../utils/errorCodes');
+const money = require('../../utils/money');
+const idempotency = require('../../middleware/idempotency.middleware');
+const authz = require('../../utils/authz');
+const businessConfig = require('../config/businessConfig');
 
 class TransaccionBlockchainController {
   // =================== ENDPOINTS PARA USUARIOS ===================

@@ -12,11 +12,11 @@ jest.mock('../models', () => ({
   BlockchainState: {},
 }));
 
-jest.mock('../services/blockchain', () => ({
+jest.mock('../modules/wallets/blockchain', () => ({
   getService: jest.fn(),
 }));
 
-const BlockchainServiceManager = require('../services/blockchain');
+const BlockchainServiceManager = require('../modules/wallets/blockchain');
 const BlockchainJobManager = require('../jobs/blockchain.jobs');
 
 describe('BlockchainJobManager.runWithdrawalProcessJob', () => {

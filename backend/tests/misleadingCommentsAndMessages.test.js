@@ -25,12 +25,12 @@ test('#2: transaccionesP2P.routes.js ya no tiene el TODO de cosas que ya están 
 });
 
 test('#3: setupWallets.controller.js ya no promete que los datos privados se loggearon', () => {
-  const src = source('../controllers/setupWallets.controller.js');
+  const src = source('../modules/wallets/setupWallets.controller.js');
   expect(src).not.toMatch(/Datos privados loggeados en servidor/);
 });
 
 test('#6: walletMaestra.routes.js ya no tiene el comentario que insinuaba un bug de backend inexistente', () => {
-  const src = source('../routes/walletMaestra.routes.js');
+  const src = source('../modules/wallets/masterWallet.routes.js');
   expect(src).not.toMatch(/El campo active debe ser un valor booleano/);
 });
 

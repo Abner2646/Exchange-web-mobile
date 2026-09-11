@@ -1,10 +1,10 @@
 // services/blockchain/ethereum.service.js - ACTUALIZADO PARA ETHERSCAN API V2
 require('dotenv').config();
 const { ethers } = require('ethers');
-const { BlockchainTransaction, DepositAddress, Crypto, BlockchainState } = require('../../models');
-const money = require('../../utils/money');
+const { BlockchainTransaction, DepositAddress, Crypto, BlockchainState } = require('../../../models');
+const money = require('../../../utils/money');
 const EthersEvmClient = require('./ethersEvmClient');
-const { ethereumNetworkProfile } = require('../../config/networks/evm');
+const { ethereumNetworkProfile } = require('../../../config/networks/evm');
 
 class EthereumService {
   // Fase 3: la identidad de network (chainId, name, confirmaciones, qué env keys de

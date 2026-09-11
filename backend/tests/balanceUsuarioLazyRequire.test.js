@@ -59,7 +59,7 @@ describeIfDb('transaccionBlockchain.model.js: require lazy de UserBalance', () =
 
   test('el archivo ya no importa initBalanceUsuario a nivel de módulo', () => {
     const fs = require('fs');
-    const source = fs.readFileSync(require.resolve('../models/transaccionBlockchain.model'), 'utf8');
+    const source = fs.readFileSync(require.resolve('../modules/wallets/blockchainTransaction.model'), 'utf8');
     expect(source).not.toMatch(/require\(['"]\.\/entities\/balanceUsuario\.entity['"]\)/);
   });
 

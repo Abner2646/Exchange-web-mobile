@@ -1,10 +1,10 @@
 // services/blockchain/bsc.service.js - ACTUALIZADO PARA ETHERSCAN API V2
 require('dotenv').config();
 const { ethers } = require('ethers');
-const { BlockchainTransaction, DepositAddress, Crypto, BlockchainState } = require('../../models');
-const money = require('../../utils/money');
+const { BlockchainTransaction, DepositAddress, Crypto, BlockchainState } = require('../../../models');
+const money = require('../../../utils/money');
 const EthersEvmClient = require('./ethersEvmClient');
-const { bscNetworkProfile } = require('../../config/networks/evm');
+const { bscNetworkProfile } = require('../../../config/networks/evm');
 
 class BscService {
   // Fase 3: identidad de network desde el NetworkProfile inyectable (default por env,

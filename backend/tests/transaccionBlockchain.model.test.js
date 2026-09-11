@@ -5,17 +5,17 @@
 // fallar retiro → unblockBalance. Este unit test verifica esa DELEGACION; el
 // resultado en el ledger se cubre en ledgerWriteFlip.integration.test.js.
 
-jest.mock('../models/entities/transaccionBlockchain.entity');
+jest.mock('../modules/wallets/blockchainTransaction.entity');
 jest.mock('../models/index', () => ({ UserBalance: {} }));
 jest.mock('../modules/balances/ledger/operations', () => ({
   confirmDeposit: jest.fn(),
   registerPendingDeposit: jest.fn(),
 }));
 
-const initTransaccionBlockchain = require('../models/entities/transaccionBlockchain.entity');
+const initTransaccionBlockchain = require('../modules/wallets/blockchainTransaction.entity');
 const { UserBalance } = require('../models/index');
 const { confirmDeposit } = require('../modules/balances/ledger/operations');
-const createTransaccionBlockchainModel = require('../models/transaccionBlockchain.model');
+const createTransaccionBlockchainModel = require('../modules/wallets/blockchainTransaction.model');
 
 const fakeModel = {};
 initTransaccionBlockchain.mockReturnValue(fakeModel);

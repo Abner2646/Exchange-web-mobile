@@ -2,7 +2,7 @@ require('../helpers/testEnv');
 const { sequelize, resetDb } = require('../helpers/db');
 const f = require('../helpers/factories');
 const FakeEvmClient = require('../helpers/fakeEvmClient');
-const EthereumService = require('../../services/blockchain/ethereum.service');
+const EthereumService = require('../../modules/wallets/blockchain/ethereum.service');
 const { BlockchainTransaction } = require('../../models');
 const posting = require('../../modules/balances/ledger/postingService');
 const recon = require('../../modules/balances/ledger/reconciliation');

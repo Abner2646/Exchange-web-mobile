@@ -3,12 +3,12 @@ const { Router } = require('express');
 const router = Router();
 
 // Middleware
-const { authenticateToken } = require('../middleware/authMiddleware.js');
-const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
-const requireOperatorMFA = require('../middleware/operatorMFA.middleware');
+const { authenticateToken } = require('../../middleware/authMiddleware.js');
+const { isAdmin, isSuperAdmin } = require('../../middleware/adminMiddleware.js');
+const requireOperatorMFA = require('../../middleware/operatorMFA.middleware');
 
 // Importa el controlador de wallets maestras
-const walletMaestraController = require('../controllers/walletMaestra.controller.js');
+const walletMaestraController = require('./masterWallet.controller.js');
 
 /**
  * @openapi

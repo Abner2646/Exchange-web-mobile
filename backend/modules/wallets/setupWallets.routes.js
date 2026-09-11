@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const setupController = require('../controllers/setupWallets.controller');
-const { authenticateToken } = require('../middleware/authMiddleware');
-const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware');
-const requireOperatorMFA = require('../middleware/operatorMFA.middleware');
+const setupController = require('./setupWallets.controller');
+const { authenticateToken } = require('../../middleware/authMiddleware');
+const { isAdmin, isSuperAdmin } = require('../../middleware/adminMiddleware');
+const requireOperatorMFA = require('../../middleware/operatorMFA.middleware');
 
 /**
  * @openapi

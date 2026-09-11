@@ -24,7 +24,7 @@ const mockProcessPending = jest.fn(async () => {
   await new Promise((resolve) => setTimeout(resolve, 25));
   return []; // sin retiros pendientes reales; solo importa la cuenta de llamadas
 });
-jest.mock('../services/blockchain', () => ({
+jest.mock('../modules/wallets/blockchain', () => ({
   getService: () => ({ processPendingWithdrawals: mockProcessPending }),
 }));
 

@@ -1,6 +1,6 @@
 // bootstrap/blockchain.bootstrap.js
 const sequelize = require('../config/database');
-const BlockchainServiceManager = require('../services/blockchain');
+const BlockchainServiceManager = require('../modules/wallets/blockchain');
 const JobManager = require('../jobs');
 const { Crypto, MasterWallet, DepositAddress } = require('../models');
 

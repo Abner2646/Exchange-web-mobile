@@ -1,6 +1,6 @@
-const { DepositAddress } = require('../models/index.js');
+const { DepositAddress } = require('../../models/index.js');
 const { Op } = require('sequelize');
-const { sequelize } = require('../models/index.js');
+const { sequelize } = require('../../models/index.js');
 
 // Listar direcciones de depósito
 const getDepositAddresses = async (req, res) => {

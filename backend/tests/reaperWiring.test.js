@@ -1,4 +1,4 @@
-const { makeGetClientForNetwork } = require('../services/blockchain/withdrawalReaper');
+const { makeGetClientForNetwork } = require('../modules/wallets/blockchain/withdrawalReaper');
 
 // makeGetClientForNetwork(manager) adapts the BlockchainServiceManager to what the
 // reaper needs: an object with getConfirmations(txHash) for a given network. EVM
