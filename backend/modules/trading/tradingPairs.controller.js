@@ -1,5 +1,5 @@
 // controllers/tradingPairs.controller.js
-const { TradingPair, Crypto } = require('../models');
+const { TradingPair, Crypto } = require('../../models');
 
 class TradingPairsController {
 

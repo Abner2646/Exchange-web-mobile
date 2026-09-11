@@ -34,7 +34,7 @@ jest.mock('../modules/balances/ledger/operations', () => ({
 
 const { UserBalance, TradingPair } = require('../models');
 const { settleTrade, reserveForOrder, releaseReservation } = require('../modules/balances/ledger/operations');
-const balanceManager = require('../services/trading/balanceManager.service');
+const balanceManager = require('../modules/trading/balanceManager.service');
 
 beforeEach(() => jest.clearAllMocks());
 
@@ -61,7 +61,7 @@ describe('lockBalanceForOrder — monto a bloquear exacto', () => {
     expect(r.amountLocked).toBe('0.02');
     expect(UserBalance.hasAvailableInCompartment).toHaveBeenCalledWith('u', 'q', '0.02', 'spot', null);
     expect(reserveForOrder).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: 'u', criptomonedaId: 'q', cantidad: '0.02' }),
+      expect.objectContaining({ userId: 'u', cryptoId: 'q', quantity: '0.02' }),
       null
     );
   });
@@ -79,7 +79,7 @@ describe('lockBalanceForOrder — monto a bloquear exacto', () => {
     expect(r.amountLocked).toBe('0.1');
     expect(UserBalance.hasAvailableInCompartment).toHaveBeenCalledWith('u', 'base', '0.1', 'spot', null);
     expect(reserveForOrder).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: 'u', criptomonedaId: 'base', cantidad: '0.1' }),
+      expect.objectContaining({ userId: 'u', cryptoId: 'base', quantity: '0.1' }),
       null
     );
   });
@@ -124,7 +124,7 @@ describe('unlockBalanceFromOrder — monto a desbloquear exacto', () => {
     expect(r.assetUnlocked).toBe('q');
     expect(r.amountUnlocked).toBe('0.03'); // 0.1*0.3 (order.price), NO 0.1*0.2 (lastPrice)
     expect(releaseReservation).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: 'u', criptomonedaId: 'q', cantidad: '0.03' }),
+      expect.objectContaining({ userId: 'u', cryptoId: 'q', quantity: '0.03' }),
       tx
     );
   });
@@ -143,7 +143,7 @@ describe('unlockBalanceFromOrder — monto a desbloquear exacto', () => {
     expect(r.assetUnlocked).toBe('base');
     expect(r.amountUnlocked).toBe('0.1');
     expect(releaseReservation).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: 'u', criptomonedaId: 'base', cantidad: '0.1' }),
+      expect.objectContaining({ userId: 'u', cryptoId: 'base', quantity: '0.1' }),
       tx
     );
   });
@@ -170,14 +170,14 @@ describe('updateBalancesAfterTrade — delega la liquidación al ledger', () => 
     expect(r.success).toBe(true);
     expect(settleTrade).toHaveBeenCalledWith(
       expect.objectContaining({
-        compradorId: 'b',
-        vendedorId: 's',
+        buyerId: 'b',
+        sellerId: 's',
         baseAssetId: 'base',
         quoteAssetId: 'q',
-        cantidad: '0.1',
-        montoQuote: '0.02', // 0.1*0.2 exacto (float daría 0.020000000000000004)
-        feeComprador: '0.0001',
-        feeVendedor: '0.00004',
+        quantity: '0.1',
+        quoteAmount: '0.02', // 0.1*0.2 exacto (float daría 0.020000000000000004)
+        buyerFee: '0.0001',
+        sellerFee: '0.00004',
         referencia: 'trade:t1',
       }),
       tx

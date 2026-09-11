@@ -1,5 +1,5 @@
 // models/tradingPair.model.js
-const initTradingPair = require('./entities/tradingPair.entity');
+const initTradingPair = require('./tradingPair.entity');
 const { Op } = require('sequelize');
 
 function createTradingPairModel(sequelize) {

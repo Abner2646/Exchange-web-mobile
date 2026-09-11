@@ -1,4 +1,4 @@
-// services/trading/orderBook.service.js
+// modules/trading/orderBook.service.js
 const { Order, Trade, TradingPair, sequelize } = require('../../models');
 const { Op } = require('sequelize');
 const tradeExecutor = require('./tradeExecutor.service');

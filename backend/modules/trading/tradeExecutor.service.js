@@ -1,4 +1,4 @@
-// services/trading/tradeExecutor.service.js
+// modules/trading/tradeExecutor.service.js
 const { Trade, Order } = require('../../models');
 const balanceManager = require('./balanceManager.service');
 const feeCalculator = require('./feeCalculator.service');

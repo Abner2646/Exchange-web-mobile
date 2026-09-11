@@ -3,18 +3,18 @@ const request = require('supertest');
 const express = require('express');
 
 jest.mock('../models', () => ({ Order: { create: jest.fn(), findByPk: jest.fn() }, TradingPair: { findByPk: jest.fn() }, Trade: {} }));
-jest.mock('../services/trading/orderBook.service', () => ({ matchOrder: jest.fn().mockResolvedValue({ matched: false, trades: [] }) }));
-jest.mock('../services/trading/orderValidator.service', () => ({ validateOrder: jest.fn() }));
-jest.mock('../services/trading/balanceManager.service', () => ({ checkSufficientBalance: jest.fn(), lockBalanceForOrder: jest.fn() }));
-jest.mock('../services/trading/feeCalculator.service', () => ({ calculateOrderFee: jest.fn() }));
-jest.mock('../services/trading/tradeExecutor.service', () => ({}));
+jest.mock('../modules/trading/orderBook.service', () => ({ matchOrder: jest.fn().mockResolvedValue({ matched: false, trades: [] }) }));
+jest.mock('../modules/trading/orderValidator.service', () => ({ validateOrder: jest.fn() }));
+jest.mock('../modules/trading/balanceManager.service', () => ({ checkSufficientBalance: jest.fn(), lockBalanceForOrder: jest.fn() }));
+jest.mock('../modules/trading/feeCalculator.service', () => ({ calculateOrderFee: jest.fn() }));
+jest.mock('../modules/trading/tradeExecutor.service', () => ({}));
 
 const { TradingPair } = require('../models');
-const orderValidator = require('../services/trading/orderValidator.service');
-const balanceManager = require('../services/trading/balanceManager.service');
+const orderValidator = require('../modules/trading/orderValidator.service');
+const balanceManager = require('../modules/trading/balanceManager.service');
 const asyncHandler = require('../utils/asyncHandler');
 const errorHandler = require('../middleware/errorHandler');
-const tradingController = require('../controllers/trading.controller');
+const tradingController = require('../modules/trading/trading.controller');
 
 function buildApp() {
   const app = express();

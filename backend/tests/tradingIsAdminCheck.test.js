@@ -12,15 +12,15 @@ jest.mock('../models', () => ({
   PriceCandle: {},
   Crypto: {},
 }));
-jest.mock('../services/trading/orderBook.service', () => ({}));
-jest.mock('../services/trading/orderValidator.service', () => ({}));
-jest.mock('../services/trading/balanceManager.service', () => ({}));
-jest.mock('../services/trading/feeCalculator.service', () => ({}));
-jest.mock('../services/trading/tradeExecutor.service', () => ({}));
+jest.mock('../modules/trading/orderBook.service', () => ({}));
+jest.mock('../modules/trading/orderValidator.service', () => ({}));
+jest.mock('../modules/trading/balanceManager.service', () => ({}));
+jest.mock('../modules/trading/feeCalculator.service', () => ({}));
+jest.mock('../modules/trading/tradeExecutor.service', () => ({}));
 
 const { Order, Trade } = require('../models');
-const tradingController = require('../controllers/trading.controller');
-const tradesController = require('../controllers/trades.controller');
+const tradingController = require('../modules/trading/trading.controller');
+const tradesController = require('../modules/trading/trades.controller');
 
 function mockRes() {
   return {

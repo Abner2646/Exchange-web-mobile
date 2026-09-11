@@ -13,13 +13,13 @@ jest.mock('../models', () => ({
   TradingPair: { findByPk: jest.fn() },
   sequelize: { transaction: jest.fn(), fn: jest.fn(), col: jest.fn() },
 }));
-jest.mock('../services/trading/tradeExecutor.service', () => ({
+jest.mock('../modules/trading/tradeExecutor.service', () => ({
   executeTrade: jest.fn(),
 }));
 
 const { Order, TradingPair, sequelize } = require('../models');
-const tradeExecutor = require('../services/trading/tradeExecutor.service');
-const orderBook = require('../services/trading/orderBook.service');
+const tradeExecutor = require('../modules/trading/tradeExecutor.service');
+const orderBook = require('../modules/trading/orderBook.service');
 
 beforeEach(() => jest.clearAllMocks());
 

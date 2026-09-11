@@ -6,7 +6,7 @@
 // documentado/intencionado.
 
 jest.mock('../models', () => ({ Order: {}, TradingPair: {} }));
-jest.mock('../services/trading/orderBook.service', () => ({}));
+jest.mock('../modules/trading/orderBook.service', () => ({}));
 
 const orderMatchingJob = require('../jobs/orderMatching.job');
 

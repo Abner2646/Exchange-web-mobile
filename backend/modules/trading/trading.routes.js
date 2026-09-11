@@ -1,15 +1,15 @@
 // routes/trading.routes.js
 const express = require('express');
 const router = express.Router();
-const tradingController = require('../controllers/trading.controller');
-const tradesController = require('../controllers/trades.controller');
-const tradingPairsController = require('../controllers/tradingPairs.controller');
-const { authenticateToken, requireEmailVerified } = require('../middleware/authMiddleware.js');
-const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
+const tradingController = require('./trading.controller');
+const tradesController = require('./trades.controller');
+const tradingPairsController = require('./tradingPairs.controller');
+const { authenticateToken, requireEmailVerified } = require('../../middleware/authMiddleware.js');
+const { isAdmin, isSuperAdmin } = require('../../middleware/adminMiddleware.js');
 const { body, param, query } = require('express-validator');
-const { validate } = require('../middleware/validation.middleware');
-const idempotency = require('../middleware/idempotency.middleware');
-const asyncHandler = require('../utils/asyncHandler');
+const { validate } = require('../../middleware/validation.middleware');
+const idempotency = require('../../middleware/idempotency.middleware');
+const asyncHandler = require('../../utils/asyncHandler');
 
 // Rate limiting
 const tradingRateLimit = require('express-rate-limit')({

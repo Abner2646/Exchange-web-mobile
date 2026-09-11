@@ -90,7 +90,7 @@ describe('POST /api/trading/orders — create + lock (synchronous)', () => {
   });
 });
 
-const orderBookService = require('../../services/trading/orderBook.service');
+const orderBookService = require('../../modules/trading/orderBook.service');
 const { Trade } = require('../../models');
 
 // Set up a resting maker order that is 'open' and ready to be matched against.

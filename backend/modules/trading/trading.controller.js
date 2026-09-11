@@ -1,14 +1,14 @@
 // controllers/trading.controller.js
-const orderBookService = require('../services/trading/orderBook.service');
-const orderValidator = require('../services/trading/orderValidator.service');
-const balanceManager = require('../services/trading/balanceManager.service');
-const feeCalculator = require('../services/trading/feeCalculator.service');
-const tradeExecutor = require('../services/trading/tradeExecutor.service');
-const { Order, TradingPair, Trade, sequelize } = require('../models');
-const AppError = require('../utils/AppError');
-const errorCodes = require('../utils/errorCodes');
-const idempotency = require('../middleware/idempotency.middleware');
-const authz = require('../utils/authz');
+const orderBookService = require('./orderBook.service');
+const orderValidator = require('./orderValidator.service');
+const balanceManager = require('./balanceManager.service');
+const feeCalculator = require('./feeCalculator.service');
+const tradeExecutor = require('./tradeExecutor.service');
+const { Order, TradingPair, Trade, sequelize } = require('../../models');
+const AppError = require('../../utils/AppError');
+const errorCodes = require('../../utils/errorCodes');
+const idempotency = require('../../middleware/idempotency.middleware');
+const authz = require('../../utils/authz');
 
 class TradingController {
 

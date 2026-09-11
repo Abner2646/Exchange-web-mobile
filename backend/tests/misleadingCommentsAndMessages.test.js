@@ -35,6 +35,6 @@ test('#6: walletMaestra.routes.js ya no tiene el comentario que insinuaba un bug
 });
 
 test('#7: trades.controller.js ya no llama "Calcular PnL" a una copia de fees', () => {
-  const src = source('../controllers/trades.controller.js');
+  const src = source('../modules/trading/trades.controller.js');
   expect(src).not.toMatch(/Calcular PnL/);
 });

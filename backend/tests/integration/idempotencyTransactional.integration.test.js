@@ -159,7 +159,7 @@ describe('transactional idempotency — createWithdrawal (model static, POST /tr
 });
 
 describe('transactional idempotency — trading.createOrder (POST /trading/orders)', () => {
-  const tradingController = require('../../controllers/trading.controller');
+  const tradingController = require('../../modules/trading/trading.controller');
 
   // The order-creation money move (lock Spot balance + create the Order row) is
   // made atomic in one controller-owned tx (fixing the Críticos #5 residual:

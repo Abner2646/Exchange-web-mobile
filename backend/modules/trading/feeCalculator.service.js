@@ -1,4 +1,4 @@
-// services/trading/feeCalculator.service.js
+// modules/trading/feeCalculator.service.js
 const { TradingPair } = require('../../models');
 const money = require('../../utils/money');
 

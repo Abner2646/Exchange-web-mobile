@@ -12,17 +12,17 @@ jest.mock('../models', () => ({
   TradingPair: { findByPk: jest.fn() },
   sequelize: { transaction: jest.fn() },
 }));
-jest.mock('../services/trading/balanceManager.service', () => ({
+jest.mock('../modules/trading/balanceManager.service', () => ({
   updateBalancesAfterTrade: jest.fn(),
   unlockBalanceFromOrder: jest.fn(),
 }));
-jest.mock('../services/trading/feeCalculator.service', () => ({
+jest.mock('../modules/trading/feeCalculator.service', () => ({
   calculateBothSidesFees: jest.fn(),
 }));
 
 const { Trade, TradingPair } = require('../models');
-const feeCalculator = require('../services/trading/feeCalculator.service');
-const tradeExecutor = require('../services/trading/tradeExecutor.service');
+const feeCalculator = require('../modules/trading/feeCalculator.service');
+const tradeExecutor = require('../modules/trading/tradeExecutor.service');
 
 beforeEach(() => jest.clearAllMocks());
 

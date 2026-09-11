@@ -1,5 +1,5 @@
 // jobs/orderMatching.job.js
-const orderBookService = require('../services/trading/orderBook.service');
+const orderBookService = require('../modules/trading/orderBook.service');
 const { Order, TradingPair } = require('../models');
 const { Op } = require('sequelize');
 

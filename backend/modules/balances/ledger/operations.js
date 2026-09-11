@@ -73,28 +73,28 @@ async function settleSwap({
 // dos usuarios; la casa sólo cobra su comisión. Spot: bloqueado→disponible en
 // ambos lados (base para vendedor, quote para comprador).
 async function settleTrade({
-  compradorId, vendedorId, baseAssetId, quoteAssetId,
-  cantidad, montoQuote, feeComprador, feeVendedor, referencia,
+  buyerId, sellerId, baseAssetId, quoteAssetId,
+  quantity, quoteAmount, buyerFee, sellerFee, referencia,
 }, transaction = null) {
   const { postTransaction } = require('./postingService');
   const { PURPOSES } = require('./ledgerAccounts');
-  const baseNet = money.subtract(String(cantidad), String(feeComprador));
-  const quoteNet = money.subtract(String(montoQuote), String(feeVendedor));
+  const baseNet = money.subtract(String(quantity), String(buyerFee));
+  const quoteNet = money.subtract(String(quoteAmount), String(sellerFee));
 
   const lines = [
-    // BASE: vendedor (bloqueado) → comprador (disponible) + fee_revenue.
-    { ownerId: vendedorId, purpose: PURPOSES.SPOT_BLOCKED, cryptoId: baseAssetId, amount: money.negate(String(cantidad)) },
-    { ownerId: compradorId, purpose: PURPOSES.SPOT_AVAILABLE, cryptoId: baseAssetId, amount: baseNet },
-    // QUOTE: comprador (bloqueado) → vendedor (disponible) + fee_revenue.
-    { ownerId: compradorId, purpose: PURPOSES.SPOT_BLOCKED, cryptoId: quoteAssetId, amount: money.negate(String(montoQuote)) },
-    { ownerId: vendedorId, purpose: PURPOSES.SPOT_AVAILABLE, cryptoId: quoteAssetId, amount: quoteNet },
+    // BASE: seller (blocked) → buyer (available) + fee_revenue.
+    { ownerId: sellerId, purpose: PURPOSES.SPOT_BLOCKED, cryptoId: baseAssetId, amount: money.negate(String(quantity)) },
+    { ownerId: buyerId, purpose: PURPOSES.SPOT_AVAILABLE, cryptoId: baseAssetId, amount: baseNet },
+    // QUOTE: buyer (blocked) → seller (available) + fee_revenue.
+    { ownerId: buyerId, purpose: PURPOSES.SPOT_BLOCKED, cryptoId: quoteAssetId, amount: money.negate(String(quoteAmount)) },
+    { ownerId: sellerId, purpose: PURPOSES.SPOT_AVAILABLE, cryptoId: quoteAssetId, amount: quoteNet },
   ];
-  // Las líneas de comisión sólo si el fee > 0 (evita cuentas/movimientos en cero).
-  if (money.compare(String(feeComprador), '0') > 0) {
-    lines.push({ ownerId: null, purpose: PURPOSES.FEE_REVENUE, cryptoId: baseAssetId, amount: String(feeComprador) });
+  // Fee lines only if fee > 0 (avoids zero-amount accounts/movements).
+  if (money.compare(String(buyerFee), '0') > 0) {
+    lines.push({ ownerId: null, purpose: PURPOSES.FEE_REVENUE, cryptoId: baseAssetId, amount: String(buyerFee) });
   }
-  if (money.compare(String(feeVendedor), '0') > 0) {
-    lines.push({ ownerId: null, purpose: PURPOSES.FEE_REVENUE, cryptoId: quoteAssetId, amount: String(feeVendedor) });
+  if (money.compare(String(sellerFee), '0') > 0) {
+    lines.push({ ownerId: null, purpose: PURPOSES.FEE_REVENUE, cryptoId: quoteAssetId, amount: String(sellerFee) });
   }
 
   return postTransaction({ type: 'liquidacion_trade', reference: referencia, description: 'Trade spot', lines }, transaction);
@@ -214,26 +214,26 @@ async function transferBetweenCompartments({ userId, criptomonedaId, cantidad, o
 
 // Reserva de saldo para una orden del order book, dentro de Spot.
 // spot:disponible −A → spot:bloqueado +A. El anti-sobregiro lo da postTransaction.
-async function reserveForOrder({ userId, criptomonedaId, cantidad, referencia }, transaction = null) {
+async function reserveForOrder({ userId, cryptoId, quantity, referencia }, transaction = null) {
   const { postTransaction } = require('./postingService');
   const { PURPOSES } = require('./ledgerAccounts');
-  const amount = String(cantidad);
+  const amount = String(quantity);
   const lines = [
-    { ownerId: userId, purpose: PURPOSES.SPOT_AVAILABLE, cryptoId: criptomonedaId, amount: money.negate(amount) },
-    { ownerId: userId, purpose: PURPOSES.SPOT_BLOCKED, cryptoId: criptomonedaId, amount },
+    { ownerId: userId, purpose: PURPOSES.SPOT_AVAILABLE, cryptoId, amount: money.negate(amount) },
+    { ownerId: userId, purpose: PURPOSES.SPOT_BLOCKED, cryptoId, amount },
   ];
   return postTransaction({ type: 'reserva_orden', reference: referencia, description: 'Reserva de orden spot', lines }, transaction);
 }
 
 // Libera una reserva de orden (cancelación / remanente). spot:bloqueado −A →
 // spot:disponible +A.
-async function releaseReservation({ userId, criptomonedaId, cantidad, referencia }, transaction = null) {
+async function releaseReservation({ userId, cryptoId, quantity, referencia }, transaction = null) {
   const { postTransaction } = require('./postingService');
   const { PURPOSES } = require('./ledgerAccounts');
-  const amount = String(cantidad);
+  const amount = String(quantity);
   const lines = [
-    { ownerId: userId, purpose: PURPOSES.SPOT_BLOCKED, cryptoId: criptomonedaId, amount: money.negate(amount) },
-    { ownerId: userId, purpose: PURPOSES.SPOT_AVAILABLE, cryptoId: criptomonedaId, amount },
+    { ownerId: userId, purpose: PURPOSES.SPOT_BLOCKED, cryptoId, amount: money.negate(amount) },
+    { ownerId: userId, purpose: PURPOSES.SPOT_AVAILABLE, cryptoId, amount },
   ];
   return postTransaction({ type: 'liberacion_reserva', reference: referencia, description: 'Liberación de reserva spot', lines }, transaction);
 }

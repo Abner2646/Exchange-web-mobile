@@ -1,9 +1,9 @@
-// services/trading/balanceManager.service.js
+// modules/trading/balanceManager.service.js
 const { UserBalance, TradingPair } = require('../../models');
 const { sequelize } = require('../../models');
 const money = require('../../utils/money');
 const crypto = require('crypto');
-const { settleTrade, reserveForOrder, releaseReservation } = require('../../modules/balances/ledger/operations');
+const { settleTrade, reserveForOrder, releaseReservation } = require('../balances/ledger/operations');
 
 // Modelo de fee (alineado 2026-08-31, antes Radar #12a): el fee taker se cobra
 // del ASSET RECIBIDO al liquidar (compra → fee en base; venta → fee en quote),
@@ -67,7 +67,7 @@ class BalanceManagerService {
 
       // Reservar en Spot (atómico: FOR UPDATE dentro de postTransaction).
       await reserveForOrder(
-        { userId, criptomonedaId: assetToLock, cantidad: amountToLock, referencia: `reserva:${crypto.randomUUID()}` },
+        { userId, cryptoId: assetToLock, quantity: amountToLock, referencia: `reserva:${crypto.randomUUID()}` },
         transaction
       );
 
@@ -116,7 +116,7 @@ class BalanceManagerService {
 
       // Liberar la reserva en Spot.
       await releaseReservation(
-        { userId: order.userId, criptomonedaId: assetToUnlock, cantidad: amountToUnlock, referencia: `liberacion:${crypto.randomUUID()}` },
+        { userId: order.userId, cryptoId: assetToUnlock, quantity: amountToUnlock, referencia: `liberacion:${crypto.randomUUID()}` },
         transaction
       );
 
@@ -138,19 +138,19 @@ class BalanceManagerService {
   async updateBalancesAfterTrade(trade, buyOrder, sellOrder, transaction) {
     try {
       const tradingPair = buyOrder.tradingPair || await TradingPair.findByPk(trade.tradingPairId, { transaction });
-      const montoQuote = money.multiply(String(trade.quantity), String(trade.price));
+      const quoteAmount = money.multiply(String(trade.quantity), String(trade.price));
 
-      // Paso D: liquidación rica en el ledger (un asiento). Comprador↔vendedor
-      // (spot: bloqueado→disponible por cripto) + ambas comisiones a fee_revenue.
+      // Paso D: liquidación rica en el ledger (un asiento). Buyer↔seller
+      // (spot: blocked→available por cripto) + ambas comisiones a fee_revenue.
       await settleTrade({
-        compradorId: trade.buyerId,
-        vendedorId: trade.sellerId,
+        buyerId: trade.buyerId,
+        sellerId: trade.sellerId,
         baseAssetId: tradingPair.baseAssetId,
         quoteAssetId: tradingPair.quoteAssetId,
-        cantidad: String(trade.quantity),
-        montoQuote,
-        feeComprador: String(trade.buyerFee),
-        feeVendedor: String(trade.sellerFee),
+        quantity: String(trade.quantity),
+        quoteAmount,
+        buyerFee: String(trade.buyerFee),
+        sellerFee: String(trade.sellerFee),
         referencia: `trade:${trade.id}`,
       }, transaction);
 

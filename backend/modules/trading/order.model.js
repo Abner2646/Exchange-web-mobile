@@ -1,5 +1,5 @@
 // models/order.model.js
-const initOrder = require('./entities/order.entity');
+const initOrder = require('./order.entity');
 const { Op } = require('sequelize');
 
 function createOrderModel(sequelize) {

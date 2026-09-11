@@ -24,10 +24,10 @@ const valoracionModel = require('./valoracion.model');
 const walletMaestraModel = require('../modules/wallets/masterWallet.model');
 
 // TRADING MODELS
-const tradingPairModel = require('./tradingPair.model.js');
-const orderModel = require('./order.model');
-const tradeModel = require('./trade.model');
-const priceCandleModel = require('./priceCandle.model');
+const tradingPairModel = require('../modules/trading/tradingPair.model.js');
+const orderModel = require('../modules/trading/order.model');
+const tradeModel = require('../modules/trading/trade.model');
+const priceCandleModel = require('../modules/trading/priceCandle.model');
 const idempotencyKeyModel = require('./idempotencyKey.model');
 
 // LEDGER (partida doble) — Radar #1 + #10

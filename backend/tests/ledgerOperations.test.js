@@ -59,8 +59,8 @@ describe('settleSwap arma el asiento del swap (net-zero por cripto)', () => {
 describe('settleTrade arma el asiento del trade spot user↔user', () => {
   test('con fees: vendedor(bloqueado)→comprador(disponible) en base, y viceversa en quote; fee_revenue por lado', async () => {
     await settleTrade({
-      compradorId: 'comprador', vendedorId: 'vendedor', baseAssetId: 'BTC', quoteAssetId: 'USDT',
-      cantidad: '1', montoQuote: '100', feeComprador: '0.001', feeVendedor: '0.1', referencia: 'trade:1',
+      buyerId: 'comprador', sellerId: 'vendedor', baseAssetId: 'BTC', quoteAssetId: 'USDT',
+      quantity: '1', quoteAmount: '100', buyerFee: '0.001', sellerFee: '0.1', referencia: 'trade:1',
     }, 'tx');
 
     const [asiento, transaction] = postTransaction.mock.calls[0];
@@ -80,8 +80,8 @@ describe('settleTrade arma el asiento del trade spot user↔user', () => {
 
   test('sin fees: no emite líneas de fee_revenue (sólo las 4 patas de usuario)', async () => {
     await settleTrade({
-      compradorId: 'comprador', vendedorId: 'vendedor', baseAssetId: 'BTC', quoteAssetId: 'USDT',
-      cantidad: '1', montoQuote: '100', feeComprador: '0', feeVendedor: '0', referencia: 'trade:2',
+      buyerId: 'comprador', sellerId: 'vendedor', baseAssetId: 'BTC', quoteAssetId: 'USDT',
+      quantity: '1', quoteAmount: '100', buyerFee: '0', sellerFee: '0', referencia: 'trade:2',
     });
 
     const { lines } = postTransaction.mock.calls[0][0];
@@ -226,7 +226,7 @@ describe('transferBetweenCompartments mueve disponible entre compartimentos (mis
 
 describe('reserveForOrder / releaseReservation mueven disponible↔bloqueado en Spot', () => {
   test('reserveForOrder: spot:disponible −A → spot:bloqueado +A', async () => {
-    await reserveForOrder({ userId: 'u', criptomonedaId: 'USDT', cantidad: '100', referencia: 'reserva:1' }, 'tx');
+    await reserveForOrder({ userId: 'u', cryptoId: 'USDT', quantity: '100', referencia: 'reserva:1' }, 'tx');
     const [asiento, transaction] = postTransaction.mock.calls[0];
     expect(transaction).toBe('tx');
     expect(asiento.type).toBe('reserva_orden');
@@ -236,7 +236,7 @@ describe('reserveForOrder / releaseReservation mueven disponible↔bloqueado en 
   });
 
   test('releaseReservation: spot:bloqueado −A → spot:disponible +A', async () => {
-    await releaseReservation({ userId: 'u', criptomonedaId: 'USDT', cantidad: '100', referencia: 'liberacion:1' });
+    await releaseReservation({ userId: 'u', cryptoId: 'USDT', quantity: '100', referencia: 'liberacion:1' });
     const asiento = postTransaction.mock.calls[0][0];
     expect(asiento.type).toBe('liberacion_reserva');
     expect(asiento.lines).toContainEqual({ ownerId: 'u', purpose: PURPOSES.SPOT_BLOCKED, cryptoId: 'USDT', amount: '-100' });

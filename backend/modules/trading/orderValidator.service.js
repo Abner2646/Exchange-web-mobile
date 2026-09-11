@@ -1,4 +1,4 @@
-// services/trading/orderValidator.service.js
+// modules/trading/orderValidator.service.js
 const { TradingPair, User } = require('../../models');
 
 class OrderValidatorService {

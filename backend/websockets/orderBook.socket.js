@@ -1,5 +1,5 @@
 // websockets/orderBook.socket.js
-const orderBookService = require('../services/trading/orderBook.service');
+const orderBookService = require('../modules/trading/orderBook.service');
 
 module.exports = (io) => {
   

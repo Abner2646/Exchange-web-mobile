@@ -1,7 +1,7 @@
 // models/priceCandle.model.js
-const initPriceCandle = require('./entities/priceCandle.entity');
+const initPriceCandle = require('./priceCandle.entity');
 const { Op } = require('sequelize');
-const money = require('../utils/money');
+const money = require('../../utils/money');
 
 function createPriceCandleModel(sequelize) {
   const PriceCandle = initPriceCandle(sequelize);

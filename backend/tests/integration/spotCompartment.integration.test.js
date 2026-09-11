@@ -2,7 +2,7 @@ require('../helpers/testEnv');
 const { installAuthHarness, app } = require('../helpers/authHarness');
 const request = require('supertest');
 const f = require('../helpers/factories');
-const balanceManager = require('../../services/trading/balanceManager.service');
+const balanceManager = require('../../modules/trading/balanceManager.service');
 const { UserBalance } = require('../../models');
 const recon = require('../../modules/balances/ledger/reconciliation');
 const { PURPOSES } = require('../../modules/balances/ledger/ledgerAccounts');

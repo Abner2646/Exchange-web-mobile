@@ -281,3 +281,20 @@ Also disable the submit button + show a "sending…" state (cheap first-line def
   `cantidadFinal`→`finalAmount`). The ledger's swap-only `settleSwap()` now takes English params
   (`userId`/`baseCryptoId`/`baseAmount`/`type` with `buy|sell`); `compartimento`/`referencia`
   stay Spanish (shared ledger vocabulary). `priceService` stays under `services/` (shared infra).
+
+### ✅ trading  (chunk 6 — done)
+
+- **No client-facing field/enum changes.** The trading domain (order book / matching engine)
+  was already written in English at the model/column/API level — `Order`, `Trade`, `TradingPair`,
+  `PriceCandle`; fields like `orderType`, `side` (`buy|sell`), `quantity`, `price`, `status`,
+  `feePercent`, `buyerId`/`sellerId`, `baseAssetId`/`quoteAssetId` were English already. Routes
+  stay mounted at `/api/trading/*` (unchanged).
+- **Internal only:** moved the domain into `modules/trading/` (controllers, models, entities, routes,
+  and the six services from `services/trading/`). The trading-only ledger functions now take English
+  params: `settleTrade({ buyerId, sellerId, baseAssetId, quoteAssetId, quantity, quoteAmount,
+  buyerFee, sellerFee })`, `reserveForOrder`/`releaseReservation({ userId, cryptoId, quantity })`
+  (`referencia` stays Spanish; persisted ledger `type` values `liquidacion_trade`/`reserva_orden`/
+  `liberacion_reserva` unchanged — audit-trail semantics, frozen).
+- **Still Spanish (deferred):** the `?criptomonedaId=` query param on the trading-balance read and
+  the `balance.criptomonedaId` FK-echo — they rename with the crypto FK (balances-domain decision),
+  not in this chunk.

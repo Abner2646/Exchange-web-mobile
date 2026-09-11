@@ -11,7 +11,7 @@ jest.mock('../models', () => ({ TradingPair: {} }));
 jest.mock('axios');
 
 const axios = require('axios');
-const priceUpdater = require('../services/trading/priceUpdater.service');
+const priceUpdater = require('../modules/trading/priceUpdater.service');
 
 beforeEach(() => {
   jest.clearAllMocks();

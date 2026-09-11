@@ -1,4 +1,4 @@
-// services/trading/priceUpdater.service.js
+// modules/trading/priceUpdater.service.js
 const { TradingPair } = require('../../models');
 const axios = require('axios');
 
