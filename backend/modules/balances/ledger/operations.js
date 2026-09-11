@@ -23,7 +23,7 @@ const money = require('../../../utils/money');
 //  - la casa `treasury` es la contraparte de inventario (entrega/recibe el active),
 //  - la comisión (en quote, igual que el modelo actual) acredita `fee_revenue`.
 // Mantiene idénticos los saldos del usuario respecto del modelo previo; sólo el
-// lado de la casa pasa de `suspense`/WalletMaestra a treasury+fee_revenue.
+// lado de la casa pasa de `suspense`/MasterWallet a treasury+fee_revenue.
 //
 // Montos (strings canónicos desde calculateSettlement):
 //   cantidadQuote  = base * precio            (valor de la operación en quote)

@@ -9,10 +9,10 @@ process.env.JWT_SECRET = 'test-secret';
 
 jest.mock('../models', () => ({
   User: { findByPk: jest.fn() },
-  TransaccionBlockchain: {},
+  BlockchainTransaction: {},
   Crypto: {},
   UserBalance: {},
-  DireccionDeposito: {},
+  DepositAddress: {},
 }));
 
 jest.mock('../jobs/blockchain.jobs', () => ({

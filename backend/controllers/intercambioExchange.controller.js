@@ -32,7 +32,7 @@ const isValidUUID = (uuid) => {
 // `tipo`, revalida el límite diario, y pasa la transacción de forma
 // consistente a cada escritura (incluida la comisión a la wallet maestra,
 // que antes se confirmaba en su propia transacción aparte — ver el fix de
-// WalletMaestra.updateBalance en este mismo commit).
+// MasterWallet.updateBalance en este mismo commit).
 const createOrder = async (req, res) => {
   const transaction = await sequelize.transaction();
 
@@ -157,7 +157,7 @@ const createOrder = async (req, res) => {
 
     // Paso D: liquidación rica en el ledger. User ↔ treasury (inventario de la
     // casa); la comisión (en quote) acredita fee_revenue. Reemplaza los
-    // updateBalance (funding+suspense) y el crédito a WalletMaestra.balanceTotal.
+    // updateBalance (funding+suspense) y el crédito a MasterWallet.totalBalance.
     await settleSwap({
       usuarioId,
       criptoBaseId,

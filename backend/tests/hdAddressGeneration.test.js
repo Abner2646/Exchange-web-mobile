@@ -22,7 +22,7 @@ const sequelize = new Sequelize('postgres://test:test@localhost:5432/test', {
   logging: false,
 });
 
-const DireccionDeposito = createDireccionDepositoModel(sequelize);
+const DepositAddress = createDireccionDepositoModel(sequelize);
 
 function xpubDeCuentaDePrueba() {
   const mnemonic = bip39.generateMnemonic();
@@ -32,25 +32,25 @@ function xpubDeCuentaDePrueba() {
   return account.neutered().toBase58();
 }
 
-describe('DireccionDeposito._generateEthereumAddress', () => {
+describe('DepositAddress._generateEthereumAddress', () => {
   const xpub = xpubDeCuentaDePrueba();
 
   test('genera una dirección Ethereum válida y checksummeada', () => {
-    const { address } = DireccionDeposito._generateEthereumAddress(xpub, "m/44'/60'/0'", 0, 1);
+    const { address } = DepositAddress._generateEthereumAddress(xpub, "m/44'/60'/0'", 0, 1);
     expect(ethers.isAddress(address)).toBe(true);
     expect(address).toBe(ethers.getAddress(address)); // checksum correcto
   });
 
   test('es determinística: mismo xpub + mismo índice = misma dirección siempre', () => {
-    const primera = DireccionDeposito._generateEthereumAddress(xpub, "m/44'/60'/0'", 3, 1);
-    const segunda = DireccionDeposito._generateEthereumAddress(xpub, "m/44'/60'/0'", 3, 1);
+    const primera = DepositAddress._generateEthereumAddress(xpub, "m/44'/60'/0'", 3, 1);
+    const segunda = DepositAddress._generateEthereumAddress(xpub, "m/44'/60'/0'", 3, 1);
     expect(primera.address).toBe(segunda.address);
   });
 
   test('cada índice de derivación produce una dirección distinta', () => {
     const direcciones = new Set(
       [0, 1, 2, 3, 4].map(
-        (index) => DireccionDeposito._generateEthereumAddress(xpub, "m/44'/60'/0'", index, 1).address
+        (index) => DepositAddress._generateEthereumAddress(xpub, "m/44'/60'/0'", index, 1).address
       )
     );
     expect(direcciones.size).toBe(5);
@@ -58,8 +58,8 @@ describe('DireccionDeposito._generateEthereumAddress', () => {
 
   test('dos xpubs distintos producen direcciones distintas para el mismo índice', () => {
     const otroXpub = xpubDeCuentaDePrueba();
-    const a = DireccionDeposito._generateEthereumAddress(xpub, "m/44'/60'/0'", 0, 1);
-    const b = DireccionDeposito._generateEthereumAddress(otroXpub, "m/44'/60'/0'", 0, 1);
+    const a = DepositAddress._generateEthereumAddress(xpub, "m/44'/60'/0'", 0, 1);
+    const b = DepositAddress._generateEthereumAddress(otroXpub, "m/44'/60'/0'", 0, 1);
     expect(a.address).not.toBe(b.address);
   });
 });

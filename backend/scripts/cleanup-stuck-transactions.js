@@ -1,6 +1,6 @@
 // scripts/cleanup-stuck-transactions.js - Eliminar transacciones problemáticas de balance check
 require('dotenv').config();
-const { TransaccionBlockchain } = require('../models');
+const { BlockchainTransaction } = require('../models');
 const { Op } = require('sequelize');
 
 class BalanceCheckCleanup {
@@ -46,7 +46,7 @@ class BalanceCheckCleanup {
   }
 
   async findProblematicTransactions() {
-    const ethBalanceChecks = await TransaccionBlockchain.findAll({
+    const ethBalanceChecks = await BlockchainTransaction.findAll({
       where: {
         txHash: {
           [Op.like]: 'eth_balance_%'
@@ -66,7 +66,7 @@ class BalanceCheckCleanup {
       ]
     });
 
-    const bscBalanceChecks = await TransaccionBlockchain.findAll({
+    const bscBalanceChecks = await BlockchainTransaction.findAll({
       where: {
         txHash: {
           [Op.like]: 'bsc_balance_%'
@@ -86,7 +86,7 @@ class BalanceCheckCleanup {
       ]
     });
 
-    const btcBalanceChecks = await TransaccionBlockchain.findAll({
+    const btcBalanceChecks = await BlockchainTransaction.findAll({
       where: {
         txHash: {
           [Op.like]: 'balance_%'
@@ -168,7 +168,7 @@ class BalanceCheckCleanup {
       }
 
       // 1. Eliminar transacciones problemáticas
-      const deletedCount = await TransaccionBlockchain.destroy({
+      const deletedCount = await BlockchainTransaction.destroy({
         where: {
           id: {
             [Op.in]: allTransactions.map(tx => tx.id)

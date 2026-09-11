@@ -12,9 +12,9 @@ Se crea AUTOMÁTICAMENTE cuando:
 // Ejemplo: Solo UNA wallet maestra para Bitcoin
 {
   id: "uuid",
-  criptomonedaId: "btc-uuid", 
-  direccionPublica: "1A2B3C...bitcoin-address",
-  balanceTotal: 125.50000000,  // Total de todos los usuarios
+  cryptoId: "btc-uuid", 
+  publicAddress: "1A2B3C...bitcoin-address",
+  totalBalance: 125.50000000,  // Total de todos los usuarios
   active: true
 }
 */
@@ -55,30 +55,30 @@ const ensureHexFormat = (value, fieldName) => {
   return value;
 };
 
-class WalletMaestra extends Model {}
+class MasterWallet extends Model {}
 
-function initWalletMaestra(sequelize) {
-  WalletMaestra.init({
+function initMasterWallet(sequelize) {
+  MasterWallet.init({
     id: {
       type: DataTypes.UUID,
       primaryKey: true,
       defaultValue: DataTypes.UUIDV4
     },
-    criptomonedaId: {
+    cryptoId: {
       type: DataTypes.UUID,
       allowNull: false,
-      field: 'criptomoneda_id'
+      field: 'crypto_id'
     },
     // Campos originales mantenidos
-    direccionPublica: {
+    publicAddress: {
       type: DataTypes.STRING(255),
       allowNull: true, // Cambiado a nullable porque ahora usamos xpub
-      field: 'direccion_publica'
+      field: 'public_address'
     },
-    balanceTotal: {
+    totalBalance: {
       type: DataTypes.DECIMAL(28, 8),
       defaultValue: 0,
-      field: 'balance_total'
+      field: 'total_balance'
     },
     
     // ========== CAMPOS NUEVOS PARA HD WALLETS ==========
@@ -142,7 +142,7 @@ function initWalletMaestra(sequelize) {
     },
     
     // Información adicional
-    descripcion: {
+    description: {
       type: DataTypes.TEXT,
       allowNull: true,
       comment: 'Descripción detallada de la wallet'
@@ -173,8 +173,8 @@ function initWalletMaestra(sequelize) {
     
   }, {
     sequelize,
-    modelName: 'WalletMaestra',
-    tableName: 'wallets_maestras',
+    modelName: 'MasterWallet',
+    tableName: 'master_wallets',
     timestamps: true,
     createdAt: 'created_at',
     updatedAt: 'updated_at', // Activado para auditoría
@@ -182,25 +182,25 @@ function initWalletMaestra(sequelize) {
     indexes: [
       {
         unique: true,
-        fields: ['criptomoneda_id'],
-        name: 'wallets_maestras_criptomoneda_unique'
+        fields: ['crypto_id'],
+        name: 'master_wallets_crypto_unique'
       },
       {
         unique: true,
         fields: ['network', 'symbol'],
-        name: 'wallets_maestras_red_symbol_unique'
+        name: 'master_wallets_network_symbol_unique'
       },
       {
         fields: ['active'],
-        name: 'wallets_maestras_activa_index'
+        name: 'master_wallets_active_index'
       },
       {
         fields: ['xpub'],
-        name: 'wallets_maestras_xpub_index'
+        name: 'master_wallets_xpub_index'
       },
       {
         fields: ['last_sync_at'],
-        name: 'wallets_maestras_last_sync_index'
+        name: 'master_wallets_last_sync_index'
       }
     ],
     
@@ -252,8 +252,8 @@ function initWalletMaestra(sequelize) {
     hooks: {
       beforeCreate: async (wallet, options) => {
         // Validar que no existe otra wallet para la misma crypto
-        const existing = await WalletMaestra.findOne({
-          where: { criptomonedaId: wallet.criptomonedaId },
+        const existing = await MasterWallet.findOne({
+          where: { cryptoId: wallet.cryptoId },
           transaction: options.transaction
         });
         
@@ -315,7 +315,7 @@ function initWalletMaestra(sequelize) {
     }
   });
 
-  return WalletMaestra;
+  return MasterWallet;
 }
 
-module.exports = initWalletMaestra;
+module.exports = initMasterWallet;

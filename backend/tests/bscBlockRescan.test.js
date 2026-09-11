@@ -7,8 +7,8 @@
 // tiene este ajuste.
 
 jest.mock('../models', () => ({
-  TransaccionBlockchain: {},
-  DireccionDeposito: {
+  BlockchainTransaction: {},
+  DepositAddress: {
     findAll: jest.fn().mockResolvedValue([
       {
         direccion: '0xUserAddress',

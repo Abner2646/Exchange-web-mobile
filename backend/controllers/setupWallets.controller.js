@@ -1,5 +1,5 @@
 // controllers/setupWallets.controller.js
-const { WalletMaestra, Crypto, sequelize } = require('../models');
+const { MasterWallet, Crypto, sequelize } = require('../models');
 const bip39 = require('bip39');
 const bitcoin = require('bitcoinjs-lib');
 const ecc = require('tiny-secp256k1');
@@ -505,7 +505,7 @@ const executeCompleteSetup = async (req, res) => {
     }
     
     // Verificar si ya existe setup
-    const existingWallets = await WalletMaestra.count({ transaction });
+    const existingWallets = await MasterWallet.count({ transaction });
     const { force = false } = req.body;
     
     if (existingWallets > 0 && !force) {
@@ -520,7 +520,7 @@ const executeCompleteSetup = async (req, res) => {
     // Limpiar datos existentes si force=true
     if (force && existingWallets > 0) {
       console.log('🧹 Limpiando datos existentes...');
-      await WalletMaestra.destroy({ where: {}, transaction });
+      await MasterWallet.destroy({ where: {}, transaction });
     }
     
     const resultados = [];
@@ -605,8 +605,8 @@ const executeCompleteSetup = async (req, res) => {
         }
         
         // Crear wallet en base de datos
-        const nuevaWallet = await WalletMaestra.create({
-          criptomonedaId: crypto.id,
+        const nuevaWallet = await MasterWallet.create({
+          cryptoId: crypto.id,
           name: `${config.name} Master Wallet`,
           network: config.network,
           symbol: config.symbol,
@@ -624,10 +624,10 @@ const executeCompleteSetup = async (req, res) => {
           derivationPath: walletData.derivationPath,
           fingerprint: walletData.fingerprint,
           publicKey: walletData.publicKey,
-          direccionPublica: walletData.address,
-          balanceTotal: 0,
+          publicAddress: walletData.address,
+          totalBalance: 0,
           active: true,
-          descripcion: `Wallet maestra para ${config.name} (${method})`,
+          description: `Wallet maestra para ${config.name} (${method})`,
           nextDerivationIndex: 0,
           metadata: {
             createdAt: new Date(),
@@ -728,16 +728,16 @@ const executeCompleteSetup = async (req, res) => {
 // =================== FUNCIONES DE DIAGNÓSTICO ===================
 const checkSetupStatus = async (req, res) => {
   try {
-    const walletCount = await WalletMaestra.count();
+    const walletCount = await MasterWallet.count();
     const cryptoCount = await Crypto.count();
     
-    const wallets = await WalletMaestra.findAll({
+    const wallets = await MasterWallet.findAll({
       include: [{
         model: Crypto,
         as: 'crypto',
         attributes: ['symbol', 'name', 'network', 'iconUrl']
       }],
-      attributes: ['id', 'name', 'symbol', 'network', 'active', 'created_at', 'balanceTotal'],
+      attributes: ['id', 'name', 'symbol', 'network', 'active', 'created_at', 'totalBalance'],
       order: [['symbol', 'ASC']]
     });
     
@@ -770,7 +770,7 @@ const checkSetupStatus = async (req, res) => {
           name: w.name,
           network: w.network,
           active: w.active,
-          balance: w.balanceTotal,
+          balance: w.totalBalance,
           created_at: w.created_at,
           iconUrl: w.crypto?.iconUrl
         })),
@@ -814,7 +814,7 @@ const resetCompleteSetup = async (req, res) => {
     }
     
     console.log('🧹 Eliminando todas las wallets maestras...');
-    const walletsEliminadas = await WalletMaestra.destroy({
+    const walletsEliminadas = await MasterWallet.destroy({
       where: {},
       transaction
     });

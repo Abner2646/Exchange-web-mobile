@@ -25,11 +25,11 @@ const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
  *     responses: { 201: { description: Dirección(es) creada(s) } }
  * /direccionDeposito/user/me:
  *   get: { tags: [Direcciones de depósito], summary: Mis direcciones (email verificado), responses: { 200: { description: Direcciones } } }
- * /direccionDeposito/user/me/crypto/{criptomonedaId}:
+ * /direccionDeposito/user/me/crypto/{cryptoId}:
  *   get:
  *     tags: [Direcciones de depósito]
  *     summary: Mi dirección para una cripto (email verificado)
- *     parameters: [{ in: path, name: criptomonedaId, required: true, schema: { type: string, format: uuid } }]
+ *     parameters: [{ in: path, name: cryptoId, required: true, schema: { type: string, format: uuid } }]
  *     responses: { 200: { description: Dirección } }
  * /direccionDeposito/user/{userId}:
  *   get:
@@ -37,62 +37,62 @@ const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
  *     summary: Direcciones de un usuario (admin)
  *     parameters: [{ in: path, name: userId, required: true, schema: { type: string, format: uuid } }]
  *     responses: { 200: { description: Direcciones } }
- * /direccionDeposito/user/{userId}/crypto/{criptomonedaId}:
+ * /direccionDeposito/user/{userId}/crypto/{cryptoId}:
  *   get:
  *     tags: [Direcciones de depósito - admin]
  *     summary: Dirección de un usuario para una cripto (admin)
  *     parameters:
  *       - { in: path, name: userId, required: true, schema: { type: string, format: uuid } }
- *       - { in: path, name: criptomonedaId, required: true, schema: { type: string, format: uuid } }
+ *       - { in: path, name: cryptoId, required: true, schema: { type: string, format: uuid } }
  *     responses: { 200: { description: Dirección } }
  */
 
 // --------------------- RUTAS CRUD BÁSICAS --------------------- //
 
 // Obtener mis direcciones de depósito
-router.get('/', authenticateToken, direccionDepositoController.getMyDirecciones); // Bien
+router.get('/', authenticateToken, direccionDepositoController.getMyDepositAddresses); // Bien
 
 // Obtener dirección de depósito por ID
-//router.get('/:id', authenticateToken, direccionDepositoController.getDireccionDepositoById);
+//router.get('/:id', authenticateToken, direccionDepositoController.getDepositAddressById);
 
 // Crear nueva dirección de depósito
-router.post('/', authenticateToken, direccionDepositoController.createDireccionDeposito); // Bien pero en el primer intento a pesar de que las cree no las resupera, hay que hacer un GET después para recuperar las direcciones correctamente
+router.post('/', authenticateToken, direccionDepositoController.createDepositAddress); // Bien pero en el primer intento a pesar de que las cree no las resupera, hay que hacer un GET después para recuperar las direcciones correctamente
 // Para crear direcciones para TODAS las criptomonedas: {"crearParaTodasLasCriptos": true}
 // Para crear dirección para una criptomoneda específica: {"walletMaestrId": "uuid-de-la-criptomoneda"} 
 
 
 // Actualizar dirección de depósito por ID
-//router.put('/:id', authenticateToken, direccionDepositoController.updateDireccionDeposito);
+//router.put('/:id', authenticateToken, direccionDepositoController.updateDepositAddress);
 
 // Eliminar dirección de depósito por ID
-//router.delete('/:id', authenticateToken, direccionDepositoController.deleteDireccionDeposito);
+//router.delete('/:id', authenticateToken, direccionDepositoController.deleteDepositAddress);
 
 // --------------------- RUTAS DE BÚSQUEDA Y CONSULTA --------------------- //
 
 // Buscar direcciones de depósito por término
-//router.get('/search/query', authenticateToken, direccionDepositoController.searchDireccionesDeposito);
+//router.get('/search/query', authenticateToken, direccionDepositoController.searchDepositAddresses);
 
 // Obtener dirección por address específico
-//router.get('/address/:address', authenticateToken, direccionDepositoController.getDireccionByAddress);
+//router.get('/address/:address', authenticateToken, direccionDepositoController.getDepositAddressByAddress);
 
 // --------------------- RUTAS POR USUARIO --------------------- //
 
 // Obtener mis direcciones de depósito (usuario autenticado)
-router.get('/user/me', authenticateToken, requireEmailVerified, requireEmailVerified, direccionDepositoController.getMyDirecciones);
+router.get('/user/me', authenticateToken, requireEmailVerified, requireEmailVerified, direccionDepositoController.getMyDepositAddresses);
 
 // Obtener mi dirección para una criptomoneda específica
-router.get('/user/me/crypto/:criptomonedaId',  authenticateToken, requireEmailVerified, direccionDepositoController.getMyDireccionForCrypto);
+router.get('/user/me/crypto/:cryptoId',  authenticateToken, requireEmailVerified, direccionDepositoController.getMyDepositAddressForCrypto);
 
 // Obtener direcciones de depósito por usuario específico (admin)
-router.get('/user/:userId', authenticateToken, isAdmin, direccionDepositoController.getDireccionesByUser);
+router.get('/user/:userId', authenticateToken, isAdmin, direccionDepositoController.getDepositAddressesByUser);
 
 // Obtener dirección específica por usuario y crypto (admin)
-router.get('/user/:userId/crypto/:criptomonedaId', authenticateToken, isAdmin, direccionDepositoController.getDireccionByUserAndCrypto);
+router.get('/user/:userId/crypto/:cryptoId', authenticateToken, isAdmin, direccionDepositoController.getDepositAddressByUserAndCrypto);
 
 // --------------------- RUTAS POR WALLET --------------------- //
 /*
 // Obtener direcciones por wallet maestra
-router.get('/wallet/:walletId', authenticateToken, direccionDepositoController.getDireccionesByWallet);
+router.get('/wallet/:walletId', authenticateToken, direccionDepositoController.getDepositAddressesByWallet);
 
 // Obtener siguiente índice de derivación para una wallet
 router.get('/wallet/:walletId/next-index', authenticateToken, direccionDepositoController.getNextDerivationIndex);
@@ -100,13 +100,13 @@ router.get('/wallet/:walletId/next-index', authenticateToken, direccionDepositoC
 // --------------------- RUTAS ADMINISTRATIVAS --------------------- //
 
 // Obtener estadísticas de direcciones de depósito
-router.get('/admin/stats', authenticateToken, direccionDepositoController.getDireccionDepositoStats);
+router.get('/admin/stats', authenticateToken, direccionDepositoController.getDepositAddressStats);
 
 // Actualizar estado específico de dirección de depósito
-router.patch('/:id/status', authenticateToken, direccionDepositoController.updateDireccionDepositoStatus);
+router.patch('/:id/status', authenticateToken, direccionDepositoController.updateDepositAddressStatus);
 
 // Alternar estado de dirección de depósito (activar/desactivar)
-router.patch('/:id/toggle', authenticateToken, direccionDepositoController.toggleDireccionDepositoStatus);
+router.patch('/:id/toggle', authenticateToken, direccionDepositoController.toggleDepositAddressStatus);
 
 // --------------------- RUTAS DE VALIDACIÓN Y DEPÓSITOS --------------------- //
 

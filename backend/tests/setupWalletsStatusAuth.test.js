@@ -9,7 +9,7 @@ process.env.JWT_SECRET = 'test-secret';
 
 jest.mock('../models', () => ({
   User: { findByPk: jest.fn() },
-  WalletMaestra: {},
+  MasterWallet: {},
   Crypto: {},
   sequelize: {},
 }));

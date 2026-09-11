@@ -32,7 +32,7 @@ jest.mock('../models/index.js', () => ({
     getCompartmentBalance: jest.fn(),
     updateBalance: jest.fn(),
   },
-  WalletMaestra: {
+  MasterWallet: {
     findOne: jest.fn(),
     addToBalance: jest.fn(),
   },
@@ -49,7 +49,7 @@ const {
   ParExchange,
   UserBalance,
   IntercambioExchange,
-  WalletMaestra,
+  MasterWallet,
 } = require('../models/index.js');
 
 const asyncHandler = require('../utils/asyncHandler');

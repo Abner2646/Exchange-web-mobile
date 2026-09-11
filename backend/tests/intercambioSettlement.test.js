@@ -6,7 +6,7 @@
 // pasaban por toFixed(8) (`cantidadQuote + comisionMonto`,
 // `cantidadQuote - comisionMonto`) arrastraban el error de coma y ese monto
 // contaminado se pasaba como Number a UserBalance.updateBalance /
-// WalletMaestra.addToBalance (que lo congelaban con String(amount), salteando la
+// MasterWallet.addToBalance (que lo congelaban con String(amount), salteando la
 // guarda anti-float de money.js). Después: aritmética exacta con decimal.js y
 // montos como string canónico.
 

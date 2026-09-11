@@ -7,13 +7,13 @@
 // ethers.Wallet y exige claves privadas por env).
 
 jest.mock('../models', () => ({
-  TransaccionBlockchain: { createDeposit: jest.fn() },
-  DireccionDeposito: {},
+  BlockchainTransaction: { createDeposit: jest.fn() },
+  DepositAddress: {},
   Crypto: {},
   BlockchainState: {},
 }));
 
-const { TransaccionBlockchain } = require('../models');
+const { BlockchainTransaction } = require('../models');
 const BscService = require('../services/blockchain/bsc.service');
 const { BSC_PROFILES } = require('../config/networks/evm');
 
@@ -48,16 +48,16 @@ describe('bsc.createDepositFromTransaction — net y fee exactos', () => {
   beforeEach(() => jest.clearAllMocks());
 
   test('cantidad = amount - fee sin error de coma; fee como string', async () => {
-    TransaccionBlockchain.createDeposit.mockResolvedValue({ id: 'd' });
+    BlockchainTransaction.createDeposit.mockResolvedValue({ id: 'd' });
     const tx = { from: '0xabc', hash: '0xh', confirmations: '3', blockNumber: '100', timeStamp: '1700000000' };
 
     await BscService.prototype.createDepositFromTransaction.call(
       { requiredConfirmations: 6 },
-      { userId: 'u', criptomonedaId: 'c', direccion: '0xdst' }, tx, '0.3', '0.1'
+      { userId: 'u', cryptoId: 'c', address: '0xdst' }, tx, '0.3', '0.1'
     );
 
-    const data = TransaccionBlockchain.createDeposit.mock.calls[0][0];
-    expect(data.cantidad).toBe('0.2');
-    expect(data.feeBlockchain).toBe('0.1');
+    const data = BlockchainTransaction.createDeposit.mock.calls[0][0];
+    expect(data.amount).toBe('0.2');
+    expect(data.blockchainFee).toBe('0.1');
   });
 });

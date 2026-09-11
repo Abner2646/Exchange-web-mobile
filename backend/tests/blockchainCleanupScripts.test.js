@@ -9,8 +9,8 @@
 //   (acreditaba saldo en vez de limpiar) — se eliminó por completo.
 
 jest.mock('../models', () => ({
-  TransaccionBlockchain: { findAll: jest.fn().mockResolvedValue([]) },
-  DireccionDeposito: {},
+  BlockchainTransaction: { findAll: jest.fn().mockResolvedValue([]) },
+  DepositAddress: {},
   Crypto: {},
   BlockchainState: {},
   User: {},
@@ -19,13 +19,13 @@ jest.mock('../models', () => ({
 jest.mock('../services/blockchain', () => ({ getService: jest.fn() }));
 
 const BlockchainJobManager = require('../jobs/blockchain.jobs');
-const { TransaccionBlockchain } = require('../models');
+const { BlockchainTransaction } = require('../models');
 
 describe('BlockchainJobManager.cleanupStuckTransactions', () => {
   test('el require apunta al script que realmente existe, no explota con MODULE_NOT_FOUND', async () => {
     const result = await BlockchainJobManager.cleanupStuckTransactions();
     expect(result.total).toBe(0);
-    expect(TransaccionBlockchain.findAll).toHaveBeenCalled();
+    expect(BlockchainTransaction.findAll).toHaveBeenCalled();
   });
 });
 

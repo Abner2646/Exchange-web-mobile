@@ -49,11 +49,11 @@ router.get('/my', rateLimitMiddleware.general, asyncHandler(transaccionBlockchai
  *         application/json:
  *           schema:
  *             type: object
- *             required: [criptomonedaId, cantidad, direccionDestino]
+ *             required: [cryptoId, amount, destinationAddress]
  *             properties:
- *               criptomonedaId: { type: string, format: uuid }
- *               cantidad: { type: number, example: 0.1 }
- *               direccionDestino: { type: string, description: Dirección on-chain de destino }
+ *               cryptoId: { type: string, format: uuid }
+ *               amount: { type: number, example: 0.1 }
+ *               destinationAddress: { type: string, description: Dirección on-chain de destino }
  *     responses:
  *       201: { description: Retiro creado (encolado) }
  *       400: { $ref: '#/components/responses/BadRequest' }
@@ -68,17 +68,17 @@ router.post('/withdraw', rateLimitMiddleware.withdrawal, joiValidate(transaccion
 
 /**
  * @openapi
- * /transaccionBlockchain/deposit-address/{criptomonedaId}:
+ * /transaccionBlockchain/deposit-address/{cryptoId}:
  *   get:
  *     tags: [Depósitos / Retiros (on-chain)]
  *     summary: Obtener mi dirección de depósito para una cripto
  *     parameters:
- *       - { in: path, name: criptomonedaId, required: true, schema: { type: string, format: uuid } }
+ *       - { in: path, name: cryptoId, required: true, schema: { type: string, format: uuid } }
  *     responses:
  *       200: { description: Dirección de depósito }
  *       401: { $ref: '#/components/responses/Unauthorized' }
  */
-router.get('/deposit-address/:criptomonedaId', /*validationMiddleware.validateUUID('criptomonedaId'),*/ rateLimitMiddleware.general, asyncHandler(transaccionBlockchainController.getDepositAddress.bind(transaccionBlockchainController))); //Bien (En realidad está duplicada la ruta con una de "direccionDeposito")
+router.get('/deposit-address/:cryptoId', /*validationMiddleware.validateUUID('cryptoId'),*/ rateLimitMiddleware.general, asyncHandler(transaccionBlockchainController.getDepositAddress.bind(transaccionBlockchainController))); //Bien (En realidad está duplicada la ruta con una de "direccionDeposito")
 
 // GET /api/transactions/tx/:hash - Buscar por hash
 //router.get('/tx/:hash', /*validationMiddleware.validateTxHash,*/ asyncHandler(transaccionBlockchainController.getTransactionByHash.bind(transaccionBlockchainController)));

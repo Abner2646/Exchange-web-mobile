@@ -6,8 +6,8 @@
 // — así que los retiros quedaban con fondos bloqueados para siempre.
 
 jest.mock('../models', () => ({
-  TransaccionBlockchain: {},
-  DireccionDeposito: {},
+  BlockchainTransaction: {},
+  DepositAddress: {},
   Crypto: {},
   BlockchainState: {},
 }));

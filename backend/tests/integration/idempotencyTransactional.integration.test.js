@@ -127,7 +127,7 @@ describe('transactional idempotency — transferMyCompartments (POST /balances/m
 });
 
 describe('transactional idempotency — createWithdrawal (model static, POST /transactions/withdraw)', () => {
-  const { TransaccionBlockchain } = require('../../models');
+  const { BlockchainTransaction } = require('../../models');
 
   // The withdrawal money movement (block funds + create row) is owned by the model
   // static's own tx. It takes an optional `finalize` hook that runs INSIDE that tx,
@@ -141,8 +141,8 @@ describe('transactional idempotency — createWithdrawal (model static, POST /tr
     const { where, _idempotency } = await claim(user.id, 'withdraw-key-1');
     const req = { _idempotency };
 
-    await TransaccionBlockchain.createWithdrawal(
-      { userId: user.id, criptomonedaId: btc.id, cantidad: 1, direccionDestino: 'addr-x' },
+    await BlockchainTransaction.createWithdrawal(
+      { userId: user.id, cryptoId: btc.id, amount: 1, destinationAddress: 'addr-x' },
       {
         finalize: async (transaction, retiro) => {
           const responseBody = { success: true, message: 'Retiro creado exitosamente', data: retiro };

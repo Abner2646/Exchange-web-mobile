@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const {
-  User, Crypto, ParExchange, UserBalance, WalletMaestra, TradingPair,
+  User, Crypto, ParExchange, UserBalance, MasterWallet, TradingPair,
 } = require('../../models');
 
 let seq = 0;
@@ -86,10 +86,10 @@ async function getSpotBalance(user, cripto) {
 }
 
 // network 'test' sidesteps the network-specific xpub validation; the swap only
-// looks the wallet up by criptomonedaId to credit the commission (balanceTotal).
+// looks the wallet up by criptomonedaId to credit the commission (totalBalance).
 async function seedWalletMaestra(cripto) {
-  return WalletMaestra.create({
-    criptomonedaId: cripto.id,
+  return MasterWallet.create({
+    cryptoId: cripto.id,
     name: `${cripto.symbol} test wallet`,
     network: 'test',
     symbol: cripto.symbol,

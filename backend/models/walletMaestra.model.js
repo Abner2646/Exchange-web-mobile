@@ -5,19 +5,19 @@ const crypto = require('crypto');
 const money = require('../utils/money');
 
 function createWalletMaestraModel(sequelize) {
-  const WalletMaestra = initWalletMaestra(sequelize);
+  const MasterWallet = initWalletMaestra(sequelize);
 
   // =================== MÉTODOS DE CONSULTA BÁSICOS ===================
   
-  WalletMaestra.getById = async (id) => {
+  MasterWallet.getById = async (id) => {
     try {
       // 🔍 DEBUG: Verificar qué modelos están disponibles
       console.log('Modelos disponibles:', Object.keys(sequelize.models));
       console.log('¿Existe Crypto?', !!sequelize.models.Crypto);
-      console.log('¿Existe DireccionDeposito?', !!sequelize.models.DireccionDeposito);
+      console.log('¿Existe DepositAddress?', !!sequelize.models.DepositAddress);
       console.log('¿Existe User?', !!sequelize.models.User);
 
-      const wallet = await WalletMaestra.findByPk(id, {
+      const wallet = await MasterWallet.findByPk(id, {
         include: [
           {
             model: sequelize.models.Crypto,
@@ -25,13 +25,13 @@ function createWalletMaestraModel(sequelize) {
             attributes: ['id', 'symbol', 'name', 'network', 'decimals', 'active']
           },
           {
-            model: sequelize.models.DireccionDeposito,
-            as: 'direccionesDeposito',
-            attributes: ['id', 'userId', 'direccion', 'derivationIndex', 'active', 'created_at'],
+            model: sequelize.models.DepositAddress,
+            as: 'depositAddresses',
+            attributes: ['id', 'userId', 'address', 'derivationIndex', 'active', 'created_at'],
             include: [
               {
                 model: sequelize.models.User,
-                as: 'usuario',
+                as: 'user',
                 attributes: ['id', 'email', 'username']
               }
             ]
@@ -44,7 +44,7 @@ function createWalletMaestraModel(sequelize) {
     }
   };
 
-  WalletMaestra.getAll = async (filters = {}) => {
+  MasterWallet.getAll = async (filters = {}) => {
     try {
       const whereClause = {};
       const includeClause = [
@@ -56,8 +56,8 @@ function createWalletMaestraModel(sequelize) {
       ];
       
       // Filtros básicos
-      if (filters.criptomonedaId) {
-        whereClause.criptomonedaId = filters.criptomonedaId;
+      if (filters.cryptoId) {
+        whereClause.cryptoId = filters.cryptoId;
       }
       
       if (filters.active !== undefined) {
@@ -72,9 +72,9 @@ function createWalletMaestraModel(sequelize) {
         whereClause.symbol = filters.symbol.toUpperCase();
       }
 
-      if (filters.direccionPublica) {
-        whereClause.direccionPublica = {
-          [Op.iLike]: `%${filters.direccionPublica}%`
+      if (filters.publicAddress) {
+        whereClause.publicAddress = {
+          [Op.iLike]: `%${filters.publicAddress}%`
         };
       }
 
@@ -86,15 +86,15 @@ function createWalletMaestraModel(sequelize) {
 
       // Filtros por balance
       if (filters.balanceMin !== undefined) {
-        whereClause.balanceTotal = {
-          ...whereClause.balanceTotal,
+        whereClause.totalBalance = {
+          ...whereClause.totalBalance,
           [Op.gte]: parseFloat(filters.balanceMin)
         };
       }
 
       if (filters.balanceMax !== undefined) {
-        whereClause.balanceTotal = {
-          ...whereClause.balanceTotal,
+        whereClause.totalBalance = {
+          ...whereClause.totalBalance,
           [Op.lte]: parseFloat(filters.balanceMax)
         };
       }
@@ -114,11 +114,11 @@ function createWalletMaestraModel(sequelize) {
       const limit = parseInt(filters.limit) || 100;
       const offset = parseInt(filters.offset) || 0;
 
-      const { count, rows } = await WalletMaestra.findAndCountAll({
+      const { count, rows } = await MasterWallet.findAndCountAll({
         where: whereClause,
         include: includeClause,
         order: [
-          ['balance_total', 'DESC'],
+          ['total_balance', 'DESC'],
           ['created_at', 'DESC']
         ],
         limit,
@@ -137,13 +137,13 @@ function createWalletMaestraModel(sequelize) {
     }
   };
 
-  WalletMaestra.search = async (term, limit = 10) => {
+  MasterWallet.search = async (term, limit = 10) => {
     try {
-      const wallets = await WalletMaestra.findAll({
+      const wallets = await MasterWallet.findAll({
         where: {
           [Op.or]: [
             { name: { [Op.iLike]: `%${term}%` } },
-            { direccionPublica: { [Op.iLike]: `%${term}%` } },
+            { publicAddress: { [Op.iLike]: `%${term}%` } },
             { symbol: { [Op.iLike]: `%${term}%` } },
             { network: { [Op.iLike]: `%${term}%` } }
           ]
@@ -156,7 +156,7 @@ function createWalletMaestraModel(sequelize) {
           }
         ],
         limit: parseInt(limit),
-        order: [['balance_total', 'DESC']]
+        order: [['total_balance', 'DESC']]
       });
       
       return wallets;
@@ -167,30 +167,30 @@ function createWalletMaestraModel(sequelize) {
 
   // =================== MÉTODOS ESPECÍFICOS PARA HD WALLETS ===================
 
-  WalletMaestra.getByCriptomoneda = async (criptomonedaId) => {
+  MasterWallet.getByCrypto = async (cryptoId) => {
     try {
-      const wallet = await WalletMaestra.findOne({
-        where: { criptomonedaId: criptomonedaId },
+      const wallet = await MasterWallet.findOne({
+        where: { cryptoId: cryptoId },
         include: [
           {
             model: sequelize.models.Crypto,
             as: 'crypto',
             // NOTE: no 'derivationPath' / 'addressFormat' — those are NOT columns
-            // on Crypto (the HD derivation path lives on WalletMaestra).
+            // on Crypto (the HD derivation path lives on MasterWallet).
             // Selecting them made Postgres throw "column crypto.derivationPath
             // does not exist" on every call, breaking deposit-address provisioning.
             attributes: ['id', 'symbol', 'name', 'network', 'decimals']
           },
           {
-            model: sequelize.models.DireccionDeposito,
-            as: 'direccionesDeposito',
-            attributes: ['id', 'userId', 'direccion', 'derivationIndex', 'active'],
+            model: sequelize.models.DepositAddress,
+            as: 'depositAddresses',
+            attributes: ['id', 'userId', 'address', 'derivationIndex', 'active'],
             where: { active: true },
             required: false,
             include: [
               {
                 model: sequelize.models.User,
-                as: 'usuario',
+                as: 'user',
                 attributes: ['id', 'email', 'username']
               }
             ],
@@ -205,10 +205,10 @@ function createWalletMaestraModel(sequelize) {
     }
   };
 
-  WalletMaestra.getByAddress = async (direccionPublica) => {
+  MasterWallet.getByAddress = async (publicAddress) => {
     try {
-      const wallet = await WalletMaestra.findOne({
-        where: { direccionPublica: direccionPublica },
+      const wallet = await MasterWallet.findOne({
+        where: { publicAddress: publicAddress },
         include: [
           {
             model: sequelize.models.Crypto,
@@ -223,9 +223,9 @@ function createWalletMaestraModel(sequelize) {
     }
   };
 
-  WalletMaestra.getByXpub = async (xpub) => {
+  MasterWallet.getByXpub = async (xpub) => {
     try {
-      const wallet = await WalletMaestra.findOne({
+      const wallet = await MasterWallet.findOne({
         where: { xpub: xpub },
         include: [
           {
@@ -241,7 +241,7 @@ function createWalletMaestraModel(sequelize) {
     }
   };
 
-  WalletMaestra.getActive = async (options = {}) => {
+  MasterWallet.getActive = async (options = {}) => {
     try {
       const whereClause = { active: true };
       
@@ -249,7 +249,7 @@ function createWalletMaestraModel(sequelize) {
         whereClause.network = options.network;
       }
 
-      const wallets = await WalletMaestra.findAll({
+      const wallets = await MasterWallet.findAll({
         where: whereClause,
         include: [
           {
@@ -259,7 +259,7 @@ function createWalletMaestraModel(sequelize) {
             where: options.soloActivasCrypto !== false ? { active: true } : undefined
           }
         ],
-        order: [['balance_total', 'DESC']]
+        order: [['total_balance', 'DESC']]
       });
       return wallets;
     } catch (error) {
@@ -267,11 +267,11 @@ function createWalletMaestraModel(sequelize) {
     }
   };
 
-  WalletMaestra.getWithLowBalance = async (threshold = 0.01) => {
+  MasterWallet.getWithLowBalance = async (threshold = 0.01) => {
     try {
-      const wallets = await WalletMaestra.findAll({
+      const wallets = await MasterWallet.findAll({
         where: {
-          balanceTotal: { [Op.lt]: threshold },
+          totalBalance: { [Op.lt]: threshold },
           active: true
         },
         include: [
@@ -281,7 +281,7 @@ function createWalletMaestraModel(sequelize) {
             attributes: ['id', 'symbol', 'name', 'network']
           }
         ],
-        order: [['balance_total', 'ASC']]
+        order: [['total_balance', 'ASC']]
       });
       return wallets;
     } catch (error) {
@@ -289,11 +289,11 @@ function createWalletMaestraModel(sequelize) {
     }
   };
 
-  WalletMaestra.getWithHighBalance = async (threshold = 100) => {
+  MasterWallet.getWithHighBalance = async (threshold = 100) => {
     try {
-      const wallets = await WalletMaestra.findAll({
+      const wallets = await MasterWallet.findAll({
         where: {
-          balanceTotal: { [Op.gte]: threshold },
+          totalBalance: { [Op.gte]: threshold },
           active: true
         },
         include: [
@@ -303,7 +303,7 @@ function createWalletMaestraModel(sequelize) {
             attributes: ['id', 'symbol', 'name', 'network']
           }
         ],
-        order: [['balance_total', 'DESC']]
+        order: [['total_balance', 'DESC']]
       });
       return wallets;
     } catch (error) {
@@ -318,22 +318,22 @@ function createWalletMaestraModel(sequelize) {
   // función siempre abría y commiteaba la suya, así que un addToBalance()
   // llamado desde dentro de otra transacción quedaba confirmado en la DB
   // aunque esa transacción externa después hiciera rollback.
-  WalletMaestra.updateBalance = async (id, nuevoBalance, transaction = null) => {
+  MasterWallet.updateBalance = async (id, nuevoBalance, transaction = null) => {
     const ownTransaction = !transaction;
     const t = transaction || await sequelize.transaction();
 
     try {
-      const wallet = await WalletMaestra.findByPk(id, { transaction: t });
+      const wallet = await MasterWallet.findByPk(id, { transaction: t });
 
       if (!wallet) {
         throw new Error('Wallet maestra no encontrada');
       }
 
-      const balanceAnterior = String(wallet.balanceTotal);
+      const balanceAnterior = String(wallet.totalBalance);
 
-      await WalletMaestra.update(
+      await MasterWallet.update(
         {
-          balanceTotal: nuevoBalance,
+          totalBalance: nuevoBalance,
           lastSyncAt: new Date(),
           metadata: {
             ...wallet.metadata,
@@ -350,13 +350,13 @@ function createWalletMaestraModel(sequelize) {
 
       if (ownTransaction) {
         await t.commit();
-        return await WalletMaestra.getById(id);
+        return await MasterWallet.getById(id);
       }
 
       // Dentro de una transacción compartida todavía sin commitear: devolver
       // el estado en memoria en vez de releerlo (una lectura aparte podría no
       // ver el cambio todavía, según el nivel de aislamiento).
-      wallet.balanceTotal = nuevoBalance;
+      wallet.totalBalance = nuevoBalance;
       return wallet;
     } catch (error) {
       if (ownTransaction) await t.rollback();
@@ -364,45 +364,45 @@ function createWalletMaestraModel(sequelize) {
     }
   };
 
-  WalletMaestra.addToBalance = async (id, cantidad, transaction = null) => {
+  MasterWallet.addToBalance = async (id, amount, transaction = null) => {
     try {
-      const wallet = await WalletMaestra.findByPk(id, { transaction });
+      const wallet = await MasterWallet.findByPk(id, { transaction });
       if (!wallet) {
         throw new Error('Wallet maestra no encontrada');
       }
 
-      const nuevoBalance = money.add(String(wallet.balanceTotal), String(cantidad));
+      const nuevoBalance = money.add(String(wallet.totalBalance), String(amount));
 
       if (money.compare(nuevoBalance, '0') < 0) {
         throw new Error('El balance resultante no puede ser negativo');
       }
 
-      return await WalletMaestra.updateBalance(id, nuevoBalance, transaction);
+      return await MasterWallet.updateBalance(id, nuevoBalance, transaction);
     } catch (error) {
       throw new Error(`Error al sumar al balance: ${error.message}`);
     }
   };
 
-  WalletMaestra.subtractFromBalance = async (id, cantidad, transaction = null) => {
+  MasterWallet.subtractFromBalance = async (id, amount, transaction = null) => {
     try {
-      const wallet = await WalletMaestra.findByPk(id, { transaction });
+      const wallet = await MasterWallet.findByPk(id, { transaction });
       if (!wallet) {
         throw new Error('Wallet maestra no encontrada');
       }
 
-      const nuevoBalance = money.subtract(String(wallet.balanceTotal), String(cantidad));
+      const nuevoBalance = money.subtract(String(wallet.totalBalance), String(amount));
 
       if (money.compare(nuevoBalance, '0') < 0) {
         throw new Error('Balance insuficiente para realizar la operación');
       }
 
-      return await WalletMaestra.updateBalance(id, nuevoBalance, transaction);
+      return await MasterWallet.updateBalance(id, nuevoBalance, transaction);
     } catch (error) {
       throw new Error(`Error al restar del balance: ${error.message}`);
     }
   };
 
-  WalletMaestra.getBalanceSummary = async (options = {}) => {
+  MasterWallet.getBalanceSummary = async (options = {}) => {
     try {
       const whereClause = { active: true };
       
@@ -416,15 +416,15 @@ function createWalletMaestraModel(sequelize) {
         };
       }
 
-      const summary = await WalletMaestra.findAll({
+      const summary = await MasterWallet.findAll({
         attributes: [
           'network',
           'symbol',
-          [sequelize.fn('COUNT', sequelize.col('WalletMaestra.id')), 'walletCount'],
-          [sequelize.fn('SUM', sequelize.col('balance_total')), 'totalBalance'],
-          [sequelize.fn('AVG', sequelize.col('balance_total')), 'averageBalance'],
-          [sequelize.fn('MAX', sequelize.col('balance_total')), 'maxBalance'],
-          [sequelize.fn('MIN', sequelize.col('balance_total')), 'minBalance']
+          [sequelize.fn('COUNT', sequelize.col('MasterWallet.id')), 'walletCount'],
+          [sequelize.fn('SUM', sequelize.col('total_balance')), 'totalBalance'],
+          [sequelize.fn('AVG', sequelize.col('total_balance')), 'averageBalance'],
+          [sequelize.fn('MAX', sequelize.col('total_balance')), 'maxBalance'],
+          [sequelize.fn('MIN', sequelize.col('total_balance')), 'minBalance']
         ],
         include: [
           {
@@ -434,8 +434,8 @@ function createWalletMaestraModel(sequelize) {
           }
         ],
         where: whereClause,
-        group: ['WalletMaestra.red', 'WalletMaestra.symbol', 'criptomoneda.id'],
-        order: [[sequelize.fn('SUM', sequelize.col('balance_total')), 'DESC']],
+        group: ['MasterWallet.red', 'MasterWallet.symbol', 'criptomoneda.id'],
+        order: [[sequelize.fn('SUM', sequelize.col('total_balance')), 'DESC']],
         raw: false
       });
 
@@ -447,7 +447,7 @@ function createWalletMaestraModel(sequelize) {
 
   // =================== MÉTODOS DE ESTADÍSTICAS AVANZADAS ===================
 
-  WalletMaestra.getStats = async (filters = {}) => {
+  MasterWallet.getStats = async (filters = {}) => {
     try {
       const baseWhere = {};
       
@@ -461,24 +461,24 @@ function createWalletMaestraModel(sequelize) {
         }
       }
 
-      const totalWallets = await WalletMaestra.count({ where: baseWhere });
-      const walletsActivas = await WalletMaestra.count({
+      const totalWallets = await MasterWallet.count({ where: baseWhere });
+      const walletsActivas = await MasterWallet.count({
         where: { ...baseWhere, active: true }
       });
-      const walletsInactivas = await WalletMaestra.count({
+      const walletsInactivas = await MasterWallet.count({
         where: { ...baseWhere, active: false }
       });
 
       // Balance total por network
-      const balancesPorRed = await WalletMaestra.findAll({
+      const balancesPorRed = await MasterWallet.findAll({
         attributes: [
           'network',
           [sequelize.fn('COUNT', sequelize.col('id')), 'walletCount'],
-          [sequelize.fn('SUM', sequelize.col('balance_total')), 'totalBalance']
+          [sequelize.fn('SUM', sequelize.col('total_balance')), 'totalBalance']
         ],
         where: { ...baseWhere, active: true },
         group: ['network'],
-        order: [[sequelize.fn('SUM', sequelize.col('balance_total')), 'DESC']],
+        order: [[sequelize.fn('SUM', sequelize.col('total_balance')), 'DESC']],
         raw: true
       });
 
@@ -489,8 +489,8 @@ function createWalletMaestraModel(sequelize) {
           wm.name,
           wm.symbol,
           COUNT(dd.id) as "direccionesCount"
-        FROM wallets_maestras wm
-        LEFT JOIN direcciones_deposito dd ON wm.id = dd.wallet_maestra_id
+        FROM master_wallets wm
+        LEFT JOIN deposit_addresses dd ON wm.id = dd.master_wallet_id
         WHERE wm.id IS NOT NULL
         ${filters.fechaDesde ? `AND wm.created_at >= '${new Date(filters.fechaDesde).toISOString()}'` : ''}
         ${filters.fechaHasta ? `AND wm.created_at <= '${new Date(filters.fechaHasta).toISOString()}'` : ''}
@@ -502,17 +502,17 @@ function createWalletMaestraModel(sequelize) {
       });
 
       // Wallets que necesitan atención
-      const walletsBalanceBajo = await WalletMaestra.count({
+      const walletsBalanceBajo = await MasterWallet.count({
         where: {
           ...baseWhere,
-          balanceTotal: { [Op.lt]: 0.1 },
+          totalBalance: { [Op.lt]: 0.1 },
           active: true
         }
       });
 
       // Wallets sin sincronización reciente
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      const walletsSinSincronizar = await WalletMaestra.count({
+      const walletsSinSincronizar = await MasterWallet.count({
         where: {
           ...baseWhere,
           active: true,
@@ -544,7 +544,7 @@ function createWalletMaestraModel(sequelize) {
 
   // =================== MÉTODOS CRUD CON VALIDACIÓN HD ===================
 
-  WalletMaestra.createWallet = async (data) => {
+  MasterWallet.createWallet = async (data) => {
     const transaction = await sequelize.transaction();
     
     try {
@@ -554,8 +554,8 @@ function createWalletMaestraModel(sequelize) {
       }
 
       // Verificar unicidad de crypto
-      const existingWallet = await WalletMaestra.findOne({
-        where: { criptomonedaId: data.criptomonedaId },
+      const existingWallet = await MasterWallet.findOne({
+        where: { cryptoId: data.cryptoId },
         transaction
       });
       
@@ -564,7 +564,7 @@ function createWalletMaestraModel(sequelize) {
       }
 
       // Verificar unicidad de XPUB
-      const existingXpub = await WalletMaestra.findOne({
+      const existingXpub = await MasterWallet.findOne({
         where: { xpub: data.xpub },
         transaction
       });
@@ -574,7 +574,7 @@ function createWalletMaestraModel(sequelize) {
       }
 
       // Verificar que la criptomoneda existe
-      const crypto = await sequelize.models.Crypto.findByPk(data.criptomonedaId, {
+      const crypto = await sequelize.models.Crypto.findByPk(data.cryptoId, {
         transaction
       });
       
@@ -596,31 +596,31 @@ function createWalletMaestraModel(sequelize) {
         }
       };
 
-      const nuevaWallet = await WalletMaestra.create(walletData, { transaction });
+      const nuevaWallet = await MasterWallet.create(walletData, { transaction });
       await transaction.commit();
       
-      return await WalletMaestra.getById(nuevaWallet.id);
+      return await MasterWallet.getById(nuevaWallet.id);
     } catch (error) {
       await transaction.rollback();
       throw new Error(`Error al crear wallet maestra: ${error.message}`);
     }
   };
 
-  WalletMaestra.updateWallet = async (id, data) => {
+  MasterWallet.updateWallet = async (id, data) => {
     const transaction = await sequelize.transaction();
     
     try {
-      const wallet = await WalletMaestra.findByPk(id, { transaction });
+      const wallet = await MasterWallet.findByPk(id, { transaction });
       
       if (!wallet) {
         throw new Error('Wallet maestra no encontrada');
       }
 
       // Validar cambio de crypto
-      if (data.criptomonedaId && data.criptomonedaId !== wallet.criptomonedaId) {
-        const existingWallet = await WalletMaestra.findOne({
+      if (data.cryptoId && data.cryptoId !== wallet.cryptoId) {
+        const existingWallet = await MasterWallet.findOne({
           where: { 
-            criptomonedaId: data.criptomonedaId,
+            cryptoId: data.cryptoId,
             id: { [Op.ne]: id }
           },
           transaction
@@ -633,7 +633,7 @@ function createWalletMaestraModel(sequelize) {
 
       // Validar cambio de XPUB
       if (data.xpub && data.xpub !== wallet.xpub) {
-        const existingXpub = await WalletMaestra.findOne({
+        const existingXpub = await MasterWallet.findOne({
           where: { 
             xpub: data.xpub,
             id: { [Op.ne]: id }
@@ -656,28 +656,28 @@ function createWalletMaestraModel(sequelize) {
         }
       };
 
-      await WalletMaestra.update(updateData, {
+      await MasterWallet.update(updateData, {
         where: { id },
         transaction
       });
       
       await transaction.commit();
       
-      return await WalletMaestra.getById(id);
+      return await MasterWallet.getById(id);
     } catch (error) {
       await transaction.rollback();
       throw new Error(`Error al actualizar wallet maestra: ${error.message}`);
     }
   };
 
-  WalletMaestra.deleteWallet = async (id) => {
+  MasterWallet.deleteWallet = async (id) => {
     const transaction = await sequelize.transaction();
     
     try {
       // Verificar que no tiene direcciones de depósito activas
-      const direccionesActivas = await sequelize.models.DireccionDeposito.count({
+      const direccionesActivas = await sequelize.models.DepositAddress.count({
         where: { 
-          walletMaestraId: id,
+          masterWalletId: id,
           active: true
         },
         transaction
@@ -687,7 +687,7 @@ function createWalletMaestraModel(sequelize) {
         throw new Error(`No se puede eliminar: la wallet tiene ${direccionesActivas} direcciones de depósito activas`);
       }
 
-      const deletedRowsCount = await WalletMaestra.destroy({
+      const deletedRowsCount = await MasterWallet.destroy({
         where: { id },
         transaction
       });
@@ -710,11 +710,11 @@ function createWalletMaestraModel(sequelize) {
 
   // =================== MÉTODOS DE GESTIÓN DE ESTADO ===================
 
-  WalletMaestra.updateStatus = async (id, newStatus, reason = null) => {
+  MasterWallet.updateStatus = async (id, newStatus, reason = null) => {
     const transaction = await sequelize.transaction();
     
     try {
-      const wallet = await WalletMaestra.findByPk(id, { transaction });
+      const wallet = await MasterWallet.findByPk(id, { transaction });
       
       if (!wallet) {
         throw new Error('Wallet maestra no encontrada');
@@ -722,7 +722,7 @@ function createWalletMaestraModel(sequelize) {
 
       // Si se desactiva, también desactivar direcciones asociadas
       if (!newStatus && wallet.active) {
-        await sequelize.models.DireccionDeposito.update(
+        await sequelize.models.DepositAddress.update(
           { 
             active: false,
             metadata: sequelize.literal(`
@@ -730,7 +730,7 @@ function createWalletMaestraModel(sequelize) {
             `)
           },
           { 
-            where: { walletMaestraId: id },
+            where: { masterWalletId: id },
             transaction
           }
         );
@@ -745,30 +745,30 @@ function createWalletMaestraModel(sequelize) {
         }
       };
 
-      await WalletMaestra.update(updateData, {
+      await MasterWallet.update(updateData, {
         where: { id },
         transaction
       });
       
       await transaction.commit();
       
-      return await WalletMaestra.getById(id);
+      return await MasterWallet.getById(id);
     } catch (error) {
       await transaction.rollback();
-      throw new Error(`Error al actualizar estado: ${error.message}`);
+      throw new Error(`Error al actualizar status: ${error.message}`);
     }
   };
 
   // =================== MÉTODOS DE SINCRONIZACIÓN CON BLOCKCHAIN ===================
 
-  WalletMaestra.syncBalance = async (id, blockchainBalance) => {
+  MasterWallet.syncBalance = async (id, blockchainBalance) => {
     try {
-      const wallet = await WalletMaestra.findByPk(id);
+      const wallet = await MasterWallet.findByPk(id);
       if (!wallet) {
         throw new Error('Wallet maestra no encontrada');
       }
 
-      const currentBalance = String(wallet.balanceTotal);
+      const currentBalance = String(wallet.totalBalance);
       const newBalance = String(blockchainBalance);
       const tolerance = '0.00000001'; // Tolerancia para diferencias mínimas
 
@@ -778,7 +778,7 @@ function createWalletMaestraModel(sequelize) {
         : difference;
 
       if (money.compare(absDifference, tolerance) > 0) {
-        const updated = await WalletMaestra.updateBalance(id, newBalance);
+        const updated = await MasterWallet.updateBalance(id, newBalance);
 
         return {
           synchronized: true,
@@ -790,7 +790,7 @@ function createWalletMaestraModel(sequelize) {
       }
 
       // Actualizar solo timestamp de sincronización
-      await WalletMaestra.update(
+      await MasterWallet.update(
         { lastSyncAt: new Date() },
         { where: { id } }
       );
@@ -806,7 +806,7 @@ function createWalletMaestraModel(sequelize) {
     }
   };
 
-  WalletMaestra.syncAllBalances = async (balancesData) => {
+  MasterWallet.syncAllBalances = async (balancesData) => {
     const transaction = await sequelize.transaction();
     
     try {
@@ -818,13 +818,13 @@ function createWalletMaestraModel(sequelize) {
           
           // Buscar por dirección o XPUB
           if (balanceData.address) {
-            wallet = await WalletMaestra.getByAddress(balanceData.address);
+            wallet = await MasterWallet.getByAddress(balanceData.address);
           } else if (balanceData.xpub) {
-            wallet = await WalletMaestra.getByXpub(balanceData.xpub);
+            wallet = await MasterWallet.getByXpub(balanceData.xpub);
           }
           
           if (wallet) {
-            const syncResult = await WalletMaestra.syncBalance(wallet.id, balanceData.balance);
+            const syncResult = await MasterWallet.syncBalance(wallet.id, balanceData.balance);
             results.push({
               walletId: wallet.id,
               crypto: wallet.crypto?.symbol || wallet.symbol,
@@ -860,20 +860,20 @@ function createWalletMaestraModel(sequelize) {
 
   // =================== MÉTODOS DE ANÁLISIS Y REPORTES ===================
 
-  WalletMaestra.getFundsDistribution = async () => {
+  MasterWallet.getFundsDistribution = async () => {
     try {
-      const distribution = await WalletMaestra.findAll({
+      const distribution = await MasterWallet.findAll({
         attributes: [
           'id',
           'name',
           'symbol',
           'network',
-          'balanceTotal',
-          'direccionPublica',
+          'totalBalance',
+          'publicAddress',
           [
             sequelize.literal(`
               ROUND(
-                (balance_total / NULLIF((SELECT SUM(balance_total) FROM wallets_maestras WHERE active = true), 0)) * 100, 
+                (total_balance / NULLIF((SELECT SUM(total_balance) FROM master_wallets WHERE active = true), 0)) * 100, 
                 4
               )
             `),
@@ -888,7 +888,7 @@ function createWalletMaestraModel(sequelize) {
           }
         ],
         where: { active: true },
-        order: [['balance_total', 'DESC']],
+        order: [['total_balance', 'DESC']],
         raw: false
       });
 
@@ -900,9 +900,9 @@ function createWalletMaestraModel(sequelize) {
 
   // =================== MÉTODOS DE UTILIDAD PARA HD WALLETS ===================
 
-  WalletMaestra.incrementDerivationIndex = async (id, transaction = null) => {
+  MasterWallet.incrementDerivationIndex = async (id, transaction = null) => {
     try {
-      const wallet = await WalletMaestra.findByPk(id, { transaction });
+      const wallet = await MasterWallet.findByPk(id, { transaction });
       
       if (!wallet) {
         throw new Error('Wallet maestra no encontrada');
@@ -910,7 +910,7 @@ function createWalletMaestraModel(sequelize) {
 
       const newIndex = wallet.nextDerivationIndex + 1;
       
-      await WalletMaestra.update(
+      await MasterWallet.update(
         { nextDerivationIndex: newIndex },
         { where: { id }, transaction }
       );
@@ -921,7 +921,7 @@ function createWalletMaestraModel(sequelize) {
     }
   };
 
-  WalletMaestra.validateXpubNetwork = (xpub, network) => {
+  MasterWallet.validateXpubNetwork = (xpub, network) => {
     try {
       switch (network.toLowerCase()) {
         case 'bitcoin':
@@ -948,7 +948,7 @@ function createWalletMaestraModel(sequelize) {
     }
   };
 
-  WalletMaestra.getTreasuryMetrics = async (timeframe = '30 days') => {
+  MasterWallet.getTreasuryMetrics = async (timeframe = '30 days') => {
     try {
       // Calcular fecha de inicio según timeframe
       let startDate = new Date();
@@ -970,7 +970,7 @@ function createWalletMaestraModel(sequelize) {
       }
 
       // Balance total actual
-      const balanceSummary = await WalletMaestra.getBalanceSummary();
+      const balanceSummary = await MasterWallet.getBalanceSummary();
       const totalValue = balanceSummary.reduce((acc, item) => {
         return acc + parseFloat(item.dataValues.totalBalance || 0);
       }, 0);
@@ -995,8 +995,8 @@ function createWalletMaestraModel(sequelize) {
       }
 
       // Wallets que requieren atención
-      const lowBalanceWallets = await WalletMaestra.getWithLowBalance(0.1);
-      const staleSyncWallets = await WalletMaestra.findAll({
+      const lowBalanceWallets = await MasterWallet.getWithLowBalance(0.1);
+      const staleSyncWallets = await MasterWallet.findAll({
         where: {
           active: true,
           [Op.or]: [
@@ -1039,7 +1039,7 @@ function createWalletMaestraModel(sequelize) {
 
   // =================== MÉTODOS DE GENERACIÓN MASIVA ===================
 
-  WalletMaestra.createBulkWallets = async (walletsData) => {
+  MasterWallet.createBulkWallets = async (walletsData) => {
     const transaction = await sequelize.transaction();
     
     try {
@@ -1048,7 +1048,7 @@ function createWalletMaestraModel(sequelize) {
       
       for (const walletData of walletsData) {
         try {
-          const nuevaWallet = await WalletMaestra.createWallet(walletData);
+          const nuevaWallet = await MasterWallet.createWallet(walletData);
           results.push(nuevaWallet);
         } catch (error) {
           errors.push({
@@ -1076,7 +1076,7 @@ function createWalletMaestraModel(sequelize) {
     }
   };
 
-  return WalletMaestra;
+  return MasterWallet;
 }
 
 module.exports = createWalletMaestraModel;

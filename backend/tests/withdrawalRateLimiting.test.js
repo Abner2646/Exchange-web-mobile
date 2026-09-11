@@ -25,10 +25,10 @@ const mockUser = {
 
 jest.mock('../models', () => ({
   User: { findByPk: jest.fn() },
-  TransaccionBlockchain: {},
+  BlockchainTransaction: {},
   Crypto: {},
   UserBalance: {},
-  DireccionDeposito: {},
+  DepositAddress: {},
   // Required by idempotency.middleware (now wired into /withdraw)
   IdempotencyKey: { create: jest.fn().mockResolvedValue({}), findOne: jest.fn(), update: jest.fn(), destroy: jest.fn() },
 }));
@@ -58,9 +58,9 @@ function tokenFor(userId) {
 // limiter en la ruta): sin esto Joi devuelve 400 antes de llegar al controller
 // mockeado, y el test no puede verificar el 200 previo al 429.
 const validWithdrawal = {
-  criptomonedaId: '11111111-1111-4111-8111-111111111111',
-  cantidad: 0.5,
-  direccionDestino: 'abcdefghij1234567890abcd',
+  cryptoId: '11111111-1111-4111-8111-111111111111',
+  amount: 0.5,
+  destinationAddress: 'abcdefghij1234567890abcd',
 };
 
 describe('POST /transaccionBlockchain/withdraw rate limiting (withdrawal: 10/15min)', () => {

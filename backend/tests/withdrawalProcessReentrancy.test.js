@@ -12,8 +12,8 @@
 
 // El job requiere ../models al tope; sin mock intenta conectar a Postgres.
 jest.mock('../models', () => ({
-  TransaccionBlockchain: {},
-  DireccionDeposito: {},
+  BlockchainTransaction: {},
+  DepositAddress: {},
   Crypto: {},
   BlockchainState: {},
 }));

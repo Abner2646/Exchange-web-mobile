@@ -3,7 +3,7 @@ const request = require('supertest');
 const app = require('../../app');
 const { sequelize, resetDb } = require('../helpers/db');
 const f = require('../helpers/factories');
-const { IntercambioExchange, WalletMaestra } = require('../../models');
+const { IntercambioExchange, MasterWallet } = require('../../models');
 const posting = require('../../modules/balances/ledger/postingService');
 const recon = require('../../modules/balances/ledger/reconciliation');
 const { PURPOSES } = require('../../modules/balances/ledger/ledgerAccounts');
@@ -55,8 +55,8 @@ describe('POST /api/intercambioExchange (swap) — buy', () => {
     expect(await casa(PURPOSES.TREASURY, btc.id)).toBe('-3.00000000');    // house hands out base
 
     // The master wallet is NO LONGER credited with the commission.
-    const walletAfter = await WalletMaestra.findByPk(wallet.id);
-    expect(walletAfter.balanceTotal).toBe('0.00000000');
+    const walletAfter = await MasterWallet.findByPk(wallet.id);
+    expect(walletAfter.totalBalance).toBe('0.00000000');
 
     const row = await IntercambioExchange.findOne({ where: { usuarioId: user.id } });
     expect(row).not.toBeNull();

@@ -1,5 +1,5 @@
 require('../helpers/testEnv');
-const { sequelize, UserBalance, TransaccionBlockchain } = require('../../models');
+const { sequelize, UserBalance, BlockchainTransaction } = require('../../models');
 const { resetDb } = require('../helpers/db');
 const f = require('../helpers/factories');
 const posting = require('../../modules/balances/ledger/postingService');
@@ -32,7 +32,7 @@ describe('seedBalance seeds the ledger directly (mirror-independent)', () => {
 });
 
 describe('write-flip: deposit settlement posts to the ledger (detected → pending → confirmed)', () => {
-  test('detected credits funding:pendiente; _acreditarDeposito moves pending → disponible', async () => {
+  test('detected credits funding:pendiente; _creditDeposit moves pending → disponible', async () => {
     const cripto = await f.seedCripto('BTC');
     const user = await f.seedUser();
     const { registerPendingDeposit } = require('../../modules/balances/ledger/operations');
@@ -44,8 +44,8 @@ describe('write-flip: deposit settlement posts to the ledger (detected → pendi
     expect(l.available).toBe('0');
 
     // Confirmación: pendiente → disponible.
-    await TransaccionBlockchain._acreditarDeposito(
-      { id: '11111111-1111-4111-8111-111111111111', userId: user.id, criptomonedaId: cripto.id, cantidad: '1.50000000', estado: 'confirmado' },
+    await BlockchainTransaction._creditDeposit(
+      { id: '11111111-1111-4111-8111-111111111111', userId: user.id, cryptoId: cripto.id, amount: '1.50000000', status: 'confirmed' },
       null
     );
     l = await funding(user, cripto);

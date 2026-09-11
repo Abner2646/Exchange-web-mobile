@@ -4,7 +4,7 @@ const Joi = require('joi');
 class TransaccionBlockchainSchema {
   // Schema para crear retiro
   createWithdrawal = Joi.object({
-    criptomonedaId: Joi.string()
+    cryptoId: Joi.string()
       .uuid({ version: 'uuidv4' })
       .required()
       .messages({
@@ -12,7 +12,7 @@ class TransaccionBlockchainSchema {
         'string.guid': 'criptomonedaId debe ser un UUID válido'
       }),
     
-    cantidad: Joi.number()
+    amount: Joi.number()
       .positive()
       .precision(8)
       .min(0.00000001)
@@ -26,16 +26,16 @@ class TransaccionBlockchainSchema {
         'any.required': 'cantidad es requerida'
       }),
     
-    direccionDestino: Joi.string()
+    destinationAddress: Joi.string()
       .min(20)
       .max(100)
       .pattern(/^[a-zA-Z0-9]+$/, 'alfanumérico')
       .required()
       .messages({
-        'string.empty': 'direccionDestino es requerida',
-        'string.min': 'direccionDestino debe tener al menos 20 caracteres',
-        'string.max': 'direccionDestino no puede exceder 100 caracteres',
-        'string.pattern.name': 'direccionDestino debe ser alfanumérica'
+        'string.empty': 'destinationAddress es requerida',
+        'string.min': 'destinationAddress debe tener al menos 20 caracteres',
+        'string.max': 'destinationAddress no puede exceder 100 caracteres',
+        'string.pattern.name': 'destinationAddress debe ser alfanumérica'
       }),
     
     memo: Joi.string()
@@ -49,15 +49,15 @@ class TransaccionBlockchainSchema {
 
   // Schema para filtros de consulta
   queryFilters = Joi.object({
-    tipo: Joi.string()
-      .valid('deposito', 'retiro')
+    type: Joi.string()
+      .valid('deposit', 'withdrawal')
       .optional(),
     
-    estado: Joi.string()
-      .valid('pendiente', 'procesando', 'confirmado', 'completado', 'fallido')
+    status: Joi.string()
+      .valid('pending', 'processing', 'confirmed', 'completed', 'failed')
       .optional(),
     
-    criptomonedaId: Joi.string()
+    cryptoId: Joi.string()
       .uuid({ version: 'uuidv4' })
       .optional(),
     
@@ -123,7 +123,7 @@ class TransaccionBlockchainSchema {
 
   // Schema para actualizar confirmaciones
   updateConfirmations = Joi.object({
-    confirmaciones: Joi.number()
+    confirmations: Joi.number()
       .integer()
       .min(0)
       .max(100)

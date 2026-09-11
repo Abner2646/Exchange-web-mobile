@@ -12,7 +12,7 @@ jest.mock('../models', () => ({
   IntercambioExchange: { getAll: jest.fn().mockResolvedValue({ intercambios: [], total: 0 }) },
   ParExchange: {},
   UserBalance: {},
-  WalletMaestra: {},
+  MasterWallet: {},
   Crypto: {},
   sequelize: { transaction: jest.fn() },
 }));

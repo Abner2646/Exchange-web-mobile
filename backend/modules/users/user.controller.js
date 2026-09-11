@@ -1,5 +1,5 @@
 // controllers/user.controller.js
-const { User, Crypto, WalletMaestra, DireccionDeposito, UserBalance, Notificaciones } = require('../../models/index.js');
+const { User, Crypto, MasterWallet, DepositAddress, UserBalance, Notificaciones } = require('../../models/index.js');
 const { Op } = require('sequelize');
 const { sequelize } = require('../../models/index.js');
 const emailService = require('../../services/email.service.js');
@@ -28,7 +28,7 @@ function mapEmailChangeError(error) {
 const generarDireccionDerivada = async (walletMaestra, usuarioId, derivationIndex) => {
   const crypto = require('crypto');
   const hash = crypto.createHash('sha256')
-    .update(`${walletMaestra.direccionPublica}-${usuarioId}-${derivationIndex}`)
+    .update(`${walletMaestra.publicAddress}-${usuarioId}-${derivationIndex}`)
     .digest('hex');
   
   switch (walletMaestra.crypto.network) {
@@ -55,14 +55,14 @@ const inicializarUsuarioCompleto = async (usuario, transaction) => {
     const balancesCreados = [];
 
     for (const crypto of criptomonedasActivas) {
-      const walletMaestra = await WalletMaestra.getByCriptomoneda(crypto.id);
+      const walletMaestra = await MasterWallet.getByCrypto(crypto.id);
       
       if (!walletMaestra) {
         console.warn(`No hay wallet maestra para ${crypto.symbol}. Saltando...`);
         continue;
       }
 
-      const derivationIndex = await DireccionDeposito.getNextDerivationIndex(walletMaestra.id);
+      const derivationIndex = await DepositAddress.getNextDerivationIndex(walletMaestra.id);
       
       const nuevaDireccion = await generarDireccionDerivada(
         { ...walletMaestra, crypto }, 
@@ -70,11 +70,11 @@ const inicializarUsuarioCompleto = async (usuario, transaction) => {
         derivationIndex
       );
 
-      const direccionDeposito = await DireccionDeposito.create({
+      const direccionDeposito = await DepositAddress.create({
         userId: usuario.id, // la entity usa `userId` (field user_id); `usuarioId` se ignoraba → NOT NULL
-        criptomonedaId: crypto.id,
-        walletMaestraId: walletMaestra.id,
-        direccion: nuevaDireccion,
+        cryptoId: crypto.id,
+        masterWalletId: walletMaestra.id,
+        address: nuevaDireccion,
         derivationIndex: derivationIndex,
         active: true
       }, { transaction });
@@ -823,7 +823,7 @@ const checkTransactionLimit = async (req, res) => {
 const getMyDepositAddresses = async (req, res) => {
   try {
     const userId = req.user.id;
-    const direcciones = await DireccionDeposito.getByUser(userId);
+    const direcciones = await DepositAddress.getByUser(userId);
     res.json(direcciones);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -942,29 +942,29 @@ const regenerateDepositAddress = async (req, res) => {
       return res.status(403).json({ error: 'Solo administradores pueden regenerar direcciones' });
     }
     
-    const direccionActual = await DireccionDeposito.getByUserAndCrypto(userId, criptomonedaId);
+    const direccionActual = await DepositAddress.getByUserAndCrypto(userId, criptomonedaId);
     if (direccionActual) {
       await direccionActual.update({ active: false }, { transaction });
     }
     
     const crypto = await Crypto.getById(criptomonedaId);
-    const walletMaestra = await WalletMaestra.getByCriptomoneda(criptomonedaId);
+    const walletMaestra = await MasterWallet.getByCrypto(criptomonedaId);
     
     if (!walletMaestra) {
       throw new Error('No hay wallet maestra para esta criptomoneda');
     }
     
-    const derivationIndex = await DireccionDeposito.getNextDerivationIndex(walletMaestra.id);
+    const derivationIndex = await DepositAddress.getNextDerivationIndex(walletMaestra.id);
     const nuevaDireccion = await generarDireccionDerivada(
       { ...walletMaestra, crypto }, 
       userId, 
       derivationIndex
     );
     
-    const nuevaDireccionDeposito = await DireccionDeposito.create({
+    const nuevaDireccionDeposito = await DepositAddress.create({
       usuarioId: userId,
       criptomonedaId: criptomonedaId,
-      walletMaestraId: walletMaestra.id,
+      masterWalletId: walletMaestra.id,
       direccion: nuevaDireccion,
       derivationIndex: derivationIndex,
       active: true
@@ -1000,7 +1000,7 @@ const checkUserInitialization = async (req, res) => {
   try {
     const userId = req.user.id;
     
-    const direcciones = await DireccionDeposito.getByUser(userId);
+    const direcciones = await DepositAddress.getByUser(userId);
     const balances = await UserBalance.getByUserId(userId);
     const notificaciones = await Notificaciones.getUserNotifications(userId, { limit: 1 });
     

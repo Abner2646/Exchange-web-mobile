@@ -35,24 +35,24 @@ const walletMaestraController = require('../controllers/walletMaestra.controller
  *   get: { tags: [Wallets maestras (super admin)], summary: Exportar wallets a CSV, responses: { 200: { description: CSV } } }
  * /walletMaestra/admin/health:
  *   get: { tags: [Wallets maestras (super admin)], summary: Health check del sistema de wallets, responses: { 200: { description: Estado } } }
- * /walletMaestra/internal/active-by-crypto/{criptomonedaId}:
+ * /walletMaestra/internal/active-by-crypto/{cryptoId}:
  *   get:
  *     tags: [Wallets maestras (super admin)]
  *     summary: Wallet active por cripto (servicios internos)
- *     parameters: [{ in: path, name: criptomonedaId, required: true, schema: { type: string, format: uuid } }]
+ *     parameters: [{ in: path, name: cryptoId, required: true, schema: { type: string, format: uuid } }]
  *     responses: { 200: { description: Wallet } }
  */
 
 // =================== RUTAS CRUD BÁSICAS ===================
 
 // Obtener todas las wallets maestras (solo admin)
-router.get('/', authenticateToken, isSuperAdmin, walletMaestraController.getWalletsMaestras); //Bien
+router.get('/', authenticateToken, isSuperAdmin, walletMaestraController.getMasterWallets); //Bien
 
 // Obtener wallet maestra por ID (solo admin)
-router.get('/:id', authenticateToken, isSuperAdmin, walletMaestraController.getWalletMaestraById); //Bien
+router.get('/:id', authenticateToken, isSuperAdmin, walletMaestraController.getMasterWalletById); //Bien
 
 // Crear nueva wallet maestra HD (solo super admin)
-router.post('/', authenticateToken, isSuperAdmin, requireOperatorMFA, walletMaestraController.createWalletMaestra);
+router.post('/', authenticateToken, isSuperAdmin, requireOperatorMFA, walletMaestraController.createMasterWallet);
 
 // =================== RUTAS DE BÚSQUEDA Y CONSULTA ===================
 
@@ -77,7 +77,7 @@ router.get('/dashboard/overview', authenticateToken, isSuperAdmin, walletMaestra
 // =================== RUTAS ADMINISTRATIVAS ===================
 
 // Obtener estadísticas detalladas de wallets maestras
-router.get('/admin/stats', authenticateToken, isSuperAdmin, walletMaestraController.getWalletMaestraStats); // Bien
+router.get('/admin/stats', authenticateToken, isSuperAdmin, walletMaestraController.getMasterWalletStats); // Bien
 
 // Exportar wallets a CSV con metadatos
 router.get('/admin/export', authenticateToken, isSuperAdmin, walletMaestraController.exportWallets); // Bien
@@ -88,7 +88,7 @@ router.get('/admin/health', authenticateToken, isSuperAdmin, walletMaestraContro
 // =================== RUTAS DE INTEGRACIÓN EXTERNA ===================
 
 // API para servicios internos (menor autenticación)
-router.get('/internal/active-by-crypto/:criptomonedaId', authenticateToken, isSuperAdmin, walletMaestraController.getWalletByCriptomoneda);
+router.get('/internal/active-by-crypto/:cryptoId', authenticateToken, isSuperAdmin, walletMaestraController.getWalletByCrypto);
 
 // =================== MIDDLEWARE DE VALIDACIÓN DE RUTAS ===================
 
@@ -107,14 +107,14 @@ router.param('id', (req, res, next, id) => {
   next();
 });
 
-// Middleware para validar criptomonedaId en rutas
-router.param('criptomonedaId', (req, res, next, criptomonedaId) => {
+// Middleware para validar cryptoId en rutas
+router.param('cryptoId', (req, res, next, cryptoId) => {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-  if (!uuidRegex.test(criptomonedaId)) {
+  if (!uuidRegex.test(cryptoId)) {
     return res.status(400).json({
       success: false,
-      error: 'criptomonedaId debe ser un UUID válido',
+      error: 'cryptoId debe ser un UUID válido',
       code: 'INVALID_CRYPTO_ID_FORMAT'
     });
   }

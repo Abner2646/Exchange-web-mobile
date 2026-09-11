@@ -1,5 +1,5 @@
 // controllers/transaccionBlockchain.controller.js
-const { TransaccionBlockchain, User, Crypto, UserBalance, DireccionDeposito } = require('../models');
+const { BlockchainTransaction, User, Crypto, UserBalance, DepositAddress } = require('../models');
 const BlockchainServiceManager = require('../services/blockchain');
 // Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #8): estos endpoints
 // llamaban a scanAllNetworksForDeposits/processAllPendingWithdrawals/
@@ -22,16 +22,16 @@ class TransaccionBlockchainController {
   async getMyTransactions(req, res) {
     const userId = req.user.id;
     const filters = {
-      tipo: req.query.tipo,
-      estado: req.query.estado,
-      criptomonedaId: req.query.criptomonedaId,
+      type: req.query.type,
+      status: req.query.status,
+      cryptoId: req.query.cryptoId,
       fechaDesde: req.query.fechaDesde,
       fechaHasta: req.query.fechaHasta,
       limit: req.query.limit || 20,
       offset: req.query.offset || 0
     };
 
-    const result = await TransaccionBlockchain.getByUser(userId, filters);
+    const result = await BlockchainTransaction.getByUser(userId, filters);
 
     res.json({
       success: true,
@@ -44,7 +44,7 @@ class TransaccionBlockchainController {
     const { id } = req.params;
     const userId = req.user.id;
 
-    const transaccion = await TransaccionBlockchain.getById(id);
+    const transaccion = await BlockchainTransaction.getById(id);
 
     if (!transaccion) {
       throw new AppError(404, errorCodes.TRANSACTION_NOT_FOUND, 'Transacción no encontrada');
@@ -64,7 +64,7 @@ class TransaccionBlockchainController {
   // POST /api/transactions/withdraw - Crear retiro
   async createWithdrawal(req, res) {
     const userId = req.user.id;
-    const { criptomonedaId, cantidad, direccionDestino } = req.body;
+    const { cryptoId, amount, destinationAddress } = req.body;
 
     // Cooldown de retiros tras un cambio de email reciente (Radar #14, anti
     // account-takeover): mientras esté vigente, no se crean retiros. Fail-fast,
@@ -76,11 +76,11 @@ class TransaccionBlockchainController {
     }
 
     // Validar retiro
-    const validation = await TransaccionBlockchain.validateWithdrawal(
+    const validation = await BlockchainTransaction.validateWithdrawal(
       userId,
-      criptomonedaId,
-      cantidad,
-      direccionDestino
+      cryptoId,
+      amount,
+      destinationAddress
     );
 
     if (!validation.valid) {
@@ -89,7 +89,7 @@ class TransaccionBlockchainController {
 
     // Validar dirección con el servicio de blockchain
     const blockchainService = BlockchainServiceManager.getService(validation.crypto.network);
-    const isValidAddress = await blockchainService.validateAddress(direccionDestino);
+    const isValidAddress = await blockchainService.validateAddress(destinationAddress);
 
     if (!isValidAddress) {
       throw new AppError(400, errorCodes.WITHDRAWAL_INVALID_ADDRESS, 'Dirección de destino inválida');
@@ -102,17 +102,17 @@ class TransaccionBlockchainController {
     // previo como fallback (sin fila sembrada, comportamiento idéntico). Editable
     // desde /config por un operador (clave `confirmaciones.<network>`).
     const network = validation.crypto.network;
-    const confirmacionesRequeridas = await businessConfig.getNumber(
+    const requiredConfirmations = await businessConfig.getNumber(
       `confirmaciones.${network}`, network === 'ethereum' ? 12 : 6
     );
 
     let responseBody;
-    await TransaccionBlockchain.createWithdrawal({
+    await BlockchainTransaction.createWithdrawal({
       userId,
-      criptomonedaId,
-      cantidad: parseFloat(cantidad),
-      direccionDestino,
-      confirmacionesRequeridas
+      cryptoId,
+      amount: parseFloat(amount),
+      destinationAddress,
+      requiredConfirmations
     }, {
       // Hardening anti-doble-gasto: completa la key de idempotencia dentro de la
       // tx del retiro → el bloqueo de fondos, el alta de la fila y el 'completed'
@@ -137,18 +137,18 @@ class TransaccionBlockchainController {
 
     const balances = await UserBalance.getByUserId(userId);
     const criptomonedas = await Crypto.findAll({
-      where: { id: balances.map((b) => b.criptomonedaId), active: true },
+      where: { id: balances.map((b) => b.cryptoId), active: true },
       attributes: ['id', 'symbol', 'name', 'network', 'decimals']
     });
     const criptoPorId = new Map(criptomonedas.map((c) => [c.id, c]));
 
     const balancesConTotal = balances
-      .filter((b) => criptoPorId.has(b.criptomonedaId)) // solo criptos activas
+      .filter((b) => criptoPorId.has(b.cryptoId)) // solo criptos activas
       .map((b) => ({
-        crypto: criptoPorId.get(b.criptomonedaId),
+        crypto: criptoPorId.get(b.cryptoId),
         availableBalance: b.availableBalance,
         blockedBalance: b.blockedBalance,
-        balanceTotal: money.add(b.availableBalance, b.blockedBalance)
+        totalBalance: money.add(b.availableBalance, b.blockedBalance)
       }))
       .sort((a, b) => a.crypto.symbol.localeCompare(b.crypto.symbol));
 
@@ -158,31 +158,31 @@ class TransaccionBlockchainController {
     });
   }
 
-  // GET /api/transactions/deposit-address/:criptomonedaId - Obtener dirección de depósito
+  // GET /api/transactions/deposit-address/:cryptoId - Obtener dirección de depósito
   async getDepositAddress(req, res) {
     const userId = req.user.id;
-    const { criptomonedaId } = req.params;
+    const { cryptoId } = req.params;
 
     // Verificar que la criptomoneda existe y está active
-    const crypto = await Crypto.findByPk(criptomonedaId);
+    const crypto = await Crypto.findByPk(cryptoId);
     if (!crypto || !crypto.active) {
       throw new AppError(404, errorCodes.DEPOSIT_CRYPTO_NOT_FOUND, 'Criptomoneda no encontrada o inactiva');
     }
 
-    // ✅ CORRECCIÓN: Usar DireccionDeposito correctamente
-    let direccion;
+    // ✅ CORRECCIÓN: Usar DepositAddress correctamente
+    let address;
 
     try {
-      direccion = await DireccionDeposito.getByUserAndCrypto(userId, criptomonedaId);
+      address = await DepositAddress.getByUserAndCrypto(userId, cryptoId);
     } catch (error) {
       console.error('Error buscando dirección existente:', error.message);
     }
 
-    if (!direccion) {
+    if (!address) {
       // Generate new address — if this fails it is a server-side error (no safe recovery),
       // so throw AppError with a safe message rather than leaking the internal error.
       try {
-        direccion = await DireccionDeposito.generateAddressForUser(userId, criptomonedaId);
+        address = await DepositAddress.generateAddressForUser(userId, cryptoId);
       } catch (generateError) {
         console.error('Error generando nueva dirección:', generateError.message);
         throw new AppError(500, errorCodes.DEPOSIT_ADDRESS_GENERATION_FAILED, 'Error generando dirección de depósito');
@@ -190,21 +190,21 @@ class TransaccionBlockchainController {
     }
 
     // ✅ CORRECCIÓN: Validar que la dirección se generó correctamente
-    if (!direccion || !direccion.direccion) {
+    if (!address || !address.address) {
       throw new AppError(500, errorCodes.DEPOSIT_ADDRESS_GENERATION_FAILED, 'No se pudo obtener dirección de depósito');
     }
 
     res.json({
       success: true,
       data: {
-        direccion: direccion.direccion,
-        crypto: direccion.crypto || crypto,
-        qrCode: `${crypto.symbol}:${direccion.direccion}`,
-        derivationIndex: direccion.derivationIndex,
+        address: address.address,
+        crypto: address.crypto || crypto,
+        qrCode: `${crypto.symbol}:${address.address}`,
+        derivationIndex: address.derivationIndex,
         metadata: {
-          createdAt: direccion.created_at,
+          createdAt: address.created_at,
           network: crypto.network,
-          confirmationsRequired: direccion.confirmacionesRequeridas ||
+          confirmationsRequired: address.requiredConfirmations ||
             (crypto.network === 'bitcoin' ? 3 :
             crypto.network === 'ethereum' ? 12 : 6)
         },
@@ -222,11 +222,11 @@ class TransaccionBlockchainController {
     }
 
     const filters = {
-      tipo: req.query.tipo,
-      estado: req.query.estado,
+      type: req.query.type,
+      status: req.query.status,
       userId: req.query.userId,
-      criptomonedaId: req.query.criptomonedaId,
-      requiereAprobacion: req.query.requiereAprobacion,
+      cryptoId: req.query.cryptoId,
+      requiresApproval: req.query.requiresApproval,
       montoMin: req.query.montoMin,
       montoMax: req.query.montoMax,
       fechaDesde: req.query.fechaDesde,
@@ -235,7 +235,7 @@ class TransaccionBlockchainController {
       offset: req.query.offset || 0
     };
 
-    const result = await TransaccionBlockchain.getAllWithFilters(filters);
+    const result = await BlockchainTransaction.getAllWithFilters(filters);
 
     res.json({
       success: true,
@@ -249,8 +249,8 @@ class TransaccionBlockchainController {
       throw new AppError(403, errorCodes.ADMIN_FORBIDDEN, 'No autorizado');
     }
 
-    const pendingDeposits = await TransaccionBlockchain.getPendingDeposits();
-    const pendingWithdrawals = await TransaccionBlockchain.getPendingWithdrawals();
+    const pendingDeposits = await BlockchainTransaction.getPendingDeposits();
+    const pendingWithdrawals = await BlockchainTransaction.getPendingWithdrawals();
 
     res.json({
       success: true,
@@ -271,26 +271,26 @@ class TransaccionBlockchainController {
     const { id } = req.params;
     const adminId = req.user.id;
 
-    const transaccion = await TransaccionBlockchain.findByPk(id);
+    const transaccion = await BlockchainTransaction.findByPk(id);
     if (!transaccion) {
       throw new AppError(404, errorCodes.TRANSACTION_NOT_FOUND, 'Transacción no encontrada');
     }
 
-    if (transaccion.estado !== 'pendiente') {
+    if (transaccion.status !== 'pending') {
       throw new AppError(400, errorCodes.TRANSACTION_INVALID_STATE, 'Solo se pueden aprobar transacciones pendientes');
     }
 
-    await TransaccionBlockchain.update(
+    await BlockchainTransaction.update(
       {
-        aprobadoPor: adminId,
-        fechaAprobacion: new Date(),
-        requiereAprobacion: false,
-        estado: 'procesando'
+        approvedBy: adminId,
+        approvalDate: new Date(),
+        requiresApproval: false,
+        status: 'processing'
       },
       { where: { id } }
     );
 
-    const updatedTransaction = await TransaccionBlockchain.getById(id);
+    const updatedTransaction = await BlockchainTransaction.getById(id);
 
     res.json({
       success: true,
@@ -308,21 +308,21 @@ class TransaccionBlockchainController {
     const { id } = req.params;
     const { razon } = req.body;
 
-    const transaccion = await TransaccionBlockchain.findByPk(id);
+    const transaccion = await BlockchainTransaction.findByPk(id);
     if (!transaccion) {
       throw new AppError(404, errorCodes.TRANSACTION_NOT_FOUND, 'Transacción no encontrada');
     }
 
-    if (transaccion.tipo === 'retiro') {
-      await TransaccionBlockchain.failWithdrawal(id, razon || 'Rechazado por administrador');
+    if (transaccion.type === 'withdrawal') {
+      await BlockchainTransaction.failWithdrawal(id, razon || 'Rechazado por administrador');
     } else {
-      await TransaccionBlockchain.update(
-        { estado: 'fallido' },
+      await BlockchainTransaction.update(
+        { status: 'failed' },
         { where: { id } }
       );
     }
 
-    const updatedTransaction = await TransaccionBlockchain.getById(id);
+    const updatedTransaction = await BlockchainTransaction.getById(id);
 
     res.json({
       success: true,
@@ -342,7 +342,7 @@ class TransaccionBlockchainController {
       fechaHasta: req.query.fechaHasta
     };
 
-    const stats = await TransaccionBlockchain.getStats(filters);
+    const stats = await BlockchainTransaction.getStats(filters);
 
     res.json({
       success: true,
@@ -449,7 +449,7 @@ class TransaccionBlockchainController {
   async getTransactionByHash(req, res) {
     const { hash } = req.params;
 
-    const transaccion = await TransaccionBlockchain.getByTxHash(hash);
+    const transaccion = await BlockchainTransaction.getByTxHash(hash);
 
     if (!transaccion) {
       throw new AppError(404, errorCodes.TRANSACTION_NOT_FOUND, 'Transacción no encontrada');

@@ -13,7 +13,7 @@ const express = require('express');
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
 jest.mock('../models', () => ({
-  TransaccionBlockchain: {
+  BlockchainTransaction: {
     getByUser: jest.fn(),
     getById: jest.fn(),
     getByTxHash: jest.fn(),
@@ -30,7 +30,7 @@ jest.mock('../models', () => ({
   User: { findByPk: jest.fn() },
   Crypto: { findByPk: jest.fn() },
   UserBalance: { findAll: jest.fn() },
-  DireccionDeposito: {
+  DepositAddress: {
     getByUserAndCrypto: jest.fn(),
     generateAddressForUser: jest.fn(),
   },
@@ -50,7 +50,7 @@ jest.mock('../jobs/blockchain.jobs', () => ({
 // we just want to verify controller-level error responses.
 jest.mock('../middleware/idempotency.middleware', () => (req, res, next) => next());
 
-const { TransaccionBlockchain, Crypto, DireccionDeposito } = require('../models');
+const { BlockchainTransaction, Crypto, DepositAddress } = require('../models');
 const BlockchainServiceManager = require('../services/blockchain');
 
 const asyncHandler = require('../utils/asyncHandler');
@@ -108,7 +108,7 @@ function buildDepositAddressApp() {
     next();
   });
   app.get(
-    '/deposit-address/:criptomonedaId',
+    '/deposit-address/:cryptoId',
     asyncHandler(controller.getDepositAddress.bind(controller))
   );
   app.use(errorHandler);
@@ -121,9 +121,9 @@ beforeEach(() => jest.clearAllMocks());
 
 describe('POST /withdraw — business error paths', () => {
   const validBody = {
-    criptomonedaId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-    cantidad: 0.5,
-    direccionDestino: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
+    cryptoId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+    amount: 0.5,
+    destinationAddress: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
   };
 
   test('validation failure (short address) -> joi middleware blocks at 400, no controller invoked', async () => {
@@ -131,7 +131,7 @@ describe('POST /withdraw — business error paths', () => {
     // The controller is not reached — no mock needed.
     const res = await request(buildWithdrawApp())
       .post('/withdraw')
-      .send({ ...validBody, direccionDestino: 'short' });
+      .send({ ...validBody, destinationAddress: 'short' });
     // Joi blocks it — must NOT be a 500 or reach controller
     expect(res.status).toBe(400);
     // joiValidate returns success:false format (not the AppError envelope — that is fine;
@@ -140,7 +140,7 @@ describe('POST /withdraw — business error paths', () => {
   });
 
   test('insufficient balance -> 400 WITHDRAWAL_VALIDATION_FAILED (canonical envelope)', async () => {
-    TransaccionBlockchain.validateWithdrawal.mockResolvedValue({
+    BlockchainTransaction.validateWithdrawal.mockResolvedValue({
       valid: false,
       message: 'Saldo insuficiente para el retiro',
     });
@@ -157,7 +157,7 @@ describe('POST /withdraw — business error paths', () => {
   });
 
   test('invalid blockchain address -> 400 WITHDRAWAL_INVALID_ADDRESS (canonical envelope)', async () => {
-    TransaccionBlockchain.validateWithdrawal.mockResolvedValue({
+    BlockchainTransaction.validateWithdrawal.mockResolvedValue({
       valid: true,
       crypto: { network: 'ethereum' },
     });
@@ -177,7 +177,7 @@ describe('POST /withdraw — business error paths', () => {
 
   test('unexpected service throw -> sanitized 500, no raw message in body', async () => {
     const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    TransaccionBlockchain.validateWithdrawal.mockRejectedValue(
+    BlockchainTransaction.validateWithdrawal.mockRejectedValue(
       new Error('SECRET_DB_CREDS: pg connection failed')
     );
 
@@ -193,7 +193,7 @@ describe('POST /withdraw — business error paths', () => {
 
 // ── /deposit-address/:id ──────────────────────────────────────────────────────
 
-describe('GET /deposit-address/:criptomonedaId — business error paths', () => {
+describe('GET /deposit-address/:cryptoId — business error paths', () => {
   test('crypto not found -> 404 DEPOSIT_CRYPTO_NOT_FOUND (canonical envelope)', async () => {
     Crypto.findByPk.mockResolvedValue(null);
 
@@ -224,8 +224,8 @@ describe('GET /deposit-address/:criptomonedaId — business error paths', () => 
   test('address generation failure -> 500 DEPOSIT_ADDRESS_GENERATION_FAILED (canonical envelope)', async () => {
     const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
     Crypto.findByPk.mockResolvedValue({ id: 'c1', active: true, symbol: 'ETH', network: 'ethereum' });
-    DireccionDeposito.getByUserAndCrypto.mockResolvedValue(null);
-    DireccionDeposito.generateAddressForUser.mockRejectedValue(new Error('wallet key unavailable'));
+    DepositAddress.getByUserAndCrypto.mockResolvedValue(null);
+    DepositAddress.generateAddressForUser.mockRejectedValue(new Error('wallet key unavailable'));
 
     const res = await request(buildDepositAddressApp()).get('/deposit-address/c1');
 
@@ -247,7 +247,7 @@ describe('GET /my — unexpected throw -> sanitized 500', () => {
 
   test('unexpected DB throw -> sanitized 500, no raw message', async () => {
     const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    TransaccionBlockchain.getByUser.mockRejectedValue(new Error('SECRET: connection reset'));
+    BlockchainTransaction.getByUser.mockRejectedValue(new Error('SECRET: connection reset'));
 
     const res = await request(buildMyApp()).get('/my');
 

@@ -218,3 +218,35 @@ Also disable the submit button + show a "sending…" state (cheap first-line def
   (`services/…/operations`: `usuarioId`, `criptomonedaId`, `cantidad`, `referencia`, …) —
   they carry data from not-yet-renamed domains (trading/p2p/blockchain/swap) and rename
   with those chunks; the `criptomonedaId` FK column echo on balance/transfer response objects.
+
+### ✅ wallets / blockchain  (chunk 4 — done)
+
+- **Withdraw route** `POST /api/transaccionBlockchain/withdraw` request body:
+  `criptomonedaId`→`cryptoId`, `cantidad`→`amount` (`destinationAddress` unchanged).
+- **Deposit-address route:** path param `/deposit-address/:criptomonedaId` →
+  **`/deposit-address/:cryptoId`**; response `address`/`derivationIndex`/`crypto` (was
+  `direccion`).
+- **BlockchainTransaction object / responses:** `tipo`→`type` with enum values
+  **`deposito|retiro` → `deposit|withdrawal`**; `estado`→`status` with
+  **`pendiente|procesando|confirmado|completado|fallido` → `pending|processing|confirmed|completed|failed`**;
+  `cantidad`→`amount`, `confirmaciones`→`confirmations`, `direccionDestino`→`destinationAddress`,
+  `direccionOrigen`→`sourceAddress`, `feeBlockchain`→`blockchainFee`,
+  `confirmacionesRequeridas`→`requiredConfirmations`, `requiereAprobacion`→`requiresApproval`,
+  `aprobadoPor`→`approvedBy`, `fechaAprobacion`→`approvalDate`.
+- **DepositAddress object:** `direccion`→`address` (also the column); FK `criptomonedaId`→`cryptoId`,
+  `walletMaestraId`→`masterWalletId`. Include aliases `usuario`→`user`,
+  `walletMaestra`→`masterWallet`, `crypto` unchanged.
+- **MasterWallet object:** `direccionPublica`→`publicAddress`, `balanceTotal`→`totalBalance`,
+  `descripcion`→`description`, FK `criptomonedaId`→`cryptoId` (`network`, `symbol`, `xpub`,
+  `derivationPath`, `fingerprint`, `publicKey` unchanged). **HD-derivation values FROZEN**
+  (paths like `m/44'/0'/0'`, xpub prefixes, network names — unchanged, only names/columns changed).
+- **Association aliases (embed on User/Crypto):** `direccionesDeposito`→`depositAddresses`,
+  `transaccionesBlockchain`→`blockchainTransactions`, `adminAprobador`→`adminApprover`,
+  `transaccionesAprobadas`→`approvedTransactions`.
+- **Internal:** models `WalletMaestra`→`MasterWallet`, `TransaccionBlockchain`→`BlockchainTransaction`,
+  `DireccionDeposito`→`DepositAddress`; tables `wallets_maestras`→`master_wallets`,
+  `transacciones_blockchain`→`blockchain_transactions`, `direcciones_deposito`→`deposit_addresses`,
+  and their columns to English.
+- **Still Spanish (deferred to owning domains):** the ledger's `operations()` param keys
+  (`criptomonedaId`/`cantidad`/`referencia`) that the blockchain deposit/withdrawal flows pass —
+  they belong to the ledger boundary and rename in a later ledger-interface pass.

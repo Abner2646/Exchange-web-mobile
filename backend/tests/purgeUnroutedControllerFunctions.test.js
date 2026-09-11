@@ -47,20 +47,20 @@ describe('walletMaestra.controller.js ya no exporta las 19 funciones sin ruta (C
   });
 
   test('las funciones con ruta active siguen exportadas', () => {
-    for (const name of ['getWalletsMaestras', 'getWalletMaestraById', 'createWalletMaestra',
-      'getWalletByCriptomoneda', 'getActiveWallets', 'getFundsDistribution',
-      'getTreasuryMetrics', 'getWalletsDashboard', 'getWalletMaestraStats',
+    for (const name of ['getMasterWallets', 'getMasterWalletById', 'createMasterWallet',
+      'getWalletByCrypto', 'getActiveWallets', 'getFundsDistribution',
+      'getTreasuryMetrics', 'getWalletsDashboard', 'getMasterWalletStats',
       'exportWallets', 'healthCheck']) {
       expect(typeof controller[name]).toBe('function');
     }
   });
 });
 
-describe('WalletMaestra.consolidateFunds (model) ya no existe (huérfano tras borrar su único caller)', () => {
+describe('MasterWallet.consolidateFunds (model) ya no existe (huérfano tras borrar su único caller)', () => {
   test('el modelo ya no expone consolidateFunds', () => {
     const fs = require('fs');
     const source = fs.readFileSync(require.resolve('../models/walletMaestra.model.js'), 'utf8');
-    expect(source).not.toMatch(/WalletMaestra\.consolidateFunds\s*=/);
+    expect(source).not.toMatch(/MasterWallet\.consolidateFunds\s*=/);
   });
 });
 

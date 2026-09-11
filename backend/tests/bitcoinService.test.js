@@ -8,13 +8,13 @@
 // entero exacto: con money.js (decimal.js) la conversión es exacta.
 
 jest.mock('../models', () => ({
-  TransaccionBlockchain: { createDeposit: jest.fn() },
-  DireccionDeposito: {},
+  BlockchainTransaction: { createDeposit: jest.fn() },
+  DepositAddress: {},
   Crypto: {},
   BlockchainState: {},
 }));
 
-const { TransaccionBlockchain } = require('../models');
+const { BlockchainTransaction } = require('../models');
 const BitcoinService = require('../services/blockchain/bitcoin.service');
 const bitcoin = require('bitcoinjs-lib');
 const { BITCOIN_PROFILES } = require('../config/networks/bitcoin');
@@ -57,28 +57,28 @@ describe('bitcoin.createBitcoinDeposit — net amount y fee exactos', () => {
   beforeEach(() => jest.clearAllMocks());
 
   test('cantidad = amount - fee sin error de coma; fee como string', async () => {
-    TransaccionBlockchain.createDeposit.mockResolvedValue({ id: 'dep1' });
+    BlockchainTransaction.createDeposit.mockResolvedValue({ id: 'dep1' });
 
     await svc.createBitcoinDeposit(
-      { userId: 'u', criptomonedaId: 'c', direccion: 'addr' },
+      { userId: 'u', cryptoId: 'c', address: 'addr' },
       '0.3', '0.1', 'txhash', 3, null, 100,
     );
 
-    const data = TransaccionBlockchain.createDeposit.mock.calls[0][0];
+    const data = BlockchainTransaction.createDeposit.mock.calls[0][0];
     // float: 0.3 - 0.1 = 0.19999999999999998
-    expect(data.cantidad).toBe('0.2');
-    expect(data.feeBlockchain).toBe('0.1');
+    expect(data.amount).toBe('0.2');
+    expect(data.blockchainFee).toBe('0.1');
   });
 
   test('net amount nunca es negativo (colapsa a "0")', async () => {
-    TransaccionBlockchain.createDeposit.mockResolvedValue({ id: 'dep2' });
+    BlockchainTransaction.createDeposit.mockResolvedValue({ id: 'dep2' });
 
     await svc.createBitcoinDeposit(
-      { userId: 'u', criptomonedaId: 'c', direccion: 'addr' },
+      { userId: 'u', cryptoId: 'c', address: 'addr' },
       '0.00001', '0.0001', 'txhash', 3, null, 100,
     );
 
-    const data = TransaccionBlockchain.createDeposit.mock.calls[0][0];
-    expect(data.cantidad).toBe('0');
+    const data = BlockchainTransaction.createDeposit.mock.calls[0][0];
+    expect(data.amount).toBe('0');
   });
 });

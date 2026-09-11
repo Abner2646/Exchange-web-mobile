@@ -8,7 +8,7 @@
 //
 // Este test prueba que ese require lazy resuelve de verdad, en runtime,
 // al modelo real — no alcanza con "no explota al cargar", hay que probar
-// que _acreditarDeposito efectivamente acredita en el ledger (vía updateBalance)
+// que _creditDeposit efectivamente acredita en el ledger (vía updateBalance)
 // a través del grafo completo de modelos de models/index.js.
 //
 // Postgres real a propósito: es justamente el orden de carga / resolución
@@ -45,10 +45,10 @@ if (!dbAvailable) {
 const describeIfDb = dbAvailable ? describe : describe.skip;
 
 describeIfDb('transaccionBlockchain.model.js: require lazy de UserBalance', () => {
-  let sequelize, User, Crypto, UserBalance, TransaccionBlockchain;
+  let sequelize, User, Crypto, UserBalance, BlockchainTransaction;
 
   beforeAll(async () => {
-    ({ sequelize, User, Crypto, UserBalance, TransaccionBlockchain } = require('../models'));
+    ({ sequelize, User, Crypto, UserBalance, BlockchainTransaction } = require('../models'));
     sequelize.options.logging = false;
     await sequelize.sync({ force: true });
   });
@@ -63,18 +63,18 @@ describeIfDb('transaccionBlockchain.model.js: require lazy de UserBalance', () =
     expect(source).not.toMatch(/require\(['"]\.\/entities\/balanceUsuario\.entity['"]\)/);
   });
 
-  test('_acreditarDeposito acredita de verdad en el ledger vía el modelo real de models/index.js', async () => {
+  test('_creditDeposit acredita de verdad en el ledger vía el modelo real de models/index.js', async () => {
     const user = await User.create({ email: 'lazy@test.com', username: 'lazy_user', passwordHash: 'x', role: 'normal' });
     const cripto = await Crypto.create({ symbol: 'ETH', name: 'Ethereum', network: 'ethereum', decimals: 18 });
 
     // Paso D: el depósito primero se acredita PENDIENTE (al detectarse), y
-    // _acreditarDeposito (al confirmar) mueve pendiente → disponible. Se prueba
+    // _creditDeposit (al confirmar) mueve pendiente → disponible. Se prueba
     // que el require lazy resuelve el modelo real y que la confirmación llega a la
     // proyección Funding del ledger.
     const { registerPendingDeposit } = require('../modules/balances/ledger/operations');
     await registerPendingDeposit({ userId: user.id, criptomonedaId: cripto.id, cantidad: '1.50000000', referencia: `dep-pend:${user.id}` });
 
-    await TransaccionBlockchain._acreditarDeposito(
+    await BlockchainTransaction._creditDeposit(
       { id: '99999999-9999-4999-8999-999999999999', userId: user.id, criptomonedaId: cripto.id, cantidad: '1.50000000', estado: 'pendiente' },
       null
     );

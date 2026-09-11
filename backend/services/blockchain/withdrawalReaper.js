@@ -1,7 +1,7 @@
 const { Op } = require('sequelize');
-const { TransaccionBlockchain, Crypto } = require('../../models');
+const { BlockchainTransaction, Crypto } = require('../../models');
 
-// Recovers stuck 'procesando' withdrawals left by a crash between the atomic
+// Recovers stuck 'processing' withdrawals left by a crash between the atomic
 // claim and recording the send. Reverts ONLY when the tx is provably absent
 // on-chain — never a withdrawal that may have gone out (that would double-spend
 // from the user's side). See spec 2026-08-24-fase2-withdrawal-reaper-onchain.
@@ -11,10 +11,10 @@ const { TransaccionBlockchain, Crypto } = require('../../models');
 async function reapStaleWithdrawals({ getClientForNetwork, staleMinutes = 15, now = new Date() } = {}) {
   const cutoff = new Date(now.getTime() - staleMinutes * 60000);
 
-  const stuck = await TransaccionBlockchain.findAll({
+  const stuck = await BlockchainTransaction.findAll({
     where: {
-      tipo: 'retiro',
-      estado: 'procesando',
+      type: 'withdrawal',
+      status: 'processing',
       // Column name (snake_case) on purpose — this codebase queries the timestamp
       // columns by their DB name (see IntercambioExchange.getDailyVolume with
       // created_at); the camelCase attribute is not mapped in where clauses here.
@@ -30,7 +30,7 @@ async function reapStaleWithdrawals({ getClientForNetwork, staleMinutes = 15, no
     // No txHash recorded → the process died before it ever signed/broadcast.
     // Nothing went out; safe to revert.
     if (!row.txHash) {
-      await TransaccionBlockchain.failWithdrawal(row.id, 'reaped: no broadcast (no txHash recorded)');
+      await BlockchainTransaction.failWithdrawal(row.id, 'reaped: no broadcast (no txHash recorded)');
       reverted++;
       continue;
     }
@@ -53,7 +53,7 @@ async function reapStaleWithdrawals({ getClientForNetwork, staleMinutes = 15, no
     }
     if (confirmations === null) {
       // Provably unknown to the node → never made it on-chain → safe to revert.
-      await TransaccionBlockchain.failWithdrawal(row.id, 'reaped: tx absent on-chain');
+      await BlockchainTransaction.failWithdrawal(row.id, 'reaped: tx absent on-chain');
       reverted++;
     } else {
       // Present (mempool: 0, or mined: >0) → leave it; the confirmation job finalizes it.

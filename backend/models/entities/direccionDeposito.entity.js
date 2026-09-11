@@ -1,9 +1,9 @@
 const { DataTypes, Model } = require('sequelize');
 
-class DireccionDeposito extends Model {}
+class DepositAddress extends Model {}
 
-function initDireccionDeposito(sequelize) {
-  DireccionDeposito.init({
+function initDepositAddress(sequelize) {
+  DepositAddress.init({
     id: {
       type: DataTypes.UUID,
       primaryKey: true,
@@ -14,17 +14,17 @@ function initDireccionDeposito(sequelize) {
       allowNull: false,
       field: 'user_id'
     },
-    criptomonedaId: {
+    cryptoId: {
       type: DataTypes.UUID,
       allowNull: false,
-      field: 'criptomoneda_id'
+      field: 'crypto_id'
     },
-    walletMaestraId: {
+    masterWalletId: {
       type: DataTypes.UUID,
       allowNull: false,
-      field: 'wallet_maestra_id'
+      field: 'master_wallet_id'
     },
-    direccion: {
+    address: {
       type: DataTypes.STRING(255),
       allowNull: false,
       unique: true
@@ -56,23 +56,23 @@ function initDireccionDeposito(sequelize) {
     }
   }, {
     sequelize,
-    modelName: 'DireccionDeposito',
-    tableName: 'direcciones_deposito',
+    modelName: 'DepositAddress',
+    tableName: 'deposit_addresses',
     timestamps: true,
     createdAt: 'created_at',
     updatedAt: false,
     indexes: [
       {
         unique: true,
-        fields: ['user_id', 'criptomoneda_id']
+        fields: ['user_id', 'crypto_id']
       },
       {
-        fields: ['wallet_maestra_id', 'derivation_index']
+        fields: ['master_wallet_id', 'derivation_index']
       }
     ]
   });
 
-  return DireccionDeposito;
+  return DepositAddress;
 }
 
-module.exports = initDireccionDeposito;
+module.exports = initDepositAddress;

@@ -3,7 +3,7 @@ const { sequelize, resetDb } = require('../helpers/db');
 const f = require('../helpers/factories');
 const FakeEvmClient = require('../helpers/fakeEvmClient');
 const EthereumService = require('../../services/blockchain/ethereum.service');
-const { TransaccionBlockchain } = require('../../models');
+const { BlockchainTransaction } = require('../../models');
 const posting = require('../../modules/balances/ledger/postingService');
 const recon = require('../../modules/balances/ledger/reconciliation');
 const { PURPOSES } = require('../../modules/balances/ledger/ledgerAccounts');
@@ -21,9 +21,9 @@ async function seedEth() {
   return eth;
 }
 
-async function seedPendingWithdrawal(user, eth, cantidad) {
-  return TransaccionBlockchain.createWithdrawal({
-    userId: user.id, criptomonedaId: eth.id, cantidad, direccionDestino: '0xrecipient0000000000000000000000000000dead',
+async function seedPendingWithdrawal(user, eth, amount) {
+  return BlockchainTransaction.createWithdrawal({
+    userId: user.id, cryptoId: eth.id, amount, destinationAddress: '0xrecipient0000000000000000000000000000dead',
   });
 }
 
@@ -39,14 +39,14 @@ describe('ETH native withdrawal — processPendingWithdrawals (fake chain)', () 
 
     await service.processPendingWithdrawals();
 
-    const row = await TransaccionBlockchain.findByPk(w.id);
-    expect(row.estado).toBe('procesando');
+    const row = await BlockchainTransaction.findByPk(w.id);
+    expect(row.status).toBe('processing');
     expect(row.txHash).toBe('0xsent00000000000000000000000000000000000000000000000000000000beef');
-    expect(row.feeBlockchain).toBe('0.00042000');
+    expect(row.blockchainFee).toBe('0.00042000');
 
     expect(fake.signCalls).toHaveLength(1);
     expect(fake.signCalls[0].toAddress).toBe('0xrecipient0000000000000000000000000000dead');
-    expect(fake.signCalls[0].amount).toBe('1.00000000'); // cantidad from DECIMAL(28,8)
+    expect(fake.signCalls[0].amount).toBe('1.00000000'); // amount from DECIMAL(28,8)
     expect(fake.broadcastCalls).toHaveLength(1); // broadcast happened after pre-record
   });
 
@@ -59,8 +59,8 @@ describe('ETH native withdrawal — processPendingWithdrawals (fake chain)', () 
     const fake = new FakeEvmClient({ nativeBalance: '0.001' }); // < 1
     await new EthereumService({ chainClient: fake }).processPendingWithdrawals();
 
-    const row = await TransaccionBlockchain.findByPk(w.id);
-    expect(row.estado).toBe('fallido');
+    const row = await BlockchainTransaction.findByPk(w.id);
+    expect(row.status).toBe('failed');
     expect(fake.signCalls).toHaveLength(0); // balance check throws before signing
 
     // failWithdrawal returns the locked funds to available.
@@ -79,7 +79,7 @@ describe('ETH native withdrawal — processPendingWithdrawals (fake chain)', () 
     const service = new EthereumService({ chainClient: fake });
 
     await service.processPendingWithdrawals(); // sends, row → procesando
-    await service.processPendingWithdrawals(); // query only picks 'pendiente' → nothing
+    await service.processPendingWithdrawals(); // query only picks 'pending' → nothing
 
     expect(fake.broadcastCalls).toHaveLength(1);
   });
@@ -101,8 +101,8 @@ describe('ERC20 token withdrawal — via the chain-client port', () => {
     const fake = new FakeEvmClient({ tokenBalance: '1000', txHash: '0xtoken0000000000000000000000000000000000000000000000000000000beef', fee: '0.0006' });
     await new EthereumService({ chainClient: fake }).processPendingWithdrawals();
 
-    const row = await TransaccionBlockchain.findByPk(w.id);
-    expect(row.estado).toBe('procesando');
+    const row = await BlockchainTransaction.findByPk(w.id);
+    expect(row.status).toBe('processing');
     expect(row.txHash).toBe('0xtoken0000000000000000000000000000000000000000000000000000000beef');
     expect(fake.signCalls).toHaveLength(1);
     expect(fake.signCalls[0].kind).toBe('token');
@@ -120,9 +120,9 @@ describe('withdrawal ledger settlement — confirmed debits blocked funds to ext
     const w = await seedPendingWithdrawal(user, eth, '1'); // block 1: disponible 4, bloqueado 1
 
     // Broadcast (procesando + txHash), then reach the required confirmations.
-    await TransaccionBlockchain.markWithdrawalAsSent(w.id, '0xsent00000000000000000000000000000000000000000000000000000000beef', '0.00042');
-    const row = await TransaccionBlockchain.findByPk(w.id);
-    await TransaccionBlockchain.updateConfirmations(w.id, row.confirmacionesRequeridas);
+    await BlockchainTransaction.markWithdrawalAsSent(w.id, '0xsent00000000000000000000000000000000000000000000000000000000beef', '0.00042');
+    const row = await BlockchainTransaction.findByPk(w.id);
+    await BlockchainTransaction.updateConfirmations(w.id, row.requiredConfirmations);
 
     // The blocked funds have left to the on-chain world.
     const bal = await f.getBalance(user, eth);
@@ -143,13 +143,13 @@ describe('atomic claim before broadcast (anti double-spend)', () => {
     const w = await seedPendingWithdrawal(user, eth, '1');
 
     const results = await Promise.all([
-      TransaccionBlockchain.claimForProcessing(w.id),
-      TransaccionBlockchain.claimForProcessing(w.id),
+      BlockchainTransaction.claimForProcessing(w.id),
+      BlockchainTransaction.claimForProcessing(w.id),
     ]);
 
     expect(results.filter(Boolean)).toHaveLength(1); // exactly one true
-    const row = await TransaccionBlockchain.findByPk(w.id);
-    expect(row.estado).toBe('procesando');
+    const row = await BlockchainTransaction.findByPk(w.id);
+    expect(row.status).toBe('processing');
   });
 
   test('two concurrent processPendingWithdrawals broadcast at most once', async () => {

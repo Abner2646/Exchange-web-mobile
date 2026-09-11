@@ -5,10 +5,10 @@ Es el puente entre el exchange y la blockchain real! Es una entidad crítica!
 
 const { DataTypes, Model } = require('sequelize');
 
-class TransaccionBlockchain extends Model {}
+class BlockchainTransaction extends Model {}
 
-function initTransaccionBlockchain(sequelize) {
-  TransaccionBlockchain.init({
+function initBlockchainTransaction(sequelize) {
+  BlockchainTransaction.init({
     id: {
       type: DataTypes.UUID,
       primaryKey: true,
@@ -19,28 +19,28 @@ function initTransaccionBlockchain(sequelize) {
       allowNull: false,
       field: 'user_id'
     },
-    criptomonedaId: {
+    cryptoId: {
       type: DataTypes.UUID,
       allowNull: false,
-      field: 'criptomoneda_id'
+      field: 'crypto_id'
     },
-    tipo: {
-      type: DataTypes.ENUM('deposito', 'retiro'),
+    type: {
+      type: DataTypes.ENUM('deposit', 'withdrawal'),
       allowNull: false
     },
-    cantidad: {
+    amount: {
       type: DataTypes.DECIMAL(28, 8),
       allowNull: false
     },
-    direccionDestino: {
+    destinationAddress: {
       type: DataTypes.STRING(255),
       allowNull: true,
-      field: 'direccion_destino'
+      field: 'destination_address'
     },
-    direccionOrigen: {
+    sourceAddress: {
       type: DataTypes.STRING(255),
       allowNull: true,
-      field: 'direccion_origen'
+      field: 'source_address'
     },
     txHash: {
       type: DataTypes.STRING(255),
@@ -48,49 +48,49 @@ function initTransaccionBlockchain(sequelize) {
       unique: true,
       field: 'tx_hash'
     },
-    feeBlockchain: {
+    blockchainFee: {
       type: DataTypes.DECIMAL(18, 8),
       allowNull: true,
-      field: 'fee_blockchain'
+      field: 'blockchain_fee'
     },
-    confirmaciones: {
+    confirmations: {
       type: DataTypes.INTEGER,
       defaultValue: 0
     },
-    confirmacionesRequeridas: {
+    requiredConfirmations: {
       type: DataTypes.INTEGER,
       defaultValue: 6,
-      field: 'confirmaciones_requeridas'
+      field: 'required_confirmations'
     },
-    estado: {
-      type: DataTypes.ENUM('pendiente', 'procesando', 'confirmado', 'completado', 'fallido'),
-      defaultValue: 'pendiente'
+    status: {
+      type: DataTypes.ENUM('pending', 'processing', 'confirmed', 'completed', 'failed'),
+      defaultValue: 'pending'
     },
-    requiereAprobacion: {
+    requiresApproval: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
-      field: 'requiere_aprobacion'
+      field: 'requires_approval'
     },
-    aprobadoPor: {
+    approvedBy: {
       type: DataTypes.UUID,
       allowNull: true,
-      field: 'aprobado_por'
+      field: 'approved_by'
     },
-    fechaAprobacion: {
+    approvalDate: {
       type: DataTypes.DATE,
       allowNull: true,
-      field: 'fecha_aprobacion'
+      field: 'approval_date'
     }
   }, {
     sequelize,
-    modelName: 'TransaccionBlockchain',
-    tableName: 'transacciones_blockchain',
+    modelName: 'BlockchainTransaction',
+    tableName: 'blockchain_transactions',
     timestamps: true,
     createdAt: 'created_at',
     updatedAt: 'updated_at'
   });
 
-  return TransaccionBlockchain;
+  return BlockchainTransaction;
 }
 
-module.exports = initTransaccionBlockchain;
+module.exports = initBlockchainTransaction;

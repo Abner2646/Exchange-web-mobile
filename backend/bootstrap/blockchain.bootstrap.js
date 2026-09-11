@@ -2,7 +2,7 @@
 const sequelize = require('../config/database');
 const BlockchainServiceManager = require('../services/blockchain');
 const JobManager = require('../jobs');
-const { Crypto, WalletMaestra, DireccionDeposito } = require('../models');
+const { Crypto, MasterWallet, DepositAddress } = require('../models');
 
 class BlockchainBootstrap {
   constructor() {
@@ -55,7 +55,7 @@ class BlockchainBootstrap {
       console.log('✅ Conexión a base de datos verificada');
       
       // Verificar que las tablas existen
-      const tables = ['cryptos', 'wallets_maestras', 'direcciones_deposito', 'transacciones_blockchain'];
+      const tables = ['cryptos', 'master_wallets', 'deposit_addresses', 'blockchain_transactions'];
       for (const table of tables) {
         const tableExists = await sequelize.getQueryInterface().showAllTables()
           .then(tableNames => tableNames.includes(table));
@@ -124,8 +124,8 @@ class BlockchainBootstrap {
       const walletsExisting = [];
       
       for (const cripto of criptomonedas) {
-        let wallet = await WalletMaestra.findOne({
-          where: { criptomonedaId: cripto.id }
+        let wallet = await MasterWallet.findOne({
+          where: { cryptoId: cripto.id }
         });
         
         if (!wallet) {
@@ -133,14 +133,14 @@ class BlockchainBootstrap {
           console.log(`⚠️ Wallet maestra para ${cripto.symbol} no encontrada, creando...`);
           
           const walletData = {
-            criptomonedaId: cripto.id,
+            cryptoId: cripto.id,
             name: `${cripto.name} Master Wallet`,
             network: cripto.network,
             symbol: cripto.symbol,
             xpub: this.generateTestXpub(cripto.network),
             derivationPath: "m/44'/60'/0'",
-            direccionPublica: this.generateTestAddress(cripto.network),
-            balanceTotal: 0,
+            publicAddress: this.generateTestAddress(cripto.network),
+            totalBalance: 0,
             active: true,
             fingerprint: this.generateTestFingerprint(),
             publicKey: this.generateTestPublicKey(),
@@ -152,7 +152,7 @@ class BlockchainBootstrap {
             }
           };
           
-          wallet = await WalletMaestra.create(walletData);
+          wallet = await MasterWallet.create(walletData);
           walletsCreated.push(cripto.symbol);
           console.log(`✅ Wallet maestra para ${cripto.symbol} creada`);
         } else {
@@ -210,7 +210,7 @@ class BlockchainBootstrap {
       
       // Verificar conteo de datos críticos
       const cryptoCount = await Crypto.count({ where: { active: true } });
-      const walletCount = await WalletMaestra.count({ where: { active: true } });
+      const walletCount = await MasterWallet.count({ where: { active: true } });
       
       healthData.stats = {
         activeCryptocurrencies: cryptoCount,

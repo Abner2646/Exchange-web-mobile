@@ -61,19 +61,19 @@ const sequelize = new Sequelize(
 const UserBalance = userBalanceModel(sequelize);
 const BlockchainState = createBlockchainStateModel(sequelize);
 const Crypto = cryptoModel(sequelize);
-const DireccionDeposito = direccionDepositoModel(sequelize);
+const DepositAddress = direccionDepositoModel(sequelize);
 const IntercambioExchange = intercambioExchangeModel(sequelize);
 const MetodoPago = metodoPagoModel(sequelize);
 const Notificaciones = notificacionesModel(sequelize);
 const OfertaMetodoPago = ofertaMetodoPagoModel(sequelize);
 const OfertaP2P = ofertaP2PModel(sequelize);  
 const ParExchange = parExchangeModel(sequelize);
-const TransaccionBlockchain = transaccionBlockchainModel(sequelize);
+const BlockchainTransaction = transaccionBlockchainModel(sequelize);
 const TransaccionP2P = transaccionP2PModel(sequelize);
 const Transfer = transferModel(sequelize);
 const User = userModel(sequelize);
 const Valoracion = valoracionModel(sequelize);
-const WalletMaestra = walletMaestraModel(sequelize);
+const MasterWallet = walletMaestraModel(sequelize);
 
 // 🆕 INITIALIZE TRADING MODELS
 const TradingPair = tradingPairModel(sequelize);
@@ -107,8 +107,8 @@ const BusinessConfig = initBusinessConfig(sequelize);
 // User puede tener muchas direcciones de depósito
 // Mismo bug (Críticos #9), y encima asimétrico: el belongsTo ya se había
 // corregido a userId pero el hasMany inverso se había quedado en usuarioId.
-User.hasMany(DireccionDeposito, { foreignKey: 'userId', as: 'direccionesDeposito' });
-DireccionDeposito.belongsTo(User, { foreignKey: 'userId', as: 'usuario' });
+User.hasMany(DepositAddress, { foreignKey: 'userId', as: 'depositAddresses' });
+DepositAddress.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
 // User puede crear muchas ofertas P2P
 User.hasMany(OfertaP2P, { foreignKey: 'usuarioId', as: 'ofertas' });
@@ -138,12 +138,12 @@ Valoracion.belongsTo(User, { foreignKey: 'usuarioEvaluadoId', as: 'evaluado' });
 // User puede hacer transacciones blockchain
 // Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #9): mismo bug que arriba —
 // la columna real en transacciones_blockchain es user_id, no usuarioId.
-User.hasMany(TransaccionBlockchain, { foreignKey: 'userId', as: 'transaccionesBlockchain' });
-TransaccionBlockchain.belongsTo(User, { foreignKey: 'userId', as: 'usuario' });
+User.hasMany(BlockchainTransaction, { foreignKey: 'userId', as: 'blockchainTransactions' });
+BlockchainTransaction.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
 // Admin puede aprobar transacciones blockchain
-User.hasMany(TransaccionBlockchain, { foreignKey: 'aprobadoPor', as: 'transaccionesAprobadas' });
-TransaccionBlockchain.belongsTo(User, { foreignKey: 'aprobadoPor', as: 'adminAprobador' });
+User.hasMany(BlockchainTransaction, { foreignKey: 'approvedBy', as: 'approvedTransactions' });
+BlockchainTransaction.belongsTo(User, { foreignKey: 'approvedBy', as: 'adminApprover' });
 
 // 🆕 User puede crear muchas órdenes de trading
 User.hasMany(Order, { foreignKey: 'userId', as: 'orders' });
@@ -162,12 +162,12 @@ Trade.belongsTo(User, { foreignKey: 'sellerId', as: 'seller' });
 // ================================
 
 // Crypto puede tener una wallet maestra
-Crypto.hasOne(WalletMaestra, { foreignKey: 'criptomonedaId', as: 'walletMaestra' });
-WalletMaestra.belongsTo(Crypto, { foreignKey: 'criptomonedaId', as: 'crypto' });
+Crypto.hasOne(MasterWallet, { foreignKey: 'cryptoId', as: 'masterWallet' });
+MasterWallet.belongsTo(Crypto, { foreignKey: 'cryptoId', as: 'crypto' });
 
 // Crypto puede tener muchas direcciones de depósito
-Crypto.hasMany(DireccionDeposito, { foreignKey: 'criptomonedaId', as: 'direccionesDeposito' });
-DireccionDeposito.belongsTo(Crypto, { foreignKey: 'criptomonedaId', as: 'crypto' });
+Crypto.hasMany(DepositAddress, { foreignKey: 'cryptoId', as: 'depositAddresses' });
+DepositAddress.belongsTo(Crypto, { foreignKey: 'cryptoId', as: 'crypto' });
 
 // (Paso C: Crypto↔UserBalance se eliminó junto con la tabla balances_users.)
 
@@ -188,8 +188,8 @@ Crypto.hasMany(ParExchange, { foreignKey: 'criptoQuoteId', as: 'paresComoQuote' 
 ParExchange.belongsTo(Crypto, { foreignKey: 'criptoQuoteId', as: 'criptoQuote' });
 
 // Crypto puede estar en transacciones blockchain
-Crypto.hasMany(TransaccionBlockchain, { foreignKey: 'criptomonedaId', as: 'transaccionesBlockchain' });
-TransaccionBlockchain.belongsTo(Crypto, { foreignKey: 'criptomonedaId', as: 'crypto' });
+Crypto.hasMany(BlockchainTransaction, { foreignKey: 'cryptoId', as: 'blockchainTransactions' });
+BlockchainTransaction.belongsTo(Crypto, { foreignKey: 'cryptoId', as: 'crypto' });
 
 // 🆕 Crypto puede ser base asset en pares de trading
 Crypto.hasMany(TradingPair, { foreignKey: 'baseAssetId', as: 'tradingPairsAsBase' });
@@ -236,8 +236,8 @@ Trade.belongsTo(Order, { foreignKey: 'sellOrderId', as: 'sellOrder' });
 // ================================
 
 // Wallet maestra puede tener muchas direcciones de depósito
-WalletMaestra.hasMany(DireccionDeposito, { foreignKey: 'walletMaestraId', as: 'direccionesDeposito' });
-DireccionDeposito.belongsTo(WalletMaestra, { foreignKey: 'walletMaestraId', as: 'walletMaestra' });
+MasterWallet.hasMany(DepositAddress, { foreignKey: 'masterWalletId', as: 'depositAddresses' });
+DepositAddress.belongsTo(MasterWallet, { foreignKey: 'masterWalletId', as: 'masterWallet' });
 
 // ================================
 // RELACIONES DE SISTEMA P2P
@@ -321,19 +321,19 @@ module.exports = {
   UserBalance,
   BlockchainState,
   Crypto,
-  DireccionDeposito,
+  DepositAddress,
   IntercambioExchange,
   MetodoPago,
   Notificaciones,
   OfertaMetodoPago,
   OfertaP2P,
   ParExchange,
-  TransaccionBlockchain,
+  BlockchainTransaction,
   TransaccionP2P,
   Transfer,
   User,
   Valoracion,
-  WalletMaestra,
+  MasterWallet,
   // 🆕 TRADING MODELS
   TradingPair,
   Order,

@@ -14,7 +14,7 @@ process.env.JWT_SECRET = 'test-secret';
 jest.mock('../models', () => ({
   User: { findByPk: jest.fn() },
   sequelize: {},
-  TransaccionBlockchain: {}, Crypto: {}, UserBalance: {}, DireccionDeposito: {},
+  BlockchainTransaction: {}, Crypto: {}, UserBalance: {}, DepositAddress: {},
   // Required by idempotency.middleware (now wired into /withdraw)
   IdempotencyKey: { create: jest.fn().mockResolvedValue({}), findOne: jest.fn(), update: jest.fn(), destroy: jest.fn() },
 }));
@@ -99,9 +99,9 @@ describe('POST /transaccionBlockchain/withdraw valida el body con Joi antes del 
   });
 
   const validBody = {
-    criptomonedaId: '11111111-1111-4111-8111-111111111111',
-    cantidad: 0.5,
-    direccionDestino: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
+    cryptoId: '11111111-1111-4111-8111-111111111111',
+    amount: 0.5,
+    destinationAddress: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
   };
 
   test('body válido llega al controller', async () => {
@@ -114,33 +114,33 @@ describe('POST /transaccionBlockchain/withdraw valida el body con Joi antes del 
     expect(res.status).toBe(200);
   });
 
-  test('criptomonedaId no-UUID: 400 antes de tocar el controller', async () => {
+  test('cryptoId no-UUID: 400 antes de tocar el controller', async () => {
     const app = buildApp();
     const res = await request(app)
       .post('/transaccionBlockchain/withdraw')
       .set('Authorization', auth())
-      .send({ ...validBody, criptomonedaId: 'not-a-uuid' });
+      .send({ ...validBody, cryptoId: 'not-a-uuid' });
     expect(res.status).toBe(400);
-    expect(res.body.errors.some((e) => e.field === 'criptomonedaId')).toBe(true);
+    expect(res.body.errors.some((e) => e.field === 'cryptoId')).toBe(true);
   });
 
-  test('cantidad negativa: 400 antes de tocar el controller', async () => {
+  test('amount negativa: 400 antes de tocar el controller', async () => {
     const app = buildApp();
     const res = await request(app)
       .post('/transaccionBlockchain/withdraw')
       .set('Authorization', auth())
-      .send({ ...validBody, cantidad: -5 });
+      .send({ ...validBody, amount: -5 });
     expect(res.status).toBe(400);
-    expect(res.body.errors.some((e) => e.field === 'cantidad')).toBe(true);
+    expect(res.body.errors.some((e) => e.field === 'amount')).toBe(true);
   });
 
-  test('direccionDestino demasiado corta: 400 antes de tocar el controller', async () => {
+  test('destinationAddress demasiado corta: 400 antes de tocar el controller', async () => {
     const app = buildApp();
     const res = await request(app)
       .post('/transaccionBlockchain/withdraw')
       .set('Authorization', auth())
-      .send({ ...validBody, direccionDestino: 'abc' });
+      .send({ ...validBody, destinationAddress: 'abc' });
     expect(res.status).toBe(400);
-    expect(res.body.errors.some((e) => e.field === 'direccionDestino')).toBe(true);
+    expect(res.body.errors.some((e) => e.field === 'destinationAddress')).toBe(true);
   });
 });

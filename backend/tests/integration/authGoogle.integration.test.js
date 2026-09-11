@@ -184,7 +184,7 @@ describe('POST /api/usuario/login/google (verifies a Google id_token)', () => {
   });
 
   // NOTE: the happy new-user provisioning path (isNew + inicializarUsuarioCompleto
-  // succeeding) is NOT covered here: WalletMaestra.getByCriptomoneda references a
+  // succeeding) is NOT covered here: MasterWallet.getByCrypto references a
   // non-existent `crypto.derivationPath` column, so provisioning throws in
   // the harness (and likely in prod). Flagged separately in ROADMAP; the
   // atomicity guarantee below is what matters for this fix.

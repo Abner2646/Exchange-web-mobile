@@ -84,9 +84,9 @@ describe('cambio de email — enforcement del cooldown de retiros', () => {
     const res = await request(app).post('/api/transaccionBlockchain/withdraw')
       .set(auth).set('Idempotency-Key', 'cooldown-1')
       .send({
-        criptomonedaId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
-        cantidad: 0.5,
-        direccionDestino: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
+        cryptoId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+        amount: 0.5,
+        destinationAddress: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
       });
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('WITHDRAWAL_COOLDOWN');

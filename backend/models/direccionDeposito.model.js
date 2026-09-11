@@ -32,17 +32,17 @@ try {
 }
 
 function createDireccionDepositoModel(sequelize) {
-  const DireccionDeposito = initDireccionDeposito(sequelize);
+  const DepositAddress = initDireccionDeposito(sequelize);
 
   // =================== MÉTODOS DE CONSULTA BÁSICOS ===================
   
-  DireccionDeposito.getById = async (id) => {
+  DepositAddress.getById = async (id) => {
     try {
-      const direccion = await DireccionDeposito.findByPk(id, {
+      const address = await DepositAddress.findByPk(id, {
         include: [
           {
             model: sequelize.models.User,
-            as: 'usuario',
+            as: 'user',
             attributes: ['id', 'email', 'username', 'active'],
             required: false
           },
@@ -53,28 +53,28 @@ function createDireccionDepositoModel(sequelize) {
             required: false
           },
           {
-            model: sequelize.models.WalletMaestra,
-            as: 'walletMaestra',
-            attributes: ['id', 'name', 'network', 'symbol', 'active', 'balanceTotal'],
+            model: sequelize.models.MasterWallet,
+            as: 'masterWallet',
+            attributes: ['id', 'name', 'network', 'symbol', 'active', 'totalBalance'],
             required: false
           }
         ]
       });
 
-      return direccion;
+      return address;
     } catch (error) {
       console.error(`Error al obtener dirección por ID ${id}:`, error.message);
       throw new Error(`Error al obtener dirección de depósito por ID: ${error.message}`);
     }
   };
 
-  DireccionDeposito.getAll = async (filters = {}) => {
+  DepositAddress.getAll = async (filters = {}) => {
     try {
       const whereClause = {};
       const includeClause = [
         {
           model: sequelize.models.User,
-          as: 'usuario',
+          as: 'user',
           attributes: ['id', 'email', 'username'],
           where: filters.userEmail ? {
             email: { [Op.iLike]: `%${filters.userEmail}%` }
@@ -89,8 +89,8 @@ function createDireccionDepositoModel(sequelize) {
           } : undefined
         },
         {
-          model: sequelize.models.WalletMaestra,
-          as: 'walletMaestra',
+          model: sequelize.models.MasterWallet,
+          as: 'masterWallet',
           attributes: ['id', 'name', 'network', 'symbol', 'active']
         }
       ];
@@ -100,11 +100,11 @@ function createDireccionDepositoModel(sequelize) {
       }
       
       if (filters.userId) whereClause.userId = filters.userId;
-      if (filters.criptomonedaId) whereClause.criptomonedaId = filters.criptomonedaId;
-      if (filters.walletMaestraId) whereClause.walletMaestraId = filters.walletMaestraId;
+      if (filters.cryptoId) whereClause.cryptoId = filters.cryptoId;
+      if (filters.masterWalletId) whereClause.masterWalletId = filters.masterWalletId;
       
-      if (filters.direccion) {
-        whereClause.direccion = { [Op.iLike]: `%${filters.direccion}%` };
+      if (filters.address) {
+        whereClause.address = { [Op.iLike]: `%${filters.address}%` };
       }
 
       if (filters.fechaDesde || filters.fechaHasta) {
@@ -125,7 +125,7 @@ function createDireccionDepositoModel(sequelize) {
         offset: parseInt(filters.offset) || 0
       };
 
-      const { count, rows } = await DireccionDeposito.findAndCountAll(options);
+      const { count, rows } = await DepositAddress.findAndCountAll(options);
       
       return {
         direcciones: rows,
@@ -138,19 +138,19 @@ function createDireccionDepositoModel(sequelize) {
     }
   };
 
-  DireccionDeposito.search = async (term, limit = 10) => {
+  DepositAddress.search = async (term, limit = 10) => {
     try {
-      const direcciones = await DireccionDeposito.findAll({
+      const direcciones = await DepositAddress.findAll({
         where: {
           [Op.or]: [
-            { direccion: { [Op.iLike]: `%${term}%` } },
+            { address: { [Op.iLike]: `%${term}%` } },
             { derivationPath: { [Op.iLike]: `%${term}%` } }
           ]
         },
         include: [
           {
             model: sequelize.models.User,
-            as: 'usuario',
+            as: 'user',
             attributes: ['id', 'email', 'username']
           },
           {
@@ -159,8 +159,8 @@ function createDireccionDepositoModel(sequelize) {
             attributes: ['id', 'symbol', 'name', 'network']
           },
           {
-            model: sequelize.models.WalletMaestra,
-            as: 'walletMaestra',
+            model: sequelize.models.MasterWallet,
+            as: 'masterWallet',
             attributes: ['id', 'name', 'network', 'symbol']
           }
         ],
@@ -176,7 +176,7 @@ function createDireccionDepositoModel(sequelize) {
 
   // =================== MÉTODOS ESPECÍFICOS PARA DIRECCIONES ===================
 
-  DireccionDeposito.getByUser = async (userId, options = {}) => {
+  DepositAddress.getByUser = async (userId, options = {}) => {
     try {
       const whereClause = { userId: userId };
 
@@ -184,11 +184,11 @@ function createDireccionDepositoModel(sequelize) {
         whereClause.active = true;
       }
 
-      if (options.criptomonedaId) {
-        whereClause.criptomonedaId = options.criptomonedaId;
+      if (options.cryptoId) {
+        whereClause.cryptoId = options.cryptoId;
       }
 
-      const direcciones = await DireccionDeposito.findAll({
+      const direcciones = await DepositAddress.findAll({
         where: whereClause,
         include: [
           {
@@ -198,9 +198,9 @@ function createDireccionDepositoModel(sequelize) {
             where: options.soloActivas !== false ? { active: true } : undefined
           },
           {
-            model: sequelize.models.WalletMaestra,
-            as: 'walletMaestra',
-            attributes: ['id', 'name', 'network', 'symbol', 'active', 'balanceTotal']
+            model: sequelize.models.MasterWallet,
+            as: 'masterWallet',
+            attributes: ['id', 'name', 'network', 'symbol', 'active', 'totalBalance']
           }
         ],
         order: [['created_at', 'DESC']]
@@ -211,12 +211,12 @@ function createDireccionDepositoModel(sequelize) {
     }
   };
 
-  DireccionDeposito.getByUserAndCrypto = async (userId, criptomonedaId) => {
+  DepositAddress.getByUserAndCrypto = async (userId, cryptoId) => {
     try {
-      const direccion = await DireccionDeposito.findOne({
+      const address = await DepositAddress.findOne({
         where: { 
           userId: userId,
-          criptomonedaId: criptomonedaId,
+          cryptoId: cryptoId,
           active: true 
         },
         include: [
@@ -226,26 +226,26 @@ function createDireccionDepositoModel(sequelize) {
             attributes: ['id', 'symbol', 'name', 'network', 'active', 'decimals']
           },
           {
-            model: sequelize.models.WalletMaestra,
-            as: 'walletMaestra',
+            model: sequelize.models.MasterWallet,
+            as: 'masterWallet',
             attributes: ['id', 'name', 'network', 'symbol', 'xpub', 'active']
           }
         ]
       });
-      return direccion;
+      return address;
     } catch (error) {
       throw new Error(`Error al obtener dirección por usuario y crypto: ${error.message}`);
     }
   };
 
-  DireccionDeposito.getByAddress = async (direccion) => {
+  DepositAddress.getByAddress = async (address) => {
     try {
-      const result = await DireccionDeposito.findOne({
-        where: { direccion: direccion },
+      const result = await DepositAddress.findOne({
+        where: { address: address },
         include: [
           {
             model: sequelize.models.User,
-            as: 'usuario',
+            as: 'user',
             attributes: ['id', 'email', 'username', 'active']
           },
           {
@@ -254,8 +254,8 @@ function createDireccionDepositoModel(sequelize) {
             attributes: ['id', 'symbol', 'name', 'network', 'active']
           },
           {
-            model: sequelize.models.WalletMaestra,
-            as: 'walletMaestra',
+            model: sequelize.models.MasterWallet,
+            as: 'masterWallet',
             attributes: ['id', 'name', 'network', 'symbol', 'active']
           }
         ]
@@ -266,14 +266,14 @@ function createDireccionDepositoModel(sequelize) {
     }
   };
 
-  DireccionDeposito.getByWallet = async (walletId) => {
+  DepositAddress.getByWallet = async (walletId) => {
     try {
-      const direcciones = await DireccionDeposito.findAll({
-        where: { walletMaestraId: walletId },
+      const direcciones = await DepositAddress.findAll({
+        where: { masterWalletId: walletId },
         include: [
           {
             model: sequelize.models.User,
-            as: 'usuario',
+            as: 'user',
             attributes: ['id', 'email', 'username']
           },
           {
@@ -292,19 +292,19 @@ function createDireccionDepositoModel(sequelize) {
 
   // =================== GENERACIÓN AUTOMÁTICA DE DIRECCIONES ===================
 
-  DireccionDeposito.generateAddressForUser = async (userId, criptomonedaId, transaction = null) => {
+  DepositAddress.generateAddressForUser = async (userId, cryptoId, transaction = null) => {
     const t = transaction || await sequelize.transaction();
     
     try {
-      if (!userId || !criptomonedaId) {
-        throw new Error('userId y criptomonedaId son requeridos');
+      if (!userId || !cryptoId) {
+        throw new Error('userId y cryptoId son requeridos');
       }
 
       // Verificar si ya existe una dirección active
-      const existingDireccion = await DireccionDeposito.findOne({
+      const existingDireccion = await DepositAddress.findOne({
         where: { 
           userId: userId,
-          criptomonedaId: criptomonedaId,
+          cryptoId: cryptoId,
           active: true
         },
         transaction: t
@@ -312,11 +312,11 @@ function createDireccionDepositoModel(sequelize) {
       
       if (existingDireccion) {
         if (!transaction) await t.commit();
-        return await DireccionDeposito.getById(existingDireccion.id);
+        return await DepositAddress.getById(existingDireccion.id);
       }
 
       // Obtener datos de la criptomoneda
-      const crypto = await sequelize.models.Crypto.findByPk(criptomonedaId, {
+      const crypto = await sequelize.models.Crypto.findByPk(cryptoId, {
         transaction: t
       });
 
@@ -325,16 +325,16 @@ function createDireccionDepositoModel(sequelize) {
       }
 
       // Buscar wallet maestra o crear usando variables de entorno
-      let walletMaestra = await sequelize.models.WalletMaestra.findOne({
+      let walletMaestra = await sequelize.models.MasterWallet.findOne({
         where: { 
-          criptomonedaId: criptomonedaId,
+          cryptoId: cryptoId,
           active: true 
         },
         transaction: t
       });
 
       if (!walletMaestra) {
-        walletMaestra = await DireccionDeposito._createMasterWalletFromEnv(crypto, t);
+        walletMaestra = await DepositAddress._createMasterWalletFromEnv(crypto, t);
       }
 
       if (!walletMaestra.xpub) {
@@ -342,7 +342,7 @@ function createDireccionDepositoModel(sequelize) {
       }
 
       // **CAMBIO CLAVE**: Usar userId para generar índice único
-      const uniqueIndex = await DireccionDeposito.generateUniqueIndexForUser(userId, walletMaestra.id, t);
+      const uniqueIndex = await DepositAddress.generateUniqueIndexForUser(userId, walletMaestra.id, t);
 
       // Generar la dirección
       let addressData;
@@ -352,7 +352,7 @@ function createDireccionDepositoModel(sequelize) {
       while (attempts < maxAttempts) {
         console.log(`Generando dirección para usuario ${userId}, ${crypto.symbol}, índice ${uniqueIndex + attempts}`);
         
-        addressData = await DireccionDeposito._generateAddress(
+        addressData = await DepositAddress._generateAddress(
           walletMaestra.xpub,
           walletMaestra.derivationPath,
           uniqueIndex + attempts,
@@ -364,8 +364,8 @@ function createDireccionDepositoModel(sequelize) {
         console.log(`Dirección generada para usuario ${userId}, ${crypto.symbol}:`, addressData);
 
         // Verificar que la dirección no existe
-        const existingByAddress = await DireccionDeposito.findOne({
-          where: { direccion: addressData.address },
+        const existingByAddress = await DepositAddress.findOne({
+          where: { address: addressData.address },
           transaction: t
         });
 
@@ -386,9 +386,9 @@ function createDireccionDepositoModel(sequelize) {
       // Crear la dirección en la base de datos
       const direccionData = {
         userId: userId,
-        criptomonedaId: criptomonedaId,
-        walletMaestraId: walletMaestra.id,
-        direccion: addressData.address,
+        cryptoId: cryptoId,
+        masterWalletId: walletMaestra.id,
+        address: addressData.address,
         derivationIndex: uniqueIndex,
         derivationPath: `${walletMaestra.derivationPath}/0/${uniqueIndex}`,
         publicKey: addressData.publicKey,
@@ -403,13 +403,13 @@ function createDireccionDepositoModel(sequelize) {
         }
       };
 
-      const nuevaDireccion = await DireccionDeposito.create(direccionData, { transaction: t });
+      const nuevaDireccion = await DepositAddress.create(direccionData, { transaction: t });
 
       if (!transaction) await t.commit();
       await new Promise(resolve => setTimeout(resolve, 100));
 
       try {
-        const direccionCompleta = await DireccionDeposito.getById(nuevaDireccion.id);
+        const direccionCompleta = await DepositAddress.getById(nuevaDireccion.id);
         if (direccionCompleta) {
           return direccionCompleta;
         }
@@ -421,9 +421,9 @@ function createDireccionDepositoModel(sequelize) {
       return {
         id: nuevaDireccion.id,
         userId: nuevaDireccion.userId,
-        criptomonedaId: nuevaDireccion.criptomonedaId,
-        walletMaestraId: nuevaDireccion.walletMaestraId,
-        direccion: nuevaDireccion.direccion,
+        cryptoId: nuevaDireccion.cryptoId,
+        masterWalletId: nuevaDireccion.masterWalletId,
+        address: nuevaDireccion.address,
         derivationIndex: nuevaDireccion.derivationIndex,
         derivationPath: nuevaDireccion.derivationPath,
         publicKey: nuevaDireccion.publicKey,
@@ -444,7 +444,7 @@ function createDireccionDepositoModel(sequelize) {
           network: walletMaestra.network,
           symbol: walletMaestra.symbol,
           active: walletMaestra.active,
-          balanceTotal: walletMaestra.balanceTotal || "0.00000000"
+          totalBalance: walletMaestra.totalBalance || "0.00000000"
         }
       };
 
@@ -455,11 +455,11 @@ function createDireccionDepositoModel(sequelize) {
   };
 
   // **NUEVO MÉTODO**: Generar índice único basado en userId
-  DireccionDeposito.generateUniqueIndexForUser = async (userId, walletMaestraId, transaction = null) => {
+  DepositAddress.generateUniqueIndexForUser = async (userId, masterWalletId, transaction = null) => {
     try {
       // Crear hash único basado en userId para determinismo
       const userHash = crypto.createHash('sha256')
-        .update(`${userId}_${walletMaestraId}`)
+        .update(`${userId}_${masterWalletId}`)
         .digest('hex');
       
       // Convertir hash a número entero (usando primeros 8 caracteres)
@@ -471,9 +471,9 @@ function createDireccionDepositoModel(sequelize) {
       const maxAttempts = 100;
       
       while (attempts < maxAttempts) {
-        const existingWithIndex = await DireccionDeposito.findOne({
+        const existingWithIndex = await DepositAddress.findOne({
           where: {
-            walletMaestraId: walletMaestraId,
+            masterWalletId: masterWalletId,
             derivationIndex: finalIndex
           },
           transaction
@@ -498,7 +498,7 @@ function createDireccionDepositoModel(sequelize) {
 
   // =================== CREACIÓN DE WALLET MAESTRA DESDE ENV ===================
 
-  DireccionDeposito._createMasterWalletFromEnv = async (crypto, transaction) => {
+  DepositAddress._createMasterWalletFromEnv = async (crypto, transaction) => {
     try {
       let xpub, derivationPath;
 
@@ -567,11 +567,11 @@ function createDireccionDepositoModel(sequelize) {
         name: `Wallet Maestra ${crypto.symbol}`,
         network: crypto.network,
         symbol: crypto.symbol,
-        criptomonedaId: crypto.id,
+        cryptoId: crypto.id,
         xpub: xpub,
         derivationPath: derivationPath,
         active: true,
-        balanceTotal: "0.00000000",
+        totalBalance: "0.00000000",
         metadata: {
           createdAt: new Date().toISOString(),
           source: 'env_variables',
@@ -583,7 +583,7 @@ function createDireccionDepositoModel(sequelize) {
         }
       };
 
-      const walletMaestra = await sequelize.models.WalletMaestra.create(walletData, { transaction });
+      const walletMaestra = await sequelize.models.MasterWallet.create(walletData, { transaction });
       console.log(`Wallet maestra creada para ${crypto.symbol} - ${bipStandard} con path: ${derivationPath}`);
       
       return walletMaestra;
@@ -594,7 +594,7 @@ function createDireccionDepositoModel(sequelize) {
 
   // =================== GENERACIÓN DE DIRECCIONES POR RED ===================
 
-  DireccionDeposito._generateAddress = async (xpub, derivationPath, index, network, addressFormat = 'legacy', userId = null) => {
+  DepositAddress._generateAddress = async (xpub, derivationPath, index, network, addressFormat = 'legacy', userId = null) => {
     try {
       console.log(`Generando dirección para usuario ${userId}, network: ${network}, índice: ${index}`);
 
@@ -604,13 +604,13 @@ function createDireccionDepositoModel(sequelize) {
           if (!bitcoin || !BIP32Factory) {
             throw new Error('Librerías de Bitcoin no disponibles');
           }
-          return DireccionDeposito._generateBitcoinAddress(xpub, derivationPath, index, addressFormat, userId);
+          return DepositAddress._generateBitcoinAddress(xpub, derivationPath, index, addressFormat, userId);
         
         case 'ethereum':
         case 'sepolia':
         case 'bsc':
         case 'bsc-testnet':
-          return DireccionDeposito._generateEthereumAddress(xpub, derivationPath, index, userId);
+          return DepositAddress._generateEthereumAddress(xpub, derivationPath, index, userId);
         
         default:
           throw new Error(`Red no soportada: ${network}`);
@@ -620,7 +620,7 @@ function createDireccionDepositoModel(sequelize) {
     }
   };
 
-  DireccionDeposito._generateBitcoinAddress = (xpub, derivationPath, index, format = 'legacy', userId = null) => {
+  DepositAddress._generateBitcoinAddress = (xpub, derivationPath, index, format = 'legacy', userId = null) => {
     try {
       console.log(`Generando dirección Bitcoin ${format} con índice ${index} para usuario ${userId}`);
       console.log(`XPUB prefix: ${xpub.substring(0, 4)}`);
@@ -809,7 +809,7 @@ function createDireccionDepositoModel(sequelize) {
     }
   };
 
-  DireccionDeposito._generateEthereumAddress = (xpub, derivationPath, index, userId = null) => {
+  DepositAddress._generateEthereumAddress = (xpub, derivationPath, index, userId = null) => {
     try {
       console.log(`Generando dirección Ethereum/BSC con índice ${index} para usuario ${userId}`);
 
@@ -851,7 +851,7 @@ function createDireccionDepositoModel(sequelize) {
 
   // =================== CREAR DIRECCIONES PARA TODAS LAS CRIPTOS ===================
 
-  DireccionDeposito.createAddressesForAllCryptos = async (userId) => {
+  DepositAddress.createAddressesForAllCryptos = async (userId) => {
     const transaction = await sequelize.transaction();
     
     try {
@@ -897,24 +897,24 @@ function createDireccionDepositoModel(sequelize) {
 
       for (const crypto of criptomonedasDisponibles) {
         try {
-          const existingAddress = await DireccionDeposito.findOne({
+          const existingAddress = await DepositAddress.findOne({
             where: {
               userId: userId,
-              criptomonedaId: crypto.id,
+              cryptoId: crypto.id,
               active: true
             },
             transaction
           });
 
           if (existingAddress) {
-            const direccionCompleta = await DireccionDeposito.getById(existingAddress.id);
+            const direccionCompleta = await DepositAddress.getById(existingAddress.id);
             resultados.push({
               crypto: crypto.symbol,
-              direccion: direccionCompleta,
+              address: direccionCompleta,
               status: 'ya_existia'
             });
           } else {
-            const nuevaDireccion = await DireccionDeposito.generateAddressForUser(
+            const nuevaDireccion = await DepositAddress.generateAddressForUser(
               userId, 
               crypto.id, 
               transaction
@@ -922,7 +922,7 @@ function createDireccionDepositoModel(sequelize) {
             
             resultados.push({
               crypto: crypto.symbol,
-              direccion: nuevaDireccion,
+              address: nuevaDireccion,
               status: 'creada'
             });
           }
@@ -951,31 +951,31 @@ function createDireccionDepositoModel(sequelize) {
     }
   };
 
-  DireccionDeposito.getNextDerivationIndex = async (walletMaestraId, transaction = null) => {
+  DepositAddress.getNextDerivationIndex = async (masterWalletId, transaction = null) => {
     try {
-      if (!walletMaestraId) {
-        throw new Error('walletMaestraId es requerido');
+      if (!masterWalletId) {
+        throw new Error('masterWalletId es requerido');
       }
 
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-      if (!uuidRegex.test(walletMaestraId)) {
-        throw new Error(`walletMaestraId debe ser un UUID válido: ${walletMaestraId}`);
+      if (!uuidRegex.test(masterWalletId)) {
+        throw new Error(`masterWalletId debe ser un UUID válido: ${masterWalletId}`);
       }
 
-      const wallet = await sequelize.models.WalletMaestra.findByPk(walletMaestraId, { transaction });
+      const wallet = await sequelize.models.MasterWallet.findByPk(masterWalletId, { transaction });
       
       if (!wallet) {
-        throw new Error(`Wallet maestra con ID ${walletMaestraId} no encontrada`);
+        throw new Error(`Wallet maestra con ID ${masterWalletId} no encontrada`);
       }
 
-      const result = await DireccionDeposito.findOne({
+      const result = await DepositAddress.findOne({
         attributes: [
           [sequelize.fn('COALESCE', 
             sequelize.fn('MAX', sequelize.col('derivation_index')), 
             -1
           ), 'maxIndex']
         ],
-        where: { walletMaestraId: walletMaestraId },
+        where: { masterWalletId: masterWalletId },
         transaction,
         raw: true
       });
@@ -983,7 +983,7 @@ function createDireccionDepositoModel(sequelize) {
       const maxIndex = parseInt(result?.maxIndex || -1);
       const nextIndex = maxIndex + 1;
       
-      console.log(`Wallet ${walletMaestraId}: siguiente índice = ${nextIndex}`);
+      console.log(`Wallet ${masterWalletId}: siguiente índice = ${nextIndex}`);
       
       return nextIndex;
     } catch (error) {
@@ -993,31 +993,31 @@ function createDireccionDepositoModel(sequelize) {
 
   // =================== MÉTODOS CRUD CON VALIDACIONES ===================
 
-  DireccionDeposito.createDireccion = async (data) => {
+  DepositAddress.createAddress = async (data) => {
     const transaction = await sequelize.transaction();
     
     try {
-      if (!data.userId || !data.criptomonedaId) {
-        throw new Error('userId y criptomonedaId son requeridos');
+      if (!data.userId || !data.cryptoId) {
+        throw new Error('userId y cryptoId son requeridos');
       }
 
-      const crypto = await sequelize.models.Crypto.findByPk(data.criptomonedaId, { transaction });
+      const crypto = await sequelize.models.Crypto.findByPk(data.cryptoId, { transaction });
       
       if (!crypto || !crypto.active) {
         throw new Error('Criptomoneda no encontrada o inactiva');
       }
 
-      if (data.walletMaestraId) {
-        const walletMaestra = await sequelize.models.WalletMaestra.findByPk(data.walletMaestraId, { transaction });
+      if (data.masterWalletId) {
+        const walletMaestra = await sequelize.models.MasterWallet.findByPk(data.masterWalletId, { transaction });
         
         if (!walletMaestra || !walletMaestra.active) {
           throw new Error('Wallet maestra no encontrada o inactiva');
         }
       }
 
-      if (data.direccion) {
-        const existingAddress = await DireccionDeposito.findOne({
-          where: { direccion: data.direccion },
+      if (data.address) {
+        const existingAddress = await DepositAddress.findOne({
+          where: { address: data.address },
           transaction
         });
         
@@ -1035,30 +1035,30 @@ function createDireccionDepositoModel(sequelize) {
         }
       };
 
-      const nuevaDireccion = await DireccionDeposito.create(direccionData, { transaction });
+      const nuevaDireccion = await DepositAddress.create(direccionData, { transaction });
       await transaction.commit();
       
-      return await DireccionDeposito.getById(nuevaDireccion.id);
+      return await DepositAddress.getById(nuevaDireccion.id);
     } catch (error) {
       await transaction.rollback();
       throw new Error(`Error al crear dirección de depósito: ${error.message}`);
     }
   };
 
-  DireccionDeposito.updateDireccion = async (id, data) => {
+  DepositAddress.updateAddress = async (id, data) => {
     const transaction = await sequelize.transaction();
     
     try {
-      const direccion = await DireccionDeposito.findByPk(id, { transaction });
+      const address = await DepositAddress.findByPk(id, { transaction });
       
-      if (!direccion) {
+      if (!address) {
         throw new Error('Dirección de depósito no encontrada');
       }
 
-      if (data.direccion && data.direccion !== direccion.direccion) {
-        const existingAddress = await DireccionDeposito.findOne({
+      if (data.address && data.address !== address.address) {
+        const existingAddress = await DepositAddress.findOne({
           where: { 
-            direccion: data.direccion,
+            address: data.address,
             id: { [Op.ne]: id }
           },
           transaction
@@ -1072,41 +1072,41 @@ function createDireccionDepositoModel(sequelize) {
       const updateData = {
         ...data,
         metadata: {
-          ...direccion.metadata,
+          ...address.metadata,
           ...data.metadata,
           lastModified: new Date()
         }
       };
 
-      await DireccionDeposito.update(updateData, {
+      await DepositAddress.update(updateData, {
         where: { id },
         transaction
       });
       
       await transaction.commit();
       
-      return await DireccionDeposito.getById(id);
+      return await DepositAddress.getById(id);
     } catch (error) {
       await transaction.rollback();
       throw new Error(`Error al actualizar dirección de depósito: ${error.message}`);
     }
   };
 
-  DireccionDeposito.deleteDireccion = async (id) => {
+  DepositAddress.deleteAddress = async (id) => {
     const transaction = await sequelize.transaction();
     
     try {
-      const direccion = await DireccionDeposito.findByPk(id, { transaction });
+      const address = await DepositAddress.findByPk(id, { transaction });
       
-      if (!direccion) {
+      if (!address) {
         throw new Error('Dirección de depósito no encontrada');
       }
 
-      await DireccionDeposito.update(
+      await DepositAddress.update(
         { 
           active: false,
           metadata: {
-            ...direccion.metadata,
+            ...address.metadata,
             deletedAt: new Date(),
             deletedReason: 'manual_deletion'
           }
@@ -1128,9 +1128,9 @@ function createDireccionDepositoModel(sequelize) {
 
   // =================== VALIDACIONES Y SEGURIDAD ===================
 
-  DireccionDeposito.validateForDeposit = async (direccion) => {
+  DepositAddress.validateForDeposit = async (address) => {
     try {
-      const direccionData = await DireccionDeposito.getByAddress(direccion);
+      const direccionData = await DepositAddress.getByAddress(address);
       
       if (!direccionData) {
         return {
@@ -1153,7 +1153,7 @@ function createDireccionDepositoModel(sequelize) {
         };
       }
 
-      if (!direccionData.usuario.active) {
+      if (!direccionData.user.active) {
         return {
           valid: false,
           message: 'El usuario está desactivado'
@@ -1162,7 +1162,7 @@ function createDireccionDepositoModel(sequelize) {
 
       return {
         valid: true,
-        direccion: direccionData,
+        address: direccionData,
         message: 'Dirección válida para depósito'
       };
     } catch (error) {
@@ -1173,17 +1173,17 @@ function createDireccionDepositoModel(sequelize) {
     }
   };
 
-  DireccionDeposito.validateAddress = (address, network) => {
+  DepositAddress.validateAddress = (address, network) => {
     try {
       switch (network.toLowerCase()) {
         case 'bitcoin':
         case 'testnet3':
-          return DireccionDeposito._validateBitcoinAddress(address);
+          return DepositAddress._validateBitcoinAddress(address);
         case 'ethereum':
         case 'sepolia':
         case 'bsc':
         case 'bsc-testnet':
-          return DireccionDeposito._validateEthereumAddress(address);
+          return DepositAddress._validateEthereumAddress(address);
         default:
           return { valid: false, message: 'Red no soportada' };
       }
@@ -1192,7 +1192,7 @@ function createDireccionDepositoModel(sequelize) {
     }
   };
 
-  DireccionDeposito._validateBitcoinAddress = (address) => {
+  DepositAddress._validateBitcoinAddress = (address) => {
     try {
       if (!bitcoin) {
         return { valid: false, message: 'Validador Bitcoin no disponible' };
@@ -1208,7 +1208,7 @@ function createDireccionDepositoModel(sequelize) {
     }
   };
 
-  DireccionDeposito._validateEthereumAddress = (address) => {
+  DepositAddress._validateEthereumAddress = (address) => {
     const ethAddressRegex = /^0x[a-fA-F0-9]{40}$/;
     if (ethAddressRegex.test(address)) {
       return { valid: true, message: 'Dirección Ethereum/BSC válida' };
@@ -1218,21 +1218,21 @@ function createDireccionDepositoModel(sequelize) {
 
   // =================== MÉTODOS ADMINISTRATIVOS ===================
 
-  DireccionDeposito.updateStatus = async (id, newStatus, reason = null) => {
+  DepositAddress.updateStatus = async (id, newStatus, reason = null) => {
     const transaction = await sequelize.transaction();
     
     try {
-      const direccion = await DireccionDeposito.findByPk(id, { transaction });
+      const address = await DepositAddress.findByPk(id, { transaction });
       
-      if (!direccion) {
+      if (!address) {
         throw new Error('Dirección de depósito no encontrada');
       }
 
-      await DireccionDeposito.update(
+      await DepositAddress.update(
         { 
           active: newStatus,
           metadata: {
-            ...direccion.metadata,
+            ...address.metadata,
             lastStatusChange: new Date(),
             statusChangeReason: reason
           }
@@ -1242,14 +1242,14 @@ function createDireccionDepositoModel(sequelize) {
       
       await transaction.commit();
       
-      return await DireccionDeposito.getById(id);
+      return await DepositAddress.getById(id);
     } catch (error) {
       await transaction.rollback();
-      throw new Error(`Error al actualizar estado: ${error.message}`);
+      throw new Error(`Error al actualizar status: ${error.message}`);
     }
   };
 
-  DireccionDeposito.getStats = async (filters = {}) => {
+  DepositAddress.getStats = async (filters = {}) => {
     try {
       const whereClause = {};
       
@@ -1263,47 +1263,47 @@ function createDireccionDepositoModel(sequelize) {
         }
       }
 
-      const totalDirecciones = await DireccionDeposito.count({ where: whereClause });
-      const direccionesActivas = await DireccionDeposito.count({
+      const totalDirecciones = await DepositAddress.count({ where: whereClause });
+      const direccionesActivas = await DepositAddress.count({
         where: { ...whereClause, active: true }
       });
-      const direccionesInactivas = await DireccionDeposito.count({
+      const direccionesInactivas = await DepositAddress.count({
         where: { ...whereClause, active: false }
       });
 
-      const statsByCrypto = await DireccionDeposito.findAll({
+      const statsByCrypto = await DepositAddress.findAll({
         where: whereClause,
         attributes: [
-          'criptomonedaId',
-          [sequelize.fn('COUNT', sequelize.col('DireccionDeposito.id')), 'count'],
-          [sequelize.fn('COUNT', sequelize.literal('CASE WHEN "DireccionDeposito"."active" = true THEN 1 END')), 'activas']
+          'cryptoId',
+          [sequelize.fn('COUNT', sequelize.col('DepositAddress.id')), 'count'],
+          [sequelize.fn('COUNT', sequelize.literal('CASE WHEN "DepositAddress"."active" = true THEN 1 END')), 'activas']
         ],
         include: [{
           model: sequelize.models.Crypto,
           as: 'crypto',
           attributes: ['symbol', 'name', 'network']
         }],
-        group: ['criptomonedaId', 'criptomoneda.id'],
+        group: ['cryptoId', 'criptomoneda.id'],
         raw: false
       });
 
-      const statsByWallet = await DireccionDeposito.findAll({
+      const statsByWallet = await DepositAddress.findAll({
         where: whereClause,
         attributes: [
-          'walletMaestraId',
-          [sequelize.fn('COUNT', sequelize.col('DireccionDeposito.id')), 'count'],
-          [sequelize.fn('COUNT', sequelize.literal('CASE WHEN "DireccionDeposito"."active" = true THEN 1 END')), 'activas']
+          'masterWalletId',
+          [sequelize.fn('COUNT', sequelize.col('DepositAddress.id')), 'count'],
+          [sequelize.fn('COUNT', sequelize.literal('CASE WHEN "DepositAddress"."active" = true THEN 1 END')), 'activas']
         ],
         include: [{
-          model: sequelize.models.WalletMaestra,
-          as: 'walletMaestra',
+          model: sequelize.models.MasterWallet,
+          as: 'masterWallet',
           attributes: ['name', 'network', 'symbol']
         }],
-        group: ['walletMaestraId', 'walletMaestra.id'],
+        group: ['masterWalletId', 'walletMaestra.id'],
         raw: false
       });
 
-      const direccionesPorDia = await DireccionDeposito.findAll({
+      const direccionesPorDia = await DepositAddress.findAll({
         where: {
           created_at: {
             [Op.gte]: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
@@ -1336,22 +1336,22 @@ function createDireccionDepositoModel(sequelize) {
 
   // =================== OPERACIONES MASIVAS ===================
 
-  DireccionDeposito.createBulkAddresses = async (requests) => {
+  DepositAddress.createBulkAddresses = async (requests) => {
     const transaction = await sequelize.transaction();
     
     try {
       const results = [];
       
       for (const request of requests) {
-        const { userId, criptomonedaId } = request;
+        const { userId, cryptoId } = request;
         
-        const direccion = await DireccionDeposito.generateAddressForUser(
+        const address = await DepositAddress.generateAddressForUser(
           userId, 
-          criptomonedaId, 
+          cryptoId, 
           transaction
         );
         
-        results.push(direccion);
+        results.push(address);
       }
       
       await transaction.commit();
@@ -1362,12 +1362,12 @@ function createDireccionDepositoModel(sequelize) {
     }
   };
 
-  DireccionDeposito.regenerateAddress = async (id, reason) => {
+  DepositAddress.regenerateAddress = async (id, reason) => {
     const transaction = await sequelize.transaction();
     
     try {
-      const direccionActual = await DireccionDeposito.findByPk(id, {
-        include: ['crypto', 'walletMaestra'],
+      const direccionActual = await DepositAddress.findByPk(id, {
+        include: ['crypto', 'masterWallet'],
         transaction
       });
       
@@ -1375,7 +1375,7 @@ function createDireccionDepositoModel(sequelize) {
         throw new Error('Dirección no encontrada');
       }
 
-      await DireccionDeposito.update(
+      await DepositAddress.update(
         { 
           active: false,
           metadata: {
@@ -1387,9 +1387,9 @@ function createDireccionDepositoModel(sequelize) {
         { where: { id }, transaction }
       );
 
-      const nuevaDireccion = await DireccionDeposito.generateAddressForUser(
+      const nuevaDireccion = await DepositAddress.generateAddressForUser(
         direccionActual.userId,
-        direccionActual.criptomonedaId,
+        direccionActual.cryptoId,
         transaction
       );
 
@@ -1403,14 +1403,14 @@ function createDireccionDepositoModel(sequelize) {
 
   // =================== MÉTODOS PARA INTEGRACIÓN CON BLOCKCHAIN SERVICES ===================
 
-  DireccionDeposito.getAllActiveAddresses = async () => {
+  DepositAddress.getAllActiveAddresses = async () => {
     try {
-      const direcciones = await DireccionDeposito.findAll({
+      const direcciones = await DepositAddress.findAll({
         where: { active: true },
         include: [
           {
             model: sequelize.models.User,
-            as: 'usuario',
+            as: 'user',
             attributes: ['id', 'email', 'username', 'active'],
             where: { active: true }
           },
@@ -1429,14 +1429,14 @@ function createDireccionDepositoModel(sequelize) {
     }
   };
 
-  DireccionDeposito.getAddressesByNetwork = async (network) => {
+  DepositAddress.getAddressesByNetwork = async (network) => {
     try {
-      const direcciones = await DireccionDeposito.findAll({
+      const direcciones = await DepositAddress.findAll({
         where: { active: true },
         include: [
           {
             model: sequelize.models.User,
-            as: 'usuario',
+            as: 'user',
             attributes: ['id', 'email', 'username', 'active'],
             where: { active: true }
           },
@@ -1459,7 +1459,7 @@ function createDireccionDepositoModel(sequelize) {
   };
 
   // Añadir este método al modelo para configuración explícita de testnet3
-  DireccionDeposito._getBitcoinNetwork = () => {
+  DepositAddress._getBitcoinNetwork = () => {
     // Configuración explícita para Bitcoin testnet3
     const testnet3Config = {
       messagePrefix: '\x18Bitcoin Signed Message:\n',
@@ -1500,7 +1500,7 @@ function createDireccionDepositoModel(sequelize) {
   };
 
   // También añadir método de validación de XPUB
-  DireccionDeposito._validateXPUB = (xpub, network) => {
+  DepositAddress._validateXPUB = (xpub, network) => {
     try {
       if (!xpub || typeof xpub !== 'string' || xpub.length < 100) {
         throw new Error('XPUB inválido: formato incorrecto');
@@ -1537,7 +1537,7 @@ function createDireccionDepositoModel(sequelize) {
     }
   };
 
-  return DireccionDeposito;
+  return DepositAddress;
 }
 
 module.exports = createDireccionDepositoModel;

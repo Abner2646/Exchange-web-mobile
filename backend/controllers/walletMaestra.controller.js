@@ -1,12 +1,12 @@
-const { WalletMaestra } = require('../models/index.js');
+const { MasterWallet } = require('../models/index.js');
 
 // =================== CONTROLADORES CRUD BÁSICOS ===================
 
 // Listar wallets maestras con filtros avanzados (solo admin)
-const getWalletsMaestras = async (req, res) => {
+const getMasterWallets = async (req, res) => {
   try {
     const filters = { ...req.query };
-    const result = await WalletMaestra.getAll(filters);
+    const result = await MasterWallet.getAll(filters);
     
     res.json({
       success: true,
@@ -23,7 +23,7 @@ const getWalletsMaestras = async (req, res) => {
 };
 
 // Obtener wallet maestra por ID (solo admin)
-const getWalletMaestraById = async (req, res) => {
+const getMasterWalletById = async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -35,7 +35,7 @@ const getWalletMaestraById = async (req, res) => {
       });
     }
 
-    const result = await WalletMaestra.getById(id);
+    const result = await MasterWallet.getById(id);
     
     if (!result) {
       return res.status(404).json({ 
@@ -60,34 +60,34 @@ const getWalletMaestraById = async (req, res) => {
 };
 
 // Crear nueva wallet maestra con validación HD (solo super admin)
-const createWalletMaestra = async (req, res) => {
+const createMasterWallet = async (req, res) => {
   try {
     const { 
-      criptomonedaId,
+      cryptoId,
       name,
       network,
       symbol,
       xpub,                    // CRÍTICO
       derivationPath = "m/44'/0'/0'",
-      direccionPublica,        // Opcional ahora
+      publicAddress,        // Opcional ahora
       fingerprint,
       publicKey,
       descripcion,
-      balanceTotal = 0
+      totalBalance = 0
     } = req.body;
     
     // Validaciones obligatorias
-    if (!criptomonedaId || !name || !network || !symbol || !xpub) {
+    if (!cryptoId || !name || !network || !symbol || !xpub) {
       return res.status(400).json({ 
         success: false,
-        error: 'Los campos criptomonedaId, name, network, symbol y xpub son requeridos',
+        error: 'Los campos cryptoId, name, network, symbol y xpub son requeridos',
         code: 'MISSING_REQUIRED_FIELDS',
-        required: ['criptomonedaId', 'name', 'network', 'symbol', 'xpub']
+        required: ['cryptoId', 'name', 'network', 'symbol', 'xpub']
       });
     }
 
     // Validar formato de XPUB para la network
-    const xpubValidation = WalletMaestra.validateXpubNetwork(xpub, network);
+    const xpubValidation = MasterWallet.validateXpubNetwork(xpub, network);
     if (!xpubValidation.valid) {
       return res.status(400).json({
         success: false,
@@ -97,17 +97,17 @@ const createWalletMaestra = async (req, res) => {
     }
 
     const walletData = {
-      criptomonedaId,
+      cryptoId,
       name,
       network: network.toLowerCase(),
       symbol: symbol.toUpperCase(),
       xpub,
       derivationPath,
-      direccionPublica,
+      publicAddress,
       fingerprint,
       publicKey,
       descripcion,
-      balanceTotal: parseFloat(balanceTotal),
+      totalBalance: parseFloat(totalBalance),
       active: true,
       metadata: {
         createdBy: req.user?.id || 'admin',
@@ -116,7 +116,7 @@ const createWalletMaestra = async (req, res) => {
       }
     };
 
-    const nuevaWallet = await WalletMaestra.createWallet(walletData);
+    const nuevaWallet = await MasterWallet.createWallet(walletData);
     
     res.status(201).json({ 
       success: true,
@@ -136,19 +136,19 @@ const createWalletMaestra = async (req, res) => {
 // =================== CONTROLADORES DE BÚSQUEDA Y CONSULTA ===================
 
 // Obtener wallet por crypto específica
-const getWalletByCriptomoneda = async (req, res) => {
+const getWalletByCrypto = async (req, res) => {
   try {
-    const { criptomonedaId } = req.params;
+    const { cryptoId } = req.params;
     
-    if (!criptomonedaId) {
+    if (!cryptoId) {
       return res.status(400).json({
         success: false,
-        error: 'criptomonedaId es requerido',
+        error: 'cryptoId es requerido',
         code: 'MISSING_CRYPTO_ID'
       });
     }
 
-    const wallet = await WalletMaestra.getByCriptomoneda(criptomonedaId);
+    const wallet = await MasterWallet.getByCrypto(cryptoId);
     
     if (!wallet) {
       return res.status(404).json({ 
@@ -182,7 +182,7 @@ const getActiveWallets = async (req, res) => {
       soloActivasCrypto: soloActivasCrypto === 'true'
     };
 
-    const wallets = await WalletMaestra.getActive(options);
+    const wallets = await MasterWallet.getActive(options);
     
     res.json({
       success: true,
@@ -205,7 +205,7 @@ const getActiveWallets = async (req, res) => {
 // Obtener distribución de fondos
 const getFundsDistribution = async (req, res) => {
   try {
-    const distribution = await WalletMaestra.getFundsDistribution();
+    const distribution = await MasterWallet.getFundsDistribution();
     
     res.json({
       success: true,
@@ -244,7 +244,7 @@ const getTreasuryMetrics = async (req, res) => {
       });
     }
 
-    const metrics = await WalletMaestra.getTreasuryMetrics(timeframe);
+    const metrics = await MasterWallet.getTreasuryMetrics(timeframe);
 
     res.json({
       success: true,
@@ -269,11 +269,11 @@ const getWalletsDashboard = async (req, res) => {
     const { timeframe = '30 days' } = req.query;
 
     const [stats, balanceSummary, lowBalanceWallets, highBalanceWallets, fundsDistribution] = await Promise.all([
-      WalletMaestra.getStats({ timeframe }),
-      WalletMaestra.getBalanceSummary(),
-      WalletMaestra.getWithLowBalance(0.01),
-      WalletMaestra.getWithHighBalance(100),
-      WalletMaestra.getFundsDistribution()
+      MasterWallet.getStats({ timeframe }),
+      MasterWallet.getBalanceSummary(),
+      MasterWallet.getWithLowBalance(0.01),
+      MasterWallet.getWithHighBalance(100),
+      MasterWallet.getFundsDistribution()
     ]);
 
     // Calcular valor total
@@ -319,10 +319,10 @@ const getWalletsDashboard = async (req, res) => {
 // =================== CONTROLADORES ADMINISTRATIVOS ===================
 
 // Obtener estadísticas de wallets maestras
-const getWalletMaestraStats = async (req, res) => {
+const getMasterWalletStats = async (req, res) => {
   try {
     const filters = { ...req.query };
-    const stats = await WalletMaestra.getStats(filters);
+    const stats = await MasterWallet.getStats(filters);
     
     res.json({
       success: true,
@@ -344,7 +344,7 @@ const getWalletMaestraStats = async (req, res) => {
 const exportWallets = async (req, res) => {
   try {
     const filters = { ...req.query };
-    const result = await WalletMaestra.getAll(filters);
+    const result = await MasterWallet.getAll(filters);
     const wallets = result.wallets || result;
     
     if (!Array.isArray(wallets) || wallets.length === 0) {
@@ -376,11 +376,11 @@ const exportWallets = async (req, res) => {
         `"${wallet.name || ''}"`,
         wallet.network || '',
         wallet.symbol || '',
-        `"${wallet.direccionPublica || ''}"`,
-        wallet.balanceTotal || 0,
+        `"${wallet.publicAddress || ''}"`,
+        wallet.totalBalance || 0,
         wallet.active ? 'SI' : 'NO',
         `"${wallet.xpub ? wallet.xpub.substring(0, 20) + '...' : ''}"`,
-        wallet.direccionesDeposito ? wallet.direccionesDeposito.length : 0,
+        wallet.depositAddresses ? wallet.depositAddresses.length : 0,
         wallet.lastSyncAt ? new Date(wallet.lastSyncAt).toISOString() : '',
         new Date(wallet.created_at).toISOString()
       ].join(',');
@@ -389,7 +389,7 @@ const exportWallets = async (req, res) => {
     const csv = csvHeader + csvData;
     
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="wallets_maestras_${new Date().toISOString().split('T')[0]}.csv"`);
+    res.setHeader('Content-Disposition', `attachment; filename="master_wallets_${new Date().toISOString().split('T')[0]}.csv"`);
     res.send('\ufeff' + csv); // BOM para Excel
     
   } catch (error) {
@@ -409,15 +409,15 @@ const exportWallets = async (req, res) => {
 const healthCheck = async (req, res) => {
   try {
     const [activeWallets, totalWallets, lowBalanceCount, staleSync] = await Promise.all([
-      WalletMaestra.count({ where: { active: true } }),
-      WalletMaestra.count(),
-      WalletMaestra.count({ 
+      MasterWallet.count({ where: { active: true } }),
+      MasterWallet.count(),
+      MasterWallet.count({ 
         where: { 
           active: true, 
-          balanceTotal: { [require('sequelize').Op.lt]: 0.01 } 
+          totalBalance: { [require('sequelize').Op.lt]: 0.01 } 
         } 
       }),
-      WalletMaestra.count({
+      MasterWallet.count({
         where: {
           active: true,
           [require('sequelize').Op.or]: [
@@ -466,12 +466,12 @@ const healthCheck = async (req, res) => {
 
 module.exports = {
   // CRUD básicos
-  getWalletsMaestras,
-  getWalletMaestraById,
-  createWalletMaestra,
+  getMasterWallets,
+  getMasterWalletById,
+  createMasterWallet,
 
   // Búsqueda y consulta
-  getWalletByCriptomoneda,
+  getWalletByCrypto,
   getActiveWallets,
 
   // Balance y monitoreo
@@ -484,7 +484,7 @@ module.exports = {
   getWalletsDashboard,
 
   // Administrativos
-  getWalletMaestraStats,
+  getMasterWalletStats,
   exportWallets,
   healthCheck
 };

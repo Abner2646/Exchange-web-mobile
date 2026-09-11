@@ -5,17 +5,17 @@ const { Op } = require('sequelize');
 const money = require('../utils/money');
 
 function createTransaccionBlockchainModel(sequelize) {
-  const TransaccionBlockchain = initTransaccionBlockchain(sequelize);
+  const BlockchainTransaction = initTransaccionBlockchain(sequelize);
 
   // =================== MÉTODOS DE CONSULTA BÁSICOS ===================
   
-  TransaccionBlockchain.getById = async (id, transaction = null) => {
+  BlockchainTransaction.getById = async (id, transaction = null) => {
     try {
-      const transaccion = await TransaccionBlockchain.findByPk(id, {
+      const transaccion = await BlockchainTransaction.findByPk(id, {
         include: [
           {
             model: sequelize.models.User,
-            as: 'usuario',
+            as: 'user',
             attributes: ['id', 'email', 'username', 'active']
           },
           {
@@ -25,7 +25,7 @@ function createTransaccionBlockchainModel(sequelize) {
           },
           {
             model: sequelize.models.User,
-            as: 'adminAprobador',
+            as: 'adminApprover',
             attributes: ['id', 'email', 'username'],
             required: false
           }
@@ -38,14 +38,14 @@ function createTransaccionBlockchainModel(sequelize) {
     }
   };
 
-  TransaccionBlockchain.getByTxHash = async (txHash) => {
+  BlockchainTransaction.getByTxHash = async (txHash) => {
     try {
-      const transaccion = await TransaccionBlockchain.findOne({
+      const transaccion = await BlockchainTransaction.findOne({
         where: { txHash },
         include: [
           {
             model: sequelize.models.User,
-            as: 'usuario',
+            as: 'user',
             attributes: ['id', 'email', 'username']
           },
           {
@@ -61,13 +61,13 @@ function createTransaccionBlockchainModel(sequelize) {
     }
   };
 
-  TransaccionBlockchain.getByUser = async (userId, filters = {}) => {
+  BlockchainTransaction.getByUser = async (userId, filters = {}) => {
     try {
       const whereClause = { userId };
       
-      if (filters.tipo) whereClause.tipo = filters.tipo;
-      if (filters.estado) whereClause.estado = filters.estado;
-      if (filters.criptomonedaId) whereClause.criptomonedaId = filters.criptomonedaId;
+      if (filters.type) whereClause.type = filters.type;
+      if (filters.status) whereClause.status = filters.status;
+      if (filters.cryptoId) whereClause.cryptoId = filters.cryptoId;
       
       if (filters.fechaDesde || filters.fechaHasta) {
         whereClause.created_at = {};
@@ -79,7 +79,7 @@ function createTransaccionBlockchainModel(sequelize) {
         }
       }
 
-      const { count, rows } = await TransaccionBlockchain.findAndCountAll({
+      const { count, rows } = await BlockchainTransaction.findAndCountAll({
         where: whereClause,
         include: [
           {
@@ -104,22 +104,22 @@ function createTransaccionBlockchainModel(sequelize) {
     }
   };
 
-  TransaccionBlockchain.getAllWithFilters = async (filters = {}) => {
+  BlockchainTransaction.getAllWithFilters = async (filters = {}) => {
     try {
       const whereClause = {};
       
-      if (filters.tipo) whereClause.tipo = filters.tipo;
-      if (filters.estado) whereClause.estado = filters.estado;
+      if (filters.type) whereClause.type = filters.type;
+      if (filters.status) whereClause.status = filters.status;
       if (filters.userId) whereClause.userId = filters.userId;
-      if (filters.criptomonedaId) whereClause.criptomonedaId = filters.criptomonedaId;
-      if (filters.requiereAprobacion !== undefined) {
-        whereClause.requiereAprobacion = filters.requiereAprobacion === 'true';
+      if (filters.cryptoId) whereClause.cryptoId = filters.cryptoId;
+      if (filters.requiresApproval !== undefined) {
+        whereClause.requiresApproval = filters.requiresApproval === 'true';
       }
       
       if (filters.montoMin || filters.montoMax) {
-        whereClause.cantidad = {};
-        if (filters.montoMin) whereClause.cantidad[Op.gte] = parseFloat(filters.montoMin);
-        if (filters.montoMax) whereClause.cantidad[Op.lte] = parseFloat(filters.montoMax);
+        whereClause.amount = {};
+        if (filters.montoMin) whereClause.amount[Op.gte] = parseFloat(filters.montoMin);
+        if (filters.montoMax) whereClause.amount[Op.lte] = parseFloat(filters.montoMax);
       }
 
       if (filters.fechaDesde || filters.fechaHasta) {
@@ -132,12 +132,12 @@ function createTransaccionBlockchainModel(sequelize) {
         }
       }
 
-      const { count, rows } = await TransaccionBlockchain.findAndCountAll({
+      const { count, rows } = await BlockchainTransaction.findAndCountAll({
         where: whereClause,
         include: [
           {
             model: sequelize.models.User,
-            as: 'usuario',
+            as: 'user',
             attributes: ['id', 'email', 'username']
           },
           {
@@ -147,7 +147,7 @@ function createTransaccionBlockchainModel(sequelize) {
           },
           {
             model: sequelize.models.User,
-            as: 'adminAprobador',
+            as: 'adminApprover',
             attributes: ['id', 'email', 'username'],
             required: false
           }
@@ -170,17 +170,17 @@ function createTransaccionBlockchainModel(sequelize) {
 
   // =================== MÉTODOS PARA DEPÓSITOS ===================
 
-  TransaccionBlockchain.createDeposit = async (data) => {
+  BlockchainTransaction.createDeposit = async (data) => {
     const transaction = await sequelize.transaction();
     
     try {
       // Validar datos requeridos
-      if (!data.userId || !data.criptomonedaId || !data.cantidad || !data.txHash) {
+      if (!data.userId || !data.cryptoId || !data.amount || !data.txHash) {
         throw new Error('Datos incompletos para crear depósito');
       }
 
       // Verificar que no existe ya una transacción con este hash
-      const existingTx = await TransaccionBlockchain.findOne({
+      const existingTx = await BlockchainTransaction.findOne({
         where: { txHash: data.txHash },
         transaction
       });
@@ -192,39 +192,39 @@ function createTransaccionBlockchainModel(sequelize) {
       // Crear la transacción de depósito
       const depositData = {
         ...data,
-        tipo: 'deposito',
-        estado: 'pendiente',
-        confirmaciones: 0,
-        requiereAprobacion: false
+        type: 'deposit',
+        status: 'pending',
+        confirmations: 0,
+        requiresApproval: false
       };
 
-      const nuevoDeposito = await TransaccionBlockchain.create(depositData, { transaction });
+      const nuevoDeposito = await BlockchainTransaction.create(depositData, { transaction });
 
       // Paso D: depósito detectado → acreditar en estado PENDIENTE en el ledger
-      // (external_onchain → funding:pendiente). Al confirmar, _acreditarDeposito
+      // (external_onchain → funding:pendiente). Al confirmar, _creditDeposit
       // lo mueve a disponible.
       const { registerPendingDeposit } = require('../modules/balances/ledger/operations');
       await registerPendingDeposit({
         userId: data.userId,
-        criptomonedaId: data.criptomonedaId,
-        cantidad: String(data.cantidad),
+        criptomonedaId: data.cryptoId,
+        cantidad: String(data.amount),
         referencia: `deposito-pend:${nuevoDeposito.id}`,
       }, transaction);
 
       await transaction.commit();
 
-      return await TransaccionBlockchain.getById(nuevoDeposito.id);
+      return await BlockchainTransaction.getById(nuevoDeposito.id);
     } catch (error) {
       await transaction.rollback();
       throw new Error(`Error al crear depósito: ${error.message}`);
     }
   };
 
-  TransaccionBlockchain.updateConfirmations = async (id, confirmaciones, newTxHash = null) => {
+  BlockchainTransaction.updateConfirmations = async (id, confirmaciones, newTxHash = null) => {
     const transaction = await sequelize.transaction();
     
     try {
-      const transaccion = await TransaccionBlockchain.findByPk(id, {
+      const transaccion = await BlockchainTransaction.findByPk(id, {
         include: [
           {
             model: sequelize.models.Crypto,
@@ -246,50 +246,50 @@ function createTransaccionBlockchainModel(sequelize) {
       }
 
       // Determinar nuevo estado basado en confirmaciones
-      if (confirmaciones >= transaccion.confirmacionesRequeridas) {
-        if (transaccion.tipo === 'deposito' && transaccion.estado === 'pendiente') {
-          updateData.estado = 'confirmado';
-        } else if (transaccion.tipo === 'retiro' && transaccion.estado === 'procesando') {
-          updateData.estado = 'confirmado';
+      if (confirmaciones >= transaccion.requiredConfirmations) {
+        if (transaccion.type === 'deposit' && transaccion.status === 'pending') {
+          updateData.status = 'confirmed';
+        } else if (transaccion.type === 'withdrawal' && transaccion.status === 'processing') {
+          updateData.status = 'confirmed';
         }
-      } else if (confirmaciones > 0 && transaccion.estado === 'pendiente') {
-        updateData.estado = 'procesando';
+      } else if (confirmaciones > 0 && transaccion.status === 'pending') {
+        updateData.status = 'processing';
       }
 
-      await TransaccionBlockchain.update(updateData, {
+      await BlockchainTransaction.update(updateData, {
         where: { id },
         transaction
       });
 
       // Si es un depósito confirmado, acreditar balance
-      if (transaccion.tipo === 'deposito' && updateData.estado === 'confirmado' && transaccion.estado !== 'confirmado') {
-        await TransaccionBlockchain._acreditarDeposito(transaccion, transaction);
+      if (transaccion.type === 'deposit' && updateData.status === 'confirmed' && transaccion.status !== 'confirmed') {
+        await BlockchainTransaction._creditDeposit(transaccion, transaction);
       }
 
       // Paso D: si es un retiro confirmado on-chain, debitar los fondos bloqueados
       // al mundo on-chain (funding:bloqueado → external_onchain). Se hace acá
       // (confirmación), no en el broadcast: el reaper puede revertir un
-      // 'procesando' sin confirmar vía failWithdrawal (bloqueado→disponible), y si
+      // 'processing' sin confirmar vía failWithdrawal (bloqueado→disponible), y si
       // ya hubiéramos debitado a external eso quedaría inconsistente.
-      if (transaccion.tipo === 'retiro' && updateData.estado === 'confirmado' && transaccion.estado !== 'confirmado') {
+      if (transaccion.type === 'withdrawal' && updateData.status === 'confirmed' && transaccion.status !== 'confirmed') {
         const { markWithdrawalTransmitted } = require('../modules/balances/ledger/operations');
         await markWithdrawalTransmitted({
           userId: transaccion.userId,
-          criptomonedaId: transaccion.criptomonedaId,
-          cantidad: String(transaccion.cantidad),
+          criptomonedaId: transaccion.cryptoId,
+          cantidad: String(transaccion.amount),
           referencia: `retiro:${transaccion.id}`,
         }, transaction);
       }
 
       await transaction.commit();
-      return await TransaccionBlockchain.getById(id);
+      return await BlockchainTransaction.getById(id);
     } catch (error) {
       await transaction.rollback();
-      throw new Error(`Error al actualizar confirmaciones: ${error.message}`);
+      throw new Error(`Error al actualizar confirmations: ${error.message}`);
     }
   };
 
-  TransaccionBlockchain._acreditarDeposito = async (transaccion, transaction) => {
+  BlockchainTransaction._creditDeposit = async (transaccion, transaction) => {
     // Fix 2026-08-19 (AUDITORIA_BACKEND.md Altos #10): antes este archivo
     // re-inicializaba la entidad UserBalance cruda a nivel de módulo
     // (initBalanceUsuario(sequelize)) en vez de importar el modelo que
@@ -304,9 +304,9 @@ function createTransaccionBlockchainModel(sequelize) {
       console.log(`🔧 DEBUG - Acreditando depósito:`, {
         transaccionId: transaccion.id,
         userId: transaccion.userId,
-        criptomonedaId: transaccion.criptomonedaId,
-        cantidad: transaccion.cantidad,
-        estado: transaccion.estado
+        criptomonedaId: transaccion.cryptoId,
+        amount: transaccion.amount,
+        status: transaccion.status
       });
 
       // Paso D: el depósito ya está en funding:pendiente (registrado al detectarse
@@ -314,15 +314,15 @@ function createTransaccionBlockchainModel(sequelize) {
       const { confirmDeposit } = require('../modules/balances/ledger/operations');
       await confirmDeposit({
         userId: transaccion.userId,
-        criptomonedaId: transaccion.criptomonedaId,
-        cantidad: String(transaccion.cantidad),
+        criptomonedaId: transaccion.cryptoId,
+        cantidad: String(transaccion.amount),
         referencia: `deposito-conf:${transaccion.id}`,
       }, transaction);
 
       // ✅ CORRECCIÓN: Marcar transacción como completada (no confirmada)
-      await TransaccionBlockchain.update(
+      await BlockchainTransaction.update(
         { 
-          estado: 'completado',
+          status: 'completed',
           fechaCompletado: new Date()
         },
         { 
@@ -331,14 +331,14 @@ function createTransaccionBlockchainModel(sequelize) {
         }
       );
 
-      console.log(`✅ Depósito acreditado exitosamente: ${transaccion.cantidad} para usuario ${transaccion.userId}`);
+      console.log(`✅ Depósito acreditado exitosamente: ${transaccion.amount} para usuario ${transaccion.userId}`);
       
       // ✅ MEJORA: Obtener símbolo de crypto para log
       try {
-        const crypto = await sequelize.models.Crypto.findByPk(transaccion.criptomonedaId, { transaction });
-        console.log(`✅ Depósito completado: ${transaccion.cantidad} ${crypto?.symbol || 'BTC'} acreditado al usuario ${transaccion.userId}`);
+        const crypto = await sequelize.models.Crypto.findByPk(transaccion.cryptoId, { transaction });
+        console.log(`✅ Depósito completado: ${transaccion.amount} ${crypto?.symbol || 'BTC'} acreditado al usuario ${transaccion.userId}`);
       } catch (logError) {
-        console.log(`✅ Depósito completado: ${transaccion.cantidad} acreditado al usuario ${transaccion.userId}`);
+        console.log(`✅ Depósito completado: ${transaccion.amount} acreditado al usuario ${transaccion.userId}`);
       }
 
     } catch (error) {
@@ -355,15 +355,15 @@ function createTransaccionBlockchainModel(sequelize) {
   // (hardening anti-doble-gasto): el bloqueo de fondos + el alta del retiro + el
   // 'completed' de la key commitean atómicamente. Sin el hook (otros callers) el
   // comportamiento es el de antes.
-  TransaccionBlockchain.createWithdrawal = async (data, { finalize } = {}) => {
-    // Ver el comentario de _acreditarDeposito sobre por qué este require
+  BlockchainTransaction.createWithdrawal = async (data, { finalize } = {}) => {
+    // Ver el comentario de _creditDeposit sobre por qué este require
     // es lazy (Altos #10).
     const { UserBalance } = require('./index');
     const transaction = await sequelize.transaction();
 
     try {
       // Validar datos requeridos
-      if (!data.userId || !data.criptomonedaId || !data.cantidad || !data.direccionDestino) {
+      if (!data.userId || !data.cryptoId || !data.amount || !data.destinationAddress) {
         throw new Error('Datos incompletos para crear retiro');
       }
 
@@ -371,22 +371,22 @@ function createTransaccionBlockchainModel(sequelize) {
       // en el ledger; el guard de sobregiro del ledger rechaza si no alcanza). Su
       // mensaje /insuficiente/ preserva la semantica de "Balance insuficiente para
       // retiro" para el caller.
-      await UserBalance.blockBalance(data.userId, data.criptomonedaId, String(data.cantidad), transaction);
+      await UserBalance.blockBalance(data.userId, data.cryptoId, String(data.amount), transaction);
 
       // Crear transacción de retiro
       const retiroData = {
         ...data,
-        tipo: 'retiro',
-        estado: 'pendiente',
-        confirmaciones: 0,
-        requiereAprobacion: false, // Automático por ahora
-        feeBlockchain: data.feeBlockchain || 0
+        type: 'withdrawal',
+        status: 'pending',
+        confirmations: 0,
+        requiresApproval: false, // Automático por ahora
+        blockchainFee: data.blockchainFee || 0
       };
 
-      const nuevoRetiro = await TransaccionBlockchain.create(retiroData, { transaction });
+      const nuevoRetiro = await BlockchainTransaction.create(retiroData, { transaction });
       // Lectura enriquecida DENTRO de la tx: así el body que el caller almacena en
       // la key (para replay) es idéntico al que devuelve/serializa la respuesta.
-      const retiro = await TransaccionBlockchain.getById(nuevoRetiro.id, transaction);
+      const retiro = await BlockchainTransaction.getById(nuevoRetiro.id, transaction);
 
       if (finalize) await finalize(transaction, retiro);
 
@@ -399,62 +399,62 @@ function createTransaccionBlockchainModel(sequelize) {
   };
 
   // Claim atómico de un retiro pendiente ANTES de transmitir on-chain
-  // (anti doble-gasto). El broadcast ocurría con la fila todavía en 'pendiente',
+  // (anti doble-gasto). El broadcast ocurría con la fila todavía en 'pending',
   // así que dos corridas concurrentes (job + endpoint manual, o multi-instancia)
   // seleccionaban la misma fila y transmitían el retiro dos veces = doble salida
   // de la wallet maestra (ROADMAP Fase 1 #0). Este UPDATE condicional es atómico
   // a nivel fila en Postgres: de dos corridas concurrentes, solo una matchea
-  // `estado='pendiente'` y obtiene affected=1; la otra queda en 0 y se saltea.
+  // `estado='pending'` y obtiene affected=1; la otra queda en 0 y se saltea.
   // Devuelve true si ESTA corrida reclamó la fila.
   // Trade-off documentado: si el proceso cae entre el claim y el envío, la fila
-  // queda en 'procesando' sin txHash (fondos bloqueados) — más seguro que un
+  // queda en 'processing' sin txHash (fondos bloqueados) — más seguro que un
   // doble envío, pero necesita un reaper de claims viejos (follow-up).
-  TransaccionBlockchain.claimForProcessing = async (id) => {
-    const [affected] = await TransaccionBlockchain.update(
-      { estado: 'procesando' },
-      { where: { id, tipo: 'retiro', estado: 'pendiente' } }
+  BlockchainTransaction.claimForProcessing = async (id) => {
+    const [affected] = await BlockchainTransaction.update(
+      { status: 'processing' },
+      { where: { id, type: 'withdrawal', status: 'pending' } }
     );
     return affected === 1;
   };
 
   // Persiste el txHash (intención de envío) ANTES del broadcast, mientras la
-  // fila está en 'procesando' (ya reclamada). Así, si el proceso cae alrededor
+  // fila está en 'processing' (ya reclamada). Así, si el proceso cae alrededor
   // del broadcast, el reaper tiene un hash concreto para verificar on-chain si
   // el retiro salió o no — en vez de tener que adivinar. No cambia el estado.
-  TransaccionBlockchain.recordWithdrawalTxHash = async (id, txHash) => {
-    await TransaccionBlockchain.update(
+  BlockchainTransaction.recordWithdrawalTxHash = async (id, txHash) => {
+    await BlockchainTransaction.update(
       { txHash },
-      { where: { id, tipo: 'retiro', estado: 'procesando' } }
+      { where: { id, type: 'withdrawal', status: 'processing' } }
     );
   };
 
-  TransaccionBlockchain.markWithdrawalAsSent = async (id, txHash, feeBlockchain) => {
+  BlockchainTransaction.markWithdrawalAsSent = async (id, txHash, blockchainFee) => {
     const transaction = await sequelize.transaction();
 
     try {
-      const retiro = await TransaccionBlockchain.findByPk(id, { transaction });
+      const retiro = await BlockchainTransaction.findByPk(id, { transaction });
 
       if (!retiro) {
         throw new Error('Retiro no encontrado');
       }
 
-      if (retiro.tipo !== 'retiro') {
+      if (retiro.type !== 'withdrawal') {
         throw new Error('La transacción no es un retiro');
       }
 
-      // Acepta 'pendiente' (paths aún no migrados que envían y luego marcan) y
-      // 'procesando' (path con claim atómico: la fila ya fue reclamada antes del
+      // Acepta 'pending' (paths aún no migrados que envían y luego marcan) y
+      // 'processing' (path con claim atómico: la fila ya fue reclamada antes del
       // envío). Cualquier otro estado (confirmado/completado/fallido) es inválido.
-      if (retiro.estado !== 'pendiente' && retiro.estado !== 'procesando') {
+      if (retiro.status !== 'pending' && retiro.status !== 'processing') {
         throw new Error('El retiro no está en estado pendiente ni procesando');
       }
 
-      await TransaccionBlockchain.update(
+      await BlockchainTransaction.update(
         {
-          estado: 'procesando',
+          status: 'processing',
           txHash: txHash,
-          feeBlockchain: feeBlockchain,
-          confirmaciones: 0
+          blockchainFee: blockchainFee,
+          confirmations: 0
         },
         { 
           where: { id },
@@ -463,7 +463,7 @@ function createTransaccionBlockchainModel(sequelize) {
       );
 
       await transaction.commit();
-      return await TransaccionBlockchain.getById(id);
+      return await BlockchainTransaction.getById(id);
     } catch (error) {
       await transaction.rollback();
       throw new Error(`Error al marcar retiro como enviado: ${error.message}`);
@@ -473,37 +473,37 @@ function createTransaccionBlockchainModel(sequelize) {
   // (Paso D: completeWithdrawal se eliminó — era código muerto sin callers. El
   // débito de los fondos bloqueados al mundo on-chain ahora lo hace
   // updateConfirmations al confirmarse el retiro, vía markWithdrawalTransmitted
-  // (funding:bloqueado → external_onchain), simétrico a _acreditarDeposito.)
+  // (funding:bloqueado → external_onchain), simétrico a _creditDeposit.)
 
-  TransaccionBlockchain.failWithdrawal = async (id, razon) => {
-    // Ver el comentario de _acreditarDeposito (Altos #10).
+  BlockchainTransaction.failWithdrawal = async (id, razon) => {
+    // Ver el comentario de _creditDeposit (Altos #10).
     const { UserBalance } = require('./index');
     const transaction = await sequelize.transaction();
 
     try {
-      const retiro = await TransaccionBlockchain.findByPk(id, { transaction });
+      const retiro = await BlockchainTransaction.findByPk(id, { transaction });
 
       if (!retiro) {
         throw new Error('Retiro no encontrado');
       }
 
       // Guard de estado (simétrico a markWithdrawalAsSent): solo se puede fallar
-      // un retiro que sigue 'pendiente' o 'procesando'. Fallar uno ya
-      // 'confirmado'/'completado' es peligroso: markWithdrawalTransmitted ya movió
+      // un retiro que sigue 'pending' o 'processing'. Fallar uno ya
+      // 'confirmed'/'completed' es peligroso: markWithdrawalTransmitted ya movió
       // los fondos a external_onchain (salieron on-chain), y unblockBalance los
       // devolvería a disponible consumiendo el bloqueado de OTRA reserva del
-      // mismo usuario → creación de dinero. Fallar uno ya 'fallido' duplicaría el
-      // desbloqueo. El reaper solo pasa filas 'procesando', así que no lo afecta.
-      if (retiro.estado !== 'pendiente' && retiro.estado !== 'procesando') {
-        throw new Error(`No se puede fallar un retiro en estado ${retiro.estado}`);
+      // mismo usuario → creación de dinero. Fallar uno ya 'failed' duplicaría el
+      // desbloqueo. El reaper solo pasa filas 'processing', así que no lo afecta.
+      if (retiro.status !== 'pending' && retiro.status !== 'processing') {
+        throw new Error(`No se puede fallar un retiro en estado ${retiro.status}`);
       }
 
       // Write-flip (Paso B): retiro fallido → devolver bloqueado a disponible.
-      await UserBalance.unblockBalance(retiro.userId, retiro.criptomonedaId, String(retiro.cantidad), transaction);
+      await UserBalance.unblockBalance(retiro.userId, retiro.cryptoId, String(retiro.amount), transaction);
 
       // Marcar como fallido
-      await TransaccionBlockchain.update(
-        { estado: 'fallido' },
+      await BlockchainTransaction.update(
+        { status: 'failed' },
         { 
           where: { id },
           transaction
@@ -511,7 +511,7 @@ function createTransaccionBlockchainModel(sequelize) {
       );
 
       await transaction.commit();
-      return await TransaccionBlockchain.getById(id);
+      return await BlockchainTransaction.getById(id);
     } catch (error) {
       await transaction.rollback();
       throw new Error(`Error al fallar retiro: ${error.message}`);
@@ -520,17 +520,17 @@ function createTransaccionBlockchainModel(sequelize) {
 
   // =================== MÉTODOS DE CONSULTA ESPECÍFICOS ===================
 
-  TransaccionBlockchain.getPendingDeposits = async () => {
+  BlockchainTransaction.getPendingDeposits = async () => {
     try {
-      const deposits = await TransaccionBlockchain.findAll({
+      const deposits = await BlockchainTransaction.findAll({
         where: {
-          tipo: 'deposito',
-          estado: ['pendiente', 'procesando']
+          type: 'deposit',
+          status: ['pending', 'processing']
         },
         include: [
           {
             model: sequelize.models.User,
-            as: 'usuario',
+            as: 'user',
             attributes: ['id', 'email', 'username']
           },
           {
@@ -547,17 +547,17 @@ function createTransaccionBlockchainModel(sequelize) {
     }
   };
 
-  TransaccionBlockchain.getPendingWithdrawals = async () => {
+  BlockchainTransaction.getPendingWithdrawals = async () => {
     try {
-      const withdrawals = await TransaccionBlockchain.findAll({
+      const withdrawals = await BlockchainTransaction.findAll({
         where: {
-          tipo: 'retiro',
-          estado: ['pendiente', 'procesando']
+          type: 'withdrawal',
+          status: ['pending', 'processing']
         },
         include: [
           {
             model: sequelize.models.User,
-            as: 'usuario',
+            as: 'user',
             attributes: ['id', 'email', 'username']
           },
           {
@@ -574,16 +574,16 @@ function createTransaccionBlockchainModel(sequelize) {
     }
   };
 
-  TransaccionBlockchain.getTransactionsByHash = async (txHashes) => {
+  BlockchainTransaction.getTransactionsByHash = async (txHashes) => {
     try {
-      const transactions = await TransaccionBlockchain.findAll({
+      const transactions = await BlockchainTransaction.findAll({
         where: {
           txHash: { [Op.in]: txHashes }
         },
         include: [
           {
             model: sequelize.models.User,
-            as: 'usuario',
+            as: 'user',
             attributes: ['id', 'email', 'username']
           },
           {
@@ -601,7 +601,7 @@ function createTransaccionBlockchainModel(sequelize) {
 
   // =================== MÉTODOS ESTADÍSTICOS ===================
 
-  TransaccionBlockchain.getStats = async (filters = {}) => {
+  BlockchainTransaction.getStats = async (filters = {}) => {
     try {
       const whereClause = {};
       
@@ -615,24 +615,24 @@ function createTransaccionBlockchainModel(sequelize) {
         }
       }
 
-      const statsGenerales = await TransaccionBlockchain.findAll({
+      const statsGenerales = await BlockchainTransaction.findAll({
         attributes: [
           'tipo',
           'estado',
-          [sequelize.fn('COUNT', sequelize.col('id')), 'cantidad'],
-          [sequelize.fn('SUM', sequelize.col('cantidad')), 'volumen']
+          [sequelize.fn('COUNT', sequelize.col('id')), 'amount'],
+          [sequelize.fn('SUM', sequelize.col('amount')), 'volumen']
         ],
         where: whereClause,
         group: ['tipo', 'estado'],
         raw: true
       });
 
-      const statsPorCrypto = await TransaccionBlockchain.findAll({
+      const statsPorCrypto = await BlockchainTransaction.findAll({
         attributes: [
-          'criptomonedaId',
+          'cryptoId',
           'tipo',
-          [sequelize.fn('COUNT', sequelize.col('TransaccionBlockchain.id')), 'cantidad'],
-          [sequelize.fn('SUM', sequelize.col('cantidad')), 'volumen']
+          [sequelize.fn('COUNT', sequelize.col('BlockchainTransaction.id')), 'amount'],
+          [sequelize.fn('SUM', sequelize.col('amount')), 'volumen']
         ],
         include: [
           {
@@ -642,7 +642,7 @@ function createTransaccionBlockchainModel(sequelize) {
           }
         ],
         where: whereClause,
-        group: ['criptomonedaId', 'tipo', 'criptomoneda.id'],
+        group: ['cryptoId', 'tipo', 'criptomoneda.id'],
         raw: false
       });
 
@@ -657,8 +657,8 @@ function createTransaccionBlockchainModel(sequelize) {
 
   // =================== MÉTODOS DE VALIDACIÓN ===================
 
-  TransaccionBlockchain.validateWithdrawal = async (userId, criptomonedaId, cantidad, direccionDestino) => {
-    // Ver el comentario de _acreditarDeposito (Altos #10).
+  BlockchainTransaction.validateWithdrawal = async (userId, cryptoId, amount, destinationAddress) => {
+    // Ver el comentario de _creditDeposit (Altos #10).
     const { UserBalance } = require('./index');
     try {
       // Validar usuario active
@@ -668,7 +668,7 @@ function createTransaccionBlockchainModel(sequelize) {
       }
 
       // Validar crypto active
-      const crypto = await sequelize.models.Crypto.findByPk(criptomonedaId);
+      const crypto = await sequelize.models.Crypto.findByPk(cryptoId);
       if (!crypto || !crypto.active) {
         return { valid: false, message: 'Criptomoneda no encontrada o inactiva' };
       }
@@ -678,13 +678,13 @@ function createTransaccionBlockchainModel(sequelize) {
 
       // ESTO DE ACÁ ABAJO ESTÁ BIEN, AUNQUE NO TESTEADO, PERO POR AHORA SON VALIDACIONES INNECESARIAS
 
-      /*if (!balance || parseFloat(balance.availableBalance) < parseFloat(cantidad)) {
+      /*if (!balance || parseFloat(balance.availableBalance) < parseFloat(amount)) {
         return { valid: false, message: 'Balance insuficiente' }; //<----- Llega a acá bien
       }*/
 
       // Validar monto mínimo
       /*const montoMinimo = process.env[`MIN_WITHDRAWAL_${crypto.symbol}`] || 0.001;
-      if (parseFloat(cantidad) < parseFloat(montoMinimo)) {
+      if (parseFloat(amount) < parseFloat(montoMinimo)) {
         return { valid: false, message: `Monto mínimo de retiro: ${montoMinimo} ${crypto.symbol}` };
       }*/
 
@@ -694,11 +694,11 @@ function createTransaccionBlockchainModel(sequelize) {
       const manana = new Date(hoy);
       manana.setDate(hoy.getDate() + 1);
 
-      const retirosDiarios = await TransaccionBlockchain.findAll({
+      const retirosDiarios = await BlockchainTransaction.findAll({
         where: {
           userId,
-          tipo: 'retiro',
-          estado: ['pendiente', 'procesando', 'confirmado', 'completado'],
+          type: 'withdrawal',
+          status: ['pending', 'processing', 'confirmed', 'completed'],
           created_at: { [Op.between]: [hoy, manana] }
         }
       });*/
@@ -725,7 +725,7 @@ function createTransaccionBlockchainModel(sequelize) {
   // cleanupBalanceCheckTransactions() que buscaba el mismo patrón de
   // txHash ('*_balance_%') que scripts/cleanup-stuck-transactions.js, pero
   // en vez de limpiarlas las forzaba a "confirmadas" vía
-  // updateConfirmations() — lo que dispara _acreditarDeposito() y acredita
+  // updateConfirmations() — lo que dispara _creditDeposit() y acredita
   // saldo REAL por transacciones que son solo placeholders de chequeo de
   // balance. Dos implementaciones del mismo name haciendo lo opuesto:
   // una borra, la otra acredita saldo falso. Nunca se llamaba desde
@@ -735,7 +735,7 @@ function createTransaccionBlockchainModel(sequelize) {
   // script real. Eliminada; scripts/cleanup-stuck-transactions.js es la
   // única implementación que queda, y es la correcta.
 
-  return TransaccionBlockchain;
+  return BlockchainTransaction;
 }
 
 module.exports = createTransaccionBlockchainModel;

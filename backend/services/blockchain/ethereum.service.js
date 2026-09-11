@@ -1,7 +1,7 @@
 // services/blockchain/ethereum.service.js - ACTUALIZADO PARA ETHERSCAN API V2
 require('dotenv').config();
 const { ethers } = require('ethers');
-const { TransaccionBlockchain, DireccionDeposito, Crypto, BlockchainState } = require('../../models');
+const { BlockchainTransaction, DepositAddress, Crypto, BlockchainState } = require('../../models');
 const money = require('../../utils/money');
 const EthersEvmClient = require('./ethersEvmClient');
 const { ethereumNetworkProfile } = require('../../config/networks/evm');
@@ -76,7 +76,7 @@ class EthereumService {
 
       // Log de direcciones encontradas
       direcciones.forEach((dir, index) => {
-        console.log(`🔍 [ETH] Dirección ${index + 1}: ${dir.direccion} (${dir.crypto.symbol})`);
+        console.log(`🔍 [ETH] Dirección ${index + 1}: ${dir.address} (${dir.crypto.symbol})`);
       });
 
       const lastProcessedBlock = await BlockchainState.getLastProcessedBlock(this.actualNetwork);
@@ -85,26 +85,26 @@ class EthereumService {
       const newDeposits = [];
 
       for (let i = 0; i < direcciones.length; i++) {
-        const direccion = direcciones[i];
+        const address = direcciones[i];
         
         try {
           console.log(`🔍 [ETH] ================== ESCANEANDO DIRECCIÓN ${i + 1}/${direcciones.length} ==================`);
-          console.log(`🔍 [ETH] Dirección: ${direccion.direccion}`);
-          console.log(`🔍 [ETH] Crypto: ${direccion.crypto.symbol}`);
-          console.log(`🔍 [ETH] Red en DB: ${direccion.crypto.network}`);
-          console.log(`🔍 [ETH] Es token (tiene contrato): ${!!direccion.crypto.contractAddress}`);
+          console.log(`🔍 [ETH] Dirección: ${address.address}`);
+          console.log(`🔍 [ETH] Crypto: ${address.crypto.symbol}`);
+          console.log(`🔍 [ETH] Red en DB: ${address.crypto.network}`);
+          console.log(`🔍 [ETH] Es token (tiene contrato): ${!!address.crypto.contractAddress}`);
           
           let deposits = [];
           
-          if (direccion.crypto.symbol === 'ETH') {
+          if (address.crypto.symbol === 'ETH') {
             console.log(`🔍 [ETH] Escaneando transacciones ETH nativas...`);
-            deposits = await this.scanETHTransactions(direccion, lastProcessedBlock);
-          } else if (direccion.crypto.contractAddress) {
-            console.log(`🔍 [ETH] Escaneando transacciones ERC20 (${direccion.crypto.symbol})...`);
-            console.log(`🔍 [ETH] Contrato: ${direccion.crypto.contractAddress}`);
-            deposits = await this.scanTokenTransactions(direccion, lastProcessedBlock);
+            deposits = await this.scanETHTransactions(address, lastProcessedBlock);
+          } else if (address.crypto.contractAddress) {
+            console.log(`🔍 [ETH] Escaneando transacciones ERC20 (${address.crypto.symbol})...`);
+            console.log(`🔍 [ETH] Contrato: ${address.crypto.contractAddress}`);
+            deposits = await this.scanTokenTransactions(address, lastProcessedBlock);
           } else {
-            console.warn(`⚠️ [ETH] Tipo de crypto no reconocido para ${direccion.crypto.symbol}`);
+            console.warn(`⚠️ [ETH] Tipo de crypto no reconocido para ${address.crypto.symbol}`);
           }
           
           console.log(`🔍 [ETH] Depósitos encontrados para esta dirección: ${deposits.length}`);
@@ -117,7 +117,7 @@ class EthereumService {
           }
           
         } catch (error) {
-          console.error(`❌ [ETH] Error escaneando dirección ${direccion.direccion}:`, error.message);
+          console.error(`❌ [ETH] Error escaneando dirección ${address.address}:`, error.message);
           console.error(`❌ [ETH] Stack trace:`, error.stack);
         }
       }
@@ -154,12 +154,12 @@ class EthereumService {
     }
   }
 
-  async scanETHTransactions(direccion, fromBlock) {
-    const url = this.buildTransactionListUrl(direccion.direccion, fromBlock);
+  async scanETHTransactions(address, fromBlock) {
+    const url = this.buildTransactionListUrl(address.address, fromBlock);
 
     try {
       console.log(`🔍 [ETH-NATIVE] URL de API: ${url.replace(process.env.ETHERSCAN_API_KEY, '***')}`);
-      console.log(`🔍 [ETH-NATIVE] Consultando API para ${direccion.direccion}...`);
+      console.log(`🔍 [ETH-NATIVE] Consultando API para ${address.address}...`);
       console.log(`🔍 [ETH-NATIVE] ChainId: ${this.chainId}, Rango de bloques: ${fromBlock} a latest`);
       
       const response = await fetch(url);
@@ -178,7 +178,7 @@ class EthereumService {
 
       if (data.status !== '1') {
         if (data.message === 'No transactions found') {
-          console.log(`ℹ️ [ETH-NATIVE] No hay transacciones ETH para ${direccion.direccion}`);
+          console.log(`ℹ️ [ETH-NATIVE] No hay transacciones ETH para ${address.address}`);
           return [];
         } else {
           console.warn(`⚠️ [ETH-NATIVE] API warning: ${data.message}`);
@@ -207,7 +207,7 @@ class EthereumService {
         console.log(`  - Block: ${tx.blockNumber}`);
         console.log(`  - Timestamp: ${new Date(parseInt(tx.timeStamp) * 1000).toISOString()}`);
         
-        const isIncoming = tx.to && tx.to.toLowerCase() === direccion.direccion.toLowerCase();
+        const isIncoming = tx.to && tx.to.toLowerCase() === address.address.toLowerCase();
         const hasValue = parseFloat(tx.value) > 0;
         const isSuccessful = tx.isError === '0';
         
@@ -222,7 +222,7 @@ class EthereumService {
         if (isIncoming && hasValue && isSuccessful) {
           validDeposits++;
           
-          const existing = await TransaccionBlockchain.findOne({
+          const existing = await BlockchainTransaction.findOne({
             where: { txHash: tx.hash }
           });
 
@@ -237,12 +237,12 @@ class EthereumService {
           const fee = this.calculateTransactionFee(tx);
 
           console.log(`💰 [ETH-NATIVE] Creando depósito:`);
-          console.log(`  - User ID: ${direccion.userId}`);
+          console.log(`  - User ID: ${address.userId}`);
           console.log(`  - Cantidad: ${amount} ETH`);
           console.log(`  - Fee: ${fee} ETH`);
 
           const newDeposit = await this.createDepositFromTransaction(
-            direccion, tx, amount, fee
+            address, tx, amount, fee
           );
 
           deposits.push(newDeposit);
@@ -250,7 +250,7 @@ class EthereumService {
         }
       }
 
-      console.log(`📊 [ETH-NATIVE] Resumen para ${direccion.direccion}:`);
+      console.log(`📊 [ETH-NATIVE] Resumen para ${address.address}:`);
       console.log(`  - Total transacciones analizadas: ${transactions.length}`);
       console.log(`  - Transacciones entrantes: ${incomingTransactions}`);
       console.log(`  - Depósitos válidos: ${validDeposits}`);
@@ -258,18 +258,18 @@ class EthereumService {
 
       return deposits;
     } catch (error) {
-      console.error(`❌ [ETH-NATIVE] Error API para ${direccion.direccion}:`, error.message);
+      console.error(`❌ [ETH-NATIVE] Error API para ${address.address}:`, error.message);
       console.error(`❌ [ETH-NATIVE] Stack trace:`, error.stack);
       return [];
     }
   }
 
-  async scanTokenTransactions(direccion, fromBlock) {
-    const url = this.buildTokenTransactionUrl(direccion.direccion, direccion.crypto.contractAddress, fromBlock);
+  async scanTokenTransactions(address, fromBlock) {
+    const url = this.buildTokenTransactionUrl(address.address, address.crypto.contractAddress, fromBlock);
 
     try {
       console.log(`🔍 [ETH-ERC20] URL de API: ${url.replace(process.env.ETHERSCAN_API_KEY, '***')}`);
-      console.log(`🔍 [ETH-ERC20] Consultando API para token ${direccion.crypto.symbol}...`);
+      console.log(`🔍 [ETH-ERC20] Consultando API para token ${address.crypto.symbol}...`);
       
       const response = await fetch(url);
       console.log(`🔍 [ETH-ERC20] Respuesta HTTP: ${response.status} ${response.statusText}`);
@@ -287,7 +287,7 @@ class EthereumService {
 
       if (data.status !== '1') {
         if (data.message === 'No transactions found') {
-          console.log(`ℹ️ [ETH-ERC20] No hay transacciones ${direccion.crypto.symbol} para ${direccion.direccion}`);
+          console.log(`ℹ️ [ETH-ERC20] No hay transacciones ${address.crypto.symbol} para ${address.address}`);
           return [];
         } else {
           console.warn(`⚠️ [ETH-ERC20] API warning: ${data.message}`);
@@ -301,7 +301,7 @@ class EthereumService {
       }
 
       const transactions = data.result;
-      console.log(`🔍 [ETH-ERC20] Procesando ${transactions.length} transacciones ${direccion.crypto.symbol}...`);
+      console.log(`🔍 [ETH-ERC20] Procesando ${transactions.length} transacciones ${address.crypto.symbol}...`);
 
       const deposits = [];
       let incomingTransactions = 0;
@@ -319,13 +319,13 @@ class EthereumService {
         const amount = ethers.formatUnits(tx.value, decimals);
         console.log(`  - Amount formatted: ${amount} ${tx.tokenSymbol}`);
         
-        const isIncoming = tx.to && tx.to.toLowerCase() === direccion.direccion.toLowerCase();
+        const isIncoming = tx.to && tx.to.toLowerCase() === address.address.toLowerCase();
         console.log(`  - Es entrante: ${isIncoming}`);
         
         if (isIncoming) {
           incomingTransactions++;
           
-          const existing = await TransaccionBlockchain.findOne({
+          const existing = await BlockchainTransaction.findOne({
             where: { txHash: tx.hash }
           });
 
@@ -339,13 +339,13 @@ class EthereumService {
 
           const fee = this.calculateTransactionFee(tx);
 
-          console.log(`💰 [ETH-ERC20] Creando depósito ${direccion.crypto.symbol}:`);
-          console.log(`  - User ID: ${direccion.userId}`);
-          console.log(`  - Cantidad: ${amount} ${direccion.crypto.symbol}`);
+          console.log(`💰 [ETH-ERC20] Creando depósito ${address.crypto.symbol}:`);
+          console.log(`  - User ID: ${address.userId}`);
+          console.log(`  - Cantidad: ${amount} ${address.crypto.symbol}`);
           console.log(`  - Fee: ${fee} ETH`);
 
           const newDeposit = await this.createDepositFromTransaction(
-            direccion, tx, amount, fee
+            address, tx, amount, fee
           );
 
           deposits.push(newDeposit);
@@ -353,7 +353,7 @@ class EthereumService {
         }
       }
 
-      console.log(`📊 [ETH-ERC20] Resumen para ${direccion.direccion} (${direccion.crypto.symbol}):`);
+      console.log(`📊 [ETH-ERC20] Resumen para ${address.address} (${address.crypto.symbol}):`);
       console.log(`  - Total transacciones analizadas: ${transactions.length}`);
       console.log(`  - Transacciones entrantes: ${incomingTransactions}`);
       console.log(`  - Depósitos válidos: ${validDeposits}`);
@@ -361,7 +361,7 @@ class EthereumService {
 
       return deposits;
     } catch (error) {
-      console.error(`❌ [ETH-ERC20] Error Token API para ${direccion.crypto.symbol}:`, error.message);
+      console.error(`❌ [ETH-ERC20] Error Token API para ${address.crypto.symbol}:`, error.message);
       console.error(`❌ [ETH-ERC20] Stack trace:`, error.stack);
       return [];
     }
@@ -401,7 +401,7 @@ class EthereumService {
     return `${baseUrl}?${params.toString()}`;
   }
 
-  async createDepositFromTransaction(direccion, tx, amount, fee) {
+  async createDepositFromTransaction(address, tx, amount, fee) {
     try {
       console.log(`🔧 [ETH] Creando depósito en DB...`);
 
@@ -409,22 +409,22 @@ class EthereumService {
       const netAmount = money.compare(diff, '0') < 0 ? '0' : diff;
 
       const depositData = {
-        userId: direccion.userId,
-        criptomonedaId: direccion.criptomonedaId,
-        cantidad: netAmount,
-        direccionDestino: direccion.direccion,
-        direccionOrigen: tx.from,
+        userId: address.userId,
+        cryptoId: address.cryptoId,
+        amount: netAmount,
+        destinationAddress: address.address,
+        sourceAddress: tx.from,
         txHash: tx.hash,
-        feeBlockchain: String(fee),
-        confirmaciones: parseInt(tx.confirmations || 0),
-        confirmacionesRequeridas: this.requiredConfirmations,
+        blockchainFee: String(fee),
+        confirmations: parseInt(tx.confirmations || 0),
+        requiredConfirmations: this.requiredConfirmations,
         blockNumber: parseInt(tx.blockNumber || 0),
         timestamp: new Date(parseInt(tx.timeStamp) * 1000)
       };
       
       console.log(`🔧 [ETH] Datos del depósito:`, depositData);
       
-      const deposit = await TransaccionBlockchain.createDeposit(depositData);
+      const deposit = await BlockchainTransaction.createDeposit(depositData);
       
       console.log(`✅ [ETH] Depósito creado en DB con ID: ${deposit.id}`);
       return deposit;
@@ -449,7 +449,7 @@ class EthereumService {
       const redesToBuscar = this.isTestnet ? ['sepolia', 'ethereum'] : ['ethereum', 'mainnet'];
       console.log(`🔧 [ETH] Redes a buscar: ${redesToBuscar.join(', ')}`);
       
-      const direcciones = await DireccionDeposito.findAll({
+      const direcciones = await DepositAddress.findAll({
         where: { active: true },
         include: [
           {
@@ -469,7 +469,7 @@ class EthereumService {
       if (direcciones.length > 0) {
         direcciones.forEach((dir, index) => {
           console.log(`🔧 [ETH] Dirección ${index + 1}:`);
-          console.log(`  - Dirección: ${dir.direccion}`);
+          console.log(`  - Dirección: ${dir.address}`);
           console.log(`  - Crypto: ${dir.crypto.symbol}`);
           console.log(`  - Red en DB: ${dir.crypto.network}`);
           console.log(`  - User ID: ${dir.userId}`);
@@ -497,10 +497,10 @@ class EthereumService {
   // RESTO DE MÉTODOS (sin cambios significativos)
   async processPendingWithdrawals() {
     try {
-      const pendingWithdrawals = await TransaccionBlockchain.findAll({
+      const pendingWithdrawals = await BlockchainTransaction.findAll({
         where: {
-          tipo: 'retiro',
-          estado: 'pendiente'
+          type: 'withdrawal',
+          status: 'pending'
         },
         include: [
           {
@@ -519,7 +519,7 @@ class EthereumService {
           processed.push(result);
         } catch (error) {
           console.error(`❌ [ETH] Error procesando retiro ${withdrawal.id}:`, error.message);
-          await TransaccionBlockchain.failWithdrawal(withdrawal.id, error.message);
+          await BlockchainTransaction.failWithdrawal(withdrawal.id, error.message);
         }
       }
 
@@ -530,11 +530,11 @@ class EthereumService {
   }
 
   async processWithdrawal(withdrawal) {
-    const { cantidad, direccionDestino, crypto } = withdrawal;
+    const { amount, destinationAddress, crypto } = withdrawal;
 
     // Atomic claim BEFORE any broadcast (anti double-spend), for BOTH native and
     // token paths. If another concurrent run already claimed this row, skip.
-    const claimed = await TransaccionBlockchain.claimForProcessing(withdrawal.id);
+    const claimed = await BlockchainTransaction.claimForProcessing(withdrawal.id);
     if (!claimed) {
       console.log(`⏭️ [ETH] Retiro ${withdrawal.id} ya reclamado por otra corrida, se saltea`);
       return null;
@@ -543,27 +543,27 @@ class EthereumService {
     if (crypto.symbol === 'ETH') {
       // NATIVE — sign → pre-record txHash → broadcast → finalize.
       const walletBalance = await this.chain.getNativeBalance();
-      if (money.compare(String(walletBalance), String(cantidad)) < 0) {
-        throw new Error(`Balance insuficiente en wallet maestra ETH: ${walletBalance} < ${cantidad}`);
+      if (money.compare(String(walletBalance), String(amount)) < 0) {
+        throw new Error(`Balance insuficiente en wallet maestra ETH: ${walletBalance} < ${amount}`);
       }
-      const { txHash, signed, fee } = await this.chain.signNativeTransfer(direccionDestino, cantidad.toString());
-      await TransaccionBlockchain.recordWithdrawalTxHash(withdrawal.id, txHash); // intent before broadcast
+      const { txHash, signed, fee } = await this.chain.signNativeTransfer(destinationAddress, amount.toString());
+      await BlockchainTransaction.recordWithdrawalTxHash(withdrawal.id, txHash); // intent before broadcast
       await this.chain.broadcast(signed);
-      const updated = await TransaccionBlockchain.markWithdrawalAsSent(withdrawal.id, txHash, fee);
-      console.log(`✅ [ETH] Retiro enviado: ${cantidad} ${crypto.symbol} - TX: ${txHash}`);
+      const updated = await BlockchainTransaction.markWithdrawalAsSent(withdrawal.id, txHash, fee);
+      console.log(`✅ [ETH] Retiro enviado: ${amount} ${crypto.symbol} - TX: ${txHash}`);
       return updated;
     }
 
     // TOKEN (ERC20) — sign → pre-record txHash → broadcast → finalize.
     const walletBalance = await this.chain.getTokenBalance(crypto.contractAddress);
-    if (money.compare(String(walletBalance), String(cantidad)) < 0) {
-      throw new Error(`Balance insuficiente en wallet maestra ETH: ${walletBalance} < ${cantidad}`);
+    if (money.compare(String(walletBalance), String(amount)) < 0) {
+      throw new Error(`Balance insuficiente en wallet maestra ETH: ${walletBalance} < ${amount}`);
     }
-    const { txHash, signed, fee } = await this.chain.signTokenTransfer(crypto.contractAddress, direccionDestino, cantidad.toString());
-    await TransaccionBlockchain.recordWithdrawalTxHash(withdrawal.id, txHash);
+    const { txHash, signed, fee } = await this.chain.signTokenTransfer(crypto.contractAddress, destinationAddress, amount.toString());
+    await BlockchainTransaction.recordWithdrawalTxHash(withdrawal.id, txHash);
     await this.chain.broadcast(signed);
-    const updated = await TransaccionBlockchain.markWithdrawalAsSent(withdrawal.id, txHash, fee);
-    console.log(`✅ [ETH] Retiro enviado: ${cantidad} ${crypto.symbol} - TX: ${txHash}`);
+    const updated = await BlockchainTransaction.markWithdrawalAsSent(withdrawal.id, txHash, fee);
+    console.log(`✅ [ETH] Retiro enviado: ${amount} ${crypto.symbol} - TX: ${txHash}`);
     return updated;
   }
 
@@ -573,9 +573,9 @@ class EthereumService {
       const redesToBuscar = this.isTestnet ? ['sepolia', 'ethereum'] : ['ethereum', 'mainnet'];
       console.log(`🔄 [ETH] Buscando confirmaciones en redes: ${redesToBuscar.join(', ')}`);
       
-      const pendingTxs = await TransaccionBlockchain.findAll({
+      const pendingTxs = await BlockchainTransaction.findAll({
         where: {
-          estado: ['pendiente', 'procesando'],
+          status: ['pending', 'processing'],
           txHash: { [require('sequelize').Op.ne]: null }
         },
         include: [
@@ -601,10 +601,10 @@ class EthereumService {
             const currentBlock = await this.provider.getBlockNumber();
             const confirmations = currentBlock - receipt.blockNumber;
             
-            console.log(`🔄 [ETH] TX ${tx.txHash}: ${confirmations} confirmaciones (requiere ${tx.confirmacionesRequeridas})`);
+            console.log(`🔄 [ETH] TX ${tx.txHash}: ${confirmations} confirmaciones (requiere ${tx.requiredConfirmations})`);
             
-            if (confirmations !== tx.confirmaciones) {
-              const updatedTx = await TransaccionBlockchain.updateConfirmations(
+            if (confirmations !== tx.confirmations) {
+              const updatedTx = await BlockchainTransaction.updateConfirmations(
                 tx.id,
                 confirmations,
                 tx.txHash
@@ -614,7 +614,7 @@ class EthereumService {
               console.log(`✅ [ETH] Confirmaciones actualizadas ${tx.txHash}: ${confirmations}`);
               
               // Si es un depósito que se acaba de confirmar, el balance debería actualizarse automáticamente
-              if (tx.tipo === 'deposito' && confirmations >= tx.confirmacionesRequeridas && tx.confirmaciones < tx.confirmacionesRequeridas) {
+              if (tx.type === 'deposit' && confirmations >= tx.requiredConfirmations && tx.confirmations < tx.requiredConfirmations) {
                 console.log(`🎉 [ETH] Depósito confirmado! Balance del usuario debería actualizarse automáticamente`);
               }
             }
