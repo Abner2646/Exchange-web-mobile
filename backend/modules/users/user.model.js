@@ -846,14 +846,14 @@ User.toggle2FA = async (id, nuevoEstado) => {
     
     const volume = await P2PTransaction.findAll({
       attributes: [
-        [sequelize.fn('SUM', sequelize.col('montoFiat')), 'volumenTotal']
+        [sequelize.fn('SUM', sequelize.col('fiat_amount')), 'volumenTotal']
       ],
       where: {
         [Op.or]: [
-          { compradorId: id },
-          { vendedorId: id }
+          { buyerId: id },
+          { sellerId: id }
         ],
-        estado: 'completada',
+        status: 'completed',
         created_at: {
           [Op.between]: [startOfDay, endOfDay]
         }

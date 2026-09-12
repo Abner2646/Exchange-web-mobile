@@ -42,12 +42,17 @@ const ofertaP2PController = require('./p2pOffer.controller.js');
  *         application/json:
  *           schema:
  *             type: object
- *             required: [type, cryptoId, amount, precio]
+ *             required: [type, cryptoId, minAmount, maxAmount, unitPrice, fiatCurrency, metodosPagoIds]
  *             properties:
  *               type: { type: string, enum: [buy, sell] }
  *               cryptoId: { type: string, format: uuid }
- *               amount: { type: number }
- *               precio: { type: number }
+ *               minAmount: { type: number }
+ *               maxAmount: { type: number }
+ *               unitPrice: { type: number }
+ *               fiatCurrency: { type: string }
+ *               additionalTerms: { type: string }
+ *               metodosPagoIds: { type: array, items: { type: string, format: uuid } }
+ *               direccionFiat: { type: string, description: "required for sell offers" }
  *     responses: { 201: { description: Oferta creada }, 400: { $ref: '#/components/responses/BadRequest' } }
  * /ofertaP2P/activas:
  *   get: { tags: [P2P ofertas], summary: Ofertas activas, responses: { 200: { description: Ofertas activas } } }

@@ -10,7 +10,7 @@ const crypto = require('crypto');
 const { COMPARTMENTS } = require('./ledger/ledgerAccounts');
 
 // Lee available/blocked/pending de un compartimento desde la proyección del
-// ledger. Require lazy de postingService por el ciclo models↔services/ledger.
+// ledger. Require lazy de postingService por el ciclo models↔modules/balances/ledger.
 async function readCompartment(userId, cryptoId, compartment, transaction = null) {
   const props = COMPARTMENTS[compartment];
   if (!props) throw new Error(`Compartimento inválido: ${compartment}`);
@@ -50,7 +50,7 @@ function insufficientBalanceError(message) {
 // Read-flip (write-flip Paso A/B): agrega la proyeccion Funding del ledger para
 // las lecturas de admin. Devuelve, por (usuario, cripto) con cuenta funding, el
 // available y blocked desde LedgerBalance. Require lazy por el ciclo
-// models<->services/ledger.
+// models<->modules/balances/ledger.
 async function aggregateFundingLedger({ userId = null, cryptoId = null } = {}) {
   const { LedgerAccount, LedgerBalance } = require('../../models/index');
   const { PURPOSES, HOUSE_OWNER_ID } = require('./ledger/ledgerAccounts');

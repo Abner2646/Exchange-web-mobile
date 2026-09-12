@@ -55,7 +55,7 @@ class BalanceCheckCleanup {
       include: [
         {
           model: require('../models').User,
-          as: 'usuario',
+          as: 'user',
           attributes: ['id', 'email']
         },
         {
@@ -75,7 +75,7 @@ class BalanceCheckCleanup {
       include: [
         {
           model: require('../models').User,
-          as: 'usuario',
+          as: 'user',
           attributes: ['id', 'email']
         },
         {
@@ -95,7 +95,7 @@ class BalanceCheckCleanup {
       include: [
         {
           model: require('../models').User,
-          as: 'usuario',
+          as: 'user',
           attributes: ['id', 'email']
         },
         {

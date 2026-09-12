@@ -1014,7 +1014,7 @@ const checkUserInitialization = async (req, res) => {
       balancesCreados: balances.length,
       notificacionesBienvenida: notificaciones.total > 0,
       criptomonedasSinDireccion: criptomonedasActivas.filter(crypto => 
-        !direcciones.some(dir => dir.criptomonedaId === crypto.id)
+        !direcciones.some(dir => dir.cryptoId === crypto.id)
       ).map(c => c.symbol)
     };
     

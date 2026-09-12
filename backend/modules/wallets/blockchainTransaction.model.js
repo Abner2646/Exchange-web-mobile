@@ -238,7 +238,7 @@ function createTransaccionBlockchainModel(sequelize) {
         throw new Error('Transacción no encontrada');
       }
 
-      const updateData = { confirmaciones };
+      const updateData = { confirmations: confirmaciones };
       
       // Actualizar hash si se proporciona (para casos donde cambia el hash)
       if (newTxHash && newTxHash !== transaccion.txHash) {
