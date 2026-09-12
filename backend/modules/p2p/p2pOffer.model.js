@@ -1,7 +1,7 @@
 const { DataTypes, Model, Op } = require('sequelize');
-const money = require('../utils/money');
+const money = require('../../utils/money');
 
-class OfertaP2P extends Model {
+class P2POffer extends Model {
   // Desactivar ofertas expiradas (más de 12 horas)
   static async deactivateExpiredOffers() {
     const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
@@ -28,10 +28,10 @@ class OfertaP2P extends Model {
     if (filters.active !== undefined) {
       where.active = filters.active === 'true' || filters.active === true;
     }
-    if (filters.tipo) where.tipo = filters.tipo;
-    if (filters.criptomonedaId) where.criptomonedaId = filters.criptomonedaId;
-    if (filters.monedaFiat) where.monedaFiat = filters.monedaFiat;
-    if (filters.usuarioId) where.usuarioId = filters.usuarioId;
+    if (filters.type) where.type = filters.type;
+    if (filters.cryptoId) where.cryptoId = filters.cryptoId;
+    if (filters.fiatCurrency) where.fiatCurrency = filters.fiatCurrency;
+    if (filters.userId) where.userId = filters.userId;
 
     const page = parseInt(filters.page) || 1;
     const limit = parseInt(filters.limit) || 20;
@@ -40,10 +40,10 @@ class OfertaP2P extends Model {
     // Incluir métodos de pago en todas las consultas
     const includes = [
       {
-        model: this.sequelize.models.MetodoPago,
-        as: 'metodosPago',
+        model: this.sequelize.models.PaymentMethod,
+        as: 'paymentMethods',
         through: { attributes: [] }, // No incluir datos de la tabla intermedia
-        attributes: ['id', 'name', 'descripcion', 'active']
+        attributes: ['id', 'name', 'description', 'active']
       }
     ];
 
@@ -72,10 +72,10 @@ class OfertaP2P extends Model {
     const oferta = await this.findByPk(id, {
       include: [
         {
-          model: this.sequelize.models.MetodoPago,
-          as: 'metodosPago',
+          model: this.sequelize.models.PaymentMethod,
+          as: 'paymentMethods',
           through: { attributes: [] },
-          attributes: ['id', 'name', 'descripcion', 'active']
+          attributes: ['id', 'name', 'description', 'active']
         }
       ]
     });
@@ -93,15 +93,15 @@ class OfertaP2P extends Model {
 
   // Crear nueva oferta con métodos de pago
   static async createOffer(ofertaData) {
-    const { tipo, direccionFiat, metodosPagoIds, usuarioId, criptomonedaId, cantidadMax, ...restData } = ofertaData;
+    const { type, direccionFiat, metodosPagoIds, userId, cryptoId, maxAmount, ...restData } = ofertaData;
 
     // Validar dirección fiat obligatoria para ventas
-    if (tipo === 'venta' && !direccionFiat) {
+    if (type === 'sell' && !direccionFiat) {
       throw new Error('La dirección de pago es obligatoria para ofertas de venta');
     }
 
-    // Validar que cantidad mínima sea menor que máxima
-    if (ofertaData.cantidadMin >= ofertaData.cantidadMax) {
+    // Validar que amount mínima sea menor que máxima
+    if (ofertaData.minAmount >= ofertaData.maxAmount) {
       throw new Error('La cantidad mínima debe ser menor que la cantidad máxima');
     }
 
@@ -111,7 +111,7 @@ class OfertaP2P extends Model {
     }
 
     // Validar que los métodos de pago existan y estén activos
-    const metodosValidos = await this.sequelize.models.MetodoPago.findAll({
+    const metodosValidos = await this.sequelize.models.PaymentMethod.findAll({
       where: {
         id: { [Op.in]: metodosPagoIds },
         active: true
@@ -123,18 +123,18 @@ class OfertaP2P extends Model {
     }
 
     // 🆕 VALIDAR FONDOS AL PUBLICAR OFERTA DE VENTA
-    if (tipo === 'venta') {
-      const { UserBalance } = require('./index');
+    if (type === 'sell') {
+      const { UserBalance } = require('../../models/index');
       
       // Verificar que el usuario tenga fondos suficientes para la cantidad máxima
-      const balance = await UserBalance.getByUserAndCrypto(usuarioId, criptomonedaId);
+      const balance = await UserBalance.getByUserAndCrypto(userId, cryptoId);
       
       if (!balance) {
         throw new Error('No tienes balance en esta criptomoneda');
       }
 
       const availableBalance = String(balance.availableBalance);
-      const cantidadMaxima = String(cantidadMax);
+      const cantidadMaxima = String(maxAmount);
 
       if (money.compare(availableBalance, cantidadMaxima) < 0) {
         throw new Error(
@@ -146,47 +146,47 @@ class OfertaP2P extends Model {
     // Crear la oferta
     const nuevaOferta = await this.create({
       ...restData,
-      usuarioId,
-      criptomonedaId,
-      cantidadMax,
-      tipo,
-      direccionFiat: tipo === 'venta' ? direccionFiat : null
+      userId,
+      cryptoId,
+      maxAmount,
+      type,
+      direccionFiat: type === 'sell' ? direccionFiat : null
     });
 
     // Crear las relaciones con métodos de pago
-    const relacionesMetodos = metodosPagoIds.map(metodoPagoId => ({
-      ofertaId: nuevaOferta.id,
-      metodoPagoId
+    const relacionesMetodos = metodosPagoIds.map(paymentMethodId => ({
+      offerId: nuevaOferta.id,
+      paymentMethodId
     }));
 
-    await this.sequelize.models.OfertaMetodoPago.bulkCreate(relacionesMetodos);
+    await this.sequelize.models.OfferPaymentMethod.bulkCreate(relacionesMetodos);
 
     // Retornar oferta con métodos de pago incluidos
     return await this.getById(nuevaOferta.id);
   }
 
   // Actualizar oferta
-  static async updateOffer(id, updateData, usuarioId) {
+  static async updateOffer(id, updateData, userId) {
     const oferta = await this.findByPk(id);
     
     if (!oferta) {
       throw new Error('Oferta no encontrada');
     }
 
-    if (oferta.usuarioId !== usuarioId) {
+    if (oferta.userId !== userId) {
       throw new Error('No tienes permiso para actualizar esta oferta');
     }
 
     const { metodosPagoIds, ...restUpdateData } = updateData;
 
-    // Validar dirección fiat si cambia a tipo venta
-    if (updateData.tipo === 'venta' && !updateData.direccionFiat && !oferta.direccionFiat) {
+    // Validar dirección fiat si cambia a type venta
+    if (updateData.type === 'sell' && !updateData.direccionFiat && !oferta.direccionFiat) {
       throw new Error('La dirección de pago es obligatoria para ofertas de venta');
     }
 
     // Validar cantidades si se actualizan
-    const newMin = updateData.cantidadMin ?? oferta.cantidadMin;
-    const newMax = updateData.cantidadMax ?? oferta.cantidadMax;
+    const newMin = updateData.minAmount ?? oferta.minAmount;
+    const newMax = updateData.maxAmount ?? oferta.maxAmount;
     if (newMin >= newMax) {
       throw new Error('La cantidad mínima debe ser menor que la cantidad máxima');
     }
@@ -205,7 +205,7 @@ class OfertaP2P extends Model {
       }
 
       // Validar que los métodos existan y estén activos
-      const metodosValidos = await this.sequelize.models.MetodoPago.findAll({
+      const metodosValidos = await this.sequelize.models.PaymentMethod.findAll({
         where: {
           id: { [Op.in]: metodosPagoIds },
           active: true
@@ -217,17 +217,17 @@ class OfertaP2P extends Model {
       }
 
       // Eliminar métodos antiguos
-      await this.sequelize.models.OfertaMetodoPago.destroy({
-        where: { ofertaId: id }
+      await this.sequelize.models.OfferPaymentMethod.destroy({
+        where: { offerId: id }
       });
 
       // Crear nuevas relaciones
-      const relacionesMetodos = metodosPagoIds.map(metodoPagoId => ({
-        ofertaId: id,
-        metodoPagoId
+      const relacionesMetodos = metodosPagoIds.map(paymentMethodId => ({
+        offerId: id,
+        paymentMethodId
       }));
 
-      await this.sequelize.models.OfertaMetodoPago.bulkCreate(relacionesMetodos);
+      await this.sequelize.models.OfferPaymentMethod.bulkCreate(relacionesMetodos);
     }
 
     // Retornar oferta actualizada con métodos de pago
@@ -235,14 +235,14 @@ class OfertaP2P extends Model {
   }
 
   // Agregar métodos de pago a una oferta existente
-  static async addMetodosPago(ofertaId, metodosPagoIds, usuarioId) {
-    const oferta = await this.findByPk(ofertaId);
+  static async addMetodosPago(offerId, metodosPagoIds, userId) {
+    const oferta = await this.findByPk(offerId);
     
     if (!oferta) {
       throw new Error('Oferta no encontrada');
     }
 
-    if (oferta.usuarioId !== usuarioId) {
+    if (oferta.userId !== userId) {
       throw new Error('No tienes permiso para modificar esta oferta');
     }
 
@@ -251,12 +251,12 @@ class OfertaP2P extends Model {
     }
 
     // Obtener métodos actuales
-    const metodosActuales = await this.sequelize.models.OfertaMetodoPago.findAll({
-      where: { ofertaId },
-      attributes: ['metodoPagoId']
+    const metodosActuales = await this.sequelize.models.OfferPaymentMethod.findAll({
+      where: { offerId },
+      attributes: ['paymentMethodId']
     });
 
-    const metodosActualesIds = metodosActuales.map(m => m.metodoPagoId);
+    const metodosActualesIds = metodosActuales.map(m => m.paymentMethodId);
 
     // Filtrar solo métodos nuevos (que no existan ya)
     const metodosNuevos = metodosPagoIds.filter(id => !metodosActualesIds.includes(id));
@@ -266,7 +266,7 @@ class OfertaP2P extends Model {
     }
 
     // Validar que los nuevos métodos existan y estén activos
-    const metodosValidos = await this.sequelize.models.MetodoPago.findAll({
+    const metodosValidos = await this.sequelize.models.PaymentMethod.findAll({
       where: {
         id: { [Op.in]: metodosNuevos },
         active: true
@@ -278,25 +278,25 @@ class OfertaP2P extends Model {
     }
 
     // Crear nuevas relaciones
-    const nuevasRelaciones = metodosNuevos.map(metodoPagoId => ({
-      ofertaId,
-      metodoPagoId
+    const nuevasRelaciones = metodosNuevos.map(paymentMethodId => ({
+      offerId,
+      paymentMethodId
     }));
 
-    await this.sequelize.models.OfertaMetodoPago.bulkCreate(nuevasRelaciones);
+    await this.sequelize.models.OfferPaymentMethod.bulkCreate(nuevasRelaciones);
 
-    return await this.getById(ofertaId);
+    return await this.getById(offerId);
   }
 
   // Eliminar métodos de pago de una oferta
-  static async removeMetodosPago(ofertaId, metodosPagoIds, usuarioId) {
-    const oferta = await this.findByPk(ofertaId);
+  static async removeMetodosPago(offerId, metodosPagoIds, userId) {
+    const oferta = await this.findByPk(offerId);
     
     if (!oferta) {
       throw new Error('Oferta no encontrada');
     }
 
-    if (oferta.usuarioId !== usuarioId) {
+    if (oferta.userId !== userId) {
       throw new Error('No tienes permiso para modificar esta oferta');
     }
 
@@ -305,8 +305,8 @@ class OfertaP2P extends Model {
     }
 
     // Verificar cuántos métodos tiene actualmente
-    const metodosActuales = await this.sequelize.models.OfertaMetodoPago.count({
-      where: { ofertaId }
+    const metodosActuales = await this.sequelize.models.OfferPaymentMethod.count({
+      where: { offerId }
     });
 
     // No permitir eliminar todos los métodos
@@ -315,17 +315,17 @@ class OfertaP2P extends Model {
     }
 
     // Eliminar las relaciones especificadas
-    await this.sequelize.models.OfertaMetodoPago.destroy({
+    await this.sequelize.models.OfferPaymentMethod.destroy({
       where: {
-        ofertaId,
-        metodoPagoId: { [Op.in]: metodosPagoIds }
+        offerId,
+        paymentMethodId: { [Op.in]: metodosPagoIds }
       }
     });
 
-    return await this.getById(ofertaId);
+    return await this.getById(offerId);
   }
 
-  // Actualizar estado de oferta
+  // Actualizar status de oferta
   static async updateStatus(id, active) {
     const oferta = await this.findByPk(id);
     
@@ -350,16 +350,16 @@ class OfertaP2P extends Model {
       where: {
         active: true,
         [Op.or]: [
-          { condicionesAdicionales: { [Op.like]: `%${term}%` } },
-          { monedaFiat: { [Op.like]: `%${term}%` } }
+          { additionalTerms: { [Op.like]: `%${term}%` } },
+          { fiatCurrency: { [Op.like]: `%${term}%` } }
         ]
       },
       include: [
         {
-          model: this.sequelize.models.MetodoPago,
-          as: 'metodosPago',
+          model: this.sequelize.models.PaymentMethod,
+          as: 'paymentMethods',
           through: { attributes: [] },
-          attributes: ['id', 'name', 'descripcion', 'active']
+          attributes: ['id', 'name', 'description', 'active']
         }
       ],
       limit,
@@ -368,17 +368,17 @@ class OfertaP2P extends Model {
   }
 
   // Historial de ofertas del usuario
-  static async getUserOfferHistory(usuarioId, page = 1, limit = 20) {
+  static async getUserOfferHistory(userId, page = 1, limit = 20) {
     const offset = (page - 1) * limit;
 
     const { rows: data, count: total } = await this.findAndCountAll({
-      where: { usuarioId },
+      where: { userId },
       include: [
         {
-          model: this.sequelize.models.MetodoPago,
-          as: 'metodosPago',
+          model: this.sequelize.models.PaymentMethod,
+          as: 'paymentMethods',
           through: { attributes: [] },
-          attributes: ['id', 'name', 'descripcion', 'active']
+          attributes: ['id', 'name', 'description', 'active']
         }
       ],
       limit,
@@ -399,37 +399,37 @@ class OfertaP2P extends Model {
   }
 
   // Encontrar ofertas compatibles
-  static async findCompatibleOffers(tipo, criptomonedaId, cantidad, monedaFiat, metodoPagoId = null) {
+  static async findCompatibleOffers(type, cryptoId, amount, fiatCurrency, paymentMethodId = null) {
     await this.deactivateExpiredOffers();
 
-    const tipoOpuesto = tipo === 'compra' ? 'venta' : 'compra';
+    const tipoOpuesto = type === 'buy' ? 'sell' : 'buy';
 
     const where = {
       active: true,
-      tipo: tipoOpuesto,
-      criptomonedaId,
-      monedaFiat,
-      cantidadMin: { [Op.lte]: cantidad },
-      cantidadMax: { [Op.gte]: cantidad }
+      type: tipoOpuesto,
+      cryptoId,
+      fiatCurrency,
+      minAmount: { [Op.lte]: amount },
+      maxAmount: { [Op.gte]: amount }
     };
 
     const includeMetodos = {
-      model: this.sequelize.models.MetodoPago,
-      as: 'metodosPago',
+      model: this.sequelize.models.PaymentMethod,
+      as: 'paymentMethods',
       through: { attributes: [] },
-      attributes: ['id', 'name', 'descripcion', 'active']
+      attributes: ['id', 'name', 'description', 'active']
     };
 
     // Si se especifica un método de pago, filtrar por ese método
-    if (metodoPagoId) {
-      includeMetodos.where = { id: metodoPagoId };
+    if (paymentMethodId) {
+      includeMetodos.where = { id: paymentMethodId };
       includeMetodos.required = true;
     }
 
     const ofertas = await this.findAll({
       where,
       include: [includeMetodos],
-      order: [['precio_unitario', tipo === 'compra' ? 'ASC' : 'DESC']],
+      order: [['unit_price', type === 'buy' ? 'ASC' : 'DESC']],
       limit: 20
     });
 
@@ -437,7 +437,7 @@ class OfertaP2P extends Model {
   }
 
   // Verificar si se puede aceptar una oferta
-  static async canAcceptOffer(id, cantidad) {
+  static async canAcceptOffer(id, amount) {
     const oferta = await this.getById(id);
 
     if (!oferta) {
@@ -448,23 +448,23 @@ class OfertaP2P extends Model {
       return { canAccept: false, reason: 'Oferta inactiva o expirada' };
     }
 
-    if (!oferta.metodosPago || oferta.metodosPago.length === 0) {
+    if (!oferta.paymentMethods || oferta.paymentMethods.length === 0) {
       return { canAccept: false, reason: 'La oferta no tiene métodos de pago disponibles' };
     }
 
-    const cantidadNum = String(cantidad);
+    const cantidadNum = String(amount);
 
-    if (money.compare(cantidadNum, String(oferta.cantidadMin)) < 0) {
+    if (money.compare(cantidadNum, String(oferta.minAmount)) < 0) {
       return { 
         canAccept: false, 
-        reason: `Cantidad menor al mínimo (${oferta.cantidadMin})` 
+        reason: `Cantidad menor al mínimo (${oferta.minAmount})` 
       };
     }
 
-    if (money.compare(cantidadNum, String(oferta.cantidadMax)) > 0) {
+    if (money.compare(cantidadNum, String(oferta.maxAmount)) > 0) {
       return {
         canAccept: false,
-        reason: `Cantidad mayor al máximo (${oferta.cantidadMax})`
+        reason: `Cantidad mayor al máximo (${oferta.maxAmount})`
       };
     }
 
@@ -478,8 +478,8 @@ class OfertaP2P extends Model {
     const [totalOfertas, ofertasActivas, ofertasCompra, ofertasVenta] = await Promise.all([
       this.count(),
       this.count({ where: { active: true } }),
-      this.count({ where: { tipo: 'compra', active: true } }),
-      this.count({ where: { tipo: 'venta', active: true } })
+      this.count({ where: { type: 'buy', active: true } }),
+      this.count({ where: { type: 'sell', active: true } })
     ]);
 
     return {
@@ -493,45 +493,45 @@ class OfertaP2P extends Model {
 }
 
 function initOfertaP2P(sequelize) {
-  OfertaP2P.init({
+  P2POffer.init({
     id: {
       type: DataTypes.UUID,
       primaryKey: true,
       defaultValue: DataTypes.UUIDV4
     },
-    usuarioId: {
+    userId: {
       type: DataTypes.UUID,
       allowNull: false,
-      field: 'usuario_id'
+      field: 'user_id'
     },
-    tipo: {
-      type: DataTypes.ENUM('compra', 'venta'),
+    type: {
+      type: DataTypes.ENUM('buy', 'sell'),
       allowNull: false
     },
-    criptomonedaId: {
+    cryptoId: {
       type: DataTypes.UUID,
       allowNull: false,
-      field: 'criptomoneda_id'
+      field: 'crypto_id'
     },
-    cantidadMin: {
+    minAmount: {
       type: DataTypes.DECIMAL(18, 8),
       allowNull: false,
-      field: 'cantidad_min'
+      field: 'min_amount'
     },
-    cantidadMax: {
+    maxAmount: {
       type: DataTypes.DECIMAL(18, 8),
       allowNull: false,
-      field: 'cantidad_max'
+      field: 'max_amount'
     },
-    precioUnitario: {
+    unitPrice: {
       type: DataTypes.DECIMAL(10, 4),
       allowNull: false,
-      field: 'precio_unitario'
+      field: 'unit_price'
     },
-    monedaFiat: {
+    fiatCurrency: {
       type: DataTypes.STRING(3),
       allowNull: false,
-      field: 'moneda_fiat'
+      field: 'fiat_currency'
     },
     direccionFiat: {
       type: DataTypes.TEXT,
@@ -539,10 +539,10 @@ function initOfertaP2P(sequelize) {
       field: 'direccion_fiat',
       comment: 'CBU, CVU, Alias, email PayPal, etc. Obligatorio para ventas'
     },
-    condicionesAdicionales: {
+    additionalTerms: {
       type: DataTypes.TEXT,
       allowNull: true,
-      field: 'condiciones_adicionales'
+      field: 'additional_terms'
     },
     active: {
       type: DataTypes.BOOLEAN,
@@ -550,14 +550,14 @@ function initOfertaP2P(sequelize) {
     }
   }, {
     sequelize,
-    modelName: 'OfertaP2P',
-    tableName: 'ofertas_p2p',
+    modelName: 'P2POffer',
+    tableName: 'p2p_offers',
     timestamps: true,
     createdAt: 'created_at',
     updatedAt: 'updated_at'
   });
 
-  return OfertaP2P;
+  return P2POffer;
 }
 
 module.exports = initOfertaP2P;

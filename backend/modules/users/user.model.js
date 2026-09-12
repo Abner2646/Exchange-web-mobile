@@ -558,11 +558,11 @@ User.toggle2FA = async (id, nuevoEstado) => {
         // modelo/asociación; los saldos se consultan por separado en GET
         // /me/balances, respaldados por la proyección del ledger.)
         {
-          association: 'valoracionesRecibidas',
+          association: 'ratingsReceived',
           limit: 5,
           order: [['created_at', 'DESC']],
           include: [{
-            association: 'evaluador',
+            association: 'rater',
             attributes: ['id', 'username', 'averageRating']
           }]
         }
@@ -842,9 +842,9 @@ User.toggle2FA = async (id, nuevoEstado) => {
     const endOfDay = new Date(fecha);
     endOfDay.setHours(23, 59, 59, 999);
 
-    const { TransaccionP2P } = require('../../models');
+    const { P2PTransaction } = require('../../models');
     
-    const volume = await TransaccionP2P.findAll({
+    const volume = await P2PTransaction.findAll({
       attributes: [
         [sequelize.fn('SUM', sequelize.col('montoFiat')), 'volumenTotal']
       ],
@@ -932,7 +932,7 @@ User.toggle2FA = async (id, nuevoEstado) => {
         break;
     }
 
-    const { TransaccionP2P } = require('../../models');
+    const { P2PTransaction } = require('../../models');
 
     const topTraders = await User.findAll({
       attributes: [
@@ -945,7 +945,7 @@ User.toggle2FA = async (id, nuevoEstado) => {
       ],
       include: [
         {
-          model: TransaccionP2P,
+          model: P2PTransaction,
           as: 'transacciones',
           attributes: [],
           where: {

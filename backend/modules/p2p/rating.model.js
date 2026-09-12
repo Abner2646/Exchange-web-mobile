@@ -1,27 +1,27 @@
 // Importaciones
-const initValoracion = require('./entities/valoracion.entity');
+const initValoracion = require('./rating.entity');
 const { Op } = require('sequelize');
 
 function createValoracionModel(sequelize) {
-  const Valoracion = initValoracion(sequelize);
+  const Rating = initValoracion(sequelize);
 
   // Métodos de creación y validación
-  Valoracion.createValoracion = async (data) => {
+  Rating.createValoracion = async (data) => {
     const { 
-      transaccionP2PId, 
-      usuarioEvaluadorId, 
-      usuarioEvaluadoId, 
-      puntuacion, 
-      comentario 
+      p2pTransactionId, 
+      raterId, 
+      ratedUserId, 
+      score, 
+      comment 
     } = data;
 
     // Validar que el evaluador y evaluado sean diferentes
-    if (usuarioEvaluadorId === usuarioEvaluadoId) {
+    if (raterId === ratedUserId) {
       throw new Error('Un usuario no puede valorarse a sí mismo');
     }
 
     // Validar puntuación
-    if (puntuacion < 1 || puntuacion > 5) {
+    if (score < 1 || score > 5) {
       throw new Error('La puntuación debe estar entre 1 y 5');
     }
 
@@ -29,35 +29,35 @@ function createValoracionModel(sequelize) {
     
     try {
       // Verificar que la transacción existe y está completada
-      const { TransaccionP2P } = require('./index');
-      const transaccion = await TransaccionP2P.findByPk(transaccionP2PId, { transaction });
+      const { P2PTransaction } = require('../../models/index');
+      const transaccion = await P2PTransaction.findByPk(p2pTransactionId, { transaction });
       
       if (!transaccion) {
         throw new Error('Transacción no encontrada');
       }
 
-      if (transaccion.estado !== 'completada') {
+      if (transaccion.status !== 'completed') {
         throw new Error('Solo se pueden valorar transacciones completadas');
       }
 
       // Verificar que el usuario evaluador participó en la transacción
-      if (transaccion.compradorId !== usuarioEvaluadorId && 
-          transaccion.vendedorId !== usuarioEvaluadorId) {
+      if (transaccion.buyerId !== raterId && 
+          transaccion.sellerId !== raterId) {
         throw new Error('Solo los participantes de la transacción pueden valorar');
       }
 
       // Verificar que el usuario evaluado también participó
-      if (transaccion.compradorId !== usuarioEvaluadoId && 
-          transaccion.vendedorId !== usuarioEvaluadoId) {
+      if (transaccion.buyerId !== ratedUserId && 
+          transaccion.sellerId !== ratedUserId) {
         throw new Error('Solo se puede valorar a participantes de la transacción');
       }
 
       // Verificar que no existe una valoración previa con esta combinación
-      const valoracionExistente = await Valoracion.findOne({
+      const valoracionExistente = await Rating.findOne({
         where: {
-          transaccionP2PId,
-          usuarioEvaluadorId,
-          usuarioEvaluadoId
+          p2pTransactionId,
+          raterId,
+          ratedUserId
         },
         transaction
       });
@@ -67,19 +67,19 @@ function createValoracionModel(sequelize) {
       }
 
       // Crear la valoración
-      const nuevaValoracion = await Valoracion.create({
-        transaccionP2PId,
-        usuarioEvaluadorId,
-        usuarioEvaluadoId,
-        puntuacion,
-        comentario
+      const nuevaValoracion = await Rating.create({
+        p2pTransactionId,
+        raterId,
+        ratedUserId,
+        score,
+        comment
       }, { transaction });
 
       // Actualizar la reputación del usuario evaluado
-      await Valoracion.updateUserReputation(usuarioEvaluadoId, transaction);
+      await Rating.updateUserReputation(ratedUserId, transaction);
 
       await transaction.commit();
-      return await Valoracion.getById(nuevaValoracion.id);
+      return await Rating.getById(nuevaValoracion.id);
     } catch (error) {
       await transaction.rollback();
       throw error;
@@ -87,30 +87,30 @@ function createValoracionModel(sequelize) {
   };
 
   // Métodos de consulta
-  Valoracion.getById = async (id) => {
-    return await Valoracion.findByPk(id, {
+  Rating.getById = async (id) => {
+    return await Rating.findByPk(id, {
       include: [
         {
-          association: 'transaccion',
-          attributes: ['id', 'estado', 'montoFiat', 'created_at']
+          association: 'transaction',
+          attributes: ['id', 'status', 'fiatAmount', 'created_at']
         },
         {
-          association: 'evaluador',
+          association: 'rater',
           attributes: ['id', 'username']
         },
         {
-          association: 'evaluado',
+          association: 'ratedUser',
           attributes: ['id', 'username', 'averageRating']
         }
       ]
     });
   };
 
-  Valoracion.getAll = async (filters = {}) => {
+  Rating.getAll = async (filters = {}) => {
     const {
-      usuarioEvaluadorId,
-      usuarioEvaluadoId,
-      transaccionP2PId,
+      raterId,
+      ratedUserId,
+      p2pTransactionId,
       puntuacionMin,
       puntuacionMax,
       fechaDesde,
@@ -125,15 +125,15 @@ function createValoracionModel(sequelize) {
     const offset = (page - 1) * limit;
 
     // Filtros básicos
-    if (usuarioEvaluadorId) where.usuarioEvaluadorId = usuarioEvaluadorId;
-    if (usuarioEvaluadoId) where.usuarioEvaluadoId = usuarioEvaluadoId;
-    if (transaccionP2PId) where.transaccionP2PId = transaccionP2PId;
+    if (raterId) where.raterId = raterId;
+    if (ratedUserId) where.ratedUserId = ratedUserId;
+    if (p2pTransactionId) where.p2pTransactionId = p2pTransactionId;
 
     // Filtros de puntuación
     if (puntuacionMin || puntuacionMax) {
-      where.puntuacion = {};
-      if (puntuacionMin) where.puntuacion[Op.gte] = puntuacionMin;
-      if (puntuacionMax) where.puntuacion[Op.lte] = puntuacionMax;
+      where.score = {};
+      if (puntuacionMin) where.score[Op.gte] = puntuacionMin;
+      if (puntuacionMax) where.score[Op.lte] = puntuacionMax;
     }
 
     // Filtros de fecha
@@ -143,19 +143,19 @@ function createValoracionModel(sequelize) {
       if (fechaHasta) where.created_at[Op.lte] = new Date(fechaHasta);
     }
 
-    const { count, rows } = await Valoracion.findAndCountAll({
+    const { count, rows } = await Rating.findAndCountAll({
       where,
       include: [
         {
-          association: 'transaccion',
-          attributes: ['id', 'montoFiat', 'created_at']
+          association: 'transaction',
+          attributes: ['id', 'fiatAmount', 'created_at']
         },
         {
-          association: 'evaluador',
+          association: 'rater',
           attributes: ['id', 'username']
         },
         {
-          association: 'evaluado',
+          association: 'ratedUser',
           attributes: ['id', 'username']
         }
       ],
@@ -175,18 +175,18 @@ function createValoracionModel(sequelize) {
   };
 
   // Métodos específicos de valoraciones
-  Valoracion.getUserRatings = async (usuarioId, filters = {}) => {
-    const { page = 1, limit = 20, tipo = 'recibidas' } = filters;
+  Rating.getUserRatings = async (userId, filters = {}) => {
+    const { page = 1, limit = 20, type = 'recibidas' } = filters;
     const offset = (page - 1) * limit;
 
-    const whereField = tipo === 'recibidas' ? 'usuarioEvaluadoId' : 'usuarioEvaluadorId';
+    const whereField = type === 'recibidas' ? 'ratedUserId' : 'raterId';
     
-    const { count, rows } = await Valoracion.findAndCountAll({
-      where: { [whereField]: usuarioId },
+    const { count, rows } = await Rating.findAndCountAll({
+      where: { [whereField]: userId },
       include: [
         {
-          association: 'transaccion',
-          attributes: ['id', 'montoFiat', 'created_at'],
+          association: 'transaction',
+          attributes: ['id', 'fiatAmount', 'created_at'],
           include: [
             {
               association: 'crypto',
@@ -195,7 +195,7 @@ function createValoracionModel(sequelize) {
           ]
         },
         {
-          association: tipo === 'recibidas' ? 'evaluador' : 'evaluado',
+          association: type === 'recibidas' ? 'rater' : 'ratedUser',
           attributes: ['id', 'username']
         }
       ],
@@ -214,26 +214,26 @@ function createValoracionModel(sequelize) {
     };
   };
 
-  Valoracion.getUserReputationStats = async (usuarioId) => {
-    const stats = await Valoracion.findAll({
+  Rating.getUserReputationStats = async (userId) => {
+    const stats = await Rating.findAll({
       attributes: [
-        'puntuacion',
-        [sequelize.fn('COUNT', sequelize.col('puntuacion')), 'cantidad']
+        'score',
+        [sequelize.fn('COUNT', sequelize.col('score')), 'amount']
       ],
-      where: { usuarioEvaluadoId: usuarioId },
-      group: ['puntuacion'],
-      order: [['puntuacion', 'ASC']],
+      where: { ratedUserId: userId },
+      group: ['score'],
+      order: [['score', 'ASC']],
       raw: true
     });
 
-    const summary = await Valoracion.findOne({
+    const summary = await Rating.findOne({
       attributes: [
         [sequelize.fn('COUNT', sequelize.col('id')), 'totalRatings'],
-        [sequelize.fn('AVG', sequelize.col('puntuacion')), 'puntuacionPromedio'],
-        [sequelize.fn('MIN', sequelize.col('puntuacion')), 'puntuacionMinima'],
-        [sequelize.fn('MAX', sequelize.col('puntuacion')), 'puntuacionMaxima']
+        [sequelize.fn('AVG', sequelize.col('score')), 'puntuacionPromedio'],
+        [sequelize.fn('MIN', sequelize.col('score')), 'puntuacionMinima'],
+        [sequelize.fn('MAX', sequelize.col('score')), 'puntuacionMaxima']
       ],
-      where: { usuarioEvaluadoId: usuarioId },
+      where: { ratedUserId: userId },
       raw: true
     });
 
@@ -243,30 +243,30 @@ function createValoracionModel(sequelize) {
     };
   };
 
-  Valoracion.getPendingRatings = async (usuarioId) => {
+  Rating.getPendingRatings = async (userId) => {
     // Obtener transacciones completadas donde el usuario participó pero no valoró
-    const { TransaccionP2P } = require('./index');
+    const { P2PTransaction } = require('../../models/index');
     
-    const transaccionesCompletadas = await TransaccionP2P.findAll({
+    const transaccionesCompletadas = await P2PTransaction.findAll({
       where: {
         [Op.or]: [
-          { compradorId: usuarioId },
-          { vendedorId: usuarioId }
+          { buyerId: userId },
+          { sellerId: userId }
         ],
-        estado: 'completada'
+        status: 'completed'
       },
       include: [
         {
-          association: 'valoraciones',
-          where: { usuarioEvaluadorId: usuarioId },
+          association: 'ratings',
+          where: { raterId: userId },
           required: false
         },
         {
-          association: 'comprador',
+          association: 'buyer',
           attributes: ['id', 'username']
         },
         {
-          association: 'vendedor',
+          association: 'seller',
           attributes: ['id', 'username']
         },
         {
@@ -278,13 +278,13 @@ function createValoracionModel(sequelize) {
 
     // Filtrar transacciones donde no existe valoración del usuario
     const pendientes = transaccionesCompletadas.filter(tx => {
-      return tx.valoraciones.length === 0;
+      return tx.ratings.length === 0;
     }).map(tx => {
-      const otroUsuario = tx.compradorId === usuarioId ? tx.vendedor : tx.comprador;
+      const otroUsuario = tx.buyerId === userId ? tx.seller : tx.buyer;
       return {
         transaccionId: tx.id,
         usuarioAValorar: otroUsuario,
-        montoFiat: tx.montoFiat,
+        fiatAmount: tx.fiatAmount,
         crypto: tx.crypto.simbolo,
         fechaTransaccion: tx.created_at
       };
@@ -294,22 +294,22 @@ function createValoracionModel(sequelize) {
   };
 
   // Método para actualizar reputación del usuario
-  Valoracion.updateUserReputation = async (usuarioId, transaction = null) => {
-    const stats = await Valoracion.findOne({
+  Rating.updateUserReputation = async (userId, transaction = null) => {
+    const stats = await Rating.findOne({
       attributes: [
-        [sequelize.fn('AVG', sequelize.col('puntuacion')), 'puntuacionPromedio']
+        [sequelize.fn('AVG', sequelize.col('score')), 'puntuacionPromedio']
       ],
-      where: { usuarioEvaluadoId: usuarioId },
+      where: { ratedUserId: userId },
       raw: true,
       transaction
     });
 
     if (stats && stats.puntuacionPromedio) {
-      const { User } = require('./index');
+      const { User } = require('../../models/index');
       await User.update(
         { reputacion: parseFloat(stats.puntuacionPromedio).toFixed(2) },
         { 
-          where: { id: usuarioId },
+          where: { id: userId },
           transaction
         }
       );
@@ -317,16 +317,16 @@ function createValoracionModel(sequelize) {
   };
 
   // Métodos de consulta por transacción
-  Valoracion.getTransactionRatings = async (transaccionP2PId) => {
-    return await Valoracion.findAll({
-      where: { transaccionP2PId },
+  Rating.getTransactionRatings = async (p2pTransactionId) => {
+    return await Rating.findAll({
+      where: { p2pTransactionId },
       include: [
         {
-          association: 'evaluador',
+          association: 'rater',
           attributes: ['id', 'username']
         },
         {
-          association: 'evaluado',
+          association: 'ratedUser',
           attributes: ['id', 'username']
         }
       ],
@@ -334,13 +334,13 @@ function createValoracionModel(sequelize) {
     });
   };
 
-  Valoracion.canUserRate = async (transaccionP2PId, usuarioEvaluadorId, usuarioEvaluadoId) => {
+  Rating.canUserRate = async (p2pTransactionId, raterId, ratedUserId) => {
     // Verificar si ya existe una valoración
-    const existeValoracion = await Valoracion.findOne({
+    const existeValoracion = await Rating.findOne({
       where: {
-        transaccionP2PId,
-        usuarioEvaluadorId,
-        usuarioEvaluadoId
+        p2pTransactionId,
+        raterId,
+        ratedUserId
       }
     });
 
@@ -349,19 +349,19 @@ function createValoracionModel(sequelize) {
     }
 
     // Verificar que la transacción esté completada y el usuario haya participado
-    const { TransaccionP2P } = require('./index');
-    const transaccion = await TransaccionP2P.findByPk(transaccionP2PId);
+    const { P2PTransaction } = require('../../models/index');
+    const transaccion = await P2PTransaction.findByPk(p2pTransactionId);
     
     if (!transaccion) {
       return { canRate: false, reason: 'Transacción no encontrada' };
     }
 
-    if (transaccion.estado !== 'completada') {
+    if (transaccion.status !== 'completed') {
       return { canRate: false, reason: 'La transacción debe estar completada' };
     }
 
-    if (transaccion.compradorId !== usuarioEvaluadorId && 
-        transaccion.vendedorId !== usuarioEvaluadorId) {
+    if (transaccion.buyerId !== raterId && 
+        transaccion.sellerId !== raterId) {
       return { canRate: false, reason: 'No participaste en esta transacción' };
     }
 
@@ -369,7 +369,7 @@ function createValoracionModel(sequelize) {
   };
 
   // Métodos de estadísticas generales
-  Valoracion.getGeneralStats = async (filters = {}) => {
+  Rating.getGeneralStats = async (filters = {}) => {
     const where = {};
     
     if (filters.fechaDesde || filters.fechaHasta) {
@@ -378,21 +378,21 @@ function createValoracionModel(sequelize) {
       if (filters.fechaHasta) where.created_at[Op.lte] = new(filters.fechaHasta);
     }
 
-    const stats = await Valoracion.findAll({
+    const stats = await Rating.findAll({
       attributes: [
-        'puntuacion',
-        [sequelize.fn('COUNT', sequelize.col('puntuacion')), 'cantidad']
+        'score',
+        [sequelize.fn('COUNT', sequelize.col('score')), 'amount']
       ],
       where,
-      group: ['puntuacion'],
-      order: [['puntuacion', 'ASC']],
+      group: ['score'],
+      order: [['score', 'ASC']],
       raw: true
     });
 
-    const summary = await Valoracion.findOne({
+    const summary = await Rating.findOne({
       attributes: [
         [sequelize.fn('COUNT', sequelize.col('id')), 'totalRatings'],
-        [sequelize.fn('AVG', sequelize.col('puntuacion')), 'puntuacionPromedio']
+        [sequelize.fn('AVG', sequelize.col('score')), 'puntuacionPromedio']
       ],
       where,
       raw: true
@@ -404,19 +404,19 @@ function createValoracionModel(sequelize) {
     };
   };
 
-  Valoracion.updateValoracion = async (id, data, usuarioId) => {
-    const valoracion = await Valoracion.findByPk(id);
+  Rating.updateValoracion = async (id, data, userId) => {
+    const valoracion = await Rating.findByPk(id);
     if (!valoracion) {
       throw new Error('Valoración no encontrada');
     }
 
     // Solo el evaluador puede modificar su valoración
-    if (valoracion.usuarioEvaluadorId !== usuarioId) {
+    if (valoracion.raterId !== userId) {
       throw new Error('No tienes permiso para modificar esta valoración');
     }
 
     // Validar puntuación si se proporciona
-    if (data.puntuacion && (data.puntuacion < 1 || data.puntuacion > 5)) {
+    if (data.score && (data.score < 1 || data.score > 5)) {
       throw new Error('La puntuación debe estar entre 1 y 5');
     }
 
@@ -426,17 +426,17 @@ function createValoracionModel(sequelize) {
       await valoracion.update(data, { transaction });
       
       // Recalcular reputación del usuario evaluado
-      await Valoracion.updateUserReputation(valoracion.usuarioEvaluadoId, transaction);
+      await Rating.updateUserReputation(valoracion.ratedUserId, transaction);
       
       await transaction.commit();
-      return await Valoracion.getById(id);
+      return await Rating.getById(id);
     } catch (error) {
       await transaction.rollback();
       throw error;
     }
   };
 
-  return Valoracion;
+  return Rating;
 }
 
 module.exports = createValoracionModel;

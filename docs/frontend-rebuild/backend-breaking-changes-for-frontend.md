@@ -298,3 +298,35 @@ Also disable the submit button + show a "sending…" state (cheap first-line def
 - **Still Spanish (deferred):** the `?criptomonedaId=` query param on the trading-balance read and
   the `balance.criptomonedaId` FK-echo — they rename with the crypto FK (balances-domain decision),
   not in this chunk.
+
+### ✅ p2p  (chunk 7 — done)
+
+- **HTTP mount paths UNCHANGED** (deferred to `/api/v1`, same as chunks 4-6): endpoints stay under
+  `/api/ofertaP2P/*`, `/api/transaccionP2P/*`, `/api/metodoPago/*`, `/api/ofertaMetodoPago/*`,
+  `/api/valoracion/*`. Only field names, enum values, DB columns and internal names changed.
+- **P2POffer** (was `OfertaP2P`, table `ofertas_p2p`→`p2p_offers`): `tipo`→`type` with enum values
+  **`compra|venta` → `buy|sell`**; `cantidadMin`→`minAmount`, `cantidadMax`→`maxAmount`,
+  `precioUnitario`→`unitPrice`, `monedaFiat`→`fiatCurrency`, `condicionesAdicionales`→`additionalTerms`;
+  FK `usuarioId`→`userId`, `criptomonedaId`→`cryptoId` (`active` unchanged).
+- **P2PTransaction** (was `TransaccionP2P`, table `transacciones_p2p`→`p2p_transactions`): `estado`→`status`
+  with enum values **`iniciada|cryptos_bloqueadas|pago_confirmado|completada|cancelada` →
+  `initiated|crypto_locked|payment_confirmed|completed|cancelled`**; `cantidad`→`amount`,
+  `precioUnitario`→`unitPrice`, `montoFiat`→`fiatAmount`, `monedaFiat`→`fiatCurrency`;
+  FK `ofertaId`→`offerId`, `compradorId`→`buyerId`, `vendedorId`→`sellerId`, `criptomonedaId`→`cryptoId`,
+  `metodoPagoId`→`paymentMethodId`; `fechaPagoConfirmado`→`paymentConfirmedAt`, `fechaCompletada`→`completedAt`.
+- **PaymentMethod** (was `MetodoPago`, table `metodos_pago`→`payment_methods`): `descripcion`→`description`
+  (`name`, `active` unchanged). **Rating** (was `Valoracion`, table `valoraciones`→`ratings`):
+  `usuarioEvaluadorId`→`raterId`, `usuarioEvaluadoId`→`ratedUserId`, `puntuacion`→`score`,
+  `comentario`→`comment`, FK `transaccionP2PId`→`p2pTransactionId`. **OfferPaymentMethod** (was
+  `OfertaMetodoPago`, table `oferta_metodos_pago`→`offer_payment_methods`): `ofertaId`→`offerId`,
+  `metodoPagoId`→`paymentMethodId`.
+- **Association aliases (embed on User/Crypto/…):** `ofertas`→`offers`, `usuario`→`user`,
+  `compras`→`purchases`, `comprador`→`buyer`, `ventas`→`sales`, `vendedor`→`seller`,
+  `valoracionesDadas`→`ratingsGiven`, `valoracionesRecibidas`→`ratingsReceived`, `evaluador`→`rater`,
+  `evaluado`→`ratedUser`, `oferta`→`offer`, `transacciones`→`transactions`, `transaccion`→`transaction`,
+  `metodoPago`→`paymentMethod`, `metodosPago`→`paymentMethods`, `valoraciones`→`ratings`,
+  `transaccionesP2P`→`p2pTransactions`. **User profile** (`GET /me`) now embeds `ratingsReceived`→`rater`.
+- **Internal:** the swap/order-book naming aside, the p2p-only ledger `settleP2P()` now takes English
+  params `{ sellerId, buyerId, cryptoId, amount }` (`referencia` stays Spanish; persisted `type` value
+  `liquidacion_p2p` frozen). This closes the last deferred ledger boundary from chunk 3. `idempotencyKey`
+  and `notificaciones` are not p2p — they move later (notifications = chunk 8).

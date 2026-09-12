@@ -3,11 +3,11 @@ const { Router } = require('express');
 const router = Router();
 
 // Middleware
-const { authenticateToken, requireEmailVerified } = require('../middleware/authMiddleware.js');
-const { isAdmin } = require('../middleware/adminMiddleware.js');
+const { authenticateToken, requireEmailVerified } = require('../../middleware/authMiddleware.js');
+const { isAdmin } = require('../../middleware/adminMiddleware.js');
 
 // Importa el controlador
-const valoracionController = require('../controllers/valoraciones.controller.js');
+const valoracionController = require('./rating.controller.js');
 
 /**
  * @openapi
@@ -17,22 +17,22 @@ const valoracionController = require('../controllers/valoraciones.controller.js'
  *   get: { tags: [Valoraciones (reputación)], summary: Mis valoraciones dadas, responses: { 200: { description: Valoraciones } } }
  * /valoracion/me/pending:
  *   get: { tags: [Valoraciones (reputación)], summary: Transacciones pendientes de valorar, responses: { 200: { description: Pendientes } } }
- * /valoracion/can-rate/{transaccionP2PId}/{usuarioEvaluadoId}:
+ * /valoracion/can-rate/{p2pTransactionId}/{ratedUserId}:
  *   get:
  *     tags: [Valoraciones (reputación)]
  *     summary: Verificar si puedo valorar una transacción
  *     parameters:
- *       - { in: path, name: transaccionP2PId, required: true, schema: { type: string, format: uuid } }
- *       - { in: path, name: usuarioEvaluadoId, required: true, schema: { type: string, format: uuid } }
+ *       - { in: path, name: p2pTransactionId, required: true, schema: { type: string, format: uuid } }
+ *       - { in: path, name: ratedUserId, required: true, schema: { type: string, format: uuid } }
  *     responses: { 200: { description: Resultado } }
- * /valoracion/transaction/{transaccionP2PId}:
- *   get: { tags: [Valoraciones (reputación)], summary: Valoraciones de una transacción, parameters: [{ in: path, name: transaccionP2PId, required: true, schema: { type: string, format: uuid } }], responses: { 200: { description: Valoraciones } } }
- * /valoracion/user/{usuarioId}/stats:
- *   get: { tags: [Valoraciones (reputación)], summary: Reputación de un usuario, parameters: [{ in: path, name: usuarioId, required: true, schema: { type: string, format: uuid } }], responses: { 200: { description: Stats } } }
- * /valoracion/user/{usuarioId}/received:
- *   get: { tags: [Valoraciones (reputación)], summary: Valoraciones recibidas por un usuario, parameters: [{ in: path, name: usuarioId, required: true, schema: { type: string, format: uuid } }], responses: { 200: { description: Valoraciones } } }
- * /valoracion/user/{usuarioId}/given:
- *   get: { tags: [Valoraciones (reputación)], summary: Valoraciones dadas por un usuario, parameters: [{ in: path, name: usuarioId, required: true, schema: { type: string, format: uuid } }], responses: { 200: { description: Valoraciones } } }
+ * /valoracion/transaction/{p2pTransactionId}:
+ *   get: { tags: [Valoraciones (reputación)], summary: Valoraciones de una transacción, parameters: [{ in: path, name: p2pTransactionId, required: true, schema: { type: string, format: uuid } }], responses: { 200: { description: Valoraciones } } }
+ * /valoracion/user/{userId}/stats:
+ *   get: { tags: [Valoraciones (reputación)], summary: Reputación de un usuario, parameters: [{ in: path, name: userId, required: true, schema: { type: string, format: uuid } }], responses: { 200: { description: Stats } } }
+ * /valoracion/user/{userId}/received:
+ *   get: { tags: [Valoraciones (reputación)], summary: Valoraciones recibidas por un usuario, parameters: [{ in: path, name: userId, required: true, schema: { type: string, format: uuid } }], responses: { 200: { description: Valoraciones } } }
+ * /valoracion/user/{userId}/given:
+ *   get: { tags: [Valoraciones (reputación)], summary: Valoraciones dadas por un usuario, parameters: [{ in: path, name: userId, required: true, schema: { type: string, format: uuid } }], responses: { 200: { description: Valoraciones } } }
  * /valoracion/users/{usuario1Id}/{usuario2Id}/summary:
  *   get:
  *     tags: [Valoraciones (reputación)]
@@ -52,7 +52,7 @@ const valoracionController = require('../controllers/valoraciones.controller.js'
  *       required: true
  *       content:
  *         application/json:
- *           schema: { type: object, required: [transaccionP2PId, usuarioEvaluadoId, puntuacion], properties: { transaccionP2PId: { type: string, format: uuid }, usuarioEvaluadoId: { type: string, format: uuid }, puntuacion: { type: integer, minimum: 1, maximum: 5 }, comentario: { type: string } } }
+ *           schema: { type: object, required: [p2pTransactionId, ratedUserId, score], properties: { p2pTransactionId: { type: string, format: uuid }, ratedUserId: { type: string, format: uuid }, score: { type: integer, minimum: 1, maximum: 5 }, comment: { type: string } } }
  *     responses: { 201: { description: Valoración creada }, 400: { $ref: '#/components/responses/BadRequest' } }
  * /valoracion/batch:
  *   post: { tags: [Valoraciones (reputación)], summary: Crear varias valoraciones (batch), responses: { 201: { description: Creadas } } }
@@ -78,19 +78,19 @@ router.get('/me/pending', authenticateToken, valoracionController.getPendingRati
 // --------------------- RUTAS DE CONSULTA Y ANÁLISIS --------------------- //
 
 // Verificar si puedo valorar una transacción específica
-router.get('/can-rate/:transaccionP2PId/:usuarioEvaluadoId', authenticateToken, requireEmailVerified, valoracionController.checkCanRate);
+router.get('/can-rate/:p2pTransactionId/:ratedUserId', authenticateToken, requireEmailVerified, valoracionController.checkCanRate);
 
 // Obtener valoraciones de una transacción específica
-router.get('/transaction/:transaccionP2PId', authenticateToken, requireEmailVerified, valoracionController.getTransactionRatings);
+router.get('/transaction/:p2pTransactionId', authenticateToken, requireEmailVerified, valoracionController.getTransactionRatings);
 
 // Obtener estadísticas de reputación de un usuario específico
-router.get('/user/:usuarioId/stats', authenticateToken, valoracionController.getUserReputationStats);
+router.get('/user/:userId/stats', authenticateToken, valoracionController.getUserReputationStats);
 
 // Obtener valoraciones recibidas por un usuario específico
-router.get('/user/:usuarioId/received', authenticateToken, valoracionController.getUserRatings);
+router.get('/user/:userId/received', authenticateToken, valoracionController.getUserRatings);
 
 // Obtener valoraciones dadas por un usuario específico
-router.get('/user/:usuarioId/given', authenticateToken, valoracionController.getUserGivenRatings);
+router.get('/user/:userId/given', authenticateToken, valoracionController.getUserGivenRatings);
 
 // Obtener resumen de valoraciones entre dos usuarios
 router.get('/users/:usuario1Id/:usuario2Id/summary', authenticateToken, valoracionController.getUsersRatingSummary);

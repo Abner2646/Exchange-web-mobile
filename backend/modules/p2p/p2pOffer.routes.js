@@ -3,11 +3,11 @@ const { Router } = require('express');
 const router = Router();
 
 // Middleware
-const { authenticateToken, requireEmailVerified } = require('../middleware/authMiddleware.js');
-const { isAdmin } = require('../middleware/adminMiddleware.js');
+const { authenticateToken, requireEmailVerified } = require('../../middleware/authMiddleware.js');
+const { isAdmin } = require('../../middleware/adminMiddleware.js');
 
-const asyncHandler = require('../utils/asyncHandler');
-const ofertaP2PController = require('../controllers/ofertaP2P.controller.js');
+const asyncHandler = require('../../utils/asyncHandler');
+const ofertaP2PController = require('./p2pOffer.controller.js');
 
 /**
  * @openapi
@@ -19,17 +19,17 @@ const ofertaP2PController = require('../controllers/ofertaP2P.controller.js');
  *     summary: Buscar ofertas por término
  *     parameters: [{ in: query, name: q, schema: { type: string } }]
  *     responses: { 200: { description: Ofertas } }
- * /ofertaP2P/tipo/{tipo}:
+ * /ofertaP2P/type/{type}:
  *   get:
  *     tags: [P2P ofertas]
- *     summary: Ofertas por tipo (compra/venta)
- *     parameters: [{ in: path, name: tipo, required: true, schema: { type: string, enum: [compra, venta] } }]
+ *     summary: Ofertas por type (compra/venta)
+ *     parameters: [{ in: path, name: type, required: true, schema: { type: string, enum: [buy, sell] } }]
  *     responses: { 200: { description: Ofertas } }
- * /ofertaP2P/crypto/{criptomonedaId}:
+ * /ofertaP2P/crypto/{cryptoId}:
  *   get:
  *     tags: [P2P ofertas]
  *     summary: Ofertas por cripto
- *     parameters: [{ in: path, name: criptomonedaId, required: true, schema: { type: string, format: uuid } }]
+ *     parameters: [{ in: path, name: cryptoId, required: true, schema: { type: string, format: uuid } }]
  *     responses: { 200: { description: Ofertas } }
  * /ofertaP2P:
  *   get: { tags: [P2P ofertas], summary: Listar ofertas (con filtros), responses: { 200: { description: Ofertas } } }
@@ -42,11 +42,11 @@ const ofertaP2PController = require('../controllers/ofertaP2P.controller.js');
  *         application/json:
  *           schema:
  *             type: object
- *             required: [tipo, criptomonedaId, cantidad, precio]
+ *             required: [type, cryptoId, amount, precio]
  *             properties:
- *               tipo: { type: string, enum: [compra, venta] }
- *               criptomonedaId: { type: string, format: uuid }
- *               cantidad: { type: number }
+ *               type: { type: string, enum: [buy, sell] }
+ *               cryptoId: { type: string, format: uuid }
+ *               amount: { type: number }
  *               precio: { type: number }
  *     responses: { 201: { description: Oferta creada }, 400: { $ref: '#/components/responses/BadRequest' } }
  * /ofertaP2P/activas:
@@ -97,7 +97,7 @@ const ofertaP2PController = require('../controllers/ofertaP2P.controller.js');
  * /ofertaP2P/{id}/status:
  *   patch:
  *     tags: [P2P ofertas - admin]
- *     summary: Cambiar el estado de una oferta (admin)
+ *     summary: Cambiar el status de una oferta (admin)
  *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
  *     responses: { 200: { description: Estado actualizado } }
  */
@@ -111,10 +111,10 @@ router.get('/compatible', authenticateToken, asyncHandler(ofertaP2PController.fi
 router.get('/search', authenticateToken, asyncHandler(ofertaP2PController.searchOfertas));
 
 // Get offers by type (compra/venta)
-router.get('/tipo/:tipo', authenticateToken, asyncHandler(ofertaP2PController.getOfertasByTipo));
+router.get('/type/:type', authenticateToken, asyncHandler(ofertaP2PController.getOfertasByTipo));
 
 // Get offers by crypto
-router.get('/crypto/:criptomonedaId', authenticateToken, asyncHandler(ofertaP2PController.getOfertasByCrypto));
+router.get('/crypto/:cryptoId', authenticateToken, asyncHandler(ofertaP2PController.getOfertasByCrypto));
 
 // --------------------- BASIC CRUD ROUTES ---------------------
 

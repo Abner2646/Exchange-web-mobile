@@ -1,12 +1,12 @@
-const { Valoracion, sequelize } = require('../models/index.js');
+const { Rating, sequelize } = require('../../models/index.js');
 const { Op } = require('sequelize');
-const authz = require('../utils/authz');
+const authz = require('../../utils/authz');
 
 // Listar valoraciones con filtros
 const getValoraciones = async (req, res) => {
   try {
     const filters = { ...req.query };
-    const result = await Valoracion.getAll(filters);
+    const result = await Rating.getAll(filters);
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -17,7 +17,7 @@ const getValoraciones = async (req, res) => {
 const getValoracionById = async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await Valoracion.getById(id);
+    const result = await Rating.getById(id);
     if (!result) return res.status(404).json({ error: 'Valoración no encontrada' });
     res.json(result);
   } catch (error) {
@@ -28,24 +28,24 @@ const getValoracionById = async (req, res) => {
 // Crear nueva valoración
 const createValoracion = async (req, res) => {
   try {
-    const usuarioEvaluadorId = req.user.id;
-    const { transaccionP2PId, usuarioEvaluadoId, puntuacion, comentario } = req.body;
+    const raterId = req.user.id;
+    const { p2pTransactionId, ratedUserId, score, comment } = req.body;
 
     // Verificar si el usuario puede valorar esta transacción
-    const canRate = await Valoracion.canUserRate(transaccionP2PId, usuarioEvaluadorId, usuarioEvaluadoId);
+    const canRate = await Rating.canUserRate(p2pTransactionId, raterId, ratedUserId);
     if (!canRate.canRate) {
       return res.status(400).json({ error: canRate.reason });
     }
 
     const valoracionData = {
-      transaccionP2PId,
-      usuarioEvaluadorId,
-      usuarioEvaluadoId,
-      puntuacion,
-      comentario
+      p2pTransactionId,
+      raterId,
+      ratedUserId,
+      score,
+      comment
     };
 
-    const nuevaValoracion = await Valoracion.createValoracion(valoracionData);
+    const nuevaValoracion = await Rating.createValoracion(valoracionData);
     res.status(201).json({
       message: 'Valoración creada exitosamente',
       data: nuevaValoracion
@@ -59,10 +59,10 @@ const createValoracion = async (req, res) => {
 const updateValoracion = async (req, res) => {
   try {
     const { id } = req.params;
-    const usuarioId = req.user.id;
+    const userId = req.user.id;
     const updateData = req.body;
 
-    const updated = await Valoracion.updateValoracion(id, updateData, usuarioId);
+    const updated = await Rating.updateValoracion(id, updateData, userId);
     res.json({ 
       message: 'Valoración actualizada exitosamente', 
       data: updated 
@@ -76,16 +76,16 @@ const updateValoracion = async (req, res) => {
 const deleteValoracion = async (req, res) => {
   try {
     const { id } = req.params;
-    const usuarioId = req.user.id;
+    const userId = req.user.id;
 
-    const valoracion = await Valoracion.findByPk(id);
+    const valoracion = await Rating.findByPk(id);
     if (!valoracion) {
       return res.status(404).json({ error: 'Valoración no encontrada' });
     }
 
     // Solo admin o el evaluador (dentro de un tiempo límite) pueden eliminar
     const canDelete = authz.isAdmin(req.user) ||
-                     (valoracion.usuarioEvaluadorId === usuarioId && 
+                     (valoracion.raterId === userId && 
                       new Date() - new Date(valoracion.created_at) < 24 * 60 * 60 * 1000); // 24 horas
 
     if (!canDelete) {
@@ -95,7 +95,7 @@ const deleteValoracion = async (req, res) => {
     await valoracion.destroy();
     
     // Recalcular reputación del usuario evaluado
-    await Valoracion.updateUserReputation(valoracion.usuarioEvaluadoId);
+    await Rating.updateUserReputation(valoracion.ratedUserId);
 
     res.json({ message: 'Valoración eliminada exitosamente' });
   } catch (error) {
@@ -106,10 +106,10 @@ const deleteValoracion = async (req, res) => {
 // Obtener valoraciones de un usuario (recibidas)
 const getUserRatings = async (req, res) => {
   try {
-    const { usuarioId } = req.params;
-    const filters = { ...req.query, tipo: 'recibidas' };
+    const { userId } = req.params;
+    const filters = { ...req.query, type: 'recibidas' };
     
-    const result = await Valoracion.getUserRatings(usuarioId, filters);
+    const result = await Rating.getUserRatings(userId, filters);
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -119,10 +119,10 @@ const getUserRatings = async (req, res) => {
 // Obtener valoraciones dadas por un usuario
 const getUserGivenRatings = async (req, res) => {
   try {
-    const { usuarioId } = req.params;
-    const filters = { ...req.query, tipo: 'dadas' };
+    const { userId } = req.params;
+    const filters = { ...req.query, type: 'dadas' };
     
-    const result = await Valoracion.getUserRatings(usuarioId, filters);
+    const result = await Rating.getUserRatings(userId, filters);
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -132,10 +132,10 @@ const getUserGivenRatings = async (req, res) => {
 // Obtener mis valoraciones recibidas
 const getMyRatings = async (req, res) => {
   try {
-    const usuarioId = req.user.id;
-    const filters = { ...req.query, tipo: 'recibidas' };
+    const userId = req.user.id;
+    const filters = { ...req.query, type: 'recibidas' };
     
-    const result = await Valoracion.getUserRatings(usuarioId, filters);
+    const result = await Rating.getUserRatings(userId, filters);
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -145,10 +145,10 @@ const getMyRatings = async (req, res) => {
 // Obtener mis valoraciones dadas
 const getMyGivenRatings = async (req, res) => {
   try {
-    const usuarioId = req.user.id;
-    const filters = { ...req.query, tipo: 'dadas' };
+    const userId = req.user.id;
+    const filters = { ...req.query, type: 'dadas' };
     
-    const result = await Valoracion.getUserRatings(usuarioId, filters);
+    const result = await Rating.getUserRatings(userId, filters);
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -158,8 +158,8 @@ const getMyGivenRatings = async (req, res) => {
 // Obtener estadísticas de reputación de un usuario
 const getUserReputationStats = async (req, res) => {
   try {
-    const { usuarioId } = req.params;
-    const stats = await Valoracion.getUserReputationStats(usuarioId);
+    const { userId } = req.params;
+    const stats = await Rating.getUserReputationStats(userId);
     res.json(stats);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -169,8 +169,8 @@ const getUserReputationStats = async (req, res) => {
 // Obtener valoraciones pendientes (transacciones completadas sin valorar)
 const getPendingRatings = async (req, res) => {
   try {
-    const usuarioId = req.user.id;
-    const pending = await Valoracion.getPendingRatings(usuarioId);
+    const userId = req.user.id;
+    const pending = await Rating.getPendingRatings(userId);
     res.json(pending);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -180,10 +180,10 @@ const getPendingRatings = async (req, res) => {
 // Verificar si puedo valorar una transacción
 const checkCanRate = async (req, res) => {
   try {
-    const { transaccionP2PId, usuarioEvaluadoId } = req.params;
-    const usuarioEvaluadorId = req.user.id;
+    const { p2pTransactionId, ratedUserId } = req.params;
+    const raterId = req.user.id;
 
-    const result = await Valoracion.canUserRate(transaccionP2PId, usuarioEvaluadorId, usuarioEvaluadoId);
+    const result = await Rating.canUserRate(p2pTransactionId, raterId, ratedUserId);
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -193,8 +193,8 @@ const checkCanRate = async (req, res) => {
 // Obtener valoraciones de una transacción específica
 const getTransactionRatings = async (req, res) => {
   try {
-    const { transaccionP2PId } = req.params;
-    const result = await Valoracion.getTransactionRatings(transaccionP2PId);
+    const { p2pTransactionId } = req.params;
+    const result = await Rating.getTransactionRatings(p2pTransactionId);
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -205,7 +205,7 @@ const getTransactionRatings = async (req, res) => {
 const getGeneralStats = async (req, res) => {
   try {
     const filters = req.query;
-    const stats = await Valoracion.getGeneralStats(filters);
+    const stats = await Rating.getGeneralStats(filters);
     res.json(stats);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -215,7 +215,7 @@ const getGeneralStats = async (req, res) => {
 // Valorar múltiples transacciones (batch)
 const createMultipleRatings = async (req, res) => {
   try {
-    const usuarioEvaluadorId = req.user.id;
+    const raterId = req.user.id;
     const { valoraciones } = req.body; // Array de valoraciones
 
     if (!Array.isArray(valoraciones) || valoraciones.length === 0) {
@@ -227,12 +227,12 @@ const createMultipleRatings = async (req, res) => {
 
     for (const valoracionData of valoraciones) {
       try {
-        const data = { ...valoracionData, usuarioEvaluadorId };
-        const nuevaValoracion = await Valoracion.createValoracion(data);
+        const data = { ...valoracionData, raterId };
+        const nuevaValoracion = await Rating.createValoracion(data);
         results.push(nuevaValoracion);
       } catch (error) {
         errors.push({
-          transaccionP2PId: valoracionData.transaccionP2PId,
+          p2pTransactionId: valoracionData.p2pTransactionId,
           error: error.message
         });
       }
@@ -260,7 +260,7 @@ const getTopRatedUsers = async (req, res) => {
   try {
     const { limit = 10, minRatings = 5 } = req.query;
 
-    const { User } = require('../models/index.js');
+    const { User } = require('../../models/index.js');
 
     const topUsers = await User.findAll({
       attributes: [
@@ -271,7 +271,7 @@ const getTopRatedUsers = async (req, res) => {
       ],
       include: [
         {
-          association: 'valoracionesRecibidas',
+          association: 'ratingsReceived',
           attributes: []
         }
       ],
@@ -303,20 +303,20 @@ const getUsersRatingSummary = async (req, res) => {
   try {
     const { usuario1Id, usuario2Id } = req.params;
 
-    const valoraciones = await Valoracion.findAll({
+    const valoraciones = await Rating.findAll({
       where: {
         [Op.or]: [
-          { usuarioEvaluadorId: usuario1Id, usuarioEvaluadoId: usuario2Id },
-          { usuarioEvaluadorId: usuario2Id, usuarioEvaluadoId: usuario1Id }
+          { raterId: usuario1Id, ratedUserId: usuario2Id },
+          { raterId: usuario2Id, ratedUserId: usuario1Id }
         ]
       },
       include: [
         {
-          association: 'transaccion',
-          attributes: ['id', 'montoFiat', 'created_at']
+          association: 'transaction',
+          attributes: ['id', 'fiatAmount', 'created_at']
         },
         {
-          association: 'evaluador',
+          association: 'rater',
           attributes: ['id', 'username']
         }
       ],

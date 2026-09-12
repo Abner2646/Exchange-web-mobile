@@ -1,38 +1,38 @@
 const { DataTypes, Model } = require('sequelize');
 
-class OfertaMetodoPago extends Model {}
+class OfferPaymentMethod extends Model {}
 
 function initOfertaMetodoPago(sequelize) {
-  OfertaMetodoPago.init({
+  OfferPaymentMethod.init({
     id: {
       type: DataTypes.UUID,
       primaryKey: true,
       defaultValue: DataTypes.UUIDV4
     },
-    ofertaId: {
+    offerId: {
       type: DataTypes.UUID,
       allowNull: false,
-      field: 'oferta_id'
+      field: 'offer_id'
     },
-    metodoPagoId: {
+    paymentMethodId: {
       type: DataTypes.UUID,
       allowNull: false,
-      field: 'metodo_pago_id'
+      field: 'payment_method_id'
     }
   }, {
     sequelize,
-    modelName: 'OfertaMetodoPago',
-    tableName: 'oferta_metodos_pago',
+    modelName: 'OfferPaymentMethod',
+    tableName: 'offer_payment_methods',
     timestamps: false,
     indexes: [
       {
         unique: true,
-        fields: ['oferta_id', 'metodo_pago_id']
+        fields: ['offer_id', 'payment_method_id']
       }
     ]
   });
 
-  return OfertaMetodoPago;
+  return OfferPaymentMethod;
 }
 
 module.exports = initOfertaMetodoPago;

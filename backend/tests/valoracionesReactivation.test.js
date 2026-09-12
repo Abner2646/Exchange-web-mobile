@@ -41,11 +41,11 @@ if (!dbAvailable) {
 
 const describeIfDb = dbAvailable ? describe : describe.skip;
 
-describeIfDb('Valoracion.getById — la query real contra Postgres (no un mock)', () => {
-  let sequelize, Valoracion;
+describeIfDb('Rating.getById — la query real contra Postgres (no un mock)', () => {
+  let sequelize, Rating;
 
   beforeAll(async () => {
-    ({ sequelize, Valoracion } = require('../models'));
+    ({ sequelize, Rating } = require('../models'));
     sequelize.options.logging = false;
     await sequelize.sync({ force: true });
   });
@@ -61,7 +61,7 @@ describeIfDb('Valoracion.getById — la query real contra Postgres (no un mock)'
     // que no existen) — eso es lo que falla a nivel SQL, no la ausencia
     // de filas. findByPk con un id que no matchea devuelve null sin
     // tirar excepción, PERO solo si la query en sí es válida.
-    const result = await Valoracion.getById('99999999-9999-4999-8999-999999999999');
+    const result = await Rating.getById('99999999-9999-4999-8999-999999999999');
     expect(result).toBeNull();
   });
 });

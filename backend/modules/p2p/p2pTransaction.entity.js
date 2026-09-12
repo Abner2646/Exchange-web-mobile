@@ -1,82 +1,82 @@
 const { DataTypes, Model } = require('sequelize');
 
-class TransaccionP2P extends Model {}
+class P2PTransaction extends Model {}
 
 function initTransaccionP2P(sequelize) {
-  TransaccionP2P.init({
+  P2PTransaction.init({
     id: {
       type: DataTypes.UUID,
       primaryKey: true,
       defaultValue: DataTypes.UUIDV4
     },
-    ofertaId: {
+    offerId: {
       type: DataTypes.UUID,
       allowNull: false,
-      field: 'oferta_id'
+      field: 'offer_id'
     },
-    compradorId: {
+    buyerId: {
       type: DataTypes.UUID,
       allowNull: false,
-      field: 'comprador_id'
+      field: 'buyer_id'
     },
-    vendedorId: {
+    sellerId: {
       type: DataTypes.UUID,
       allowNull: false,
-      field: 'vendedor_id'
+      field: 'seller_id'
     },
-    criptomonedaId: {
+    cryptoId: {
       type: DataTypes.UUID,
       allowNull: false,
-      field: 'criptomoneda_id'
+      field: 'crypto_id'
     },
-    cantidad: {
+    amount: {
       type: DataTypes.DECIMAL(18, 8),
       allowNull: false
     },
-    precioUnitario: {
+    unitPrice: {
       type: DataTypes.DECIMAL(10, 4),
       allowNull: false,
-      field: 'precio_unitario'
+      field: 'unit_price'
     },
-    montoFiat: {
+    fiatAmount: {
       type: DataTypes.DECIMAL(12, 2),
       allowNull: false,
-      field: 'monto_fiat'
+      field: 'fiat_amount'
     },
-    monedaFiat: {
+    fiatCurrency: {
       type: DataTypes.STRING(3),
       allowNull: false,
-      field: 'moneda_fiat'
+      field: 'fiat_currency'
     },
-    metodoPagoId: {
+    paymentMethodId: {
       type: DataTypes.UUID,
       allowNull: false,
-      field: 'metodo_pago_id'
+      field: 'payment_method_id'
     },
-    estado: {
-      type: DataTypes.ENUM('iniciada', 'cryptos_bloqueadas', 'pago_confirmado', 'completada', 'cancelada'),
-      defaultValue: 'iniciada'
+    status: {
+      type: DataTypes.ENUM('initiated', 'crypto_locked', 'payment_confirmed', 'completed', 'cancelled'),
+      defaultValue: 'initiated'
     },
-    fechaPagoConfirmado: {
+    paymentConfirmedAt: {
       type: DataTypes.DATE,
       allowNull: true,
-      field: 'fecha_pago_confirmado'
+      field: 'payment_confirmed_at'
     },
-    fechaCompletada: {
+    completedAt: {
       type: DataTypes.DATE,
       allowNull: true,
-      field: 'fecha_completada'
+      field: 'completed_at'
     }
   }, {
     sequelize,
-    modelName: 'TransaccionP2P',
-    tableName: 'transacciones_p2p',
+    modelName: 'P2PTransaction',
+    tableName: 'p2p_transactions',
     timestamps: true,
     createdAt: 'created_at',
     updatedAt: 'updated_at'
   });
 
-  return TransaccionP2P;
+  return P2PTransaction;
 }
 
 module.exports = initTransaccionP2P;

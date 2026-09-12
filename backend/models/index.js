@@ -11,16 +11,16 @@ const createBlockchainStateModel = require('../modules/wallets/blockchainState.m
 const cryptoModel = require('../modules/crypto/crypto.model.js');
 const direccionDepositoModel = require('../modules/wallets/depositAddress.model');
 const intercambioExchangeModel = require('../modules/swap/swap.model');
-const metodoPagoModel = require('./metodoPago.model');
+const metodoPagoModel = require('../modules/p2p/paymentMethod.model');
 const notificacionesModel = require('./notificaciones.model');
-const ofertaMetodoPagoModel = require('./ofertaMetodoPago.model');
-const ofertaP2PModel = require('./ofertaP2P.model');
+const ofertaMetodoPagoModel = require('../modules/p2p/offerPaymentMethod.model');
+const ofertaP2PModel = require('../modules/p2p/p2pOffer.model');
 const parExchangeModel = require('../modules/swap/swapPair.model');
 const transaccionBlockchainModel = require('../modules/wallets/blockchainTransaction.model');
-const transaccionP2PModel = require('./transaccionesP2P.model');
+const transaccionP2PModel = require('../modules/p2p/p2pTransaction.model');
 const transferModel = require('../modules/balances/transfer.model')
 const userModel = require('../modules/users/user.model');
-const valoracionModel = require('./valoracion.model');
+const valoracionModel = require('../modules/p2p/rating.model');
 const walletMaestraModel = require('../modules/wallets/masterWallet.model');
 
 // TRADING MODELS
@@ -63,16 +63,16 @@ const BlockchainState = createBlockchainStateModel(sequelize);
 const Crypto = cryptoModel(sequelize);
 const DepositAddress = direccionDepositoModel(sequelize);
 const Swap = intercambioExchangeModel(sequelize);
-const MetodoPago = metodoPagoModel(sequelize);
+const PaymentMethod = metodoPagoModel(sequelize);
 const Notificaciones = notificacionesModel(sequelize);
-const OfertaMetodoPago = ofertaMetodoPagoModel(sequelize);
-const OfertaP2P = ofertaP2PModel(sequelize);  
+const OfferPaymentMethod = ofertaMetodoPagoModel(sequelize);
+const P2POffer = ofertaP2PModel(sequelize);  
 const SwapPair = parExchangeModel(sequelize);
 const BlockchainTransaction = transaccionBlockchainModel(sequelize);
-const TransaccionP2P = transaccionP2PModel(sequelize);
+const P2PTransaction = transaccionP2PModel(sequelize);
 const Transfer = transferModel(sequelize);
 const User = userModel(sequelize);
-const Valoracion = valoracionModel(sequelize);
+const Rating = valoracionModel(sequelize);
 const MasterWallet = walletMaestraModel(sequelize);
 
 // 🆕 INITIALIZE TRADING MODELS
@@ -111,16 +111,16 @@ User.hasMany(DepositAddress, { foreignKey: 'userId', as: 'depositAddresses' });
 DepositAddress.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
 // User puede crear muchas ofertas P2P
-User.hasMany(OfertaP2P, { foreignKey: 'usuarioId', as: 'ofertas' });
-OfertaP2P.belongsTo(User, { foreignKey: 'usuarioId', as: 'usuario' });
+User.hasMany(P2POffer, { foreignKey: 'userId', as: 'offers' });
+P2POffer.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
 // User puede ser comprador en transacciones P2P
-User.hasMany(TransaccionP2P, { foreignKey: 'compradorId', as: 'compras' });
-TransaccionP2P.belongsTo(User, { foreignKey: 'compradorId', as: 'comprador' });
+User.hasMany(P2PTransaction, { foreignKey: 'buyerId', as: 'purchases' });
+P2PTransaction.belongsTo(User, { foreignKey: 'buyerId', as: 'buyer' });
 
 // User puede ser vendedor en transacciones P2P
-User.hasMany(TransaccionP2P, { foreignKey: 'vendedorId', as: 'ventas' });
-TransaccionP2P.belongsTo(User, { foreignKey: 'vendedorId', as: 'vendedor' });
+User.hasMany(P2PTransaction, { foreignKey: 'sellerId', as: 'sales' });
+P2PTransaction.belongsTo(User, { foreignKey: 'sellerId', as: 'seller' });
 
 
 // User puede hacer muchos intercambios con el exchange
@@ -128,12 +128,12 @@ User.hasMany(Swap, { foreignKey: 'userId', as: 'swaps' });
 Swap.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
 // User puede evaluar a otros usuarios
-User.hasMany(Valoracion, { foreignKey: 'usuarioEvaluadorId', as: 'valoracionesDadas' });
-Valoracion.belongsTo(User, { foreignKey: 'usuarioEvaluadorId', as: 'evaluador' });
+User.hasMany(Rating, { foreignKey: 'raterId', as: 'ratingsGiven' });
+Rating.belongsTo(User, { foreignKey: 'raterId', as: 'rater' });
 
 // User puede ser evaluado por otros usuarios
-User.hasMany(Valoracion, { foreignKey: 'usuarioEvaluadoId', as: 'valoracionesRecibidas' });
-Valoracion.belongsTo(User, { foreignKey: 'usuarioEvaluadoId', as: 'evaluado' });
+User.hasMany(Rating, { foreignKey: 'ratedUserId', as: 'ratingsReceived' });
+Rating.belongsTo(User, { foreignKey: 'ratedUserId', as: 'ratedUser' });
 
 // User puede hacer transacciones blockchain
 // Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #9): mismo bug que arriba —
@@ -172,12 +172,12 @@ DepositAddress.belongsTo(Crypto, { foreignKey: 'cryptoId', as: 'crypto' });
 // (Paso C: Crypto↔UserBalance se eliminó junto con la tabla balances_users.)
 
 // Crypto puede estar en muchas ofertas P2P
-Crypto.hasMany(OfertaP2P, { foreignKey: 'criptomonedaId', as: 'ofertas' });
-OfertaP2P.belongsTo(Crypto, { foreignKey: 'criptomonedaId', as: 'crypto' });
+Crypto.hasMany(P2POffer, { foreignKey: 'cryptoId', as: 'offers' });
+P2POffer.belongsTo(Crypto, { foreignKey: 'cryptoId', as: 'crypto' });
 
 // Crypto puede estar en muchas transacciones P2P
-Crypto.hasMany(TransaccionP2P, { foreignKey: 'criptomonedaId', as: 'transaccionesP2P' });
-TransaccionP2P.belongsTo(Crypto, { foreignKey: 'criptomonedaId', as: 'crypto' });
+Crypto.hasMany(P2PTransaction, { foreignKey: 'cryptoId', as: 'p2pTransactions' });
+P2PTransaction.belongsTo(Crypto, { foreignKey: 'cryptoId', as: 'crypto' });
 
 // Crypto puede ser base en pares de exchange
 Crypto.hasMany(SwapPair, { foreignKey: 'baseCryptoId', as: 'pairsAsBase' });
@@ -244,46 +244,46 @@ DepositAddress.belongsTo(MasterWallet, { foreignKey: 'masterWalletId', as: 'mast
 // ================================
 
 // Oferta P2P puede tener muchas transacciones P2P
-OfertaP2P.hasMany(TransaccionP2P, { foreignKey: 'ofertaId', as: 'transacciones' });
-TransaccionP2P.belongsTo(OfertaP2P, { foreignKey: 'ofertaId', as: 'oferta' });
+P2POffer.hasMany(P2PTransaction, { foreignKey: 'offerId', as: 'transactions' });
+P2PTransaction.belongsTo(P2POffer, { foreignKey: 'offerId', as: 'offer' });
 
 
 // Oferta P2P puede tener muchos métodos de pago (relación many-to-many)
-OfertaP2P.belongsToMany(MetodoPago, { 
-  through: OfertaMetodoPago, 
-  foreignKey: 'ofertaId', 
-  otherKey: 'metodoPagoId',
-  as: 'metodosPago' 
+P2POffer.belongsToMany(PaymentMethod, { 
+  through: OfferPaymentMethod, 
+  foreignKey: 'offerId', 
+  otherKey: 'paymentMethodId',
+  as: 'paymentMethods' 
 });
-MetodoPago.belongsToMany(OfertaP2P, { 
-  through: OfertaMetodoPago, 
-  foreignKey: 'metodoPagoId', 
-  otherKey: 'ofertaId',
-  as: 'ofertas' 
+PaymentMethod.belongsToMany(P2POffer, { 
+  through: OfferPaymentMethod, 
+  foreignKey: 'paymentMethodId', 
+  otherKey: 'offerId',
+  as: 'offers' 
 });
 
 // Relaciones directas para la tabla intermedia
-OfertaP2P.hasMany(OfertaMetodoPago, { foreignKey: 'ofertaId', as: 'metodosAsignados' });
-OfertaMetodoPago.belongsTo(OfertaP2P, { foreignKey: 'ofertaId', as: 'oferta' });
+P2POffer.hasMany(OfferPaymentMethod, { foreignKey: 'offerId', as: 'assignedPaymentMethods' });
+OfferPaymentMethod.belongsTo(P2POffer, { foreignKey: 'offerId', as: 'offer' });
 
-MetodoPago.hasMany(OfertaMetodoPago, { foreignKey: 'metodoPagoId', as: 'ofertasAsignadas' });
-OfertaMetodoPago.belongsTo(MetodoPago, { foreignKey: 'metodoPagoId', as: 'metodoPago' });
+PaymentMethod.hasMany(OfferPaymentMethod, { foreignKey: 'paymentMethodId', as: 'assignedOffers' });
+OfferPaymentMethod.belongsTo(PaymentMethod, { foreignKey: 'paymentMethodId', as: 'paymentMethod' });
 
 // Transacción P2P puede usar un método de pago específico
-MetodoPago.hasMany(TransaccionP2P, { foreignKey: 'metodoPagoId', as: 'transacciones' });
-TransaccionP2P.belongsTo(MetodoPago, { foreignKey: 'metodoPagoId', as: 'metodoPago' });
+PaymentMethod.hasMany(P2PTransaction, { foreignKey: 'paymentMethodId', as: 'transactions' });
+P2PTransaction.belongsTo(PaymentMethod, { foreignKey: 'paymentMethodId', as: 'paymentMethod' });
 
 // Fix 2026-08-19 (AUDITORIA_BACKEND.md Altos #11): estas dos líneas
 // habían quedado atrapadas dentro del mismo bloque comentado que las
-// asociaciones de Reclamo (que sí es código muerto) — pero Valoracion no
+// asociaciones de Reclamo (que sí es código muerto) — pero Rating no
 // lo es, está active. Sin esto, cualquier función de valoracion.model.js
-// que usa `association: 'transaccion'` (getById, getAll, y varias más)
-// tiraba "Association with alias 'transaccion' does not exist on
-// Valoracion". No estaba en la auditoría original; apareció al escribir
+// que usa `association: 'transaction'` (getById, getAll, y varias más)
+// tiraba "Association with alias 'transaction' does not exist on
+// Rating". No estaba en la auditoría original; apareció al escribir
 // el test de integración de este mismo fix.
 // Transacción P2P puede tener muchas valoraciones
-TransaccionP2P.hasMany(Valoracion, { foreignKey: 'transaccionP2PId', as: 'valoraciones' });
-Valoracion.belongsTo(TransaccionP2P, { foreignKey: 'transaccionP2PId', as: 'transaccion' });
+P2PTransaction.hasMany(Rating, { foreignKey: 'p2pTransactionId', as: 'ratings' });
+Rating.belongsTo(P2PTransaction, { foreignKey: 'p2pTransactionId', as: 'transaction' });
 
 
 // ================================
@@ -323,16 +323,16 @@ module.exports = {
   Crypto,
   DepositAddress,
   Swap,
-  MetodoPago,
+  PaymentMethod,
   Notificaciones,
-  OfertaMetodoPago,
-  OfertaP2P,
+  OfferPaymentMethod,
+  P2POffer,
   SwapPair,
   BlockchainTransaction,
-  TransaccionP2P,
+  P2PTransaction,
   Transfer,
   User,
-  Valoracion,
+  Rating,
   MasterWallet,
   // 🆕 TRADING MODELS
   TradingPair,

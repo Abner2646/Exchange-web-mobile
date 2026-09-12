@@ -1,10 +1,10 @@
-const { OfertaMetodoPago } = require('../models/index.js');
+const { OfferPaymentMethod } = require('../../models/index.js');
 
 // Listar relaciones oferta-método de pago
 const getOfertaMetodosPago = async (req, res) => {
   try {
     const filters = { ...req.query };
-    const result = await OfertaMetodoPago.getAll(filters);
+    const result = await OfferPaymentMethod.getAll(filters);
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -15,7 +15,7 @@ const getOfertaMetodosPago = async (req, res) => {
 const getOfertaMetodoPagoById = async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await OfertaMetodoPago.getById(id);
+    const result = await OfferPaymentMethod.getById(id);
     if (!result) return res.status(404).json({ error: 'Relación no encontrada' });
     res.json(result);
   } catch (error) {
@@ -26,17 +26,17 @@ const getOfertaMetodoPagoById = async (req, res) => {
 // Crear nueva relación oferta-método de pago
 const createOfertaMetodoPago = async (req, res) => {
   try {
-    const { ofertaId, metodoPagoId } = req.body;
+    const { offerId, paymentMethodId } = req.body;
     
-    if (!ofertaId || !metodoPagoId) {
+    if (!offerId || !paymentMethodId) {
       return res.status(400).json({ 
-        error: 'Los campos ofertaId y metodoPagoId son requeridos' 
+        error: 'Los campos offerId y paymentMethodId son requeridos' 
       });
     }
 
-    const nuevaRelacion = await OfertaMetodoPago.createRelation({
-      ofertaId,
-      metodoPagoId
+    const nuevaRelacion = await OfferPaymentMethod.createRelation({
+      offerId,
+      paymentMethodId
     });
     
     res.status(201).json({ 
@@ -52,7 +52,7 @@ const createOfertaMetodoPago = async (req, res) => {
 const deleteOfertaMetodoPago = async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await OfertaMetodoPago.deleteRelation(id);
+    const result = await OfferPaymentMethod.deleteRelation(id);
     res.json(result);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -62,8 +62,8 @@ const deleteOfertaMetodoPago = async (req, res) => {
 // Eliminar relación específica por oferta y método
 const deleteOfertaMetodoEspecifico = async (req, res) => {
   try {
-    const { ofertaId, metodoPagoId } = req.params;
-    const result = await OfertaMetodoPago.deleteByOfertaAndMetodo(ofertaId, metodoPagoId);
+    const { offerId, paymentMethodId } = req.params;
+    const result = await OfferPaymentMethod.deleteByOfertaAndMetodo(offerId, paymentMethodId);
     res.json(result);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -73,10 +73,10 @@ const deleteOfertaMetodoEspecifico = async (req, res) => {
 // Obtener métodos de pago de una oferta específica
 const getMetodosPagoByOferta = async (req, res) => {
   try {
-    const { ofertaId } = req.params;
+    const { offerId } = req.params;
     const { includeInactive = false } = req.query;
     
-    const metodosPago = await OfertaMetodoPago.getByOferta(ofertaId);
+    const metodosPago = await OfferPaymentMethod.getByOferta(offerId);
     res.json(metodosPago);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -86,8 +86,8 @@ const getMetodosPagoByOferta = async (req, res) => {
 // Obtener ofertas que usan un método de pago específico
 const getOfertasByMetodoPago = async (req, res) => {
   try {
-    const { metodoPagoId } = req.params;
-    const ofertas = await OfertaMetodoPago.getByMetodoPago(metodoPagoId);
+    const { paymentMethodId } = req.params;
+    const ofertas = await OfferPaymentMethod.getByMetodoPago(paymentMethodId);
     res.json(ofertas);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -97,16 +97,16 @@ const getOfertasByMetodoPago = async (req, res) => {
 // Obtener relaciones completas de una oferta
 const getOfertaMetodosPagoCompleto = async (req, res) => {
   try {
-    const { ofertaId } = req.params;
+    const { offerId } = req.params;
     const { includeInactive = false } = req.query;
     
-    const relations = await OfertaMetodoPago.getOfertaMetodosPago(
-      ofertaId, 
+    const relations = await OfferPaymentMethod.getOfertaMetodosPago(
+      offerId, 
       includeInactive === 'true'
     );
     
     res.json({
-      ofertaId: ofertaId,
+      offerId: offerId,
       metodosPago: relations,
       count: relations.length
     });
@@ -118,13 +118,13 @@ const getOfertaMetodosPagoCompleto = async (req, res) => {
 // Verificar si existe relación específica
 const checkRelationExists = async (req, res) => {
   try {
-    const { ofertaId, metodoPagoId } = req.params;
-    const exists = await OfertaMetodoPago.exists(ofertaId, metodoPagoId);
+    const { offerId, paymentMethodId } = req.params;
+    const exists = await OfferPaymentMethod.exists(offerId, paymentMethodId);
     
     res.json({
       exists: exists,
-      ofertaId: ofertaId,
-      metodoPagoId: metodoPagoId,
+      offerId: offerId,
+      paymentMethodId: paymentMethodId,
       message: exists ? 'La relación existe' : 'La relación no existe'
     });
   } catch (error) {
@@ -135,7 +135,7 @@ const checkRelationExists = async (req, res) => {
 // Agregar múltiples métodos de pago a una oferta
 const addMultipleMetodos = async (req, res) => {
   try {
-    const { ofertaId } = req.params;
+    const { offerId } = req.params;
     const { metodosPagoIds } = req.body;
     
     if (!Array.isArray(metodosPagoIds) || metodosPagoIds.length === 0) {
@@ -144,7 +144,7 @@ const addMultipleMetodos = async (req, res) => {
       });
     }
 
-    const result = await OfertaMetodoPago.addMetodosToOferta(ofertaId, metodosPagoIds);
+    const result = await OfferPaymentMethod.addMetodosToOferta(offerId, metodosPagoIds);
     res.json(result);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -154,7 +154,7 @@ const addMultipleMetodos = async (req, res) => {
 // Remover múltiples métodos de pago de una oferta
 const removeMultipleMetodos = async (req, res) => {
   try {
-    const { ofertaId } = req.params;
+    const { offerId } = req.params;
     const { metodosPagoIds } = req.body;
     
     if (!Array.isArray(metodosPagoIds) || metodosPagoIds.length === 0) {
@@ -163,7 +163,7 @@ const removeMultipleMetodos = async (req, res) => {
       });
     }
 
-    const result = await OfertaMetodoPago.removeMetodosFromOferta(ofertaId, metodosPagoIds);
+    const result = await OfferPaymentMethod.removeMetodosFromOferta(offerId, metodosPagoIds);
     res.json(result);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -173,7 +173,7 @@ const removeMultipleMetodos = async (req, res) => {
 // Reemplazar todos los métodos de pago de una oferta
 const replaceMetodosOferta = async (req, res) => {
   try {
-    const { ofertaId } = req.params;
+    const { offerId } = req.params;
     const { metodosPagoIds } = req.body;
     
     if (!Array.isArray(metodosPagoIds)) {
@@ -182,7 +182,7 @@ const replaceMetodosOferta = async (req, res) => {
       });
     }
 
-    const result = await OfertaMetodoPago.replaceMetodosOferta(ofertaId, metodosPagoIds);
+    const result = await OfferPaymentMethod.replaceMetodosOferta(offerId, metodosPagoIds);
     res.json(result);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -192,7 +192,7 @@ const replaceMetodosOferta = async (req, res) => {
 // Obtener estadísticas de relaciones
 const getOfertaMetodoPagoStats = async (req, res) => {
   try {
-    const stats = await OfertaMetodoPago.getStats();
+    const stats = await OfferPaymentMethod.getStats();
     res.json(stats);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -202,8 +202,8 @@ const getOfertaMetodoPagoStats = async (req, res) => {
 // Validar compatibilidad entre oferta y método de pago
 const validateCompatibility = async (req, res) => {
   try {
-    const { ofertaId, metodoPagoId } = req.params;
-    const result = await OfertaMetodoPago.validateCompatibility(ofertaId, metodoPagoId);
+    const { offerId, paymentMethodId } = req.params;
+    const result = await OfferPaymentMethod.validateCompatibility(offerId, paymentMethodId);
     
     if (result.compatible) {
       res.json(result);
@@ -218,8 +218,8 @@ const validateCompatibility = async (req, res) => {
 // Obtener métodos de pago disponibles para una oferta
 const getAvailableMetodos = async (req, res) => {
   try {
-    const { ofertaId } = req.params;
-    const result = await OfertaMetodoPago.getAvailableMetodos(ofertaId);
+    const { offerId } = req.params;
+    const result = await OfferPaymentMethod.getAvailableMetodos(offerId);
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -229,7 +229,7 @@ const getAvailableMetodos = async (req, res) => {
 // Dashboard de relaciones oferta-método de pago
 const getOfertaMetodosDashboard = async (req, res) => {
   try {
-    const stats = await OfertaMetodoPago.getStats();
+    const stats = await OfferPaymentMethod.getStats();
     
     res.json({
       estadisticas: {
@@ -257,13 +257,13 @@ const getOfertaMetodosDashboard = async (req, res) => {
 // Obtener resumen rápido de una oferta
 const getOfertaSummary = async (req, res) => {
   try {
-    const { ofertaId } = req.params;
+    const { offerId } = req.params;
     
-    const metodosPago = await OfertaMetodoPago.getByOferta(ofertaId);
-    const metodosDisponibles = await OfertaMetodoPago.getAvailableMetodos(ofertaId);
+    const metodosPago = await OfferPaymentMethod.getByOferta(offerId);
+    const metodosDisponibles = await OfferPaymentMethod.getAvailableMetodos(offerId);
     
     res.json({
-      ofertaId: ofertaId,
+      offerId: offerId,
       metodosAsignados: {
         count: metodosPago.length,
         metodos: metodosPago.map(m => ({
@@ -275,7 +275,7 @@ const getOfertaSummary = async (req, res) => {
         count: metodosDisponibles.totalDisponibles,
         hayDisponibles: metodosDisponibles.totalDisponibles > 0
       },
-      estado: {
+      status: {
         tienemetodos: metodosPago.length > 0,
         puedeAgregarMas: metodosDisponibles.totalDisponibles > 0
       }
@@ -303,7 +303,7 @@ const cloneMetodosToOferta = async (req, res) => {
     }
 
     // Obtener métodos de la oferta origen
-    const metodosPago = await OfertaMetodoPago.getByOferta(sourceOfertaId);
+    const metodosPago = await OfferPaymentMethod.getByOferta(sourceOfertaId);
     const metodosPagoIds = metodosPago.map(m => m.id);
 
     if (metodosPagoIds.length === 0) {
@@ -313,7 +313,7 @@ const cloneMetodosToOferta = async (req, res) => {
     }
 
     // Agregar métodos a la oferta destino
-    const result = await OfertaMetodoPago.addMetodosToOferta(targetOfertaId, metodosPagoIds);
+    const result = await OfferPaymentMethod.addMetodosToOferta(targetOfertaId, metodosPagoIds);
     
     res.json({
       message: `Métodos de pago clonados de oferta ${sourceOfertaId} a oferta ${targetOfertaId}`,
@@ -331,26 +331,26 @@ const cloneMetodosToOferta = async (req, res) => {
 const exportOfertaMetodosPago = async (req, res) => {
   try {
     const filters = { ...req.query };
-    const relaciones = await OfertaMetodoPago.getAll(filters);
+    const relaciones = await OfferPaymentMethod.getAll(filters);
     
     // Convertir a formato CSV
     const csvHeader = 'ID,Oferta ID,Oferta Titulo,Oferta Tipo,Metodo Pago ID,Metodo Pago Nombre,Metodo Activo\n';
     const csvData = relaciones.map(relacion => {
       return [
         relacion.id,
-        relacion.ofertaId,
-        relacion.oferta ? relacion.oferta.titulo : '',
-        relacion.oferta ? relacion.oferta.tipo : '',
-        relacion.metodoPagoId,
-        relacion.metodoPago ? relacion.metodoPago.name : '',
-        relacion.metodoPago ? (relacion.metodoPago.active ? 'SI' : 'NO') : ''
+        relacion.offerId,
+        relacion.offer ? relacion.offer.titulo : '',
+        relacion.offer ? relacion.offer.type : '',
+        relacion.paymentMethodId,
+        relacion.paymentMethod ? relacion.paymentMethod.name : '',
+        relacion.paymentMethod ? (relacion.paymentMethod.active ? 'SI' : 'NO') : ''
       ].join(',');
     }).join('\n');
     
     const csv = csvHeader + csvData;
     
     res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', 'attachment; filename="oferta_metodos_pago.csv"');
+    res.setHeader('Content-Disposition', 'attachment; filename="offer_payment_methods.csv"');
     res.send(csv);
     
   } catch (error) {
@@ -363,7 +363,7 @@ const getMetodosUsageMetrics = async (req, res) => {
   try {
     const { timeframe = '30 days' } = req.query;
     
-    const stats = await OfertaMetodoPago.getStats();
+    const stats = await OfferPaymentMethod.getStats();
     
     // Calcular porcentajes de uso
     const totalRelaciones = stats.totalRelaciones;
@@ -399,13 +399,13 @@ const getMetodosUsageMetrics = async (req, res) => {
 // Validar setup completo de oferta
 const validateOfertaSetup = async (req, res) => {
   try {
-    const { ofertaId } = req.params;
+    const { offerId } = req.params;
     
-    const metodosPago = await OfertaMetodoPago.getByOferta(ofertaId);
-    const metodosDisponibles = await OfertaMetodoPago.getAvailableMetodos(ofertaId);
+    const metodosPago = await OfferPaymentMethod.getByOferta(offerId);
+    const metodosDisponibles = await OfferPaymentMethod.getAvailableMetodos(offerId);
     
     const validationResult = {
-      ofertaId: ofertaId,
+      offerId: offerId,
       setup: {
         tienemetodos: metodosPago.length > 0,
         cantidadMetodos: metodosPago.length,

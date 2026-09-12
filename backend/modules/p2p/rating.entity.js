@@ -1,30 +1,30 @@
 const { DataTypes, Model } = require('sequelize');
 
-class Valoracion extends Model {}
+class Rating extends Model {}
 
 function initValoracion(sequelize) {
-  Valoracion.init({
+  Rating.init({
     id: {
       type: DataTypes.UUID,
       primaryKey: true,
       defaultValue: DataTypes.UUIDV4
     },
-    transaccionP2PId: {
+    p2pTransactionId: {
       type: DataTypes.UUID,
       allowNull: false,
-      field: 'transaccion_p2p_id'
+      field: 'p2p_transaction_id'
     },
-    usuarioEvaluadorId: {
+    raterId: {
       type: DataTypes.UUID,
       allowNull: false,
-      field: 'usuario_evaluador_id'
+      field: 'rater_id'
     },
-    usuarioEvaluadoId: {
+    ratedUserId: {
       type: DataTypes.UUID,
       allowNull: false,
-      field: 'usuario_evaluado_id'
+      field: 'rated_user_id'
     },
-    puntuacion: {
+    score: {
       type: DataTypes.INTEGER,
       allowNull: false,
       validate: {
@@ -32,14 +32,14 @@ function initValoracion(sequelize) {
         max: 5
       }
     },
-    comentario: {
+    comment: {
       type: DataTypes.TEXT,
       allowNull: true
     }
   }, {
     sequelize,
-    modelName: 'Valoracion',
-    tableName: 'valoraciones',
+    modelName: 'Rating',
+    tableName: 'ratings',
     timestamps: true,
     createdAt: 'created_at',
     updatedAt: false,
@@ -48,12 +48,12 @@ function initValoracion(sequelize) {
         // ✅ SOLUCIÓN: Darle un name explícito y corto al índice
         name: 'idx_valoracion_unique',
         unique: true,
-        fields: ['transaccion_p2p_id', 'usuario_evaluador_id', 'usuario_evaluado_id']
+        fields: ['p2p_transaction_id', 'rater_id', 'rated_user_id']
       }
     ]
   });
 
-  return Valoracion;
+  return Rating;
 }
 
 module.exports = initValoracion;

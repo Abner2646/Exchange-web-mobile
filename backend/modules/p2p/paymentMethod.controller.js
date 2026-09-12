@@ -1,10 +1,10 @@
-const { MetodoPago } = require('../models/index.js');
+const { PaymentMethod } = require('../../models/index.js');
 
 // Listar métodos de pago
 const getMetodosPago = async (req, res) => {
   try {
     const filters = { ...req.query };
-    const result = await MetodoPago.getAll(filters);
+    const result = await PaymentMethod.getAll(filters);
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -15,7 +15,7 @@ const getMetodosPago = async (req, res) => {
 const getMetodoPagoById = async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await MetodoPago.getById(id);
+    const result = await PaymentMethod.getById(id);
     if (!result) return res.status(404).json({ error: 'Método de pago no encontrado' });
     res.json(result);
   } catch (error) {
@@ -26,7 +26,7 @@ const getMetodoPagoById = async (req, res) => {
 // Crear nuevo método de pago
 const createMetodoPago = async (req, res) => {
   try {
-    const { name, descripcion, active = true } = req.body;
+    const { name, description, active = true } = req.body;
     
     if (!name) {
       return res.status(400).json({ 
@@ -34,9 +34,9 @@ const createMetodoPago = async (req, res) => {
       });
     }
 
-    const nuevoMetodo = await MetodoPago.createMetodo({
+    const nuevoMetodo = await PaymentMethod.createMetodo({
       name,
-      descripcion,
+      description,
       active
     });
     
@@ -53,11 +53,11 @@ const createMetodoPago = async (req, res) => {
 const updateMetodoPago = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, descripcion, active } = req.body;
+    const { name, description, active } = req.body;
 
-    const updatedMetodo = await MetodoPago.updateMetodo(id, {
+    const updatedMetodo = await PaymentMethod.updateMetodo(id, {
       ...(name && { name }),
-      ...(descripcion !== undefined && { descripcion }),
+      ...(description !== undefined && { description }),
       ...(active !== undefined && { active })
     });
 
@@ -74,7 +74,7 @@ const updateMetodoPago = async (req, res) => {
 const deleteMetodoPago = async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await MetodoPago.deleteMetodo(id);
+    const result = await PaymentMethod.deleteMetodo(id);
     res.json(result);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -90,7 +90,7 @@ const searchMetodosPago = async (req, res) => {
       return res.status(400).json({ error: 'Parámetro de búsqueda requerido' });
     }
 
-    const result = await MetodoPago.search(term, limit);
+    const result = await PaymentMethod.search(term, limit);
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -100,7 +100,7 @@ const searchMetodosPago = async (req, res) => {
 // Obtener estadísticas de métodos de pago
 const getMetodoPagoStats = async (req, res) => {
   try {
-    const stats = await MetodoPago.getStats();
+    const stats = await PaymentMethod.getStats();
     res.json(stats);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -110,7 +110,7 @@ const getMetodoPagoStats = async (req, res) => {
 // Obtener métodos de pago activos
 const getActiveMetodosPago = async (req, res) => {
   try {
-    const metodos = await MetodoPago.getActive();
+    const metodos = await PaymentMethod.getActive();
     res.json(metodos);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -120,7 +120,7 @@ const getActiveMetodosPago = async (req, res) => {
 // Obtener métodos de pago inactivos
 const getInactiveMetodosPago = async (req, res) => {
   try {
-    const metodos = await MetodoPago.getInactive();
+    const metodos = await PaymentMethod.getInactive();
     res.json(metodos);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -131,7 +131,7 @@ const getInactiveMetodosPago = async (req, res) => {
 const getMetodoPagoByName = async (req, res) => {
   try {
     const { name } = req.params;
-    const metodo = await MetodoPago.getByName(name);
+    const metodo = await PaymentMethod.getByName(name);
     
     if (!metodo) {
       return res.status(404).json({ 
@@ -145,7 +145,7 @@ const getMetodoPagoByName = async (req, res) => {
   }
 };
 
-// Actualizar estado de método de pago
+// Actualizar status de método de pago
 const updateMetodoPagoStatus = async (req, res) => {
   try {
     const { id } = req.params;
@@ -155,7 +155,7 @@ const updateMetodoPagoStatus = async (req, res) => {
       return res.status(400).json({ error: 'El campo active debe ser un valor booleano' });
     }
 
-    const updated = await MetodoPago.updateStatus(id, active);
+    const updated = await PaymentMethod.updateStatus(id, active);
     res.json({ 
       message: `Método de pago ${active ? 'activado' : 'desactivado'} exitosamente`, 
       data: updated 
@@ -165,18 +165,18 @@ const updateMetodoPagoStatus = async (req, res) => {
   }
 };
 
-// Alternar estado de método de pago
+// Alternar status de método de pago
 const toggleMetodoPagoStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const metodo = await MetodoPago.getById(id);
+    const metodo = await PaymentMethod.getById(id);
     
     if (!metodo) {
       return res.status(404).json({ error: 'Método de pago no encontrado' });
     }
 
     const newStatus = !metodo.active;
-    const updated = await MetodoPago.updateStatus(id, newStatus);
+    const updated = await PaymentMethod.updateStatus(id, newStatus);
     
     res.json({ 
       message: `Método de pago ${newStatus ? 'activado' : 'desactivado'} exitosamente`, 
@@ -191,7 +191,7 @@ const toggleMetodoPagoStatus = async (req, res) => {
 const validateMetodoPago = async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await MetodoPago.validateForUse(id);
+    const result = await PaymentMethod.validateForUse(id);
     
     if (result.valid) {
       res.json(result);
@@ -207,14 +207,14 @@ const validateMetodoPago = async (req, res) => {
 const getPopularMetodosPago = async (req, res) => {
   try {
     const { limit = 5 } = req.query;
-    const metodos = await MetodoPago.getPopular(parseInt(limit));
+    const metodos = await PaymentMethod.getPopular(parseInt(limit));
     res.json(metodos);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-// Actualización masiva de estado
+// Actualización masiva de status
 const bulkUpdateStatus = async (req, res) => {
   try {
     const { ids, active } = req.body;
@@ -231,7 +231,7 @@ const bulkUpdateStatus = async (req, res) => {
       });
     }
 
-    const result = await MetodoPago.bulkUpdateStatus(ids, active);
+    const result = await PaymentMethod.bulkUpdateStatus(ids, active);
     res.json(result);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -241,10 +241,10 @@ const bulkUpdateStatus = async (req, res) => {
 // Dashboard de métodos de pago
 const getMetodosPagoDashboard = async (req, res) => {
   try {
-    const stats = await MetodoPago.getStats();
-    const metodosActivos = await MetodoPago.getActive();
-    const metodosInactivos = await MetodoPago.getInactive();
-    const metodosPopulares = await MetodoPago.getPopular(3);
+    const stats = await PaymentMethod.getStats();
+    const metodosActivos = await PaymentMethod.getActive();
+    const metodosInactivos = await PaymentMethod.getInactive();
+    const metodosPopulares = await PaymentMethod.getPopular(3);
     
     res.json({
       estadisticas: stats,
@@ -272,16 +272,16 @@ const getMetodosPagoDashboard = async (req, res) => {
 // Exportar métodos de pago a CSV
 const exportMetodosPago = async (req, res) => {
   try {
-    const metodos = await MetodoPago.getForExport();
+    const metodos = await PaymentMethod.getForExport();
     
     // Convertir a formato CSV
     const csvHeader = 'ID,Nombre,Descripcion,Activo\n';
     const csvData = metodos.map(metodo => {
-      const descripcion = (metodo.descripcion || '').replace(/,/g, ' ').replace(/\n/g, ' ');
+      const description = (metodo.description || '').replace(/,/g, ' ').replace(/\n/g, ' ');
       return [
         metodo.id,
         metodo.name,
-        descripcion,
+        description,
         metodo.active
       ].join(',');
     }).join('\n');
@@ -289,7 +289,7 @@ const exportMetodosPago = async (req, res) => {
     const csv = csvHeader + csvData;
     
     res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', 'attachment; filename="metodos_pago.csv"');
+    res.setHeader('Content-Disposition', 'attachment; filename="payment_methods.csv"');
     res.send(csv);
     
   } catch (error) {
@@ -301,7 +301,7 @@ const exportMetodosPago = async (req, res) => {
 const checkMetodoActive = async (req, res) => {
   try {
     const { id } = req.params;
-    const isActive = await MetodoPago.isActive(id);
+    const isActive = await PaymentMethod.isActive(id);
     
     res.json({
       id: id,
@@ -316,11 +316,11 @@ const checkMetodoActive = async (req, res) => {
 // Obtener métodos de pago para formularios (solo name e id de activos)
 const getMetodosForForm = async (req, res) => {
   try {
-    const metodos = await MetodoPago.getActive();
+    const metodos = await PaymentMethod.getActive();
     const metodosForm = metodos.map(metodo => ({
       id: metodo.id,
       name: metodo.name,
-      descripcion: metodo.descripcion
+      description: metodo.description
     }));
     
     res.json(metodosForm);
@@ -332,7 +332,7 @@ const getMetodosForForm = async (req, res) => {
 // Obtener resumen rápido
 const getQuickSummary = async (req, res) => {
   try {
-    const stats = await MetodoPago.getStats();
+    const stats = await PaymentMethod.getStats();
     
     res.json({
       total: stats.total,

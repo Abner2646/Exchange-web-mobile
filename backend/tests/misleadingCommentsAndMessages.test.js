@@ -13,14 +13,14 @@ function source(relPath) {
 }
 
 test('#1: ofertaMetodoPago.routes.js ya no dice que no necesita rutas propias (tiene 21 activas)', () => {
-  const src = source('../routes/ofertaMetodoPago.routes.js');
+  const src = source('../modules/p2p/offerPaymentMethod.routes.js');
   expect(src).not.toMatch(/NO necesita rutas propias/);
   const routeCount = (src.match(/^router\.(get|post|put|patch|delete)/gm) || []).length;
   expect(routeCount).toBeGreaterThan(15);
 });
 
 test('#2: transaccionesP2P.routes.js ya no tiene el TODO de cosas que ya están implementadas', () => {
-  const src = source('../routes/transaccionesP2P.routes.js');
+  const src = source('../modules/p2p/p2pTransaction.routes.js');
   expect(src).not.toMatch(/Aquí debes implementar/);
 });
 

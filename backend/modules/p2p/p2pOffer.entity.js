@@ -1,52 +1,52 @@
 const { DataTypes, Model } = require('sequelize');
 
-class OfertaP2P extends Model {}
+class P2POffer extends Model {}
 
 function initOfertaP2P(sequelize) {
-  OfertaP2P.init({
+  P2POffer.init({
     id: {
       type: DataTypes.UUID,
       primaryKey: true,
       defaultValue: DataTypes.UUIDV4
     },
-    usuarioId: {
+    userId: {
       type: DataTypes.UUID,
       allowNull: false,
-      field: 'usuario_id'
+      field: 'user_id'
     },
-    tipo: {
-      type: DataTypes.ENUM('compra', 'venta'),
+    type: {
+      type: DataTypes.ENUM('buy', 'sell'),
       allowNull: false
     },
-    criptomonedaId: {
+    cryptoId: {
       type: DataTypes.UUID,
       allowNull: false,
-      field: 'criptomoneda_id'
+      field: 'crypto_id'
     },
-    cantidadMin: {
+    minAmount: {
       type: DataTypes.DECIMAL(18, 8),
       allowNull: false,
-      field: 'cantidad_min'
+      field: 'min_amount'
     },
-    cantidadMax: {
+    maxAmount: {
       type: DataTypes.DECIMAL(18, 8),
       allowNull: false,
-      field: 'cantidad_max'
+      field: 'max_amount'
     },
-    precioUnitario: {
+    unitPrice: {
       type: DataTypes.DECIMAL(10, 4),
       allowNull: false,
-      field: 'precio_unitario'
+      field: 'unit_price'
     },
-    monedaFiat: {
+    fiatCurrency: {
       type: DataTypes.STRING(3),
       allowNull: false,
-      field: 'moneda_fiat'
+      field: 'fiat_currency'
     },
-    condicionesAdicionales: {
+    additionalTerms: {
       type: DataTypes.TEXT,
       allowNull: true,
-      field: 'condiciones_adicionales'
+      field: 'additional_terms'
     },
     active: {
       type: DataTypes.BOOLEAN,
@@ -54,14 +54,14 @@ function initOfertaP2P(sequelize) {
     }
   }, {
     sequelize,
-    modelName: 'OfertaP2P',
-    tableName: 'ofertas_p2p',
+    modelName: 'P2POffer',
+    tableName: 'p2p_offers',
     timestamps: true,
     createdAt: 'created_at',
     updatedAt: 'updated_at'
   });
 
-  return OfertaP2P;
+  return P2POffer;
 }
 
 module.exports = initOfertaP2P;

@@ -21,6 +21,7 @@ module.exports = {
     // get per-file floors; the global floor sits against the current denominator.
     'modules/swap/**/*.js',
     'modules/trading/**/*.js',
+    'modules/p2p/**/*.js',
   ],
   // Coverage FLOOR: a merge gate that fails CI if coverage drops below these
   // numbers (enforced only when run with --coverage → `npm run test:coverage`).

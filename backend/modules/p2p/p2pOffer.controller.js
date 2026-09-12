@@ -1,38 +1,38 @@
-const { OfertaP2P } = require('../models/index.js');
-const AppError = require('../utils/AppError');
-const errorCodes = require('../utils/errorCodes');
-const authz = require('../utils/authz');
+const { P2POffer } = require('../../models/index.js');
+const AppError = require('../../utils/AppError');
+const errorCodes = require('../../utils/errorCodes');
+const authz = require('../../utils/authz');
 
 // No Sequelize transactions are opened in this controller — no rollback handling needed.
 
 // List offers with filters
 const getOfertas = async (req, res) => {
   const filters = { ...req.query };
-  const result = await OfertaP2P.getAll(filters);
+  const result = await P2POffer.getAll(filters);
   res.json(result);
 };
 
 // List active offers with filters
 const getOfertasActivas = async (req, res) => {
   const filters = { ...req.query, active: true };
-  const result = await OfertaP2P.getAll(filters);
+  const result = await P2POffer.getAll(filters);
   res.json(result);
 };
 
 // Get offer by ID
 const getOfertaById = async (req, res) => {
   const { id } = req.params;
-  const result = await OfertaP2P.getById(id);
+  const result = await P2POffer.getById(id);
   if (!result) throw new AppError(404, errorCodes.OFFER_NOT_FOUND, 'Offer not found');
   res.json(result);
 };
 
 // Create new offer
 const createOferta = async (req, res) => {
-  const usuarioId = req.user.id;
-  const { tipo, direccionFiat, metodosPagoIds, ...restBody } = req.body;
+  const userId = req.user.id;
+  const { type, direccionFiat, metodosPagoIds, ...restBody } = req.body;
 
-  if (tipo === 'venta' && !direccionFiat) {
+  if (type === 'sell' && !direccionFiat) {
     throw new AppError(
       400,
       errorCodes.OFFER_DIRECCION_FIAT_REQUIRED,
@@ -50,13 +50,13 @@ const createOferta = async (req, res) => {
 
   const ofertaData = {
     ...restBody,
-    tipo,
+    type,
     direccionFiat,
     metodosPagoIds,
-    usuarioId,
+    userId,
   };
 
-  const nuevaOferta = await OfertaP2P.createOffer(ofertaData);
+  const nuevaOferta = await P2POffer.createOffer(ofertaData);
   res.status(201).json({
     message: 'Oferta creada exitosamente',
     data: nuevaOferta,
@@ -66,11 +66,11 @@ const createOferta = async (req, res) => {
 // Update offer
 const updateOferta = async (req, res) => {
   const { id } = req.params;
-  const usuarioId = req.user.id;
+  const userId = req.user.id;
   const updateData = req.body;
 
-  if (updateData.tipo === 'venta') {
-    const ofertaActual = await OfertaP2P.findByPk(id);
+  if (updateData.type === 'sell') {
+    const ofertaActual = await P2POffer.findByPk(id);
     if (ofertaActual && !updateData.direccionFiat && !ofertaActual.direccionFiat) {
       throw new AppError(
         400,
@@ -90,7 +90,7 @@ const updateOferta = async (req, res) => {
     }
   }
 
-  const updated = await OfertaP2P.updateOffer(id, updateData, usuarioId);
+  const updated = await P2POffer.updateOffer(id, updateData, userId);
   res.json({
     message: 'Oferta actualizada exitosamente. La fecha de publicación ha sido renovada.',
     data: updated,
@@ -100,7 +100,7 @@ const updateOferta = async (req, res) => {
 // Add payment methods to an offer
 const addMetodosPago = async (req, res) => {
   const { id } = req.params;
-  const usuarioId = req.user.id;
+  const userId = req.user.id;
   const { metodosPagoIds } = req.body;
 
   if (!metodosPagoIds || !Array.isArray(metodosPagoIds) || metodosPagoIds.length === 0) {
@@ -111,7 +111,7 @@ const addMetodosPago = async (req, res) => {
     );
   }
 
-  const updated = await OfertaP2P.addMetodosPago(id, metodosPagoIds, usuarioId);
+  const updated = await P2POffer.addMetodosPago(id, metodosPagoIds, userId);
   res.json({
     message: 'Métodos de pago agregados exitosamente',
     data: updated,
@@ -121,7 +121,7 @@ const addMetodosPago = async (req, res) => {
 // Remove payment methods from an offer
 const removeMetodosPago = async (req, res) => {
   const { id } = req.params;
-  const usuarioId = req.user.id;
+  const userId = req.user.id;
   const { metodosPagoIds } = req.body;
 
   if (!metodosPagoIds || !Array.isArray(metodosPagoIds) || metodosPagoIds.length === 0) {
@@ -132,7 +132,7 @@ const removeMetodosPago = async (req, res) => {
     );
   }
 
-  const updated = await OfertaP2P.removeMetodosPago(id, metodosPagoIds, usuarioId);
+  const updated = await P2POffer.removeMetodosPago(id, metodosPagoIds, userId);
   res.json({
     message: 'Métodos de pago eliminados exitosamente',
     data: updated,
@@ -142,16 +142,16 @@ const removeMetodosPago = async (req, res) => {
 // Deactivate offer
 const deleteOferta = async (req, res) => {
   const { id } = req.params;
-  const usuarioId = req.user.id;
+  const userId = req.user.id;
 
-  const oferta = await OfertaP2P.findByPk(id);
+  const oferta = await P2POffer.findByPk(id);
   if (!oferta) throw new AppError(404, errorCodes.OFFER_NOT_FOUND, 'Offer not found');
 
-  if (!authz.canAccessResource(req.user, oferta.usuarioId)) {
+  if (!authz.canAccessResource(req.user, oferta.userId)) {
     throw new AppError(403, errorCodes.OFFER_FORBIDDEN, 'You do not have permission to delete this offer');
   }
 
-  await OfertaP2P.updateStatus(id, false);
+  await P2POffer.updateStatus(id, false);
   res.json({ message: 'Oferta desactivada exitosamente' });
 };
 
@@ -160,7 +160,7 @@ const updateOfertaStatus = async (req, res) => {
   const { id } = req.params;
   const { active } = req.body;
 
-  const updated = await OfertaP2P.updateStatus(id, active);
+  const updated = await P2POffer.updateStatus(id, active);
 
   const message = active
     ? 'Oferta activada exitosamente. La fecha de publicación ha sido renovada.'
@@ -174,37 +174,37 @@ const searchOfertas = async (req, res) => {
   const { q: term, limit = 10 } = req.query;
   if (!term) throw new AppError(400, errorCodes.OFFER_SEARCH_TERM_REQUIRED, 'Search term is required');
 
-  const results = await OfertaP2P.search(term, parseInt(limit));
+  const results = await P2POffer.search(term, parseInt(limit));
   res.json(results);
 };
 
 // Get my offers
 const getMyOfertas = async (req, res) => {
-  const usuarioId = req.user.id;
+  const userId = req.user.id;
   const { page = 1, limit = 20 } = req.query;
 
-  const result = await OfertaP2P.getUserOfferHistory(usuarioId, parseInt(page), parseInt(limit));
+  const result = await P2POffer.getUserOfferHistory(userId, parseInt(page), parseInt(limit));
   res.json(result);
 };
 
 // Find compatible offers
 const findCompatibleOffers = async (req, res) => {
-  const { tipo, criptomonedaId, cantidad, monedaFiat, metodoPagoId } = req.query;
+  const { type, cryptoId, amount, fiatCurrency, paymentMethodId } = req.query;
 
-  if (!tipo || !criptomonedaId || !cantidad || !monedaFiat) {
+  if (!type || !cryptoId || !amount || !fiatCurrency) {
     throw new AppError(
       400,
       errorCodes.OFFER_COMPATIBLE_PARAMS_REQUIRED,
-      'Required query params: tipo, criptomonedaId, cantidad, monedaFiat'
+      'Required query params: type, cryptoId, amount, fiatCurrency'
     );
   }
 
-  const ofertas = await OfertaP2P.findCompatibleOffers(
-    tipo,
-    criptomonedaId,
-    parseFloat(cantidad),
-    monedaFiat,
-    metodoPagoId
+  const ofertas = await P2POffer.findCompatibleOffers(
+    type,
+    cryptoId,
+    parseFloat(amount),
+    fiatCurrency,
+    paymentMethodId
   );
 
   res.json(ofertas);
@@ -213,33 +213,33 @@ const findCompatibleOffers = async (req, res) => {
 // Check if an offer can be accepted
 const checkOfferAcceptability = async (req, res) => {
   const { id } = req.params;
-  const { cantidad } = req.query;
+  const { amount } = req.query;
 
-  if (!cantidad) throw new AppError(400, errorCodes.OFFER_CANTIDAD_REQUIRED, 'cantidad is required');
+  if (!amount) throw new AppError(400, errorCodes.OFFER_CANTIDAD_REQUIRED, 'amount is required');
 
-  const result = await OfertaP2P.canAcceptOffer(id, cantidad);
+  const result = await P2POffer.canAcceptOffer(id, amount);
   res.json(result);
 };
 
 // Get offer statistics (admin)
 const getOfertasStats = async (req, res) => {
-  const stats = await OfertaP2P.getStats();
+  const stats = await P2POffer.getStats();
   res.json(stats);
 };
 
 // Toggle own offer active/inactive
 const toggleMyOferta = async (req, res) => {
   const { id } = req.params;
-  const usuarioId = req.user.id;
+  const userId = req.user.id;
 
-  const oferta = await OfertaP2P.findByPk(id);
+  const oferta = await P2POffer.findByPk(id);
   if (!oferta) throw new AppError(404, errorCodes.OFFER_NOT_FOUND, 'Offer not found');
 
-  if (oferta.usuarioId !== usuarioId) {
+  if (oferta.userId !== userId) {
     throw new AppError(403, errorCodes.OFFER_FORBIDDEN, 'You do not have permission to modify this offer');
   }
 
-  const updated = await OfertaP2P.updateStatus(id, !oferta.active);
+  const updated = await P2POffer.updateStatus(id, !oferta.active);
 
   const message = updated.active
     ? 'Oferta activada exitosamente. La fecha de publicación ha sido renovada.'
@@ -250,22 +250,22 @@ const toggleMyOferta = async (req, res) => {
 
 // Get offers by crypto
 const getOfertasByCrypto = async (req, res) => {
-  const { criptomonedaId } = req.params;
-  const filters = { ...req.query, criptomonedaId };
+  const { cryptoId } = req.params;
+  const filters = { ...req.query, cryptoId };
 
-  const result = await OfertaP2P.getAll(filters);
+  const result = await P2POffer.getAll(filters);
   res.json(result);
 };
 
 // Get offers by type
 const getOfertasByTipo = async (req, res) => {
-  const { tipo } = req.params;
-  if (!['compra', 'venta'].includes(tipo)) {
-    throw new AppError(400, errorCodes.OFFER_INVALID_TYPE, 'tipo must be "compra" or "venta"');
+  const { type } = req.params;
+  if (!['buy', 'sell'].includes(type)) {
+    throw new AppError(400, errorCodes.OFFER_INVALID_TYPE, 'type must be "compra" or "venta"');
   }
 
-  const filters = { ...req.query, tipo };
-  const result = await OfertaP2P.getAll(filters);
+  const filters = { ...req.query, type };
+  const result = await P2POffer.getAll(filters);
   res.json(result);
 };
 

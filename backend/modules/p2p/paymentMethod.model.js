@@ -1,21 +1,21 @@
 // Importaciones
-const initMetodoPago = require('./entities/metodoPago.entity');
+const initMetodoPago = require('./paymentMethod.entity');
 const { Op } = require('sequelize');
 
 function createMetodoPagoModel(sequelize) {
-  const MetodoPago = initMetodoPago(sequelize);
+  const PaymentMethod = initMetodoPago(sequelize);
 
   // Métodos de consulta básicos
-  MetodoPago.getById = async (id) => {
+  PaymentMethod.getById = async (id) => {
     try {
-      const metodoPago = await MetodoPago.findByPk(id);
+      const metodoPago = await PaymentMethod.findByPk(id);
       return metodoPago;
     } catch (error) {
       throw new Error(`Error al obtener método de pago por ID: ${error.message}`);
     }
   };
 
-  MetodoPago.getAll = async (filters = {}) => {
+  PaymentMethod.getAll = async (filters = {}) => {
     try {
       const whereClause = {};
       
@@ -30,7 +30,7 @@ function createMetodoPagoModel(sequelize) {
         };
       }
 
-      const metodosPago = await MetodoPago.findAll({
+      const metodosPago = await PaymentMethod.findAll({
         where: whereClause,
         order: [['name', 'ASC']]
       });
@@ -41,13 +41,13 @@ function createMetodoPagoModel(sequelize) {
     }
   };
 
-  MetodoPago.search = async (term, limit = 10) => {
+  PaymentMethod.search = async (term, limit = 10) => {
     try {
-      const metodosPago = await MetodoPago.findAll({
+      const metodosPago = await PaymentMethod.findAll({
         where: {
           [Op.or]: [
             { name: { [Op.iLike]: `%${term}%` } },
-            { descripcion: { [Op.iLike]: `%${term}%` } }
+            { description: { [Op.iLike]: `%${term}%` } }
           ]
         },
         limit: parseInt(limit),
@@ -61,9 +61,9 @@ function createMetodoPagoModel(sequelize) {
   };
 
   // Métodos específicos para métodos de pago
-  MetodoPago.getActive = async () => {
+  PaymentMethod.getActive = async () => {
     try {
-      const metodosPago = await MetodoPago.findAll({
+      const metodosPago = await PaymentMethod.findAll({
         where: { active: true },
         order: [['name', 'ASC']]
       });
@@ -73,9 +73,9 @@ function createMetodoPagoModel(sequelize) {
     }
   };
 
-  MetodoPago.getInactive = async () => {
+  PaymentMethod.getInactive = async () => {
     try {
-      const metodosPago = await MetodoPago.findAll({
+      const metodosPago = await PaymentMethod.findAll({
         where: { active: false },
         order: [['name', 'ASC']]
       });
@@ -85,9 +85,9 @@ function createMetodoPagoModel(sequelize) {
     }
   };
 
-  MetodoPago.getByName = async (name) => {
+  PaymentMethod.getByName = async (name) => {
     try {
-      const metodoPago = await MetodoPago.findOne({
+      const metodoPago = await PaymentMethod.findOne({
         where: { 
           name: { [Op.iLike]: name }
         }
@@ -99,13 +99,13 @@ function createMetodoPagoModel(sequelize) {
   };
 
   // Métodos de estadísticas
-  MetodoPago.getStats = async () => {
+  PaymentMethod.getStats = async () => {
     try {
-      const totalMetodos = await MetodoPago.count();
-      const metodosActivos = await MetodoPago.count({
+      const totalMetodos = await PaymentMethod.count();
+      const metodosActivos = await PaymentMethod.count({
         where: { active: true }
       });
-      const metodosInactivos = await MetodoPago.count({
+      const metodosInactivos = await PaymentMethod.count({
         where: { active: false }
       });
 
@@ -121,10 +121,10 @@ function createMetodoPagoModel(sequelize) {
   };
 
   // Métodos CRUD
-  MetodoPago.createMetodo = async (data) => {
+  PaymentMethod.createMetodo = async (data) => {
     try {
       // Verificar si ya existe un método con el mismo name
-      const existingMetodo = await MetodoPago.findOne({
+      const existingMetodo = await PaymentMethod.findOne({
         where: { 
           name: { [Op.iLike]: data.name }
         }
@@ -134,18 +134,18 @@ function createMetodoPagoModel(sequelize) {
         throw new Error('Ya existe un método de pago con ese nombre');
       }
 
-      const nuevoMetodo = await MetodoPago.create(data);
+      const nuevoMetodo = await PaymentMethod.create(data);
       return nuevoMetodo;
     } catch (error) {
       throw new Error(`Error al crear método de pago: ${error.message}`);
     }
   };
 
-  MetodoPago.updateMetodo = async (id, data) => {
+  PaymentMethod.updateMetodo = async (id, data) => {
     try {
       // Si se está actualizando el name, verificar que no exista
       if (data.name) {
-        const existingMetodo = await MetodoPago.findOne({
+        const existingMetodo = await PaymentMethod.findOne({
           where: { 
             name: { [Op.iLike]: data.name },
             id: { [Op.ne]: id }
@@ -157,7 +157,7 @@ function createMetodoPagoModel(sequelize) {
         }
       }
 
-      const [updatedRowsCount] = await MetodoPago.update(data, {
+      const [updatedRowsCount] = await PaymentMethod.update(data, {
         where: { id },
         returning: true
       });
@@ -166,27 +166,27 @@ function createMetodoPagoModel(sequelize) {
         throw new Error('Método de pago no encontrado');
       }
       
-      const updatedMetodo = await MetodoPago.getById(id);
+      const updatedMetodo = await PaymentMethod.getById(id);
       return updatedMetodo;
     } catch (error) {
       throw new Error(`Error al actualizar método de pago: ${error.message}`);
     }
   };
 
-  MetodoPago.deleteMetodo = async (id) => {
+  PaymentMethod.deleteMetodo = async (id) => {
     try {
       // Verificar si el método está siendo usado en transacciones o cuentas de usuario
       // Esta verificación dependerá de tus otras tablas
       // Ejemplo:
-      // const transaccionesUsandoMetodo = await sequelize.models.TransaccionP2P.count({
-      //   where: { metodoPagoId: id }
+      // const transaccionesUsandoMetodo = await sequelize.models.P2PTransaction.count({
+      //   where: { paymentMethodId: id }
       // });
       
       // if (transaccionesUsandoMetodo > 0) {
       //   throw new Error('No se puede eliminar: método de pago en uso');
       // }
 
-      const deletedRowsCount = await MetodoPago.destroy({
+      const deletedRowsCount = await PaymentMethod.destroy({
         where: { id }
       });
       
@@ -200,29 +200,29 @@ function createMetodoPagoModel(sequelize) {
     }
   };
 
-  // Métodos de gestión de estado
-  MetodoPago.updateStatus = async (id, newStatus) => {
+  // Métodos de gestión de status
+  PaymentMethod.updateStatus = async (id, newStatus) => {
     try {
-      const updated = await MetodoPago.updateMetodo(id, { active: newStatus });
+      const updated = await PaymentMethod.updateMetodo(id, { active: newStatus });
       return updated;
     } catch (error) {
-      throw new Error(`Error al actualizar estado: ${error.message}`);
+      throw new Error(`Error al actualizar status: ${error.message}`);
     }
   };
 
   // Métodos útiles para validaciones
-  MetodoPago.isActive = async (id) => {
+  PaymentMethod.isActive = async (id) => {
     try {
-      const metodoPago = await MetodoPago.getById(id);
+      const metodoPago = await PaymentMethod.getById(id);
       return metodoPago && metodoPago.active;
     } catch (error) {
-      throw new Error(`Error al verificar estado: ${error.message}`);
+      throw new Error(`Error al verificar status: ${error.message}`);
     }
   };
 
-  MetodoPago.validateForUse = async (id) => {
+  PaymentMethod.validateForUse = async (id) => {
     try {
-      const metodoPago = await MetodoPago.getById(id);
+      const metodoPago = await PaymentMethod.getById(id);
       
       if (!metodoPago) {
         throw new Error('Método de pago no encontrado');
@@ -246,11 +246,11 @@ function createMetodoPagoModel(sequelize) {
   };
 
   // Método para obtener métodos populares (si tienes estadísticas de uso)
-  MetodoPago.getPopular = async (limit = 5) => {
+  PaymentMethod.getPopular = async (limit = 5) => {
     try {
       // Esta función requeriría join con tablas de transacciones
       // Por ahora devuelve los métodos activos ordenados alfabéticamente
-      const metodosPopulares = await MetodoPago.findAll({
+      const metodosPopulares = await PaymentMethod.findAll({
         where: { active: true },
         order: [['name', 'ASC']],
         limit: parseInt(limit)
@@ -263,9 +263,9 @@ function createMetodoPagoModel(sequelize) {
   };
 
   // Método para bulk operations
-  MetodoPago.bulkUpdateStatus = async (ids, newStatus) => {
+  PaymentMethod.bulkUpdateStatus = async (ids, newStatus) => {
     try {
-      const [updatedCount] = await MetodoPago.update(
+      const [updatedCount] = await PaymentMethod.update(
         { active: newStatus },
         {
           where: {
@@ -285,16 +285,16 @@ function createMetodoPagoModel(sequelize) {
   };
 
   // Método para exportar métodos
-  MetodoPago.getForExport = async () => {
+  PaymentMethod.getForExport = async () => {
     try {
-      const metodos = await MetodoPago.findAll({
+      const metodos = await PaymentMethod.findAll({
         order: [['name', 'ASC']]
       });
       
       return metodos.map(metodo => ({
         id: metodo.id,
         name: metodo.name,
-        descripcion: metodo.descripcion || '',
+        description: metodo.description || '',
         active: metodo.active ? 'SI' : 'NO'
       }));
     } catch (error) {
@@ -302,7 +302,7 @@ function createMetodoPagoModel(sequelize) {
     }
   };
 
-  return MetodoPago;
+  return PaymentMethod;
 }
 
 module.exports = createMetodoPagoModel;

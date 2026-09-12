@@ -1,24 +1,24 @@
 // Importaciones
-const initOfertaMetodoPago = require('./entities/ofertaMetodoPago.entity');
+const initOfertaMetodoPago = require('./offerPaymentMethod.entity');
 const { Op } = require('sequelize');
 
 function createOfertaMetodoPagoModel(sequelize) {
-  const OfertaMetodoPago = initOfertaMetodoPago(sequelize);
+  const OfferPaymentMethod = initOfertaMetodoPago(sequelize);
 
   // Métodos de consulta básicos
-  OfertaMetodoPago.getById = async (id) => {
+  OfferPaymentMethod.getById = async (id) => {
     try {
-      const ofertaMetodo = await OfertaMetodoPago.findByPk(id, {
+      const ofertaMetodo = await OfferPaymentMethod.findByPk(id, {
         include: [
           {
             model: sequelize.models.Oferta,
-            as: 'oferta',
-            attributes: ['id', 'titulo', 'tipo', 'estado', 'userId']
+            as: 'offer',
+            attributes: ['id', 'titulo', 'type', 'status', 'userId']
           },
           {
-            model: sequelize.models.MetodoPago,
-            as: 'metodoPago',
-            attributes: ['id', 'name', 'descripcion', 'active']
+            model: sequelize.models.PaymentMethod,
+            as: 'paymentMethod',
+            attributes: ['id', 'name', 'description', 'active']
           }
         ]
       });
@@ -28,34 +28,34 @@ function createOfertaMetodoPagoModel(sequelize) {
     }
   };
 
-  OfertaMetodoPago.getAll = async (filters = {}) => {
+  OfferPaymentMethod.getAll = async (filters = {}) => {
     try {
       const whereClause = {};
       
       // Filtros disponibles
-      if (filters.ofertaId) {
-        whereClause.ofertaId = filters.ofertaId;
+      if (filters.offerId) {
+        whereClause.offerId = filters.offerId;
       }
       
-      if (filters.metodoPagoId) {
-        whereClause.metodoPagoId = filters.metodoPagoId;
+      if (filters.paymentMethodId) {
+        whereClause.paymentMethodId = filters.paymentMethodId;
       }
 
-      const ofertaMetodos = await OfertaMetodoPago.findAll({
+      const ofertaMetodos = await OfferPaymentMethod.findAll({
         where: whereClause,
         include: [
           {
             model: sequelize.models.Oferta,
-            as: 'oferta',
-            attributes: ['id', 'titulo', 'tipo', 'estado']
+            as: 'offer',
+            attributes: ['id', 'titulo', 'type', 'status']
           },
           {
-            model: sequelize.models.MetodoPago,
-            as: 'metodoPago',
-            attributes: ['id', 'name', 'descripcion', 'active']
+            model: sequelize.models.PaymentMethod,
+            as: 'paymentMethod',
+            attributes: ['id', 'name', 'description', 'active']
           }
         ],
-        order: [['ofertaId', 'ASC'], ['metodoPagoId', 'ASC']]
+        order: [['offerId', 'ASC'], ['paymentMethodId', 'ASC']]
       });
       
       return ofertaMetodos;
@@ -65,71 +65,71 @@ function createOfertaMetodoPagoModel(sequelize) {
   };
 
   // Métodos específicos para relaciones oferta-método pago
-  OfertaMetodoPago.getByOferta = async (ofertaId) => {
+  OfferPaymentMethod.getByOferta = async (offerId) => {
     try {
-      const metodosPago = await OfertaMetodoPago.findAll({
-        where: { ofertaId: ofertaId },
+      const metodosPago = await OfferPaymentMethod.findAll({
+        where: { offerId: offerId },
         include: [
           {
-            model: sequelize.models.MetodoPago,
-            as: 'metodoPago',
-            attributes: ['id', 'name', 'descripcion', 'active'],
+            model: sequelize.models.PaymentMethod,
+            as: 'paymentMethod',
+            attributes: ['id', 'name', 'description', 'active'],
             where: { active: true }, // Solo métodos activos
             required: true
           }
         ],
-        order: [['metodoPago', 'name', 'ASC']]
+        order: [['paymentMethod', 'name', 'ASC']]
       });
       
-      return metodosPago.map(om => om.metodoPago);
+      return metodosPago.map(om => om.paymentMethod);
     } catch (error) {
       throw new Error(`Error al obtener métodos de pago por oferta: ${error.message}`);
     }
   };
 
-  OfertaMetodoPago.getByMetodoPago = async (metodoPagoId) => {
+  OfferPaymentMethod.getByMetodoPago = async (paymentMethodId) => {
     try {
-      const ofertas = await OfertaMetodoPago.findAll({
-        where: { metodoPagoId: metodoPagoId },
+      const ofertas = await OfferPaymentMethod.findAll({
+        where: { paymentMethodId: paymentMethodId },
         include: [
           {
             model: sequelize.models.Oferta,
-            as: 'oferta',
-            attributes: ['id', 'titulo', 'tipo', 'estado', 'userId'],
-            where: { estado: { [Op.in]: ['activa', 'pendiente'] } }, // Solo ofertas activas
+            as: 'offer',
+            attributes: ['id', 'titulo', 'type', 'status', 'userId'],
+            where: { status: { [Op.in]: ['activa', 'pendiente'] } }, // Solo ofertas activas
             required: true
           }
         ],
-        order: [['oferta', 'titulo', 'ASC']]
+        order: [['offer', 'titulo', 'ASC']]
       });
       
-      return ofertas.map(om => om.oferta);
+      return ofertas.map(om => om.offer);
     } catch (error) {
       throw new Error(`Error al obtener ofertas por método de pago: ${error.message}`);
     }
   };
 
-  OfertaMetodoPago.getOfertaMetodosPago = async (ofertaId, includeInactive = false) => {
+  OfferPaymentMethod.getOfertaMetodosPago = async (offerId, includeInactive = false) => {
     try {
       const whereMetodo = includeInactive ? {} : { active: true };
       
-      const relations = await OfertaMetodoPago.findAll({
-        where: { ofertaId: ofertaId },
+      const relations = await OfferPaymentMethod.findAll({
+        where: { offerId: offerId },
         include: [
           {
-            model: sequelize.models.MetodoPago,
-            as: 'metodoPago',
-            attributes: ['id', 'name', 'descripcion', 'active'],
+            model: sequelize.models.PaymentMethod,
+            as: 'paymentMethod',
+            attributes: ['id', 'name', 'description', 'active'],
             where: whereMetodo,
             required: true
           },
           {
             model: sequelize.models.Oferta,
-            as: 'oferta',
-            attributes: ['id', 'titulo', 'tipo', 'estado']
+            as: 'offer',
+            attributes: ['id', 'titulo', 'type', 'status']
           }
         ],
-        order: [['metodoPago', 'name', 'ASC']]
+        order: [['paymentMethod', 'name', 'ASC']]
       });
       
       return relations;
@@ -138,12 +138,12 @@ function createOfertaMetodoPagoModel(sequelize) {
     }
   };
 
-  OfertaMetodoPago.exists = async (ofertaId, metodoPagoId) => {
+  OfferPaymentMethod.exists = async (offerId, paymentMethodId) => {
     try {
-      const relation = await OfertaMetodoPago.findOne({
+      const relation = await OfferPaymentMethod.findOne({
         where: { 
-          ofertaId: ofertaId,
-          metodoPagoId: metodoPagoId
+          offerId: offerId,
+          paymentMethodId: paymentMethodId
         }
       });
       return relation !== null;
@@ -153,13 +153,13 @@ function createOfertaMetodoPagoModel(sequelize) {
   };
 
   // Métodos CRUD
-  OfertaMetodoPago.createRelation = async (data) => {
+  OfferPaymentMethod.createRelation = async (data) => {
     try {
       // Verificar que no existe ya esta relación
-      const existingRelation = await OfertaMetodoPago.findOne({
+      const existingRelation = await OfferPaymentMethod.findOne({
         where: { 
-          ofertaId: data.ofertaId,
-          metodoPagoId: data.metodoPagoId
+          offerId: data.offerId,
+          paymentMethodId: data.paymentMethodId
         }
       });
       
@@ -168,13 +168,13 @@ function createOfertaMetodoPagoModel(sequelize) {
       }
 
       // Verificar que la oferta existe
-      const oferta = await sequelize.models.Oferta.findByPk(data.ofertaId);
+      const oferta = await sequelize.models.Oferta.findByPk(data.offerId);
       if (!oferta) {
         throw new Error('La oferta especificada no existe');
       }
 
       // Verificar que el método de pago existe y está active
-      const metodoPago = await sequelize.models.MetodoPago.findByPk(data.metodoPagoId);
+      const metodoPago = await sequelize.models.PaymentMethod.findByPk(data.paymentMethodId);
       if (!metodoPago) {
         throw new Error('El método de pago especificado no existe');
       }
@@ -183,16 +183,16 @@ function createOfertaMetodoPagoModel(sequelize) {
         throw new Error('El método de pago no está activo');
       }
 
-      const nuevaRelacion = await OfertaMetodoPago.create(data);
-      return await OfertaMetodoPago.getById(nuevaRelacion.id);
+      const nuevaRelacion = await OfferPaymentMethod.create(data);
+      return await OfferPaymentMethod.getById(nuevaRelacion.id);
     } catch (error) {
       throw new Error(`Error al crear relación oferta-método de pago: ${error.message}`);
     }
   };
 
-  OfertaMetodoPago.deleteRelation = async (id) => {
+  OfferPaymentMethod.deleteRelation = async (id) => {
     try {
-      const deletedRowsCount = await OfertaMetodoPago.destroy({
+      const deletedRowsCount = await OfferPaymentMethod.destroy({
         where: { id }
       });
       
@@ -206,12 +206,12 @@ function createOfertaMetodoPagoModel(sequelize) {
     }
   };
 
-  OfertaMetodoPago.deleteByOfertaAndMetodo = async (ofertaId, metodoPagoId) => {
+  OfferPaymentMethod.deleteByOfertaAndMetodo = async (offerId, paymentMethodId) => {
     try {
-      const deletedRowsCount = await OfertaMetodoPago.destroy({
+      const deletedRowsCount = await OfferPaymentMethod.destroy({
         where: { 
-          ofertaId: ofertaId,
-          metodoPagoId: metodoPagoId
+          offerId: offerId,
+          paymentMethodId: paymentMethodId
         }
       });
       
@@ -226,10 +226,10 @@ function createOfertaMetodoPagoModel(sequelize) {
   };
 
   // Métodos para gestión masiva
-  OfertaMetodoPago.addMetodosToOferta = async (ofertaId, metodosPagoIds) => {
+  OfferPaymentMethod.addMetodosToOferta = async (offerId, metodosPagoIds) => {
     try {
       // Verificar que la oferta existe
-      const oferta = await sequelize.models.Oferta.findByPk(ofertaId);
+      const oferta = await sequelize.models.Oferta.findByPk(offerId);
       if (!oferta) {
         throw new Error('La oferta especificada no existe');
       }
@@ -237,23 +237,23 @@ function createOfertaMetodoPagoModel(sequelize) {
       const results = [];
       const errors = [];
 
-      for (const metodoPagoId of metodosPagoIds) {
+      for (const paymentMethodId of metodosPagoIds) {
         try {
           // Verificar si ya existe la relación
-          const exists = await OfertaMetodoPago.exists(ofertaId, metodoPagoId);
+          const exists = await OfferPaymentMethod.exists(offerId, paymentMethodId);
           if (exists) {
-            errors.push({ metodoPagoId, error: 'Relación ya existe' });
+            errors.push({ paymentMethodId, error: 'Relación ya existe' });
             continue;
           }
 
-          const relation = await OfertaMetodoPago.createRelation({
-            ofertaId,
-            metodoPagoId
+          const relation = await OfferPaymentMethod.createRelation({
+            offerId,
+            paymentMethodId
           });
           
-          results.push({ metodoPagoId, success: true, relation });
+          results.push({ paymentMethodId, success: true, relation });
         } catch (error) {
-          errors.push({ metodoPagoId, error: error.message });
+          errors.push({ paymentMethodId, error: error.message });
         }
       }
 
@@ -269,12 +269,12 @@ function createOfertaMetodoPagoModel(sequelize) {
     }
   };
 
-  OfertaMetodoPago.removeMetodosFromOferta = async (ofertaId, metodosPagoIds) => {
+  OfferPaymentMethod.removeMetodosFromOferta = async (offerId, metodosPagoIds) => {
     try {
-      const deletedCount = await OfertaMetodoPago.destroy({
+      const deletedCount = await OfferPaymentMethod.destroy({
         where: {
-          ofertaId: ofertaId,
-          metodoPagoId: { [Op.in]: metodosPagoIds }
+          offerId: offerId,
+          paymentMethodId: { [Op.in]: metodosPagoIds }
         }
       });
 
@@ -288,15 +288,15 @@ function createOfertaMetodoPagoModel(sequelize) {
     }
   };
 
-  OfertaMetodoPago.replaceMetodosOferta = async (ofertaId, newMetodosPagoIds) => {
+  OfferPaymentMethod.replaceMetodosOferta = async (offerId, newMetodosPagoIds) => {
     try {
       // Primero eliminar todos los métodos actuales
-      await OfertaMetodoPago.destroy({
-        where: { ofertaId: ofertaId }
+      await OfferPaymentMethod.destroy({
+        where: { offerId: offerId }
       });
 
       // Luego agregar los nuevos métodos
-      const result = await OfertaMetodoPago.addMetodosToOferta(ofertaId, newMetodosPagoIds);
+      const result = await OfferPaymentMethod.addMetodosToOferta(offerId, newMetodosPagoIds);
       
       return {
         message: 'Métodos de pago de la oferta actualizados',
@@ -308,62 +308,62 @@ function createOfertaMetodoPagoModel(sequelize) {
   };
 
   // Métodos de estadísticas
-  OfertaMetodoPago.getStats = async () => {
+  OfferPaymentMethod.getStats = async () => {
     try {
-      const totalRelations = await OfertaMetodoPago.count();
+      const totalRelations = await OfferPaymentMethod.count();
       
       // Métodos de pago más populares
-      const metodosPopulares = await OfertaMetodoPago.findAll({
+      const metodosPopulares = await OfferPaymentMethod.findAll({
         attributes: [
-          'metodoPagoId',
-          [sequelize.fn('COUNT', sequelize.col('metodoPagoId')), 'count']
+          'paymentMethodId',
+          [sequelize.fn('COUNT', sequelize.col('paymentMethodId')), 'count']
         ],
         include: [
           {
-            model: sequelize.models.MetodoPago,
-            as: 'metodoPago',
+            model: sequelize.models.PaymentMethod,
+            as: 'paymentMethod',
             attributes: ['name', 'active']
           }
         ],
-        group: ['metodoPagoId', 'metodoPago.id'],
-        order: [[sequelize.fn('COUNT', sequelize.col('metodoPagoId')), 'DESC']],
+        group: ['paymentMethodId', 'metodoPago.id'],
+        order: [[sequelize.fn('COUNT', sequelize.col('paymentMethodId')), 'DESC']],
         limit: 10,
         raw: false
       });
 
       // Ofertas con más métodos de pago
-      const ofertasConMasMetodos = await OfertaMetodoPago.findAll({
+      const ofertasConMasMetodos = await OfferPaymentMethod.findAll({
         attributes: [
-          'ofertaId',
-          [sequelize.fn('COUNT', sequelize.col('ofertaId')), 'count']
+          'offerId',
+          [sequelize.fn('COUNT', sequelize.col('offerId')), 'count']
         ],
         include: [
           {
             model: sequelize.models.Oferta,
-            as: 'oferta',
-            attributes: ['titulo', 'tipo', 'estado']
+            as: 'offer',
+            attributes: ['titulo', 'type', 'status']
           }
         ],
-        group: ['ofertaId', 'oferta.id'],
-        order: [[sequelize.fn('COUNT', sequelize.col('ofertaId')), 'DESC']],
+        group: ['offerId', 'oferta.id'],
+        order: [[sequelize.fn('COUNT', sequelize.col('offerId')), 'DESC']],
         limit: 10,
         raw: false
       });
 
-      // Distribución por tipo de oferta
-      const distribucionPorTipo = await OfertaMetodoPago.findAll({
+      // Distribución por type de oferta
+      const distribucionPorTipo = await OfferPaymentMethod.findAll({
         attributes: [
-          [sequelize.col('oferta.tipo'), 'tipoOferta'],
-          [sequelize.fn('COUNT', sequelize.col('OfertaMetodoPago.id')), 'count']
+          [sequelize.col('oferta.type'), 'tipoOferta'],
+          [sequelize.fn('COUNT', sequelize.col('OfferPaymentMethod.id')), 'count']
         ],
         include: [
           {
             model: sequelize.models.Oferta,
-            as: 'oferta',
+            as: 'offer',
             attributes: []
           }
         ],
-        group: ['oferta.tipo'],
+        group: ['oferta.type'],
         raw: true
       });
 
@@ -379,20 +379,20 @@ function createOfertaMetodoPagoModel(sequelize) {
   };
 
   // Método para validar compatibilidad
-  OfertaMetodoPago.validateCompatibility = async (ofertaId, metodoPagoId) => {
+  OfferPaymentMethod.validateCompatibility = async (offerId, paymentMethodId) => {
     try {
       // Verificar que la oferta existe y está active
-      const oferta = await sequelize.models.Oferta.findByPk(ofertaId);
+      const oferta = await sequelize.models.Oferta.findByPk(offerId);
       if (!oferta) {
         throw new Error('Oferta no encontrada');
       }
 
-      if (oferta.estado !== 'activa') {
+      if (oferta.status !== 'activa') {
         throw new Error('La oferta no está activa');
       }
 
       // Verificar que el método de pago existe y está active
-      const metodoPago = await sequelize.models.MetodoPago.findByPk(metodoPagoId);
+      const metodoPago = await sequelize.models.PaymentMethod.findByPk(paymentMethodId);
       if (!metodoPago) {
         throw new Error('Método de pago no encontrado');
       }
@@ -402,7 +402,7 @@ function createOfertaMetodoPagoModel(sequelize) {
       }
 
       // Verificar si ya existe la relación
-      const exists = await OfertaMetodoPago.exists(ofertaId, metodoPagoId);
+      const exists = await OfferPaymentMethod.exists(offerId, paymentMethodId);
       
       return {
         compatible: true,
@@ -420,21 +420,21 @@ function createOfertaMetodoPagoModel(sequelize) {
   };
 
   // Método para obtener métodos disponibles para una oferta
-  OfertaMetodoPago.getAvailableMetodos = async (ofertaId) => {
+  OfferPaymentMethod.getAvailableMetodos = async (offerId) => {
     try {
       // Obtener todos los métodos activos
-      const todosMetodos = await sequelize.models.MetodoPago.findAll({
+      const todosMetodos = await sequelize.models.PaymentMethod.findAll({
         where: { active: true },
-        attributes: ['id', 'name', 'descripcion']
+        attributes: ['id', 'name', 'description']
       });
 
       // Obtener métodos ya asignados a esta oferta
-      const metodosAsignados = await OfertaMetodoPago.findAll({
-        where: { ofertaId: ofertaId },
-        attributes: ['metodoPagoId']
+      const metodosAsignados = await OfferPaymentMethod.findAll({
+        where: { offerId: offerId },
+        attributes: ['paymentMethodId']
       });
 
-      const idsAsignados = metodosAsignados.map(m => m.metodoPagoId);
+      const idsAsignados = metodosAsignados.map(m => m.paymentMethodId);
       
       // Filtrar métodos disponibles (no asignados)
       const metodosDisponibles = todosMetodos.filter(
@@ -451,7 +451,7 @@ function createOfertaMetodoPagoModel(sequelize) {
     }
   };
 
-  return OfertaMetodoPago;
+  return OfferPaymentMethod;
 }
 
 module.exports = createOfertaMetodoPagoModel;

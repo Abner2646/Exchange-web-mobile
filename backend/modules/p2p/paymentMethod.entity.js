@@ -1,9 +1,9 @@
 const { DataTypes, Model } = require('sequelize');
 
-class MetodoPago extends Model {}
+class PaymentMethod extends Model {}
 
 function initMetodoPago(sequelize) {
-  MetodoPago.init({
+  PaymentMethod.init({
     id: {
       type: DataTypes.UUID,
       primaryKey: true,
@@ -13,7 +13,7 @@ function initMetodoPago(sequelize) {
       type: DataTypes.STRING(100),
       allowNull: false
     },
-    descripcion: {
+    description: {
       type: DataTypes.TEXT,
       allowNull: true
     },
@@ -23,12 +23,12 @@ function initMetodoPago(sequelize) {
     }
   }, {
     sequelize,
-    modelName: 'MetodoPago',
-    tableName: 'metodos_pago',
+    modelName: 'PaymentMethod',
+    tableName: 'payment_methods',
     timestamps: false
   });
 
-  return MetodoPago;
+  return PaymentMethod;
 }
 
 module.exports = initMetodoPago;

@@ -4,15 +4,15 @@ const { Router } = require('express');
 const router = Router();
 
 // Middleware
-const { authenticateToken, requireEmailVerified } = require('../middleware/authMiddleware.js');
-const { isAdmin } = require('../middleware/adminMiddleware.js');
-const requireOperatorMFA = require('../middleware/operatorMFA.middleware');
-const asyncHandler = require('../utils/asyncHandler');
+const { authenticateToken, requireEmailVerified } = require('../../middleware/authMiddleware.js');
+const { isAdmin } = require('../../middleware/adminMiddleware.js');
+const requireOperatorMFA = require('../../middleware/operatorMFA.middleware');
+const asyncHandler = require('../../utils/asyncHandler');
 
 // <--------- Este símbolo son las rutas que nos sirven posta
 
 // Importa el controlador
-const transaccionP2PController = require('../controllers/transaccionesP2P.controller.js');
+const transaccionP2PController = require('./p2pTransaction.controller.js');
 
 /**
  * @openapi
@@ -55,7 +55,7 @@ const transaccionP2PController = require('../controllers/transaccionesP2P.contro
  *       required: true
  *       content:
  *         application/json:
- *           schema: { type: object, required: [ofertaId], properties: { ofertaId: { type: string, format: uuid }, cantidad: { type: number } } }
+ *           schema: { type: object, required: [offerId], properties: { offerId: { type: string, format: uuid }, amount: { type: number } } }
  *     responses: { 201: { description: Transacción creada }, 400: { $ref: '#/components/responses/BadRequest' } }
  * /transaccionP2P/{id}:
  *   get:
@@ -63,11 +63,11 @@ const transaccionP2PController = require('../controllers/transaccionesP2P.contro
  *     summary: Obtener una transacción por id
  *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
  *     responses: { 200: { description: Transacción }, 404: { $ref: '#/components/responses/BadRequest' } }
- * /transaccionP2P/oferta/{ofertaId}:
+ * /transaccionP2P/oferta/{offerId}:
  *   get:
  *     tags: [P2P transacciones]
  *     summary: Transacciones de una oferta
- *     parameters: [{ in: path, name: ofertaId, required: true, schema: { type: string, format: uuid } }]
+ *     parameters: [{ in: path, name: offerId, required: true, schema: { type: string, format: uuid } }]
  *     responses: { 200: { description: Transacciones } }
  * /transaccionP2P/admin/stats:
  *   get: { tags: [P2P transacciones - admin], summary: Estadísticas P2P (admin), responses: { 200: { description: Stats } } }
@@ -76,14 +76,14 @@ const transaccionP2PController = require('../controllers/transaccionesP2P.contro
  * /transaccionP2P/{id}/force-status:
  *   patch:
  *     tags: [P2P transacciones - admin]
- *     summary: Forzar cambio de estado (admin, casos excepcionales)
+ *     summary: Forzar cambio de status (admin, casos excepcionales)
  *     parameters: [{ in: path, name: id, required: true, schema: { type: string, format: uuid } }]
  *     responses: { 200: { description: Estado forzado } }
- * /transaccionP2P/admin/user/{usuarioId}/volume:
+ * /transaccionP2P/admin/user/{userId}/volume:
  *   get:
  *     tags: [P2P transacciones - admin]
  *     summary: Volumen P2P de un usuario (admin)
- *     parameters: [{ in: path, name: usuarioId, required: true, schema: { type: string, format: uuid } }]
+ *     parameters: [{ in: path, name: userId, required: true, schema: { type: string, format: uuid } }]
  *     responses: { 200: { description: Volumen } }
  */
 
@@ -135,7 +135,7 @@ router.post('/', authenticateToken, requireEmailVerified, asyncHandler(transacci
 // --------------------- RUTAS POR CONTEXTO --------------------- //
 
 // Obtener transacciones por oferta específica
-router.get('/oferta/:ofertaId', authenticateToken, requireEmailVerified, asyncHandler(transaccionP2PController.getTransaccionesByOferta));
+router.get('/oferta/:offerId', authenticateToken, requireEmailVerified, asyncHandler(transaccionP2PController.getTransaccionesByOferta));
 
 // --------------------- RUTAS ADMINISTRATIVAS --------------------- //
 
@@ -145,10 +145,10 @@ router.get('/admin/stats', authenticateToken, isAdmin, asyncHandler(transaccionP
 // Verificar y cancelar transacciones con timeout (solo admin)
 router.post('/admin/check-timeouts', authenticateToken, isAdmin, asyncHandler(transaccionP2PController.checkTimeouts));
 
-// Forzar cambio de estado (solo admin) - para casos excepcionales
+// Forzar cambio de status (solo admin) - para casos excepcionales
 router.patch('/:id/force-status', authenticateToken, isAdmin, requireOperatorMFA, asyncHandler(transaccionP2PController.forceStatusChange));
 
 // Obtener volumen de usuario específico (solo admin)
-router.get('/admin/user/:usuarioId/volume', authenticateToken, isAdmin, asyncHandler(transaccionP2PController.getUserVolume));
+router.get('/admin/user/:userId/volume', authenticateToken, isAdmin, asyncHandler(transaccionP2PController.getUserVolume));
 
 module.exports = router;

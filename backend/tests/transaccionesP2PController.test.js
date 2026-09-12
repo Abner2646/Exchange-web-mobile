@@ -4,19 +4,19 @@
 // - getMyTransacciones y getTransactionHistory usaban Op/Crypto/User
 //   sin importarlos — ReferenceError garantizado en ambas rutas activas.
 // - updateTransaccionStatus y lockCryptos llamaban a métodos inexistentes
-//   del modelo (TransaccionP2P.updateStatus/.lockCryptos) — se eliminaron
+//   del modelo (P2PTransaction.updateStatus/.lockCryptos) — se eliminaron
 //   por completo (el bloqueo de fondos ya pasa dentro de createTransaction,
-//   y las transiciones de estado específicas ya existen y funcionan).
+//   y las transiciones de status específicas ya existen y funcionan).
 
 jest.mock('../models/index.js', () => ({
-  TransaccionP2P: { findAndCountAll: jest.fn(), getAll: jest.fn() },
+  P2PTransaction: { findAndCountAll: jest.fn(), getAll: jest.fn() },
   Crypto: {},
   User: {},
-  OfertaP2P: {},
+  P2POffer: {},
 }));
 
-const { TransaccionP2P } = require('../models/index.js');
-const controller = require('../controllers/transaccionesP2P.controller');
+const { P2PTransaction } = require('../models/index.js');
+const controller = require('../modules/p2p/p2pTransaction.controller');
 
 function mockRes() {
   return {
@@ -31,7 +31,7 @@ describe('getMyTransacciones', () => {
   beforeEach(() => jest.clearAllMocks());
 
   test('no revienta con ReferenceError (Op/Crypto/User ahora están importados)', async () => {
-    TransaccionP2P.findAndCountAll.mockResolvedValue({ count: 0, rows: [] });
+    P2PTransaction.findAndCountAll.mockResolvedValue({ count: 0, rows: [] });
 
     const req = { user: { id: 'u1' }, query: {} };
     const res = mockRes();
@@ -42,16 +42,16 @@ describe('getMyTransacciones', () => {
     expect(res.body.total).toBe(0);
   });
 
-  test('arma el where con Op.or sobre compradorId/vendedorId', async () => {
-    TransaccionP2P.findAndCountAll.mockResolvedValue({ count: 0, rows: [] });
+  test('arma el where con Op.or sobre buyerId/sellerId', async () => {
+    P2PTransaction.findAndCountAll.mockResolvedValue({ count: 0, rows: [] });
 
     const req = { user: { id: 'u1' }, query: {} };
     await controller.getMyTransacciones(req, mockRes());
 
-    const callArgs = TransaccionP2P.findAndCountAll.mock.calls[0][0];
+    const callArgs = P2PTransaction.findAndCountAll.mock.calls[0][0];
     expect(callArgs.where[Object.getOwnPropertySymbols(callArgs.where)[0]]).toEqual([
-      { compradorId: 'u1' },
-      { vendedorId: 'u1' },
+      { buyerId: 'u1' },
+      { sellerId: 'u1' },
     ]);
   });
 });
@@ -60,7 +60,7 @@ describe('getTransactionHistory', () => {
   beforeEach(() => jest.clearAllMocks());
 
   test('no revienta con ReferenceError', async () => {
-    TransaccionP2P.getAll.mockResolvedValue({ transacciones: [], total: 0 });
+    P2PTransaction.getAll.mockResolvedValue({ transacciones: [], total: 0 });
 
     const req = { user: { id: 'u1' }, params: { otroUsuarioId: 'u2' }, query: {} };
     const res = mockRes();

@@ -3,7 +3,7 @@ const request = require('supertest');
 const app = require('../../app');
 const { sequelize, resetDb } = require('../helpers/db');
 const f = require('../helpers/factories');
-const { OfertaP2P, MetodoPago, TransaccionP2P } = require('../../models');
+const { P2POffer, PaymentMethod, P2PTransaction } = require('../../models');
 
 // End-to-end P2P transaction flow over HTTP (real Postgres + ledger). The model
 // owns the state machine (createTransaction → confirmPayment → completeTransaction,
@@ -17,20 +17,20 @@ beforeEach(async () => { await resetDb(); });
 afterAll(async () => { await sequelize.close(); });
 
 async function seedMetodoPago() {
-  return MetodoPago.create({ name: 'Bank transfer' });
+  return PaymentMethod.create({ name: 'Bank transfer' });
 }
 
-// A 'venta' offer: the offerer (seller) sells crypto; the acceptor is the buyer.
+// A 'sell' offer: the offerer (seller) sells crypto; the acceptor is the buyer.
 // The seller must hold funding balance — createTransaction blocks it.
 async function seedVentaOffer(seller, cripto, { min = '0.1', max = '10', precio = '100' } = {}) {
-  return OfertaP2P.create({
-    usuarioId: seller.id,
-    tipo: 'venta',
-    criptomonedaId: cripto.id,
-    cantidadMin: min,
-    cantidadMax: max,
-    precioUnitario: precio,
-    monedaFiat: 'USD',
+  return P2POffer.create({
+    userId: seller.id,
+    type: 'sell',
+    cryptoId: cripto.id,
+    minAmount: min,
+    maxAmount: max,
+    unitPrice: precio,
+    fiatCurrency: 'USD',
     active: true,
   });
 }
@@ -46,9 +46,9 @@ async function seedScenario({ sellerFunds = '5' } = {}) {
   return { seller, buyer, btc, metodo, oferta };
 }
 
-const create = (buyer, oferta, metodo, cantidad) =>
+const create = (buyer, oferta, metodo, amount) =>
   request(app).post('/api/transaccionP2P/').set(f.authHeader(buyer))
-    .send({ ofertaId: oferta.id, cantidad, metodoPagoId: metodo.id });
+    .send({ offerId: oferta.id, amount, paymentMethodId: metodo.id });
 
 const confirm = (user, id) =>
   request(app).patch(`/api/transaccionP2P/${id}/confirm-payment`).set(f.authHeader(user));
@@ -86,8 +86,8 @@ describe('P2P transaction — happy path (create → confirm → complete)', () 
     const buyerBal = await f.getBalance(buyer, btc);
     expect(buyerBal.availableBalance).toBe('2.00000000');
 
-    const row = await TransaccionP2P.findByPk(txId);
-    expect(row.estado).toBe('completada');
+    const row = await P2PTransaction.findByPk(txId);
+    expect(row.status).toBe('completed');
   });
 
   test('cancel from iniciada unblocks the seller funds', async () => {

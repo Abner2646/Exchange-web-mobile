@@ -167,12 +167,12 @@ async function transferInternal({ remitenteId, destinatarioId, criptomonedaId, c
 // vendedor −A → funding:disponible del comprador +A. Sin fee ni contraparte de
 // casa (suma cero user↔user) → sin suspense. El bloqueo previo (blockBalance) y
 // la cancelación (unblockBalance) ya son de dos patas de usuario sin suspense.
-async function settleP2P({ vendedorId, compradorId, criptomonedaId, cantidad, referencia }, transaction = null) {
+async function settleP2P({ sellerId, buyerId, cryptoId, amount, referencia }, transaction = null) {
   const { postTransaction } = require('./postingService');
   const { PURPOSES } = require('./ledgerAccounts');
   const lines = [
-    { ownerId: vendedorId, purpose: PURPOSES.FUNDING_BLOCKED, cryptoId: criptomonedaId, amount: money.negate(String(cantidad)) },
-    { ownerId: compradorId, purpose: PURPOSES.FUNDING_AVAILABLE, cryptoId: criptomonedaId, amount: String(cantidad) },
+    { ownerId: sellerId, purpose: PURPOSES.FUNDING_BLOCKED, cryptoId, amount: money.negate(String(amount)) },
+    { ownerId: buyerId, purpose: PURPOSES.FUNDING_AVAILABLE, cryptoId, amount: String(amount) },
   ];
   return postTransaction({ type: 'liquidacion_p2p', reference: referencia, description: 'Liquidación P2P', lines }, transaction);
 }

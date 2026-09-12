@@ -3,11 +3,11 @@ const { Router } = require('express');
 const router = Router();
 
 // Importa el controlador de métodos de pago
-const metodoPagoController = require('../controllers/metodoPago.controller.js');
+const metodoPagoController = require('./paymentMethod.controller.js');
 
 // Middleware de autenticación y autorización
-const { authenticateToken} = require('../middleware/authMiddleware.js');
-const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
+const { authenticateToken} = require('../../middleware/authMiddleware.js');
+const { isAdmin, isSuperAdmin } = require('../../middleware/adminMiddleware.js');
 
 /**
  * @openapi
@@ -20,7 +20,7 @@ const { isAdmin, isSuperAdmin } = require('../middleware/adminMiddleware.js');
  *       required: true
  *       content:
  *         application/json:
- *           schema: { type: object, required: [name], properties: { name: { type: string, example: Mercado Pago }, descripcion: { type: string }, active: { type: boolean } } }
+ *           schema: { type: object, required: [name], properties: { name: { type: string, example: Mercado Pago }, description: { type: string }, active: { type: boolean } } }
  *     responses: { 201: { description: Creado } }
  * /metodoPago/{id}:
  *   get:
@@ -74,7 +74,7 @@ Devuelve ej:
     {
         "id": "cd323f9b-2392-47a1-83fd-69d3fb146a42",
         "name": "Mercado Pago",
-        "descripcion": "Método confiable",
+        "description": "Método confiable",
         "active": true
     }
 ]
@@ -116,13 +116,13 @@ router.get('/:id/validate', authenticateToken, metodoPagoController.validateMeto
 
 // --------------------- RUTAS DE GESTIÓN DE ESTADO --------------------- //
 
-// Actualizar estado específico de método de pago (solo admin)
+// Actualizar status específico de método de pago (solo admin)
 //router.patch('/:id/status', authenticateToken, /*requireAdmin,*/ metodoPagoController.updateMetodoPagoStatus);
 
-// Alternar estado de método de pago (solo admin)
+// Alternar status de método de pago (solo admin)
 //router.patch('/:id/toggle', authenticateToken, /*requireAdmin,*/ metodoPagoController.toggleMetodoPagoStatus);
 
-// Actualización masiva de estado (solo admin)
+// Actualización masiva de status (solo admin)
 //router.patch('/bulk/status', authenticateToken, /*requireAdmin,*/ metodoPagoController.bulkUpdateStatus);
 
 // --------------------- RUTAS DE CONSULTA ESPECIALIZADA --------------------- //

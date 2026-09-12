@@ -6,7 +6,7 @@
 // getUsersRatingSummary usaban Op y sequelize sin importarlos.
 
 jest.mock('../models/index.js', () => ({
-  Valoracion: { findAll: jest.fn().mockResolvedValue([]) },
+  Rating: { findAll: jest.fn().mockResolvedValue([]) },
   User: { findAll: jest.fn().mockResolvedValue([]) },
   sequelize: {
     fn: jest.fn(() => 'FN'),
@@ -15,7 +15,7 @@ jest.mock('../models/index.js', () => ({
   },
 }));
 
-const { getTopRatedUsers, getUsersRatingSummary } = require('../controllers/valoraciones.controller');
+const { getTopRatedUsers, getUsersRatingSummary } = require('../modules/p2p/rating.controller');
 
 function mockRes() {
   return {

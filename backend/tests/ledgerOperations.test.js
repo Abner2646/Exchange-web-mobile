@@ -160,7 +160,7 @@ describe('transferInternal arma el asiento de la transferencia user↔user', () 
 describe('settleP2P arma el asiento de la transacción P2P', () => {
   test('cripto bloqueado del vendedor → disponible del comprador (sin suspense)', async () => {
     await settleP2P({
-      vendedorId: 'v', compradorId: 'c', criptomonedaId: 'BTC', cantidad: '0.5', referencia: 'p2p:1',
+      sellerId: 'v', buyerId: 'c', cryptoId: 'BTC', amount: '0.5', referencia: 'p2p:1',
     }, 'tx');
 
     const [asiento, transaction] = postTransaction.mock.calls[0];
