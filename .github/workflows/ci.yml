@@ -54,8 +54,10 @@ jobs:
   # is clean there today, so this passes now and BLOCKS a merge that introduces (or
   # a newly-disclosed transitive) high/critical advisory — forcing it to be dealt
   # with. Dependabot opens the fix PRs. Moderate/low are not gated (noise); review
-  # them via `npm audit`. If an unfixable transitive high ever blocks unrelated
-  # work, downgrade to `continue-on-error: true` (advisory) rather than muting it.
+  # them via `npm audit`. Runs through scripts/audit-gate.js so a single unfixable
+  # transitive high (no patch available, reachable only via a pinned lib) can be
+  # accepted with a documented, dated allowlist entry instead of muting the whole
+  # gate — everything else still blocks the merge.
   security:
     name: Dependency audit
     runs-on: ubuntu-latest
@@ -74,5 +76,5 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: npm audit (fail on high/critical)
-        run: npm audit --audit-level=high
+      - name: npm audit gate (fail on un-allowlisted high/critical)
+        run: node scripts/audit-gate.js
