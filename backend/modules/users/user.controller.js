@@ -1,5 +1,5 @@
 // controllers/user.controller.js
-const { User, Crypto, MasterWallet, DepositAddress, UserBalance, Notificaciones } = require('../../models/index.js');
+const { User, Crypto, MasterWallet, DepositAddress, UserBalance, Notification } = require('../../models/index.js');
 const { Op } = require('sequelize');
 const { sequelize } = require('../../models/index.js');
 const emailService = require('../../services/email.service.js');
@@ -99,13 +99,13 @@ Para comenzar a operar:
 2. Realiza tu primer depósito
 3. ¡Comienza a intercambiar!`;
     
-    const {Notificaciones} = require('../../models/index.js');
-    await Notificaciones.createNotification({
-      usuarioId: usuario.id,
-      tipo: 'sistema',
-      titulo: 'Bienvenido al Exchange',
-      mensaje: mensajeBienvenida,
-      importante: true,
+    const {Notification} = require('../../models/index.js');
+    await Notification.createNotification({
+      userId: usuario.id,
+      type: 'system',
+      title: 'Bienvenido al Exchange',
+      message: mensajeBienvenida,
+      important: true,
       canales: { email: true, push: false, inApp: true },
       metadatos: {
         direccionesCreadas: direccionesCreadas.length,
@@ -893,11 +893,11 @@ const requestKYCVerification = async (req, res) => {
     
     const { user, token } = await User.updateKYC(userId, kycData, false);
     
-    await Notificaciones.notifyUsersByRole('admin', {
-      tipo: 'kyc',
-      titulo: 'Nueva solicitud de verificación KYC',
-      mensaje: `El usuario ${user.username} ha enviado documentos para verificación KYC.`,
-      importante: true
+    await Notification.notifyUsersByRole('admin', {
+      type: 'kyc',
+      title: 'Nueva solicitud de verificación KYC',
+      message: `El usuario ${user.username} ha enviado documentos para verificación KYC.`,
+      important: true
     });
     
     res.json({
@@ -970,13 +970,13 @@ const regenerateDepositAddress = async (req, res) => {
       active: true
     }, { transaction });
     
-    const {Notificaciones} = require('../../models/index.js');
-    await Notificaciones.createNotification({
-      usuarioId: userId,
-      tipo: 'seguridad',
-      titulo: 'Dirección de depósito regenerada',
-      mensaje: `Tu dirección de depósito para ${crypto.symbol} ha sido regenerada por seguridad. Nueva dirección: ${nuevaDireccion}`,
-      importante: true
+    const {Notification} = require('../../models/index.js');
+    await Notification.createNotification({
+      userId: userId,
+      type: 'security',
+      title: 'Dirección de depósito regenerada',
+      message: `Tu dirección de depósito para ${crypto.symbol} ha sido regenerada por seguridad. Nueva dirección: ${nuevaDireccion}`,
+      important: true
     }, { transaction });
     
     await transaction.commit();
@@ -1002,7 +1002,7 @@ const checkUserInitialization = async (req, res) => {
     
     const direcciones = await DepositAddress.getByUser(userId);
     const balances = await UserBalance.getByUserId(userId);
-    const notificaciones = await Notificaciones.getUserNotifications(userId, { limit: 1 });
+    const notificaciones = await Notification.getUserNotifications(userId, { limit: 1 });
     
     const criptomonedasActivas = await Crypto.getActive();
     

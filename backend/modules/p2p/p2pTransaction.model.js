@@ -98,7 +98,7 @@ P2PTransaction.createTransaction = async (data) => {
     }, { transaction });
 
     // 📧 NOTIFICAR A AMBAS PARTES
-    const { Notificaciones } = require('../../models/index');
+    const { Notification } = require('../../models/index');
     
     const transaccionConDatos = {
       id: nuevaTransaccion.id,
@@ -108,7 +108,7 @@ P2PTransaction.createTransaction = async (data) => {
       fiatCurrency: oferta.fiatCurrency
     };
 
-    await Notificaciones.notifyBothParties(
+    await Notification.notifyBothParties(
       buyerId,
       sellerId,
       transaccionConDatos,
@@ -172,7 +172,7 @@ P2PTransaction.completeTransaction = async (id, userId) => {
     }, { transaction });
 
     // 📧 NOTIFICAR A AMBAS PARTES
-    const { Notificaciones } = require('../../models/index');
+    const { Notification } = require('../../models/index');
     
     const transaccionConDatos = {
       id: transaccion.id,
@@ -182,7 +182,7 @@ P2PTransaction.completeTransaction = async (id, userId) => {
       fiatCurrency: transaccion.fiatCurrency
     };
 
-    await Notificaciones.notifyBothParties(
+    await Notification.notifyBothParties(
       transaccion.buyerId,
       transaccion.sellerId,
       transaccionConDatos,
@@ -244,7 +244,7 @@ P2PTransaction.cancelTransaction = async (id, userId) => {
     }, { transaction });
 
     // 📧 NOTIFICAR A AMBAS PARTES
-    const { Notificaciones } = require('../../models/index');
+    const { Notification } = require('../../models/index');
     
     const transaccionConDatos = {
       id: transaccion.id,
@@ -254,7 +254,7 @@ P2PTransaction.cancelTransaction = async (id, userId) => {
       fiatCurrency: transaccion.fiatCurrency
     };
 
-    await Notificaciones.notifyBothParties(
+    await Notification.notifyBothParties(
       transaccion.buyerId,
       transaccion.sellerId,
       transaccionConDatos,
@@ -305,7 +305,7 @@ P2PTransaction.cancelTransaction = async (id, userId) => {
       }, { transaction });
 
       // 📧 NOTIFICAR A AMBAS PARTES
-      const { Notificaciones } = require('../../models/index');
+      const { Notification } = require('../../models/index');
       
       const transaccionConDatos = {
         id: transaccion.id,
@@ -315,7 +315,7 @@ P2PTransaction.cancelTransaction = async (id, userId) => {
         fiatCurrency: transaccion.fiatCurrency
       };
 
-      await Notificaciones.notifyBothParties(
+      await Notification.notifyBothParties(
         transaccion.buyerId,
         transaccion.sellerId,
         transaccionConDatos,

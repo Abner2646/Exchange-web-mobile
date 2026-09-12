@@ -1,12 +1,12 @@
 // controllers/notificaciones.controller.js
-const { Notificaciones } = require('../models/index.js');
-const authz = require('../utils/authz');
+const { Notification } = require('../../models/index.js');
+const authz = require('../../utils/authz');
 
 // Listar notificaciones con filtros (admin)
 const getNotificaciones = async (req, res) => {
   try {
     const filters = { ...req.query };
-    const result = await Notificaciones.getAll(filters);
+    const result = await Notification.getAll(filters);
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -17,14 +17,14 @@ const getNotificaciones = async (req, res) => {
 const getNotificacionById = async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await Notificaciones.getById(id);
+    const result = await Notification.getById(id);
     
     if (!result) {
       return res.status(404).json({ error: 'Notificación no encontrada' });
     }
 
     // Verificar que el usuario tenga acceso a esta notificación
-    if (!authz.canAccessResource(req.user, result.usuarioId)) {
+    if (!authz.canAccessResource(req.user, result.userId)) {
       return res.status(403).json({ error: 'No tienes permiso para ver esta notificación' });
     }
 
@@ -39,7 +39,7 @@ const createNotificacion = async (req, res) => {
   try {
     const notificationData = req.body;
     
-    const nuevaNotificacion = await Notificaciones.createNotification(notificationData);
+    const nuevaNotificacion = await Notification.createNotification(notificationData);
     res.status(201).json({
       message: 'Notificación creada exitosamente',
       data: nuevaNotificacion
@@ -52,13 +52,13 @@ const createNotificacion = async (req, res) => {
 // Crear notificaciones masivas (admin)
 const createBulkNotificaciones = async (req, res) => {
   try {
-    const { notificaciones } = req.body;
+    const { notifications } = req.body;
     
-    if (!Array.isArray(notificaciones) || notificaciones.length === 0) {
+    if (!Array.isArray(notifications) || notifications.length === 0) {
       return res.status(400).json({ error: 'Se requiere un array de notificaciones' });
     }
 
-    const nuevasNotificaciones = await Notificaciones.createBulkNotifications(notificaciones);
+    const nuevasNotificaciones = await Notification.createBulkNotifications(notifications);
     res.status(201).json({
       message: `${nuevasNotificaciones.length} notificaciones creadas exitosamente`,
       data: nuevasNotificaciones
@@ -74,7 +74,7 @@ const deleteNotificacion = async (req, res) => {
     const { id } = req.params;
     const usuarioId = authz.isAdmin(req.user) ? null : req.user.id;
 
-    const deleted = await Notificaciones.deleteNotification(id, usuarioId);
+    const deleted = await Notification.deleteNotification(id, usuarioId);
     
     if (!deleted) {
       return res.status(404).json({ error: 'Notificación no encontrada o sin permisos' });
@@ -92,7 +92,7 @@ const getMyNotificaciones = async (req, res) => {
     const usuarioId = req.user.id;
     const filters = { ...req.query };
     
-    const result = await Notificaciones.getUserNotifications(usuarioId, filters);
+    const result = await Notification.getUserNotifications(usuarioId, filters);
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -104,7 +104,7 @@ const getUnreadCount = async (req, res) => {
   try {
     const usuarioId = req.user.id;
     
-    const count = await Notificaciones.getUnreadCount(usuarioId);
+    const count = await Notification.getUnreadCount(usuarioId);
     res.json({ unreadCount: count });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -116,7 +116,7 @@ const getUnreadCountByType = async (req, res) => {
   try {
     const usuarioId = req.user.id;
     
-    const counts = await Notificaciones.getUnreadCountByType(usuarioId);
+    const counts = await Notification.getUnreadCountByType(usuarioId);
     res.json(counts);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -129,7 +129,7 @@ const markAsRead = async (req, res) => {
     const { id } = req.params;
     const usuarioId = authz.isAdmin(req.user) ? null : req.user.id;
 
-    const updated = await Notificaciones.markAsRead(id, usuarioId);
+    const updated = await Notification.markAsRead(id, usuarioId);
     
     if (!updated) {
       return res.status(404).json({ error: 'Notificación no encontrada o sin permisos' });
@@ -147,7 +147,7 @@ const markAsUnread = async (req, res) => {
     const { id } = req.params;
     const usuarioId = authz.isAdmin(req.user) ? null : req.user.id;
 
-    const updated = await Notificaciones.markAsUnread(id, usuarioId);
+    const updated = await Notification.markAsUnread(id, usuarioId);
     
     if (!updated) {
       return res.status(404).json({ error: 'Notificación no encontrada o sin permisos' });
@@ -165,10 +165,10 @@ const markAllAsRead = async (req, res) => {
     const usuarioId = req.user.id;
     const filters = req.body; // Filtros opcionales (tipo, importante)
     
-    const updatedCount = await Notificaciones.markAllAsRead(usuarioId, filters);
+    const updatedCount = await Notification.markAllAsRead(usuarioId, filters);
     
     res.json({ 
-      message: 'Notificaciones marcadas como leídas',
+      message: 'Notification marcadas como leídas',
       updatedCount 
     });
   } catch (error) {
@@ -181,10 +181,10 @@ const deleteAllRead = async (req, res) => {
   try {
     const usuarioId = req.user.id;
     
-    const deletedCount = await Notificaciones.deleteAllRead(usuarioId);
+    const deletedCount = await Notification.deleteAllRead(usuarioId);
     
     res.json({ 
-      message: 'Notificaciones leídas eliminadas',
+      message: 'Notification leídas eliminadas',
       deletedCount 
     });
   } catch (error) {
@@ -197,7 +197,7 @@ const notifyAllUsers = async (req, res) => {
   try {
     const notificationData = req.body;
     
-    const notifications = await Notificaciones.notifyAllUsers(notificationData);
+    const notifications = await Notification.notifyAllUsers(notificationData);
     
     res.status(201).json({
       message: `Notificación enviada a ${notifications.length} usuarios`,
@@ -214,7 +214,7 @@ const notifyUsersByRole = async (req, res) => {
     const { role } = req.params;
     const notificationData = req.body;
     
-    const notifications = await Notificaciones.notifyUsersByRole(role, notificationData);
+    const notifications = await Notification.notifyUsersByRole(role, notificationData);
     
     res.status(201).json({
       message: `Notificación enviada a ${notifications.length} usuarios con role ${role}`,
@@ -229,7 +229,7 @@ const notifyUsersByRole = async (req, res) => {
 const getNotificacionesStats = async (req, res) => {
   try {
     const filters = req.query;
-    const stats = await Notificaciones.getStats(filters);
+    const stats = await Notification.getStats(filters);
     res.json(stats);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -239,7 +239,7 @@ const getNotificacionesStats = async (req, res) => {
 // Limpiar notificaciones antiguas (admin)
 const cleanupOldNotifications = async (req, res) => {
   try {
-    const result = await Notificaciones.cleanupOldNotifications();
+    const result = await Notification.cleanupOldNotifications();
     
     res.json({
       message: 'Limpieza completada',
@@ -255,7 +255,7 @@ const deleteOldNotifications = async (req, res) => {
   try {
     const { days = 30 } = req.query;
     
-    const deletedCount = await Notificaciones.deleteOldNotifications(parseInt(days));
+    const deletedCount = await Notification.deleteOldNotifications(parseInt(days));
     
     res.json({
       message: `Eliminadas ${deletedCount} notificaciones antiguas`,
@@ -273,7 +273,7 @@ const getUserNotifications = async (req, res) => {
     const { usuarioId } = req.params;
     const filters = { ...req.query };
     
-    const result = await Notificaciones.getUserNotifications(usuarioId, filters);
+    const result = await Notification.getUserNotifications(usuarioId, filters);
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -283,10 +283,10 @@ const getUserNotifications = async (req, res) => {
 // Crear notificación con template
 const createNotificationWithTemplate = async (req, res) => {
   try {
-    const { usuarioId, template, templateData = {} } = req.body;
+    const { userId, template, templateData = {} } = req.body;
     
-    const notification = await Notificaciones.createNotification({
-      usuarioId,
+    const notification = await Notification.createNotification({
+      userId,
       template,
       templateData
     });
@@ -303,9 +303,9 @@ const createNotificationWithTemplate = async (req, res) => {
 // Notificar evento de seguridad
 const notifySecurityEvent = async (req, res) => {
   try {
-    const { usuarioId, eventType, details = {} } = req.body;
+    const { userId, eventType, details = {} } = req.body;
     
-    const notification = await Notificaciones.notifySecurityEvent(usuarioId, eventType, details);
+    const notification = await Notification.notifySecurityEvent(userId, eventType, details);
     
     if (!notification) {
       return res.status(400).json({ error: 'Tipo de evento de seguridad no reconocido' });
@@ -323,9 +323,9 @@ const notifySecurityEvent = async (req, res) => {
 // Notificar actualización de transacción
 const notifyTransactionUpdate = async (req, res) => {
   try {
-    const { usuarioId, transaccionId, estado } = req.body;
+    const { userId, transactionId, status } = req.body;
     
-    const notification = await Notificaciones.notifyTransactionUpdate(usuarioId, transaccionId, estado);
+    const notification = await Notification.notifyTransactionUpdate(userId, transactionId, status);
     
     if (!notification) {
       return res.status(400).json({ error: 'Estado de transacción no requiere notificación' });

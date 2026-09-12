@@ -1,4 +1,4 @@
-const { Transfer, User, Crypto, UserBalance, Notificaciones } = require('../../models/index.js');
+const { Transfer, User, Crypto, UserBalance, Notification } = require('../../models/index.js');
 const { sequelize } = require('../../models/index.js');
 const AppError = require('../../utils/AppError');
 const errorCodes = require('../../utils/errorCodes');
@@ -248,8 +248,8 @@ const processTransfer = async (req, res) => {
 
     // Create notifications — failure is non-fatal
     try {
-      await Notificaciones.createNotification({
-        usuarioId: transfer.senderId,
+      await Notification.createNotification({
+        userId: transfer.senderId,
         template: 'TRANSFERENCIA_COMPLETADA_REMITENTE',
         templateData: {
           cantidad: transfer.amount,
@@ -258,8 +258,8 @@ const processTransfer = async (req, res) => {
         },
       }, { transaction });
 
-      await Notificaciones.createNotification({
-        usuarioId: transfer.recipientId,
+      await Notification.createNotification({
+        userId: transfer.recipientId,
         template: 'TRANSFERENCIA_RECIBIDA',
         templateData: {
           cantidad: transfer.amount,
@@ -352,8 +352,8 @@ const cancelTransfer = async (req, res) => {
 
   // Create cancellation notification — failure is non-fatal
   try {
-    await Notificaciones.createNotification({
-      usuarioId: userId,
+    await Notification.createNotification({
+      userId: userId,
       template: 'TRANSFERENCIA_CANCELADA',
       templateData: {
         cantidad: transfer.amount,

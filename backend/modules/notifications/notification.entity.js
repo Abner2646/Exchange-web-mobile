@@ -1,63 +1,63 @@
 // models/entities/notificaciones.entity.js
 const { DataTypes, Model } = require('sequelize');
 
-class Notificacion extends Model {}
+class Notification extends Model {}
 
-function initNotificacion(sequelize) {
-  Notificacion.init({
+function initNotification(sequelize) {
+  Notification.init({
     id: {
       type: DataTypes.UUID,
       primaryKey: true,
       defaultValue: DataTypes.UUIDV4
     },
-    usuarioId: {
+    userId: {
       type: DataTypes.UUID,
       allowNull: false,
-      field: 'usuario_id'
+      field: 'user_id'
     },
-    tipo: {
-      type: DataTypes.ENUM('seguridad', 'transaccion', 'kyc', 'sistema', 'p2p', 'exchange'),
+    type: {
+      type: DataTypes.ENUM('security', 'transaction', 'kyc', 'system', 'p2p', 'exchange'),
       allowNull: false
     },
-    titulo: {
+    title: {
       type: DataTypes.STRING(255),
       allowNull: false
     },
-    mensaje: {
+    message: {
       type: DataTypes.TEXT,
       allowNull: false
     },
-    leida: {
+    read: {
       type: DataTypes.BOOLEAN,
       defaultValue: false
     },
-    importante: {
+    important: {
       type: DataTypes.BOOLEAN,
       defaultValue: false
     },
-    fechaEnviada: {
+    sentAt: {
       type: DataTypes.DATE,
       allowNull: true,
-      field: 'fecha_enviada'
+      field: 'sent_at'
     },
   }, {
     sequelize,
-    modelName: 'Notificacion',
-    tableName: 'notificaciones',
+    modelName: 'Notification',
+    tableName: 'notifications',
     timestamps: true,
     createdAt: 'created_at',
     updatedAt: 'updated_at',
     indexes: [
-      { fields: ['usuario_id'] },
-      { fields: ['leida'] },
-      { fields: ['tipo'] },
-      { fields: ['importante'] },
+      { fields: ['user_id'] },
+      { fields: ['read'] },
+      { fields: ['type'] },
+      { fields: ['important'] },
       { fields: ['created_at'] },
-      { fields: ['usuario_id', 'leida'] }
+      { fields: ['user_id', 'read'] }
     ]
   });
 
-  return Notificacion;
+  return Notification;
 }
 
-module.exports = initNotificacion;
+module.exports = initNotification;

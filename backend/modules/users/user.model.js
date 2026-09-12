@@ -731,8 +731,8 @@ User.toggle2FA = async (id, nuevoEstado) => {
     await user.update({ passwordHash: newPasswordHash });
     const token = user.generateUpdatedJWT();
 
-    const { Notificaciones } = require('../../models');
-    await Notificaciones.notifySecurityEvent(id, 'cambio_password');
+    const { Notification } = require('../../models');
+    await Notification.notifySecurityEvent(id, 'cambio_password');
     
     return { user, token };
   };
@@ -824,10 +824,10 @@ User.toggle2FA = async (id, nuevoEstado) => {
     await user.update(updateData);
     const token = user.generateUpdatedJWT();
 
-    const { Notificaciones } = require('../../models');
+    const { Notification } = require('../../models');
     const template = verified ? 'KYC_APROBADO' : 'KYC_RECHAZADO';
-    await Notificaciones.createNotification({
-      usuarioId: id,
+    await Notification.createNotification({
+      userId: id,
       template
     });
     

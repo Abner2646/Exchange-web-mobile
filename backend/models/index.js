@@ -12,7 +12,7 @@ const cryptoModel = require('../modules/crypto/crypto.model.js');
 const direccionDepositoModel = require('../modules/wallets/depositAddress.model');
 const intercambioExchangeModel = require('../modules/swap/swap.model');
 const metodoPagoModel = require('../modules/p2p/paymentMethod.model');
-const notificacionesModel = require('./notificaciones.model');
+const notificacionesModel = require('../modules/notifications/notification.model');
 const ofertaMetodoPagoModel = require('../modules/p2p/offerPaymentMethod.model');
 const ofertaP2PModel = require('../modules/p2p/p2pOffer.model');
 const parExchangeModel = require('../modules/swap/swapPair.model');
@@ -64,7 +64,7 @@ const Crypto = cryptoModel(sequelize);
 const DepositAddress = direccionDepositoModel(sequelize);
 const Swap = intercambioExchangeModel(sequelize);
 const PaymentMethod = metodoPagoModel(sequelize);
-const Notificaciones = notificacionesModel(sequelize);
+const Notification = notificacionesModel(sequelize);
 const OfferPaymentMethod = ofertaMetodoPagoModel(sequelize);
 const P2POffer = ofertaP2PModel(sequelize);  
 const SwapPair = parExchangeModel(sequelize);
@@ -324,7 +324,7 @@ module.exports = {
   DepositAddress,
   Swap,
   PaymentMethod,
-  Notificaciones,
+  Notification,
   OfferPaymentMethod,
   P2POffer,
   SwapPair,

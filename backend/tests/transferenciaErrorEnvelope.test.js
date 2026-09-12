@@ -26,7 +26,7 @@ jest.mock('../models/index.js', () => ({
     updateBalance: jest.fn(),
     getByUserAndCrypto: jest.fn(),
   },
-  Notificaciones: { createNotification: jest.fn() },
+  Notification: { createNotification: jest.fn() },
   sequelize: {
     transaction: jest.fn(),
   },

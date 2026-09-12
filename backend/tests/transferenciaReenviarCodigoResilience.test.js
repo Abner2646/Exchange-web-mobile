@@ -21,7 +21,7 @@ jest.mock('../models/index.js', () => ({
   User: { findByPk: jest.fn() },
   Crypto: { getById: jest.fn() },
   UserBalance: {},
-  Notificaciones: {},
+  Notification: {},
   sequelize: { transaction: jest.fn() },
 }));
 

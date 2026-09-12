@@ -22,6 +22,7 @@ module.exports = {
     'modules/swap/**/*.js',
     'modules/trading/**/*.js',
     'modules/p2p/**/*.js',
+    'modules/notifications/**/*.js',
   ],
   // Coverage FLOOR: a merge gate that fails CI if coverage drops below these
   // numbers (enforced only when run with --coverage → `npm run test:coverage`).

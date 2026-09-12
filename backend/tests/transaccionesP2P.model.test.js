@@ -10,11 +10,11 @@ jest.mock('../modules/p2p/p2pTransaction.entity');
 jest.mock('../models/index', () => ({
   P2POffer: {},
   UserBalance: {},
-  Notificaciones: {},
+  Notification: {},
 }));
 
 const initTransaccionP2P = require('../modules/p2p/p2pTransaction.entity');
-const { P2POffer, UserBalance, Notificaciones } = require('../models/index');
+const { P2POffer, UserBalance, Notification } = require('../models/index');
 const createTransaccionP2PModel = require('../modules/p2p/p2pTransaction.model');
 
 const fakeModel = {};
@@ -35,7 +35,7 @@ describe('P2PTransaction.createTransaction — fiatAmount y bloqueo exactos', ()
     UserBalance.blockBalance = jest.fn().mockResolvedValue();
     P2PTransaction.create = jest.fn().mockResolvedValue({ id: 'tx1' });
     P2PTransaction.getById = jest.fn().mockResolvedValue({ id: 'tx1' });
-    Notificaciones.notifyBothParties = jest.fn().mockResolvedValue();
+    Notification.notifyBothParties = jest.fn().mockResolvedValue();
 
     await P2PTransaction.createTransaction({
       offerId: 'o1', buyerId: 'c', sellerId: 'v', cryptoId: 'crypto',

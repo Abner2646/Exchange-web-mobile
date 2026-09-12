@@ -330,3 +330,29 @@ Also disable the submit button + show a "sending…" state (cheap first-line def
   params `{ sellerId, buyerId, cryptoId, amount }` (`referencia` stays Spanish; persisted `type` value
   `liquidacion_p2p` frozen). This closes the last deferred ledger boundary from chunk 3. `idempotencyKey`
   and `notificaciones` are not p2p — they move later (notifications = chunk 8).
+
+### ✅ notifications  (chunk 8 — done, final domain chunk)
+
+- **HTTP mount paths UNCHANGED** (deferred to `/api/v1`): endpoints stay under `/api/notificacion/*`
+  (incl. the admin route param `/admin/user/:usuarioId`, kept — URL contract).
+- **Notification object / responses** (`Notificacion`→`Notification`, table `notificaciones`→`notifications`):
+  `usuarioId`→`userId`, `tipo`→`type` with enum values **`seguridad|transaccion|sistema` →
+  `security|transaction|system`** (`kyc`, `p2p`, `exchange` unchanged); `titulo`→`title`,
+  `mensaje`→`message`, `leida`→`read`, `importante`→`important`, `fechaEnviada`→`sentAt`.
+- **Request bodies** (create / bulk / admin endpoints): the notification data keys are now
+  `{ userId, type, title, message, important }` (or `{ template, templateData }`); bulk create takes
+  `{ notifications: [...] }` (was `notificaciones`); the admin security/transaction endpoints take
+  `userId` (+ `transactionId`, `status`). List filter keys are `type|read|important`.
+- **Cross-domain callers updated:** `Notificaciones`→`Notification` everywhere (user, transfer, p2p);
+  all `createNotification`/`notifyUsersByRole`/`notifyBothParties` call sites pass the English keys.
+  Notification *template* event keys (e.g. `CAMBIO_PASSWORD`) and the Spanish title/message text stay
+  as-is (internal / user-facing text, i18n = Fase 7.3).
+
+---
+
+**Fase 6.2 domain rename COMPLETE (chunks 1-8).** Every business domain now lives under
+`backend/modules/<domain>/` with English identifiers, columns and enum values. Remaining Spanish is
+intentional and tracked: HTTP mount paths + URL params (deferred to `/api/v1` versioning), a few
+deferred FK-echoes tied to the crypto FK, persisted ledger `type` values (audit-trail, frozen), and
+user-facing strings (Fase 7.3 i18n). `idempotencyKey` stays in `models/` (cross-cutting infra, already
+English). `controllers/` is now empty and `routes/` holds only the aggregator `index.js`.
