@@ -962,10 +962,10 @@ const regenerateDepositAddress = async (req, res) => {
     );
     
     const nuevaDireccionDeposito = await DepositAddress.create({
-      usuarioId: userId,
-      criptomonedaId: criptomonedaId,
+      userId: userId,
+      cryptoId: criptomonedaId,
       masterWalletId: walletMaestra.id,
-      direccion: nuevaDireccion,
+      address: nuevaDireccion,
       derivationIndex: derivationIndex,
       active: true
     }, { transaction });
