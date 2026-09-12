@@ -12,41 +12,41 @@
 process.env.JWT_SECRET = 'test-secret';
 
 jest.mock('../models', () => ({
-  Usuario: { findByPk: jest.fn() },
+  User: { findByPk: jest.fn() },
   sequelize: {},
-  TransaccionBlockchain: {}, Criptomoneda: {}, BalanceUsuario: {}, DireccionDeposito: {},
+  BlockchainTransaction: {}, Crypto: {}, UserBalance: {}, DepositAddress: {},
   // Required by idempotency.middleware (now wired into /withdraw)
   IdempotencyKey: { create: jest.fn().mockResolvedValue({}), findOne: jest.fn(), update: jest.fn(), destroy: jest.fn() },
 }));
-jest.mock('../controllers/usuario.controller.js', () => {
+jest.mock('../modules/users/user.controller.js', () => {
   const ok = (req, res) => res.json({ success: true, body: req.body });
   return new Proxy({}, { get: () => ok });
 });
-jest.mock('../controllers/transaccionBlockchain.controller', () => {
+jest.mock('../modules/wallets/blockchainTransaction.controller', () => {
   const ok = (req, res) => res.json({ success: true, body: req.body });
   return new Proxy({}, { get: () => ok });
 });
 
-test('schemas/transaccionBlockchain.schema.js carga sin lanzar (antes crasheaba por .uuid({version: 4}))', () => {
-  expect(() => require('../schemas/transaccionBlockchain.schema')).not.toThrow();
+test('modules/wallets/blockchainTransaction.schema.js carga sin lanzar (antes crasheaba por .uuid({version: 4}))', () => {
+  expect(() => require('../modules/wallets/blockchainTransaction.schema')).not.toThrow();
 });
 
 describe('POST /usuario/login valida el body con Joi antes del controller', () => {
   const express = require('express');
   const request = require('supertest');
-  const usuarioRoutes = require('../routes/usuario.routes.js');
+  const userRoutes = require('../modules/users/user.routes.js');
 
   function buildApp() {
     const app = express();
     app.use(express.json());
-    app.use('/usuario', usuarioRoutes);
+    app.use('/user', userRoutes);
     return app;
   }
 
   test('body válido (emailOrUsername + password) llega al controller', async () => {
     const app = buildApp();
     const res = await request(app)
-      .post('/usuario/login')
+      .post('/user/login')
       .send({ emailOrUsername: 'user@example.com', password: 'x' });
     expect(res.status).toBe(200);
   });
@@ -54,7 +54,7 @@ describe('POST /usuario/login valida el body con Joi antes del controller', () =
   test('sin password: 400 antes de tocar el controller', async () => {
     const app = buildApp();
     const res = await request(app)
-      .post('/usuario/login')
+      .post('/user/login')
       .send({ emailOrUsername: 'user@example.com' });
     expect(res.status).toBe(400);
     expect(res.body.errors.some((e) => e.field === 'password')).toBe(true);
@@ -63,7 +63,7 @@ describe('POST /usuario/login valida el body con Joi antes del controller', () =
   test('sin emailOrUsername: 400 antes de tocar el controller', async () => {
     const app = buildApp();
     const res = await request(app)
-      .post('/usuario/login')
+      .post('/user/login')
       .send({ password: 'x' });
     expect(res.status).toBe(400);
     expect(res.body.errors.some((e) => e.field === 'emailOrUsername')).toBe(true);
@@ -72,16 +72,16 @@ describe('POST /usuario/login valida el body con Joi antes del controller', () =
 
 describe('POST /transaccionBlockchain/withdraw valida el body con Joi antes del controller', () => {
   const mockUser = {
-    id: 'user-1', activo: true, email: 'user@example.com', username: 'user1',
-    rol: 'normal', kycVerificado: true, limiteDiarioUsd: 1000,
-    emailVerificado: true, googleId: null, ultimoLogout: null,
+    id: 'user-1', active: true, email: 'user@example.com', username: 'user1',
+    role: 'normal', kycVerified: true, dailyLimitUsd: 1000,
+    emailVerified: true, googleId: null, lastLogoutAt: null,
   };
 
   const jwt = require('jsonwebtoken');
-  const { Usuario } = require('../models');
+  const { User } = require('../models');
   const express = require('express');
   const request = require('supertest');
-  const transaccionBlockchainRoutes = require('../routes/transaccionBlockchain.routes');
+  const transaccionBlockchainRoutes = require('../modules/wallets/blockchainTransaction.routes');
 
   function buildApp() {
     const app = express();
@@ -95,13 +95,13 @@ describe('POST /transaccionBlockchain/withdraw valida el body con Joi antes del 
   }
 
   beforeEach(() => {
-    Usuario.findByPk.mockResolvedValue(mockUser);
+    User.findByPk.mockResolvedValue(mockUser);
   });
 
   const validBody = {
-    criptomonedaId: '11111111-1111-4111-8111-111111111111',
-    cantidad: 0.5,
-    direccionDestino: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
+    cryptoId: '11111111-1111-4111-8111-111111111111',
+    amount: 0.5,
+    destinationAddress: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
   };
 
   test('body válido llega al controller', async () => {
@@ -114,33 +114,33 @@ describe('POST /transaccionBlockchain/withdraw valida el body con Joi antes del 
     expect(res.status).toBe(200);
   });
 
-  test('criptomonedaId no-UUID: 400 antes de tocar el controller', async () => {
+  test('cryptoId no-UUID: 400 antes de tocar el controller', async () => {
     const app = buildApp();
     const res = await request(app)
       .post('/transaccionBlockchain/withdraw')
       .set('Authorization', auth())
-      .send({ ...validBody, criptomonedaId: 'not-a-uuid' });
+      .send({ ...validBody, cryptoId: 'not-a-uuid' });
     expect(res.status).toBe(400);
-    expect(res.body.errors.some((e) => e.field === 'criptomonedaId')).toBe(true);
+    expect(res.body.errors.some((e) => e.field === 'cryptoId')).toBe(true);
   });
 
-  test('cantidad negativa: 400 antes de tocar el controller', async () => {
+  test('amount negativa: 400 antes de tocar el controller', async () => {
     const app = buildApp();
     const res = await request(app)
       .post('/transaccionBlockchain/withdraw')
       .set('Authorization', auth())
-      .send({ ...validBody, cantidad: -5 });
+      .send({ ...validBody, amount: -5 });
     expect(res.status).toBe(400);
-    expect(res.body.errors.some((e) => e.field === 'cantidad')).toBe(true);
+    expect(res.body.errors.some((e) => e.field === 'amount')).toBe(true);
   });
 
-  test('direccionDestino demasiado corta: 400 antes de tocar el controller', async () => {
+  test('destinationAddress demasiado corta: 400 antes de tocar el controller', async () => {
     const app = buildApp();
     const res = await request(app)
       .post('/transaccionBlockchain/withdraw')
       .set('Authorization', auth())
-      .send({ ...validBody, direccionDestino: 'abc' });
+      .send({ ...validBody, destinationAddress: 'abc' });
     expect(res.status).toBe(400);
-    expect(res.body.errors.some((e) => e.field === 'direccionDestino')).toBe(true);
+    expect(res.body.errors.some((e) => e.field === 'destinationAddress')).toBe(true);
   });
 });

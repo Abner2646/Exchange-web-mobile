@@ -1,4 +1,4 @@
-const { makeGetClientForNetwork } = require('../services/blockchain/withdrawalReaper');
+const { makeGetClientForNetwork } = require('../modules/wallets/blockchain/withdrawalReaper');
 
 // makeGetClientForNetwork(manager) adapts the BlockchainServiceManager to what the
 // reaper needs: an object with getConfirmations(txHash) for a given network. EVM
@@ -6,7 +6,7 @@ const { makeGetClientForNetwork } = require('../services/blockchain/withdrawalRe
 // directly. Unknown networks / missing capability resolve to null (reaper leaves
 // the row instead of guessing).
 function fakeManager(map) {
-  return { getService: (red) => map[red] || null };
+  return { getService: (network) => map[network] || null };
 }
 
 describe('makeGetClientForNetwork', () => {

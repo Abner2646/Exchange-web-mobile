@@ -1,5 +1,5 @@
 // jobs/orderMatching.job.js
-const orderBookService = require('../services/trading/orderBook.service');
+const orderBookService = require('../modules/trading/orderBook.service');
 const { Order, TradingPair } = require('../models');
 const { Op } = require('sequelize');
 
@@ -204,7 +204,7 @@ class OrderMatchingJob {
   printStats() {
     const stats = this.getStats();
     console.log('\n📊 Order Matching Job - Estadísticas:');
-    console.log(`   Tiempo activo: ${stats.uptime} minutos`);
+    console.log(`   Tiempo active: ${stats.uptime} minutos`);
     console.log(`   Órdenes procesadas: ${stats.totalProcessed}`);
     console.log(`   Órdenes con match: ${stats.totalMatched}`);
     console.log(`   Trades ejecutados: ${stats.totalTrades}`);

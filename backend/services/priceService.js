@@ -1,7 +1,7 @@
 // services/priceService.js
 
 const axios = require('axios');
-const { ParExchange } = require('../models/index.js');
+const { SwapPair } = require('../models/index.js');
 const money = require('../utils/money');
 
 class PriceService {
@@ -64,7 +64,7 @@ class PriceService {
   // de los dos estaba definido en ningún lado — TypeError garantizado en
   // cada llamada, silenciado por el catch de getPrice() que cae a Binance.
   // Para cualquier cripto que solo exista en CoinGecko (la razón de tener
-  // este fallback) el precio fallaba por completo sin que nadie lo notara.
+  // este fallback) el price fallaba por completo sin que nadie lo notara.
   static COINGECKO_MAP = {
     'BTC': 'bitcoin',
     'ETH': 'ethereum',
@@ -131,7 +131,7 @@ class PriceService {
     try {
       console.log('Iniciando actualización de precios...');
       
-      const paresActivos = await ParExchange.getActive();
+      const paresActivos = await SwapPair.getActive();
       
       if (paresActivos.length === 0) {
         console.log('No hay pares activos para actualizar');
@@ -188,7 +188,7 @@ class PriceService {
   // Agrupar pares por fuente de precios
   groupPairsBySource(pares) {
     return pares.reduce((acc, par) => {
-      const fuente = par.fuentePrecio || 'binance'; // Por defecto Binance (gratuita)
+      const fuente = par.priceSource || 'binance'; // Por defecto Binance (gratuita)
       if (!acc[fuente]) acc[fuente] = [];
       acc[fuente].push(par);
       return acc;
@@ -216,23 +216,23 @@ class PriceService {
       // Actualizar cada par
       for (const par of pares) {
         try {
-          const simboloBinance = `${par.criptoBase.symbol}${par.criptoQuote.symbol}`;
+          const simboloBinance = `${par.baseCrypto.symbol}${par.quoteCrypto.symbol}`;
           const ticker = tickerMap[simboloBinance];
 
           if (!ticker) {
             // Intentar orden inverso
-            const simboloInverso = `${par.criptoQuote.symbol}${par.criptoBase.symbol}`;
+            const simboloInverso = `${par.quoteCrypto.symbol}${par.baseCrypto.symbol}`;
             const tickerInverso = tickerMap[simboloInverso];
             
             if (tickerInverso) {
-              // Calcular precio inverso (Binance da strings exactos; división y
+              // Calcular price inverso (Binance da strings exactos; división y
               // negación con money.js para no arrastrar error de coma)
               const precioInverso = money.divide('1', String(tickerInverso.lastPrice));
               await this.updatePairPrice(par.id, {
-                precioActual: precioInverso,
-                volumen24h: String(tickerInverso.quoteVolume),
-                cambiosPorcentaje24h: money.multiply(String(tickerInverso.priceChangePercent), '-1'),
-                fuentePrecio: 'binance'
+                currentPrice: precioInverso,
+                volume24h: String(tickerInverso.quoteVolume),
+                changePercent24h: money.multiply(String(tickerInverso.priceChangePercent), '-1'),
+                priceSource: 'binance'
               });
               results.success++;
             } else {
@@ -243,20 +243,20 @@ class PriceService {
           }
 
           await this.updatePairPrice(par.id, {
-            precioActual: String(ticker.lastPrice),
-            precioAnterior: String(ticker.prevClosePrice),
-            cambiosPorcentaje24h: String(ticker.priceChangePercent),
-            volumen24h: String(ticker.quoteVolume),
-            volumenBase24h: String(ticker.volume),
-            precioMaximo24h: String(ticker.highPrice),
-            precioMinimo24h: String(ticker.lowPrice),
-            cantidadOperaciones24h: parseInt(ticker.count),
-            fuentePrecio: 'binance'
+            currentPrice: String(ticker.lastPrice),
+            previousPrice: String(ticker.prevClosePrice),
+            changePercent24h: String(ticker.priceChangePercent),
+            volume24h: String(ticker.quoteVolume),
+            volumeBase24h: String(ticker.volume),
+            maxPrice24h: String(ticker.highPrice),
+            minPrice24h: String(ticker.lowPrice),
+            operationsCount24h: parseInt(ticker.count),
+            priceSource: 'binance'
           });
 
           results.success++;
         } catch (error) {
-          results.errors.push(`Error actualizando ${par.criptoBase.symbol}/${par.criptoQuote.symbol}: ${error.message}`);
+          results.errors.push(`Error actualizando ${par.baseCrypto.symbol}/${par.quoteCrypto.symbol}: ${error.message}`);
           results.failed++;
         }
       }
@@ -278,8 +278,8 @@ class PriceService {
       // Obtener símbolos únicos
       const simbolosUnicos = new Set();
       pares.forEach(par => {
-        simbolosUnicos.add(par.criptoBase.symbol);
-        simbolosUnicos.add(par.criptoQuote.symbol);
+        simbolosUnicos.add(par.baseCrypto.symbol);
+        simbolosUnicos.add(par.quoteCrypto.symbol);
       });
 
       const symbols = Array.from(simbolosUnicos).join(',');
@@ -298,25 +298,25 @@ class PriceService {
       // Actualizar cada par
       for (const par of pares) {
         try {
-          const baseData = data[par.criptoBase.symbol];
-          const quoteSymbol = par.criptoQuote.symbol;
+          const baseData = data[par.baseCrypto.symbol];
+          const quoteSymbol = par.quoteCrypto.symbol;
           
           if (!baseData || !baseData[quoteSymbol]) {
             // Intentar con USD como intermediario
             if (baseData && baseData.USD && data[quoteSymbol] && data[quoteSymbol].USD) {
               const baseUSD = baseData.USD.PRICE;
               const quoteUSD = data[quoteSymbol].USD.PRICE;
-              const precio = baseUSD / quoteUSD;
+              const price = baseUSD / quoteUSD;
               
               await this.updatePairPrice(par.id, {
-                precioActual: precio,
-                cambiosPorcentaje24h: baseData.USD.CHANGEPCT24HOUR - data[quoteSymbol].USD.CHANGEPCT24HOUR,
-                volumen24h: baseData.USD.VOLUME24HOURTO || 0,
-                fuentePrecio: 'cryptocompare'
+                currentPrice: price,
+                changePercent24h: baseData.USD.CHANGEPCT24HOUR - data[quoteSymbol].USD.CHANGEPCT24HOUR,
+                volume24h: baseData.USD.VOLUME24HOURTO || 0,
+                priceSource: 'cryptocompare'
               });
               results.success++;
             } else {
-              results.errors.push(`Datos no disponibles para ${par.criptoBase.symbol}/${par.criptoQuote.symbol}`);
+              results.errors.push(`Datos no disponibles para ${par.baseCrypto.symbol}/${par.quoteCrypto.symbol}`);
               results.failed++;
             }
             continue;
@@ -324,17 +324,17 @@ class PriceService {
 
           const priceData = baseData[quoteSymbol];
           await this.updatePairPrice(par.id, {
-            precioActual: priceData.PRICE,
-            cambiosPorcentaje24h: priceData.CHANGEPCT24HOUR || 0,
-            volumen24h: priceData.VOLUME24HOURTO || 0,
-            precioMaximo24h: priceData.HIGH24HOUR,
-            precioMinimo24h: priceData.LOW24HOUR,
-            fuentePrecio: 'cryptocompare'
+            currentPrice: priceData.PRICE,
+            changePercent24h: priceData.CHANGEPCT24HOUR || 0,
+            volume24h: priceData.VOLUME24HOURTO || 0,
+            maxPrice24h: priceData.HIGH24HOUR,
+            minPrice24h: priceData.LOW24HOUR,
+            priceSource: 'cryptocompare'
           });
 
           results.success++;
         } catch (error) {
-          results.errors.push(`Error actualizando ${par.criptoBase.symbol}/${par.criptoQuote.symbol}: ${error.message}`);
+          results.errors.push(`Error actualizando ${par.baseCrypto.symbol}/${par.quoteCrypto.symbol}: ${error.message}`);
           results.failed++;
         }
       }
@@ -356,26 +356,26 @@ class PriceService {
       // Coinbase tiene límites, así que actualizamos uno por uno
       for (const par of pares) {
         try {
-          const coinbasePair = `${par.criptoBase.symbol}-${par.criptoQuote.symbol}`;
+          const coinbasePair = `${par.baseCrypto.symbol}-${par.quoteCrypto.symbol}`;
           
-          // Obtener precio spot
+          // Obtener price spot
           const priceResponse = await axios.get(`${this.coinbaseBaseURL}/exchange-rates`, {
-            params: { currency: par.criptoBase.symbol },
+            params: { currency: par.baseCrypto.symbol },
             timeout: 5000
           });
           
           const rates = priceResponse.data.data.rates;
-          const precio = rates[par.criptoQuote.symbol];
+          const price = rates[par.quoteCrypto.symbol];
           
-          if (!precio) {
+          if (!price) {
             results.errors.push(`Par ${coinbasePair} no disponible en Coinbase`);
             results.failed++;
             continue;
           }
 
           await this.updatePairPrice(par.id, {
-            precioActual: String(precio),
-            fuentePrecio: 'coinbase'
+            currentPrice: String(price),
+            priceSource: 'coinbase'
           });
 
           results.success++;
@@ -384,7 +384,7 @@ class PriceService {
           await new Promise(resolve => setTimeout(resolve, 200));
           
         } catch (error) {
-          results.errors.push(`Error actualizando ${par.criptoBase.symbol}/${par.criptoQuote.symbol}: ${error.message}`);
+          results.errors.push(`Error actualizando ${par.baseCrypto.symbol}/${par.quoteCrypto.symbol}: ${error.message}`);
           results.failed++;
         }
       }
@@ -398,71 +398,71 @@ class PriceService {
     return results;
   }
 
-  // Actualizar precio de un par específico
-  async updatePairPrice(parId, priceData) {
+  // Actualizar price de un par específico
+  async updatePairPrice(pairId, priceData) {
     try {
       const updateData = {
         ...priceData,
-        ultimaActualizacion: new Date()
+        lastUpdated: new Date()
       };
 
-      // Si hay precio anterior, calcularlo
-      if (priceData.precioActual && !priceData.precioAnterior) {
-        const parActual = await ParExchange.findByPk(parId);
-        if (parActual && parActual.precioActual) {
-          updateData.precioAnterior = parActual.precioActual;
+      // Si hay price anterior, calcularlo
+      if (priceData.currentPrice && !priceData.previousPrice) {
+        const parActual = await SwapPair.findByPk(pairId);
+        if (parActual && parActual.currentPrice) {
+          updateData.previousPrice = parActual.currentPrice;
         }
       }
 
-      await ParExchange.update(updateData, {
-        where: { id: parId }
+      await SwapPair.update(updateData, {
+        where: { id: pairId }
       });
 
     } catch (error) {
-      throw new Error(`Error actualizando precio del par ${parId}: ${error.message}`);
+      throw new Error(`Error actualizando price del par ${pairId}: ${error.message}`);
     }
   }
 
-  // Obtener precio actual de un par específico
+  // Obtener price actual de un par específico
   async getCurrentPrice(baseSymbol, quoteSymbol) {
     try {
-      const par = await ParExchange.getBySymbols(baseSymbol, quoteSymbol);
+      const par = await SwapPair.getBySymbols(baseSymbol, quoteSymbol);
       
-      if (!par || !par.activo) {
+      if (!par || !par.active) {
         throw new Error(`Par ${baseSymbol}/${quoteSymbol} no encontrado o inactivo`);
       }
 
-      // Si el precio está muy desactualizado (más de 10 minutos), intentar actualizar
+      // Si el price está muy desactualizado (más de 10 minutos), intentar actualizar
       const ahora = new Date();
-      const ultimaActualizacion = new Date(par.ultimaActualizacion);
-      const minutosDesdeActualizacion = (ahora - ultimaActualizacion) / (1000 * 60);
+      const lastUpdated = new Date(par.lastUpdated);
+      const minutosDesdeActualizacion = (ahora - lastUpdated) / (1000 * 60);
 
       if (minutosDesdeActualizacion > 10) {
         console.log(`Precio desactualizado para ${baseSymbol}/${quoteSymbol}, actualizando...`);
         await this.updateSinglePair(par);
         
         // Obtener el par actualizado
-        return await ParExchange.getBySymbols(baseSymbol, quoteSymbol);
+        return await SwapPair.getBySymbols(baseSymbol, quoteSymbol);
       }
 
       return par;
     } catch (error) {
-      throw new Error(`Error obteniendo precio actual: ${error.message}`);
+      throw new Error(`Error obteniendo price actual: ${error.message}`);
     }
   }
 
   // Actualizar un solo par
   async updateSinglePair(par) {
     try {
-      if (par.fuentePrecio === 'binance') {
+      if (par.priceSource === 'binance') {
         await this.updateFromBinance([par]);
-      } else if (par.fuentePrecio === 'cryptocompare') {
+      } else if (par.priceSource === 'cryptocompare') {
         await this.updateFromCryptoCompare([par]);
-      } else if (par.fuentePrecio === 'coinbase') {
+      } else if (par.priceSource === 'coinbase') {
         await this.updateFromCoinbase([par]);
       }
     } catch (error) {
-      console.error(`Error actualizando par individual ${par.criptoBase.symbol}/${par.criptoQuote.symbol}:`, error.message);
+      console.error(`Error actualizando par individual ${par.baseCrypto.symbol}/${par.quoteCrypto.symbol}:`, error.message);
     }
   }
 
@@ -479,7 +479,7 @@ class PriceService {
     };
   }
 
-  // Método público para obtener precio individual
+  // Método público para obtener price individual
   async getPrice(baseSymbol, quoteSymbol) {
     try {
       // Intentar con CoinGecko primero
@@ -507,10 +507,10 @@ class PriceService {
       console.warn(`Binance failed for ${baseSymbol}/${quoteSymbol}:`, error.message);
     }
 
-    throw new Error(`No se pudo obtener precio para ${baseSymbol}/${quoteSymbol} desde ninguna fuente`);
+    throw new Error(`No se pudo obtener price para ${baseSymbol}/${quoteSymbol} desde ninguna fuente`);
   }
 
-  // Obtener precio específico de CoinGecko
+  // Obtener price específico de CoinGecko
   async getPriceFromCoinGecko(baseSymbol, quoteSymbol) {
     try {
       const baseId = PriceService.COINGECKO_MAP[baseSymbol];
@@ -520,7 +520,7 @@ class PriceService {
         throw new Error(`${baseSymbol} no está en el mapeo de CoinGecko`);
       }
 
-      // Si quote es una crypto conocida pero no USD/EUR, hacer cálculo indirecto
+      // Si quote es una criptomoneda conocida pero no USD/EUR, hacer cálculo indirecto
       if (quoteId && quoteSymbol !== 'USD' && quoteSymbol !== 'EUR') {
         const response = await axios.get(`${this.coingeckoBaseURL}/simple/price`, {
           params: {
@@ -551,11 +551,11 @@ class PriceService {
       return price ? parseFloat(price) : null;
       
     } catch (error) {
-      throw new Error(`Error obteniendo precio de CoinGecko: ${error.message}`);
+      throw new Error(`Error obteniendo price de CoinGecko: ${error.message}`);
     }
   }
 
-  // Obtener precio específico de Binance
+  // Obtener price específico de Binance
   async getPriceFromBinance(baseSymbol, quoteSymbol) {
     try {
       const symbol = `${baseSymbol}${quoteSymbol}`;
@@ -565,7 +565,7 @@ class PriceService {
       });
       return String(response.data.price);
     } catch (error) {
-      // Intentar precio inverso
+      // Intentar price inverso
       try {
         const inverseSymbol = `${quoteSymbol}${baseSymbol}`;
         const response = await axios.get(`${this.binanceBaseURL}/ticker/price`, {
@@ -579,43 +579,43 @@ class PriceService {
     }
   }
 
-  // Actualizar precio en tiempo real para un par específico
-  async updatePairPriceRealTime(parId) {
+  // Actualizar price en tiempo real para un par específico
+  async updatePairPriceRealTime(pairId) {
     try {
-      const par = await ParExchange.findByPk(parId, {
+      const par = await SwapPair.findByPk(pairId, {
         include: [
           {
-            model: require('../models/index.js').Criptomoneda,
-            as: 'criptoBase',
+            model: require('../models/index.js').Crypto,
+            as: 'baseCrypto',
             attributes: ['symbol']
           },
           {
-            model: require('../models/index.js').Criptomoneda,
-            as: 'criptoQuote',
+            model: require('../models/index.js').Crypto,
+            as: 'quoteCrypto',
             attributes: ['symbol']
           }
         ]
       });
 
-      if (!par || !par.activo) {
+      if (!par || !par.active) {
         throw new Error('Par no encontrado o inactivo');
       }
 
-      const priceResult = await this.getPrice(par.criptoBase.symbol, par.criptoQuote.symbol);
+      const priceResult = await this.getPrice(par.baseCrypto.symbol, par.quoteCrypto.symbol);
       
       if (priceResult && priceResult.price > 0) {
-        await this.updatePairPrice(parId, {
-          precioActual: priceResult.price,
-          fuentePrecio: priceResult.source
+        await this.updatePairPrice(pairId, {
+          currentPrice: priceResult.price,
+          priceSource: priceResult.source
         });
         
-        console.log(`Precio actualizado para ${par.criptoBase.symbol}/${par.criptoQuote.symbol}: ${priceResult.price}`);
+        console.log(`Precio actualizado para ${par.baseCrypto.symbol}/${par.quoteCrypto.symbol}: ${priceResult.price}`);
         return true;
       }
       
       return false;
     } catch (error) {
-      console.error(`Error actualizando precio en tiempo real para par ${parId}:`, error.message);
+      console.error(`Error actualizando price en tiempo real para par ${pairId}:`, error.message);
       return false;
     }
   }

@@ -1,8 +1,8 @@
-// Covers AUDITORIA_BACKEND.md Críticos #9: the Usuario↔BalanceUsuario,
-// Usuario↔DireccionDeposito and Usuario↔TransaccionBlockchain associations were
+// Covers AUDITORIA_BACKEND.md Críticos #9: the User↔UserBalance,
+// User↔DepositAddress and User↔BlockchainTransaction associations were
 // declared with foreignKey: 'usuarioId', but the real column in all three
 // tables is user_id (userId in the model). Sequelize synthesized a phantom
-// column that was never populated, so Usuario.findByPk(id, { include: [...] })
+// column that was never populated, so User.findByPk(id, { include: [...] })
 // silently returned an empty array for those three relations — no error thrown,
 // which is exactly what made it dangerous.
 //
@@ -13,45 +13,45 @@
 require('../helpers/testEnv');
 const { sequelize, resetDb } = require('../helpers/db');
 const {
-  Usuario, Criptomoneda, DireccionDeposito,
-  TransaccionBlockchain, WalletMaestra,
+  User, Crypto, DepositAddress,
+  BlockchainTransaction, MasterWallet,
 } = require('../../models');
 
 beforeEach(async () => { await resetDb(); });
 afterAll(async () => { await sequelize.close(); });
 
-describe('Usuario associations -> direccionesDeposito / transaccionesBlockchain', () => {
-  // (Paso C: el test de Usuario.include('balances') se retiró — BalanceUsuario ya
+describe('Usuario associations -> depositAddresses / blockchainTransactions', () => {
+  // (Paso C: el test de User.include('balances') se retiró — UserBalance ya
   // no es un modelo Sequelize; los saldos viven en el ledger, no en una asociación.)
 
-  test("Usuario.include('direccionesDeposito') returns the real address", async () => {
-    const user = await Usuario.create({ email: 'direcciones@test.com', username: 'direcciones_user', passwordHash: 'x', rol: 'normal' });
-    const cripto = await Criptomoneda.create({ symbol: 'ETH', nombre: 'Ethereum', red: 'ethereum', decimales: 18 });
-    const wallet = await WalletMaestra.create({
-      criptomonedaId: cripto.id, nombre: 'ETH master', red: 'ethereum', symbol: 'ETH',
-      direccionPublica: '0xmaster', xpub: 'ethxpubtest123',
+  test("Usuario.include('depositAddresses') returns the real address", async () => {
+    const user = await User.create({ email: 'direcciones@test.com', username: 'direcciones_user', passwordHash: 'x', role: 'normal' });
+    const cripto = await Crypto.create({ symbol: 'ETH', name: 'Ethereum', network: 'ethereum', decimals: 18 });
+    const wallet = await MasterWallet.create({
+      cryptoId: cripto.id, name: 'ETH master', network: 'ethereum', symbol: 'ETH',
+      publicAddress: '0xmaster', xpub: 'ethxpubtest123',
     });
-    await DireccionDeposito.create({
-      userId: user.id, criptomonedaId: cripto.id, walletMaestraId: wallet.id,
-      direccion: '0xabc', derivationIndex: 0, derivationPath: "m/44'/60'/0'/0/0",
+    await DepositAddress.create({
+      userId: user.id, cryptoId: cripto.id, masterWalletId: wallet.id,
+      address: '0xabc', derivationIndex: 0, derivationPath: "m/44'/60'/0'/0/0",
     });
 
-    const withDirs = await Usuario.findByPk(user.id, { include: [{ association: 'direccionesDeposito' }] });
+    const withDirs = await User.findByPk(user.id, { include: [{ association: 'depositAddresses' }] });
 
-    expect(withDirs.direccionesDeposito).toHaveLength(1);
-    expect(withDirs.direccionesDeposito[0].direccion).toBe('0xabc');
+    expect(withDirs.depositAddresses).toHaveLength(1);
+    expect(withDirs.depositAddresses[0].address).toBe('0xabc');
   });
 
-  test("Usuario.include('transaccionesBlockchain') returns the real transaction", async () => {
-    const user = await Usuario.create({ email: 'tx@test.com', username: 'tx_user', passwordHash: 'x', rol: 'normal' });
-    const cripto = await Criptomoneda.create({ symbol: 'USDT', nombre: 'Tether', red: 'ethereum', decimales: 6 });
-    await TransaccionBlockchain.create({
-      userId: user.id, criptomonedaId: cripto.id, tipo: 'deposito',
-      cantidad: 100, direccionDestino: '0xabc', estado: 'pendiente',
+  test("Usuario.include('blockchainTransactions') returns the real transaction", async () => {
+    const user = await User.create({ email: 'tx@test.com', username: 'tx_user', passwordHash: 'x', role: 'normal' });
+    const cripto = await Crypto.create({ symbol: 'USDT', name: 'Tether', network: 'ethereum', decimals: 6 });
+    await BlockchainTransaction.create({
+      userId: user.id, cryptoId: cripto.id, type: 'deposit',
+      amount: 100, destinationAddress: '0xabc', status: 'pending',
     });
 
-    const withTx = await Usuario.findByPk(user.id, { include: [{ association: 'transaccionesBlockchain' }] });
+    const withTx = await User.findByPk(user.id, { include: [{ association: 'blockchainTransactions' }] });
 
-    expect(withTx.transaccionesBlockchain).toHaveLength(1);
+    expect(withTx.blockchainTransactions).toHaveLength(1);
   });
 });

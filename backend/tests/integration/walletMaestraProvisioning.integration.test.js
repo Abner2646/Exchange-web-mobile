@@ -1,50 +1,50 @@
 require('../helpers/testEnv');
 const request = require('supertest');
 const { app, installAuthHarness } = require('../helpers/authHarness');
-const { WalletMaestra, DireccionDeposito, BalanceUsuario, Usuario } = require('../../models');
+const { MasterWallet, DepositAddress, UserBalance, User } = require('../../models');
 const f = require('../helpers/factories');
 
 const h = installAuthHarness(); // resetDb + email-fake seam + sequelize close
 
-describe('WalletMaestra.getByCriptomoneda', () => {
+describe('MasterWallet.getByCrypto', () => {
   test('returns the master wallet with its crypto included (no phantom-column SQL error)', async () => {
     const btc = await f.seedCripto('BTC');
     const wallet = await f.seedWalletMaestra(btc);
 
-    // Regression: the include selected criptomoneda.derivationPath / addressFormat,
-    // columns that do not exist on Criptomoneda → the query threw
-    // "column criptomoneda.derivationPath does not exist" on every call, breaking
+    // Regression: the include selected crypto.derivationPath / addressFormat,
+    // columns that do not exist on Crypto → the query threw
+    // "column crypto.derivationPath does not exist" on every call, breaking
     // deposit-address provisioning (inicializarUsuarioCompleto).
-    const found = await WalletMaestra.getByCriptomoneda(btc.id);
+    const found = await MasterWallet.getByCrypto(btc.id);
 
     expect(found).not.toBeNull();
     expect(found.id).toBe(wallet.id);
-    expect(found.criptomoneda.symbol).toBe('BTC');
+    expect(found.crypto.symbol).toBe('BTC');
   });
 });
 
 describe('deposit-address provisioning on email verification', () => {
   test('a verified user gets a deposit address for each active crypto with a master wallet', async () => {
-    const btc = await f.seedCripto('BTC'); // red 'test' → generarDireccionDerivada default branch
+    const btc = await f.seedCripto('BTC'); // network 'test' → generarDireccionDerivada default branch
     await f.seedWalletMaestra(btc);
 
     // Provisioning (inicializarUsuarioCompleto) runs on verify-email, not register.
     const { token, code } = await h.registerAndGetCode({ email: 'prov@test.local', username: 'provuser' });
     const verify = await request(app)
-      .post('/api/usuario/verify-email')
+      .post('/api/user/verify-email')
       .set('Authorization', `Bearer ${token}`)
       .send({ codigo: code });
     expect(verify.status).toBe(200);
 
     // The deposit address must exist. Two regressions blocked this:
-    // (1) getByCriptomoneda selected phantom columns, and (2) the DireccionDeposito
+    // (1) getByCrypto selected phantom columns, and (2) the DepositAddress
     // was created with `usuarioId` instead of the entity's `userId` field. Either
     // one made provisioning throw, and verify-email swallows that error → the user
     // ended up verified but with no deposit addresses.
-    // Write-flip (Paso B): el provisioning ya NO crea filas de balance en 0 (en el
+    // Write-flip (Paso B): el provisioning ya NO crea filas de saldo en 0 (en el
     // ledger, 0 == cuenta inexistente, creada lazy al primer movimiento); por eso
     // se asevera la direccion de deposito, que es el entregable real del provisioning.
-    const user = await Usuario.findOne({ where: { email: 'prov@test.local' } });
-    expect(await DireccionDeposito.count({ where: { userId: user.id } })).toBeGreaterThan(0);
+    const user = await User.findOne({ where: { email: 'prov@test.local' } });
+    expect(await DepositAddress.count({ where: { userId: user.id } })).toBeGreaterThan(0);
   });
 });

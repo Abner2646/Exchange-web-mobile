@@ -1,6 +1,6 @@
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const userService = require('../services/user.service');
+const userService = require('../modules/users/user.service');
 
 const configurePassport = () => {
   // 🔧 Construir la URL completa del callback

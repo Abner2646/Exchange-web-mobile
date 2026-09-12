@@ -1,6 +1,6 @@
 // scripts/cleanup-stuck-transactions.js - Eliminar transacciones problemáticas de balance check
 require('dotenv').config();
-const { TransaccionBlockchain } = require('../models');
+const { BlockchainTransaction } = require('../models');
 const { Op } = require('sequelize');
 
 class BalanceCheckCleanup {
@@ -46,7 +46,7 @@ class BalanceCheckCleanup {
   }
 
   async findProblematicTransactions() {
-    const ethBalanceChecks = await TransaccionBlockchain.findAll({
+    const ethBalanceChecks = await BlockchainTransaction.findAll({
       where: {
         txHash: {
           [Op.like]: 'eth_balance_%'
@@ -54,19 +54,19 @@ class BalanceCheckCleanup {
       },
       include: [
         {
-          model: require('../models').Usuario,
-          as: 'usuario',
+          model: require('../models').User,
+          as: 'user',
           attributes: ['id', 'email']
         },
         {
-          model: require('../models').Criptomoneda,
-          as: 'criptomoneda',
-          attributes: ['id', 'symbol', 'red']
+          model: require('../models').Crypto,
+          as: 'crypto',
+          attributes: ['id', 'symbol', 'network']
         }
       ]
     });
 
-    const bscBalanceChecks = await TransaccionBlockchain.findAll({
+    const bscBalanceChecks = await BlockchainTransaction.findAll({
       where: {
         txHash: {
           [Op.like]: 'bsc_balance_%'
@@ -74,19 +74,19 @@ class BalanceCheckCleanup {
       },
       include: [
         {
-          model: require('../models').Usuario,
-          as: 'usuario',
+          model: require('../models').User,
+          as: 'user',
           attributes: ['id', 'email']
         },
         {
-          model: require('../models').Criptomoneda,
-          as: 'criptomoneda',
-          attributes: ['id', 'symbol', 'red']
+          model: require('../models').Crypto,
+          as: 'crypto',
+          attributes: ['id', 'symbol', 'network']
         }
       ]
     });
 
-    const btcBalanceChecks = await TransaccionBlockchain.findAll({
+    const btcBalanceChecks = await BlockchainTransaction.findAll({
       where: {
         txHash: {
           [Op.like]: 'balance_%'
@@ -94,14 +94,14 @@ class BalanceCheckCleanup {
       },
       include: [
         {
-          model: require('../models').Usuario,
-          as: 'usuario',
+          model: require('../models').User,
+          as: 'user',
           attributes: ['id', 'email']
         },
         {
-          model: require('../models').Criptomoneda,
-          as: 'criptomoneda',
-          attributes: ['id', 'symbol', 'red']
+          model: require('../models').Crypto,
+          as: 'crypto',
+          attributes: ['id', 'symbol', 'network']
         }
       ]
     });
@@ -163,12 +163,12 @@ class BalanceCheckCleanup {
           userId: tx.userId,
           criptomonedaId: tx.criptomonedaId,
           email: tx.usuario?.email,
-          symbol: tx.criptomoneda?.symbol
+          symbol: tx.crypto?.symbol
         });
       }
 
       // 1. Eliminar transacciones problemáticas
-      const deletedCount = await TransaccionBlockchain.destroy({
+      const deletedCount = await BlockchainTransaction.destroy({
         where: {
           id: {
             [Op.in]: allTransactions.map(tx => tx.id)
@@ -184,7 +184,7 @@ class BalanceCheckCleanup {
       // saldo es el ledger de partida doble, no una fila mutable derivada de tx. Las
       // tx problemáticas eran balance-checks fantasma que nunca postearon dinero, así
       // que borrarlas no afecta el ledger. La verificación de saldos es la
-      // reconciliación del ledger (reconciliarInterno/Externo).
+      // reconciliación del ledger (reconcileInternal/Externo).
 
       await transaction.commit();
       

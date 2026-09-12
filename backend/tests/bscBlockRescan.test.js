@@ -7,16 +7,16 @@
 // tiene este ajuste.
 
 jest.mock('../models', () => ({
-  TransaccionBlockchain: {},
-  DireccionDeposito: {
+  BlockchainTransaction: {},
+  DepositAddress: {
     findAll: jest.fn().mockResolvedValue([
       {
         direccion: '0xUserAddress',
-        criptomoneda: { symbol: 'BNB', red: 'bsc', direccionContrato: null, decimales: 18 },
+        crypto: { symbol: 'BNB', network: 'bsc', contractAddress: null, decimals: 18 },
       },
     ]),
   },
-  Criptomoneda: {},
+  Crypto: {},
   BlockchainState: { getLastProcessedBlock: jest.fn().mockResolvedValue(500000) },
 }), { virtual: false });
 
@@ -26,7 +26,7 @@ process.env.BSC_TESTNET_RPC_URL = 'https://example-testnet-rpc.invalid';
 process.env.BNB_TESTNET_PRIVATE_KEY = 'a'.repeat(64);
 process.env.ETHERSCAN_API_KEY = 'fake-key';
 
-const BscService = require('../services/blockchain/bsc.service');
+const BscService = require('../modules/wallets/blockchain/bsc.service');
 
 describe('BscService.scanWithEtherscanV2API', () => {
   test('escanea desde el último bloque procesado directo, sin retroceder 10k bloques', async () => {

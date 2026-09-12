@@ -1,5 +1,5 @@
 // jobs/priceUpdater.job.js
-const priceUpdater = require('../services/trading/priceUpdater.service');
+const priceUpdater = require('../modules/trading/priceUpdater.service');
 
 class PriceUpdaterJob {
   

@@ -1,7 +1,7 @@
 // jobs/blockchain.jobs.js - VERSIÓN MEJORADA CON DIAGNÓSTICOS
-const BlockchainServiceManager = require('../services/blockchain');
-const { reapStaleWithdrawals, makeGetClientForNetwork } = require('../services/blockchain/withdrawalReaper');
-const { TransaccionBlockchain, DireccionDeposito, Criptomoneda, BlockchainState } = require('../models');
+const BlockchainServiceManager = require('../modules/wallets/blockchain');
+const { reapStaleWithdrawals, makeGetClientForNetwork } = require('../modules/wallets/blockchain/withdrawalReaper');
+const { BlockchainTransaction, DepositAddress, Crypto, BlockchainState } = require('../models');
 require('dotenv').config();
 
 class BlockchainJobManager {
@@ -18,11 +18,11 @@ class BlockchainJobManager {
       // estaba en .env.template (WITHDRAWAL_PROCESS_INTERVAL_MS) pero nunca
       // se usaba en ningún lado — no existía el job que lo consumiera.
       withdrawalProcess: parseInt(process.env.WITHDRAWAL_PROCESS_INTERVAL_MS) || 120000, // 2 minutos
-      // Barrido del reaper: recupera retiros 'procesando' estancados por un crash
+      // Barrido del reaper: recupera retiros 'processing' estancados por un crash
       // entre el claim atómico y el broadcast. Ver runReaperJob / withdrawalReaper.
       reaperSweep: parseInt(process.env.REAPER_SWEEP_INTERVAL_MS) || 300000, // 5 minutos
     };
-    // Antigüedad mínima (min) para que una fila 'procesando' sea candidata del reaper.
+    // Antigüedad mínima (min) para que una fila 'processing' sea candidata del reaper.
     this.reaperStaleMinutes = parseInt(process.env.WITHDRAWAL_STALE_MINUTES) || 15;
     
     // Contadores para estadísticas
@@ -113,9 +113,9 @@ class BlockchainJobManager {
       // ✅ 4. Verificar base de datos
       console.log('🔬 Verificando base de datos...');
       try {
-        const addressCount = await DireccionDeposito.count({ where: { activa: true } });
-        const pendingTxCount = await TransaccionBlockchain.count({ 
-          where: { estado: ['pendiente', 'procesando'] } 
+        const addressCount = await DepositAddress.count({ where: { active: true } });
+        const pendingTxCount = await BlockchainTransaction.count({ 
+          where: { status: ['pending', 'processing'] } 
         });
         
         diagnostic.database = {
@@ -207,12 +207,12 @@ class BlockchainJobManager {
       console.log(`🔍 [DEPOSIT_SCAN] Direcciones activas: ${preStats.totalAddresses}`);
       console.log(`🔍 [DEPOSIT_SCAN] Redes disponibles: ${preStats.networks.join(', ')}`);
       
-      // Escanear cada red por separado para mejor control
+      // Escanear cada network por separado para mejor control
       const networkResults = [];
       
       for (const network of preStats.networks) {
         try {
-          console.log(`🔍 [DEPOSIT_SCAN] Escaneando red: ${network.toUpperCase()}`);
+          console.log(`🔍 [DEPOSIT_SCAN] Escaneando network: ${network.toUpperCase()}`);
           
           // ✅ Verificar si el servicio está disponible
           const service = BlockchainServiceManager.getService(network);
@@ -308,7 +308,7 @@ class BlockchainJobManager {
   // =================== ESCANEO POR RED (MEJORADO) ===================
   async scanNetworkForDeposits(network) {
     try {
-      // Obtener direcciones activas para esta red
+      // Obtener direcciones activas para esta network
       const addresses = await this.getActiveAddressesForNetwork(network);
       
       if (addresses.length === 0) {
@@ -336,7 +336,7 @@ class BlockchainJobManager {
         throw new Error(`Servicio blockchain no disponible para ${network}`);
       }
       
-      // ✅ Verificar configuración de red antes de escanear
+      // ✅ Verificar configuración de network antes de escanear
       const diagnostic = this.stats.lastDiagnostic;
       if (!diagnostic?.services[network]?.available) {
         throw new Error(`Servicio ${network} reportado como no disponible en diagnóstico`);
@@ -363,10 +363,10 @@ class BlockchainJobManager {
           // Log del depósito procesado
           console.log(`💰 [${network.toUpperCase()}] Depósito procesado:`, {
             usuario: deposit.userId,
-            cantidad: deposit.cantidad,
-            crypto: deposit.criptomoneda?.symbol,
+            amount: deposit.amount,
+            crypto: deposit.crypto?.symbol,
             txHash: deposit.txHash,
-            confirmaciones: deposit.confirmaciones
+            confirmations: deposit.confirmations
           });
           
           processedDeposits.push(deposit);
@@ -399,22 +399,22 @@ class BlockchainJobManager {
   
   async getPreScanStats() {
     try {
-      const addressStats = await DireccionDeposito.findAll({
-        where: { activa: true },
+      const addressStats = await DepositAddress.findAll({
+        where: { active: true },
         include: [
           {
-            model: Criptomoneda,
-            as: 'criptomoneda',
-            where: { activa: true },
-            attributes: ['red', 'symbol']
+            model: Crypto,
+            as: 'crypto',
+            where: { active: true },
+            attributes: ['network', 'symbol']
           }
         ],
-        attributes: ['id', 'direccion', 'criptomonedaId']
+        attributes: ['id', 'address', 'cryptoId']
       });
       
       const networkCounts = {};
       addressStats.forEach(addr => {
-        const network = addr.criptomoneda.red;
+        const network = addr.crypto.network;
         if (!networkCounts[network]) {
           networkCounts[network] = 0;
         }
@@ -439,15 +439,15 @@ class BlockchainJobManager {
   
   async getActiveAddressesForNetwork(network) {
     try {
-      return await DireccionDeposito.findAll({
-        where: { activa: true },
+      return await DepositAddress.findAll({
+        where: { active: true },
         include: [
           {
-            model: Criptomoneda,
-            as: 'criptomoneda',
+            model: Crypto,
+            as: 'crypto',
             where: { 
-              red: network.toLowerCase(),
-              activa: true 
+              network: network.toLowerCase(),
+              active: true 
             }
           }
         ]
@@ -463,8 +463,8 @@ class BlockchainJobManager {
     
     for (const address of addresses) {
       try {
-        if (!address.direccion || address.direccion.length < 10) {
-          console.warn(`⚠️ Dirección inválida detectada: ${address.direccion}`);
+        if (!address.address || address.address.length < 10) {
+          console.warn(`⚠️ Dirección inválida detectada: ${address.address}`);
           continue;
         }
         
@@ -473,14 +473,14 @@ class BlockchainJobManager {
         switch (network.toLowerCase()) {
           case 'bitcoin':
           case 'testnet3':
-            isValid = /^[13mn2]|^bc1|^tb1/.test(address.direccion);
+            isValid = /^[13mn2]|^bc1|^tb1/.test(address.address);
             break;
             
           case 'ethereum':
           case 'sepolia':
           case 'bsc':
           case 'bsc-testnet':
-            isValid = /^0x[a-fA-F0-9]{40}$/.test(address.direccion);
+            isValid = /^0x[a-fA-F0-9]{40}$/.test(address.address);
             break;
             
           default:
@@ -490,11 +490,11 @@ class BlockchainJobManager {
         if (isValid) {
           validAddresses.push(address);
         } else {
-          console.warn(`⚠️ [${network}] Dirección con formato inválido: ${address.direccion}`);
+          console.warn(`⚠️ [${network}] Dirección con formato inválido: ${address.address}`);
         }
         
       } catch (error) {
-        console.error(`Error validando dirección ${address.direccion}:`, error.message);
+        console.error(`Error validando dirección ${address.address}:`, error.message);
       }
     }
     
@@ -535,7 +535,7 @@ class BlockchainJobManager {
           console.log(`✅ [${network.toUpperCase()}] ${updated.length} transacciones actualizadas`);
           
         } catch (error) {
-          console.error(`❌ [${network.toUpperCase()}] Error actualizando confirmaciones:`, error.message);
+          console.error(`❌ [${network.toUpperCase()}] Error actualizando confirmations:`, error.message);
           results.push({
             network,
             success: false,
@@ -563,9 +563,9 @@ class BlockchainJobManager {
   // Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #8): createWithdrawal
   // bloquea el balance del usuario apenas se crea el retiro, pero hasta
   // ahora ningún job ni ruta llamaba a processPendingWithdrawals() — que sí
-  // está bien implementada en cada servicio de red — así que todo retiro
+  // está bien implementada en cada servicio de network — así que todo retiro
   // quedaba con fondos bloqueados para siempre, sin nada que lo complete ni
-  // lo libere. Mismo patrón que runConfirmationUpdateJob: iterar por red,
+  // lo libere. Mismo patrón que runConfirmationUpdateJob: iterar por network,
   // dejar que cada service resuelva sus propios retiros pendientes.
   async runWithdrawalProcessJob() {
     const startTime = Date.now();
@@ -573,7 +573,7 @@ class BlockchainJobManager {
     // Guard de reentrancia (anti doble-gasto). Este método corre tanto por el
     // setInterval del scheduler como por el endpoint manual
     // /system/process-withdrawals, ambos sobre este mismo singleton. Sin este
-    // freno, dos corridas solapadas seleccionan las mismas filas 'pendiente' y
+    // freno, dos corridas solapadas seleccionan las mismas filas 'pending' y
     // transmiten el retiro on-chain dos veces (doble salida de la wallet maestra
     // — ver ROADMAP.md Fase 1, ítem #0). Nota: cubre un solo proceso; con varias
     // instancias (Fase 5/6) hace falta además un lock distribuido o un claim
@@ -629,7 +629,7 @@ class BlockchainJobManager {
     }
   }
 
-  // Reaper de retiros: recupera filas 'procesando' que quedaron estancadas por un
+  // Reaper de retiros: recupera filas 'processing' que quedaron estancadas por un
   // crash entre el claim atómico y el broadcast. Revierte SOLO cuando la tx es
   // provablemente inexistente on-chain (nunca una que pudo haber salido — eso
   // sería doble-gasto del lado del usuario). La lógica vive en withdrawalReaper;
@@ -655,23 +655,23 @@ class BlockchainJobManager {
 
   async getPendingTransactionsByNetwork() {
     try {
-      const pendingTxs = await TransaccionBlockchain.findAll({
+      const pendingTxs = await BlockchainTransaction.findAll({
         where: {
-          estado: ['pendiente', 'procesando'],
+          status: ['pending', 'processing'],
           txHash: { [require('sequelize').Op.ne]: null }
         },
         include: [
           {
-            model: Criptomoneda,
-            as: 'criptomoneda',
-            attributes: ['red']
+            model: Crypto,
+            as: 'crypto',
+            attributes: ['network']
           }
         ]
       });
       
       const byNetwork = {};
       pendingTxs.forEach(tx => {
-        const network = tx.criptomoneda.red;
+        const network = tx.crypto.network;
         if (!byNetwork[network]) {
           byNetwork[network] = [];
         }
@@ -711,7 +711,7 @@ class BlockchainJobManager {
       await this.runWithdrawalProcessJob();
     }, this.intervals.withdrawalProcess));
 
-    // Job del reaper: recupera retiros 'procesando' estancados, ver runReaperJob
+    // Job del reaper: recupera retiros 'processing' estancados, ver runReaperJob
     this.jobs.set('withdrawalReaper', setInterval(async () => {
       await this.runReaperJob();
     }, this.intervals.reaperSweep));

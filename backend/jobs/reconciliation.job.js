@@ -1,10 +1,10 @@
 // Job de reconciliación del ledger (§5.6): periódicamente verifica que la
 // proyección == suma de movimientos (interno) y que el libro cierra en cero
 // (externo), y ALARMA (log de error) ante cualquier discrepancia. La decisión de
-// alarmar vive en services/ledger/reconciliationAlarm (unit-testeada); acá sólo el
+// alarmar vive en modules/balances/ledger/reconciliationAlarm (unit-testeada); acá sólo el
 // scheduling. Frecuencia configurable por RECONCILIATION_INTERVAL_MS.
-const recon = require('../services/ledger/reconciliation');
-const { runReconciliationCheck } = require('../services/ledger/reconciliationAlarm');
+const recon = require('../modules/balances/ledger/reconciliation');
+const { runReconciliationCheck } = require('../modules/balances/ledger/reconciliationAlarm');
 
 // Clamp a un valor positivo: un env negativo/no-numérico cae al default (evita
 // setInterval(-1) → tight-loop).
@@ -44,8 +44,8 @@ class ReconciliationJob {
     this.checking = true;
     try {
       const res = await runReconciliationCheck({
-        reconciliarInterno: recon.reconciliarInterno,
-        reconciliarExterno: recon.reconciliarExterno,
+        reconcileInternal: recon.reconcileInternal,
+        reconcileExternal: recon.reconcileExternal,
       });
       this.lastOk = res.ok;
       this.lastRunAt = new Date();

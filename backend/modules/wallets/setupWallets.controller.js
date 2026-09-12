@@ -1,0 +1,859 @@
+// controllers/setupWallets.controller.js
+const { MasterWallet, Crypto, sequelize } = require('../../models');
+const bip39 = require('bip39');
+const bitcoin = require('bitcoinjs-lib');
+const ecc = require('tiny-secp256k1');
+const ECPair = require('ecpair').ECPairFactory(ecc);
+const { BIP32Factory } = require('bip32');
+const bip32 = BIP32Factory(ecc);
+const { ethers } = require('ethers');
+
+// =================== CONFIGURACIÓN DE CRIPTOMONEDAS BÁSICAS ===================
+const CRIPTOMONEDAS_BASICAS = [
+  // ========== NATIVAS CON WALLET ==========
+  {
+    symbol: 'BTC',
+    name: 'Bitcoin',
+    network: 'bitcoin',
+    derivationPath: "m/84'/1'/0'",
+    decimals: 8,
+    contractAddress: null,
+    tieneWallet: true
+  },
+  {
+    symbol: 'ETH',
+    name: 'Ethereum',
+    network: 'ethereum',
+    derivationPath: "m/44'/60'/0'",
+    decimals: 18,
+    contractAddress: null,
+    tieneWallet: true
+  },
+  {
+    symbol: 'BNB',
+    name: 'BNB Smart Chain',
+    network: 'bsc',
+    derivationPath: "m/44'/60'/0'",
+    decimals: 18,
+    contractAddress: null,
+    tieneWallet: true
+  },
+  
+  // ========== STABLECOINS (TOKENS ERC-20) ==========
+  {
+    symbol: 'USDT',
+    name: 'Tether USD',
+    network: 'ethereum',
+    decimals: 6,
+    contractAddress: process.env.USDT_CONTRACT_ADDRESS || '0x7169D38820dfd117C3FA1f22a697dBA58d90BA06',
+    tieneWallet: false
+  },
+  {
+    symbol: 'USDC',
+    name: 'USD Coin',
+    network: 'ethereum',
+    decimals: 6,
+    contractAddress: process.env.USDC_CONTRACT_ADDRESS || null,
+    tieneWallet: false
+  },
+  {
+    symbol: 'DAI',
+    name: 'Dai Stablecoin',
+    network: 'ethereum',
+    decimals: 18,
+    contractAddress: process.env.DAI_CONTRACT_ADDRESS || null,
+    tieneWallet: false
+  },
+  
+  // ========== DEFI TOKENS (ERC-20) ==========
+  {
+    symbol: 'LINK',
+    name: 'Chainlink',
+    network: 'ethereum',
+    decimals: 18,
+    contractAddress: process.env.LINK_CONTRACT_ADDRESS || null,
+    tieneWallet: false
+  },
+  {
+    symbol: 'UNI',
+    name: 'Uniswap',
+    network: 'ethereum',
+    decimals: 18,
+    contractAddress: process.env.UNI_CONTRACT_ADDRESS || null,
+    tieneWallet: false
+  },
+  {
+    symbol: 'WBTC',
+    name: 'Wrapped Bitcoin',
+    network: 'ethereum',
+    decimals: 8,
+    contractAddress: process.env.WBTC_CONTRACT_ADDRESS || null,
+    tieneWallet: false
+  },
+  {
+    symbol: 'AAVE',
+    name: 'Aave',
+    network: 'ethereum',
+    decimals: 18,
+    contractAddress: process.env.AAVE_CONTRACT_ADDRESS || null,
+    tieneWallet: false
+  },
+  {
+    symbol: 'MKR',
+    name: 'Maker',
+    network: 'ethereum',
+    decimals: 18,
+    contractAddress: process.env.MKR_CONTRACT_ADDRESS || null,
+    tieneWallet: false
+  },
+  
+  // ========== MEME & POPULAR TOKENS (ERC-20) ==========
+  {
+    symbol: 'SHIB',
+    name: 'Shiba Inu',
+    network: 'ethereum',
+    decimals: 18,
+    contractAddress: process.env.SHIB_CONTRACT_ADDRESS || null,
+    tieneWallet: false
+  },
+  {
+    symbol: 'PEPE',
+    name: 'Pepe',
+    network: 'ethereum',
+    decimals: 18,
+    contractAddress: process.env.PEPE_CONTRACT_ADDRESS || null,
+    tieneWallet: false
+  },
+  
+  // ========== LAYER 2 & SCALING (TOKENS) ==========
+  {
+    symbol: 'MATIC',
+    name: 'Polygon',
+    network: 'ethereum',
+    decimals: 18,
+    contractAddress: process.env.MATIC_CONTRACT_ADDRESS || null,
+    tieneWallet: false
+  },
+  {
+    symbol: 'ARB',
+    name: 'Arbitrum',
+    network: 'ethereum',
+    decimals: 18,
+    contractAddress: process.env.ARB_CONTRACT_ADDRESS || null,
+    tieneWallet: false
+  },
+  {
+    symbol: 'OP',
+    name: 'Optimism',
+    network: 'ethereum',
+    decimals: 18,
+    contractAddress: process.env.OP_CONTRACT_ADDRESS || null,
+    tieneWallet: false
+  },
+  
+  // ========== OTRAS IMPORTANTES (SOLO PARA TRADING) ==========
+  {
+    symbol: 'SOL',
+    name: 'Solana',
+    network: 'solana',
+    decimals: 9,
+    contractAddress: null,
+    tieneWallet: false,
+    soloTrading: true
+  },
+  {
+    symbol: 'ADA',
+    name: 'Cardano',
+    network: 'cardano',
+    decimals: 6,
+    contractAddress: null,
+    tieneWallet: false,
+    soloTrading: true
+  },
+  {
+    symbol: 'XRP',
+    name: 'Ripple',
+    network: 'ripple',
+    decimals: 6,
+    contractAddress: null,
+    tieneWallet: false,
+    soloTrading: true
+  },
+  {
+    symbol: 'DOGE',
+    name: 'Dogecoin',
+    network: 'dogecoin',
+    decimals: 8,
+    contractAddress: null,
+    tieneWallet: false,
+    soloTrading: true
+  }
+];
+
+// =================== GENERADORES DE WALLET ===================
+class WalletSetupGenerator {
+  
+  static getBTCWalletFromEnv() {
+    try {
+      const requiredVars = ['BTC_PRIVATE_KEY', 'BITCOIN_WALLET_ADDRESS', 'BTC_MNEMONIC', 'BTC_MASTER_XPUB'];
+      const missing = requiredVars.filter(varName => 
+        !process.env[varName] || process.env[varName].trim() === ''
+      );
+      
+      if (missing.length > 0) {
+        throw new Error(`Variables de entorno faltantes para BTC: ${missing.join(', ')}`);
+      }
+      
+      const mnemonic = process.env.BTC_MNEMONIC.trim();
+      const privateKey = process.env.BTC_PRIVATE_KEY.trim();
+      const address = process.env.BITCOIN_WALLET_ADDRESS.trim();
+      const xpub = process.env.BTC_MASTER_XPUB.trim();
+      
+      // Validaciones
+      if (!bip39.validateMnemonic(mnemonic)) {
+        throw new Error('BTC_MNEMONIC inválido');
+      }
+      
+      // Validar private key (WIF o HEX)
+      const privateKeyValidation = validateBitcoinPrivateKey(privateKey);
+      if (!privateKeyValidation.valid) {
+        throw new Error('BTC_PRIVATE_KEY debe estar en formato WIF o HEX (64 caracteres)');
+      }
+      
+      // Validar XPUB
+      if (!validateBitcoinXpub(xpub)) {
+        throw new Error('BTC_MASTER_XPUB debe tener un prefijo válido (xpub/ypub/zpub/tpub/upub/vpub)');
+      }
+      
+      // Detectar network del XPUB
+      const detectedNetwork = getNetworkFromXpub(xpub);
+      const derivationPath = detectedNetwork === 'testnet' ? "m/44'/1'/0'" : "m/44'/0'/0'";
+      
+      // Validar address según la network detectada
+      if (detectedNetwork === 'testnet') {
+        // Testnet: legacy (m,n,2), P2SH (2), Bech32 (tb1)
+        if (!address.match(/^([mn2][a-km-zA-HJ-NP-Z1-9]{25,34}|tb1[a-z0-9]{39,59})$/)) {
+          throw new Error('BITCOIN_WALLET_ADDRESS inválida para testnet (debe empezar con m, n, 2, o tb1)');
+        }
+      } else {
+        // Mainnet: legacy (1), P2SH (3), Bech32 (bc1)
+        if (!address.match(/^([13][a-km-zA-HJ-NP-Z1-9]{25,34}|bc1[a-z0-9]{39,59})$/)) {
+          throw new Error('BITCOIN_WALLET_ADDRESS inválida para mainnet (debe empezar con 1, 3, o bc1)');
+        }
+      }
+      
+      // Generar fingerprint desde mnemonic
+      const seed = bip39.mnemonicToSeedSync(mnemonic);
+      const network = detectedNetwork === 'testnet' ? bitcoin.networks.testnet : bitcoin.networks.bitcoin;
+      const root = bip32.fromSeed(seed, network);
+      const account = root.derivePath(derivationPath);
+      
+      console.log(`BTC: Red detectada desde XPUB: ${detectedNetwork.toUpperCase()}`);
+      
+      return {
+        mnemonic,
+        privateKey,
+        address,
+        xpub,
+        fingerprint: root.fingerprint.toString('hex'),
+        publicKey: account.publicKey.toString('hex'),
+        derivationPath,
+        network: detectedNetwork
+      };
+      
+    } catch (error) {
+      throw new Error(`Error obteniendo datos BTC del .env: ${error.message}`);
+    }
+  }
+  
+  static async generateBNBWallet(privateKey) {
+    try {
+      const mnemonic = bip39.generateMnemonic(256);
+      const seed = await bip39.mnemonicToSeed(mnemonic);
+      
+      const root = bip32.fromSeed(seed);
+      const account = root.derivePath("m/44'/60'/0'");
+      
+      // Address real de BNB_PRIVATE_KEY (Keccak-256 sobre la clave pública,
+      // que es como se derivan direcciones en cualquier chain EVM). Antes esto
+      // era doble SHA-256 — ni el algoritmo de Bitcoin ni el de Ethereum —
+      // así que la dirección devuelta no correspondía a la clave privada real.
+      const cleanPrivateKey = privateKey.replace('0x', '');
+      const address = new ethers.Wallet(cleanPrivateKey).address;
+
+      // XPUB real (serialización BIP32 estándar de la cuenta derivada del
+      // mnemonic), no un hash con un prefijo inventado. Ver AUDITORIA_BACKEND.md
+      // Críticos #3: el xpub anterior no era un formato BIP32 válido, así que
+      // no servía para derivar direcciones de depósito reales.
+      const xpub = account.neutered().toBase58();
+
+      // Nota (deuda pendiente, no resuelta en este cambio): este mnemonic se
+      // genera nuevo en cada llamada y no tiene relación con BNB_PRIVATE_KEY
+      // (la clave que realmente firma retiros). Para que las direcciones de
+      // depósito generadas a partir de este xpub sean utilizables, el mnemonic
+      // devuelto acá tiene que persistirse de forma segura la primera vez que
+      // se llama a este método — hoy solo viaja en la respuesta HTTP. Ver
+      // AUDITORIA_BACKEND.md Críticos #2/#3 para el resto de este hallazgo.
+
+      return {
+        mnemonic,
+        privateKey,
+        address,
+        xpub,
+        fingerprint: root.fingerprint.toString('hex'),
+        publicKey: account.publicKey.toString('hex'),
+        derivationPath: "m/44'/60'/0'"
+      };
+      
+    } catch (error) {
+      throw new Error(`Error generando wallet BNB: ${error.message}`);
+    }
+  }
+  
+  static getETHWalletFromEnv() {
+    try {
+      const requiredVars = ['ETH_PRIVATE_KEY', 'ETH_ADDRESS', 'ETH_MNEMONIC'];
+      const missing = requiredVars.filter(varName =>
+        !process.env[varName] || process.env[varName].trim() === ''
+      );
+
+      if (missing.length > 0) {
+        throw new Error(`Variables de entorno faltantes para ETH: ${missing.join(', ')}`);
+      }
+
+      const mnemonic = process.env.ETH_MNEMONIC.trim();
+      const privateKey = process.env.ETH_PRIVATE_KEY.trim();
+      const address = process.env.ETH_ADDRESS.trim();
+
+      // Validaciones
+      if (!bip39.validateMnemonic(mnemonic)) {
+        throw new Error('ETH_MNEMONIC inválido');
+      }
+
+      if (!address.startsWith('0x') || address.length !== 42) {
+        throw new Error('ETH_ADDRESS inválida');
+      }
+
+      const cleanPrivateKey = privateKey.startsWith('0x') ? privateKey.substring(2) : privateKey;
+      if (cleanPrivateKey.length !== 64) {
+        throw new Error('ETH_PRIVATE_KEY debe tener 64 caracteres hex');
+      }
+
+      // Generar fingerprint y xpub desde el mnemonic (fuente de verdad única).
+      // Antes: se leía ETH_XPUB de una variable de entorno aparte, y si venía
+      // con formato Bitcoin (xpub/ypub/zpub) se "corregía" con un hash SHA-256
+      // con prefijo inventado 'epub' — no era un xpub BIP32 válido, y aunque lo
+      // fuera, nada garantizaba que viniera de este mismo mnemonic. Ver
+      // AUDITORIA_BACKEND.md Críticos #1/#3.
+      const seed = bip39.mnemonicToSeedSync(mnemonic);
+      const root = bip32.fromSeed(seed);
+      const account = root.derivePath("m/44'/60'/0'");
+      const xpub = account.neutered().toBase58();
+
+      return {
+        mnemonic,
+        privateKey,
+        address,
+        xpub,
+        fingerprint: root.fingerprint.toString('hex'),
+        publicKey: account.publicKey.toString('hex'),
+        derivationPath: "m/44'/60'/0'"
+      };
+
+    } catch (error) {
+      throw new Error(`Error obteniendo datos ETH del .env: ${error.message}`);
+    }
+  }
+}
+
+// =================== VALIDACIONES ===================
+const validateBitcoinPrivateKey = (privateKey) => {
+  if (!privateKey) return false;
+  
+  const trimmed = privateKey.trim();
+  
+  // Formato WIF (más común en Bitcoin)
+  // Mainnet: empieza con 5, K, o L
+  // Testnet: empieza con 9 o c
+  const wifRegex = /^[5KL9c][1-9A-HJ-NP-Za-km-z]{50,51}$/;
+  if (wifRegex.test(trimmed)) {
+    return { valid: true, format: 'WIF' };
+  }
+  
+  // Formato hex (64 caracteres)
+  const cleanKey = trimmed.replace('0x', '');
+  if (cleanKey.length === 64 && /^[0-9a-fA-F]+$/.test(cleanKey)) {
+    return { valid: true, format: 'HEX' };
+  }
+  
+  return { valid: false, format: 'UNKNOWN' };
+};
+
+const validateBitcoinXpub = (xpub, network = null) => {
+  if (!xpub || typeof xpub !== 'string') return false;
+  
+  const trimmed = xpub.trim();
+  
+  // Prefijos válidos para Bitcoin según network
+  const validPrefixes = {
+    mainnet: ['xpub', 'ypub', 'zpub'],        // Legacy, P2SH-wrapped SegWit, Native SegWit
+    testnet: ['tpub', 'upub', 'vpub']         // Testnet equivalents
+  };
+  
+  // Si se especifica network, validar solo esa network
+  if (network) {
+    const prefixes = validPrefixes[network] || [];
+    return prefixes.some(prefix => trimmed.startsWith(prefix));
+  }
+  
+  // Sin network especificada, aceptar cualquier prefijo válido
+  const allValidPrefixes = [...validPrefixes.mainnet, ...validPrefixes.testnet];
+  return allValidPrefixes.some(prefix => trimmed.startsWith(prefix));
+};
+
+const getNetworkFromXpub = (xpub) => {
+  if (!xpub) return null;
+  
+  const trimmed = xpub.trim();
+  
+  // Prefijos mainnet
+  if (trimmed.startsWith('xpub') || trimmed.startsWith('ypub') || trimmed.startsWith('zpub')) {
+    return 'mainnet';
+  }
+  
+  // Prefijos testnet
+  if (trimmed.startsWith('tpub') || trimmed.startsWith('upub') || trimmed.startsWith('vpub')) {
+    return 'testnet';
+  }
+  
+  return null;
+};
+
+const validateEthereumPrivateKey = (privateKey) => {
+  if (!privateKey) return false;
+  
+  const cleanKey = privateKey.trim().replace('0x', '');
+  if (cleanKey.length === 64 && /^[0-9a-fA-F]+$/.test(cleanKey)) {
+    return { valid: true, format: 'HEX' };
+  }
+  
+  return { valid: false, format: 'INVALID' };
+};
+
+const validateEnvVars = () => {
+  const errors = [];
+  
+  // Validar BTC (como ETH, requiere datos completos)
+  const btcRequiredVars = ['BTC_PRIVATE_KEY', 'BITCOIN_WALLET_ADDRESS', 'BTC_MNEMONIC', 'BTC_MASTER_XPUB'];
+  const btcMissing = btcRequiredVars.filter(varName => !process.env[varName]);
+  if (btcMissing.length > 0) {
+    errors.push(`Variables BTC faltantes: ${btcMissing.join(', ')}`);
+  } else {
+    const btcValidation = validateBitcoinPrivateKey(process.env.BTC_PRIVATE_KEY);
+    if (!btcValidation.valid) {
+      errors.push('BTC_PRIVATE_KEY debe estar en formato WIF o HEX (64 caracteres)');
+    }
+    
+    if (!validateBitcoinXpub(process.env.BTC_MASTER_XPUB)) {
+      errors.push('BTC_MASTER_XPUB debe tener un prefijo válido (xpub/ypub/zpub para mainnet, tpub/upub/vpub para testnet)');
+    }
+  }
+  
+  // Validar BNB
+  if (!process.env.BNB_PRIVATE_KEY) {
+    errors.push('BNB_PRIVATE_KEY requerida');
+  } else {
+    const bnbValidation = validateEthereumPrivateKey(process.env.BNB_PRIVATE_KEY);
+    if (!bnbValidation.valid) {
+      errors.push('BNB_PRIVATE_KEY debe tener 64 caracteres hex (con o sin 0x)');
+    }
+  }
+  
+  // Validar ETH
+  // ETH_XPUB ya no es requerida: el xpub se deriva directamente de ETH_MNEMONIC
+  // (ver getETHWalletFromEnv) en vez de leerse de una variable aparte.
+  const ethRequiredVars = ['ETH_PRIVATE_KEY', 'ETH_ADDRESS', 'ETH_MNEMONIC'];
+  const ethMissing = ethRequiredVars.filter(varName => !process.env[varName]);
+  if (ethMissing.length > 0) {
+    errors.push(`Variables ETH faltantes: ${ethMissing.join(', ')}`);
+  } else {
+    const ethValidation = validateEthereumPrivateKey(process.env.ETH_PRIVATE_KEY);
+    if (!ethValidation.valid) {
+      errors.push('ETH_PRIVATE_KEY debe tener 64 caracteres hex (con o sin 0x)');
+    }
+  }
+  
+  return errors;
+};
+
+// =================== FUNCIÓN PRINCIPAL DE SETUP ===================
+const executeCompleteSetup = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  
+  try {
+    console.log('🚀 Iniciando setup completo del sistema...');
+    
+    // Validar variables de entorno
+    const envErrors = validateEnvVars();
+    if (envErrors.length > 0) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        error: 'Variables de entorno faltantes o inválidas',
+        details: envErrors
+      });
+    }
+    
+    // Verificar si ya existe setup
+    const existingWallets = await MasterWallet.count({ transaction });
+    const { force = false } = req.body;
+    
+    if (existingWallets > 0 && !force) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        error: 'Ya existe un setup completo. Use force=true para recrear.',
+        data: { walletsExistentes: existingWallets }
+      });
+    }
+    
+    // Limpiar datos existentes si force=true
+    if (force && existingWallets > 0) {
+      console.log('🧹 Limpiando datos existentes...');
+      await MasterWallet.destroy({ where: {}, transaction });
+    }
+    
+    const resultados = [];
+    const datosPrivados = [];
+    
+    // PASO 1: Crear/verificar criptomonedas
+    console.log('📊 Creando criptomonedas básicas...');
+    const criptomonedas = {};
+    
+    for (const config of CRIPTOMONEDAS_BASICAS) {
+      let crypto = await Crypto.findOne({
+        where: { symbol: config.symbol },
+        transaction
+      });
+      
+      if (!crypto) {
+        // Crear crypto con iconUrl auto-generado
+        crypto = await Crypto.create({
+          symbol: config.symbol,
+          name: config.name,
+          network: config.network,
+          decimals: config.decimals,
+          contractAddress: config.contractAddress,
+          active: true
+          // iconUrl se genera automáticamente en el modelo
+        }, { transaction });
+        console.log(`✅ Crypto ${config.symbol} creada con icono`);
+      } else {
+        // Actualizar iconUrl Y contractAddress si no existen
+        const updateData = {};
+        
+        if (!crypto.iconUrl) {
+          updateData.iconUrl = `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/svg/color/${config.symbol.toLowerCase()}.svg`;
+        }
+        
+        // ✨ AGREGADO: Actualizar contractAddress si no existe
+        if (!crypto.contractAddress && config.contractAddress) {
+          updateData.contractAddress = config.contractAddress;
+        }
+        
+        if (Object.keys(updateData).length > 0) {
+          await crypto.update(updateData, { transaction });
+          console.log(`✅ Datos actualizados para ${config.symbol} (${Object.keys(updateData).join(', ')})`);
+        } else {
+          console.log(`✅ Crypto ${config.symbol} ya existe completa`);
+        }
+      }
+      criptomonedas[config.symbol] = crypto;
+    }
+    
+    // PASO 2: Crear wallets maestras (solo para las que tienen derivationPath de wallet)
+    console.log('💰 Generando wallets maestras...');
+    
+    // Solo crear wallets para BTC, ETH, BNB (no para USDT que es un token)
+    //const walletsToCreate = CRIPTOMONEDAS_BASICAS.filter(c => ['BTC', 'ETH', 'BNB'].includes(c.symbol)); //Ante estaba esta línea
+    const walletsToCreate = CRIPTOMONEDAS_BASICAS.filter(c => c.tieneWallet === true);
+
+    for (const config of walletsToCreate) {
+      const crypto = criptomonedas[config.symbol];
+      
+      try {
+        console.log(`⚡ Procesando ${config.symbol}...`);
+        
+        let walletData;
+        let method;
+        
+        switch (config.symbol) {
+          case 'BTC':
+            walletData = WalletSetupGenerator.getBTCWalletFromEnv();
+            method = 'env-complete-data';
+            break;
+            
+          case 'BNB':
+            walletData = await WalletSetupGenerator.generateBNBWallet(process.env.BNB_PRIVATE_KEY);
+            method = 'env-privatekey-generated';
+            break;
+            
+          case 'ETH':
+            walletData = WalletSetupGenerator.getETHWalletFromEnv();
+            method = 'env-complete-data';
+            break;
+        }
+        
+        // Crear wallet en base de datos
+        const nuevaWallet = await MasterWallet.create({
+          cryptoId: crypto.id,
+          name: `${config.name} Master Wallet`,
+          network: config.network,
+          symbol: config.symbol,
+          xpub: walletData.xpub,
+          // Fix 2026-08-19 (AUDITORIA_BACKEND.md Altos #8): antes se
+          // guardaba config.derivationPath (el de CRIPTOMONEDAS_BASICAS,
+          // ej. BIP84 para BTC) en vez de walletData.derivationPath (el
+          // que getBTCWalletFromEnv/getETHWalletFromEnv/generateBNBWallet
+          // realmente usaron para derivar fingerprint/publicKey más
+          // abajo). Para BTC específicamente esto guardaba BIP84 aunque la
+          // derivación real era BIP44 — cualquier verificación posterior
+          // contra ese metadato quedaba inconsistente con la derivación
+          // real. walletData.derivationPath siempre refleja lo que
+          // realmente se usó, para las tres criptos.
+          derivationPath: walletData.derivationPath,
+          fingerprint: walletData.fingerprint,
+          publicKey: walletData.publicKey,
+          publicAddress: walletData.address,
+          totalBalance: 0,
+          active: true,
+          description: `Wallet maestra para ${config.name} (${method})`,
+          nextDerivationIndex: 0,
+          metadata: {
+            createdAt: new Date(),
+            method: method,
+            version: '4.1',
+            source: 'complete_setup',
+            setupTimestamp: Date.now()
+          }
+        }, { transaction });
+        
+        // Agregar a resultados
+        resultados.push({
+          id: nuevaWallet.id,
+          symbol: config.symbol,
+          name: nuevaWallet.name,
+          network: config.network,
+          address: walletData.address,
+          method: method,
+          created_at: nuevaWallet.created_at
+        });
+        
+        // Datos privados para log
+        datosPrivados.push({
+          symbol: config.symbol,
+          id: nuevaWallet.id,
+          method: method,
+          mnemonic: walletData.mnemonic,
+          privateKey: walletData.privateKey,
+          address: walletData.address,
+          xpub: walletData.xpub,
+          fingerprint: walletData.fingerprint
+        });
+        
+        console.log(`✅ Wallet ${config.symbol} creada exitosamente`);
+        
+      } catch (error) {
+        console.error(`❌ Error creando wallet ${config.symbol}: ${error.message}`);
+        // Continuar con las demás wallets
+      }
+    }
+    
+    // Confirmar transacción
+    await transaction.commit();
+    
+    // Logs de datos privados (SOLO EN DESARROLLO)
+    /*console.log('\n🔒 =================== DATOS PRIVADOS ===================');
+    console.log('⚠️  GUARDAR INMEDIATAMENTE - NO DEJAR EN LOGS DE PRODUCCIÓN');
+    console.log('========================================================');
+    
+    for (const datos of datosPrivados) {
+      console.log(`\n--- ${datos.symbol} (ID: ${datos.id}) ---`);
+      console.log(`METHOD: ${datos.method}`);
+      console.log(`MNEMONIC: ${datos.mnemonic}`);
+      console.log(`PRIVATE_KEY: ${datos.privateKey}`);
+      console.log(`ADDRESS: ${datos.address}`);
+      console.log(`XPUB: ${datos.xpub}`);
+      console.log(`FINGERPRINT: ${datos.fingerprint}`);
+    }
+    
+    console.log('\n========================================================');
+    console.log('🔒 FIN DATOS PRIVADOS - ELIMINAR DE LOGS INMEDIATAMENTE');
+    console.log('========================================================\n');
+    */
+    // Respuesta exitosa
+    res.status(201).json({
+      success: true,
+      message: 'Setup completo ejecutado exitosamente',
+      data: {
+        criptomonedasCreadas: CRIPTOMONEDAS_BASICAS.length,
+        walletsCreadas: resultados.length,
+        wallets: resultados,
+        criptomonedas: Object.values(criptomonedas).map(c => ({
+          id: c.id,
+          symbol: c.symbol,
+          name: c.name,
+          network: c.network,
+          decimals: c.decimals,
+          contractAddress: c.contractAddress,
+          iconUrl: c.iconUrl
+        })),
+        timestamp: new Date(),
+        version: '4.1'
+      }
+    });
+    
+  } catch (error) {
+    await transaction.rollback();
+    console.error('❌ Error en setup completo:', error);
+    
+    res.status(500).json({
+      success: false,
+      error: 'Error ejecutando setup completo',
+      details: error.message
+    });
+  }
+};
+
+// =================== FUNCIONES DE DIAGNÓSTICO ===================
+const checkSetupStatus = async (req, res) => {
+  try {
+    const walletCount = await MasterWallet.count();
+    const cryptoCount = await Crypto.count();
+    
+    const wallets = await MasterWallet.findAll({
+      include: [{
+        model: Crypto,
+        as: 'crypto',
+        attributes: ['symbol', 'name', 'network', 'iconUrl']
+      }],
+      attributes: ['id', 'name', 'symbol', 'network', 'active', 'created_at', 'totalBalance'],
+      order: [['symbol', 'ASC']]
+    });
+    
+    const criptomonedas = await Crypto.findAll({
+      attributes: ['id', 'symbol', 'name', 'network', 'decimals', 'contractAddress', 'iconUrl', 'active'],
+      order: [['symbol', 'ASC']]
+    });
+    
+    // Verificar estado de variables de entorno
+    const envStatus = {
+      BTC_PRIVATE_KEY: !!process.env.BTC_PRIVATE_KEY,
+      BNB_PRIVATE_KEY: !!process.env.BNB_PRIVATE_KEY,
+      ETH_PRIVATE_KEY: !!process.env.ETH_PRIVATE_KEY,
+      ETH_ADDRESS: !!process.env.ETH_ADDRESS,
+      ETH_MNEMONIC: !!process.env.ETH_MNEMONIC,
+      ETH_XPUB: !!process.env.ETH_XPUB
+    };
+    
+    const envErrors = validateEnvVars();
+    
+    res.json({
+      success: true,
+      data: {
+        isSetupComplete: walletCount >= 3 && cryptoCount >= 3,
+        walletCount,
+        cryptoCount,
+        wallets: wallets.map(w => ({
+          id: w.id,
+          symbol: w.symbol,
+          name: w.name,
+          network: w.network,
+          active: w.active,
+          balance: w.totalBalance,
+          created_at: w.created_at,
+          iconUrl: w.crypto?.iconUrl
+        })),
+        criptomonedas: criptomonedas.map(c => ({
+          id: c.id,
+          symbol: c.symbol,
+          name: c.name,
+          network: c.network,
+          decimals: c.decimals,
+          contractAddress: c.contractAddress,
+          iconUrl: c.iconUrl,
+          active: c.active
+        })),
+        environmentStatus: {
+          allVariablesPresent: envErrors.length === 0,
+          variables: envStatus,
+          errors: envErrors
+        }
+      }
+    });
+    
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+const resetCompleteSetup = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  
+  try {
+    const { confirmReset } = req.body;
+    
+    if (confirmReset !== 'YES_DELETE_EVERYTHING') {
+      return res.status(400).json({
+        success: false,
+        error: 'Confirmación requerida: confirmReset="YES_DELETE_EVERYTHING"'
+      });
+    }
+    
+    console.log('🧹 Eliminando todas las wallets maestras...');
+    const walletsEliminadas = await MasterWallet.destroy({
+      where: {},
+      transaction
+    });
+    
+    console.log('🧹 Eliminando todas las criptomonedas...');
+    const criptomonedasEliminadas = await Crypto.destroy({
+      where: {},
+      transaction
+    });
+    
+    await transaction.commit();
+    
+    console.log('✅ Reset completo ejecutado');
+    
+    res.json({
+      success: true,
+      message: 'Reset completo ejecutado - sistema completamente limpio',
+      data: { 
+        walletsEliminadas,
+        criptomonedasEliminadas
+      }
+    });
+    
+  } catch (error) {
+    await transaction.rollback();
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+// =================== EXPORTS ===================
+module.exports = {
+  executeCompleteSetup,
+  checkSetupStatus,
+  resetCompleteSetup,
+  // Exportado para poder testear la derivación HD (xpub/paths/address) de
+  // forma aislada, sin pasar por todo el flujo de setup.
+  // Ver tests/btcDerivationPath.test.js y tests/hdAddressGeneration.test.js.
+  WalletSetupGenerator
+};

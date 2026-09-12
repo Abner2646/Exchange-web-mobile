@@ -1,5 +1,5 @@
 // backend/tests/transferenciaErrorEnvelope.test.js
-// TDD: verify that createTransferencia and procesarTransferencia return the
+// TDD: verify that createTransfer and processTransfer return the
 // canonical { error: { code, message } } envelope for known business failures,
 // and that unexpected DB throws produce a sanitized 500 (no raw message leak).
 
@@ -8,25 +8,25 @@ const express = require('express');
 
 // ── Mocks (declared before any require of the modules they replace) ──────────
 jest.mock('../models/index.js', () => ({
-  Transferencia: {
+  Transfer: {
     create: jest.fn(),
     findByPk: jest.fn(),
     getById: jest.fn(),
-    getByUsuario: jest.fn(),
+    getByUser: jest.fn(),
     getAll: jest.fn(),
     getStats: jest.fn(),
-    cancelarTransferencia: jest.fn(),
-    reenviarCodigo: jest.fn(),
+    cancelTransfer: jest.fn(),
+    resendCode: jest.fn(),
   },
-  Usuario: { findByPk: jest.fn() },
-  Criptomoneda: { findByPk: jest.fn(), getById: jest.fn() },
-  BalanceUsuario: {
+  User: { findByPk: jest.fn() },
+  Crypto: { findByPk: jest.fn(), getById: jest.fn() },
+  UserBalance: {
     hasAvailableBalance: jest.fn(),
     findOne: jest.fn(),
     updateBalance: jest.fn(),
     getByUserAndCrypto: jest.fn(),
   },
-  Notificaciones: { createNotification: jest.fn() },
+  Notification: { createNotification: jest.fn() },
   sequelize: {
     transaction: jest.fn(),
   },
@@ -38,15 +38,15 @@ jest.mock('../services/email.service.js', () => ({
 }));
 
 // ── Pull in the mocked objects so tests can configure them ──────────────────
-const { sequelize, Usuario, Criptomoneda, BalanceUsuario, Transferencia } =
+const { sequelize, User, Crypto, UserBalance, Transfer } =
   require('../models/index.js');
 
 const asyncHandler = require('../utils/asyncHandler');
 const errorHandler = require('../middleware/errorHandler');
 const {
-  createTransferencia,
-  procesarTransferencia,
-} = require('../controllers/transferencia.controller');
+  createTransfer,
+  processTransfer,
+} = require('../modules/balances/transfer.controller');
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -60,7 +60,7 @@ function buildApp(method, path, handler) {
   app.use(express.json());
   // Inject a fake authenticated user
   app.use((req, _res, next) => {
-    req.user = { id: 'user-sender-id', rol: 'normal' };
+    req.user = { id: 'user-sender-id', role: 'normal' };
     next();
   });
   app[method](path, asyncHandler(handler));
@@ -77,25 +77,25 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-// ── createTransferencia ──────────────────────────────────────────────────────
+// ── createTransfer ──────────────────────────────────────────────────────
 
-describe('createTransferencia', () => {
-  const app = () => buildApp('post', '/transfers', createTransferencia);
+describe('createTransfer', () => {
+  const app = () => buildApp('post', '/transfers', createTransfer);
 
   const validBody = {
-    usuarioDestinatarioId: 'dest-id',
-    criptomonedaId: 'crypto-id',
-    cantidad: '0.5',
-    concepto: 'test',
+    recipientId: 'dest-id',
+    cryptoId: 'crypto-id',
+    amount: '0.5',
+    concept: 'test',
   };
 
   test('insufficient balance → 400 INSUFFICIENT_FUNDS (canonical envelope)', async () => {
     const tx = makeFakeTx();
     sequelize.transaction.mockResolvedValue(tx);
 
-    Usuario.findByPk.mockResolvedValue({ id: 'dest-id', activo: true, username: 'dest' });
-    Criptomoneda.findByPk.mockResolvedValue({ id: 'crypto-id', activa: true, symbol: 'BTC' });
-    BalanceUsuario.hasAvailableBalance.mockResolvedValue(false);
+    User.findByPk.mockResolvedValue({ id: 'dest-id', active: true, username: 'dest' });
+    Crypto.findByPk.mockResolvedValue({ id: 'crypto-id', active: true, symbol: 'BTC' });
+    UserBalance.hasAvailableBalance.mockResolvedValue(false);
 
     const res = await request(app()).post('/transfers').send(validBody);
 
@@ -112,7 +112,7 @@ describe('createTransferencia', () => {
     const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
     const tx = makeFakeTx();
     sequelize.transaction.mockResolvedValue(tx);
-    Usuario.findByPk.mockRejectedValue(new Error('SECRET: DB connection string'));
+    User.findByPk.mockRejectedValue(new Error('SECRET: DB connection string'));
 
     const res = await request(app()).post('/transfers').send(validBody);
 
@@ -124,19 +124,19 @@ describe('createTransferencia', () => {
   });
 });
 
-// ── procesarTransferencia ────────────────────────────────────────────────────
+// ── processTransfer ────────────────────────────────────────────────────
 
-describe('procesarTransferencia', () => {
-  const app = () => buildApp('post', '/transfers/:id/process', procesarTransferencia);
+describe('processTransfer', () => {
+  const app = () => buildApp('post', '/transfers/:id/process', processTransfer);
 
   test('transfer not found → 404 TRANSFER_NOT_FOUND (canonical envelope)', async () => {
     const tx = makeFakeTx();
     sequelize.transaction.mockResolvedValue(tx);
-    Transferencia.findByPk.mockResolvedValue(null);
+    Transfer.findByPk.mockResolvedValue(null);
 
     const res = await request(app())
       .post('/transfers/nonexistent-id/process')
-      .send({ codigoVerificacion: '123456' });
+      .send({ verificationCode: '123456' });
 
     expect(res.status).toBe(404);
     expect(res.body).toEqual({
@@ -150,17 +150,17 @@ describe('procesarTransferencia', () => {
   test('wrong owner → 403 TRANSFER_FORBIDDEN (canonical envelope)', async () => {
     const tx = makeFakeTx();
     sequelize.transaction.mockResolvedValue(tx);
-    Transferencia.findByPk.mockResolvedValue({
+    Transfer.findByPk.mockResolvedValue({
       id: 'tx-id',
-      usuarioRemitenteId: 'someone-else-id', // not 'user-sender-id'
-      estado: 'pendiente',
-      codigoVerificacion: '123456',
-      expiracionCodigo: new Date(Date.now() + 999999),
+      senderId: 'someone-else-id', // not 'user-sender-id'
+      status: 'pending',
+      verificationCode: '123456',
+      codeExpiration: new Date(Date.now() + 999999),
     });
 
     const res = await request(app())
       .post('/transfers/tx-id/process')
-      .send({ codigoVerificacion: '123456' });
+      .send({ verificationCode: '123456' });
 
     expect(res.status).toBe(403);
     expect(res.body).toEqual({
@@ -174,17 +174,17 @@ describe('procesarTransferencia', () => {
   test('invalid verification code → 400 VERIFICATION_CODE_INVALID (canonical envelope)', async () => {
     const tx = makeFakeTx();
     sequelize.transaction.mockResolvedValue(tx);
-    Transferencia.findByPk.mockResolvedValue({
+    Transfer.findByPk.mockResolvedValue({
       id: 'tx-id',
-      usuarioRemitenteId: 'user-sender-id',
-      estado: 'pendiente',
-      codigoVerificacion: '999999',
-      expiracionCodigo: new Date(Date.now() + 999999),
+      senderId: 'user-sender-id',
+      status: 'pending',
+      verificationCode: '999999',
+      codeExpiration: new Date(Date.now() + 999999),
     });
 
     const res = await request(app())
       .post('/transfers/tx-id/process')
-      .send({ codigoVerificacion: '111111' });
+      .send({ verificationCode: '111111' });
 
     expect(res.status).toBe(400);
     expect(res.body).toEqual({
@@ -198,17 +198,17 @@ describe('procesarTransferencia', () => {
   test('expired verification code → 400 VERIFICATION_CODE_EXPIRED (canonical envelope)', async () => {
     const tx = makeFakeTx();
     sequelize.transaction.mockResolvedValue(tx);
-    Transferencia.findByPk.mockResolvedValue({
+    Transfer.findByPk.mockResolvedValue({
       id: 'tx-id',
-      usuarioRemitenteId: 'user-sender-id',
-      estado: 'pendiente',
-      codigoVerificacion: '123456',
-      expiracionCodigo: new Date(Date.now() - 1000), // in the past
+      senderId: 'user-sender-id',
+      status: 'pending',
+      verificationCode: '123456',
+      codeExpiration: new Date(Date.now() - 1000), // in the past
     });
 
     const res = await request(app())
       .post('/transfers/tx-id/process')
-      .send({ codigoVerificacion: '123456' });
+      .send({ verificationCode: '123456' });
 
     expect(res.status).toBe(400);
     expect(res.body).toEqual({

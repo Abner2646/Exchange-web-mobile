@@ -9,23 +9,23 @@
 //   (acreditaba saldo en vez de limpiar) — se eliminó por completo.
 
 jest.mock('../models', () => ({
-  TransaccionBlockchain: { findAll: jest.fn().mockResolvedValue([]) },
-  DireccionDeposito: {},
-  Criptomoneda: {},
+  BlockchainTransaction: { findAll: jest.fn().mockResolvedValue([]) },
+  DepositAddress: {},
+  Crypto: {},
   BlockchainState: {},
-  Usuario: {},
-  BalanceUsuario: {},
+  User: {},
+  UserBalance: {},
 }));
-jest.mock('../services/blockchain', () => ({ getService: jest.fn() }));
+jest.mock('../modules/wallets/blockchain', () => ({ getService: jest.fn() }));
 
 const BlockchainJobManager = require('../jobs/blockchain.jobs');
-const { TransaccionBlockchain } = require('../models');
+const { BlockchainTransaction } = require('../models');
 
 describe('BlockchainJobManager.cleanupStuckTransactions', () => {
   test('el require apunta al script que realmente existe, no explota con MODULE_NOT_FOUND', async () => {
     const result = await BlockchainJobManager.cleanupStuckTransactions();
     expect(result.total).toBe(0);
-    expect(TransaccionBlockchain.findAll).toHaveBeenCalled();
+    expect(BlockchainTransaction.findAll).toHaveBeenCalled();
   });
 });
 
@@ -35,7 +35,7 @@ describe('transaccionBlockchain.model.js', () => {
     // No hace falta una conexión real: Model.init() no requiere que el
     // dialecto exista de verdad hasta que se ejecuta una query.
     const sequelize = new Sequelize('postgres://test:test@localhost:5432/test', { logging: false });
-    const createTransaccionBlockchainModel = require('../models/transaccionBlockchain.model');
+    const createTransaccionBlockchainModel = require('../modules/wallets/blockchainTransaction.model');
     const TransaccionBlockchainModel = createTransaccionBlockchainModel(sequelize);
     expect(TransaccionBlockchainModel.cleanupBalanceCheckTransactions).toBeUndefined();
   });

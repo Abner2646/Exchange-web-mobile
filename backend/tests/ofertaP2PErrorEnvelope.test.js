@@ -9,7 +9,7 @@ const express = require('express');
 
 // ── Mocks (declared before any require of the modules they replace) ───────────
 jest.mock('../models/index.js', () => ({
-  OfertaP2P: {
+  P2POffer: {
     getAll: jest.fn(),
     getById: jest.fn(),
     findByPk: jest.fn(),
@@ -26,10 +26,10 @@ jest.mock('../models/index.js', () => ({
   },
 }));
 
-const { OfertaP2P } = require('../models/index.js');
+const { P2POffer } = require('../models/index.js');
 const asyncHandler = require('../utils/asyncHandler');
 const errorHandler = require('../middleware/errorHandler');
-const { createOferta } = require('../controllers/ofertaP2P.controller');
+const { createOferta } = require('../modules/p2p/p2pOffer.controller');
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -38,7 +38,7 @@ function buildApp() {
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    req.user = { id: 'user-uuid-001', rol: 'usuario' };
+    req.user = { id: 'user-uuid-001', role: 'usuario' };
     next();
   });
   app.post('/ofertas', asyncHandler(createOferta));
@@ -58,7 +58,7 @@ describe('createOferta — known business error → canonical envelope', () => {
     const res = await request(buildApp())
       .post('/ofertas')
       .send({
-        tipo: 'venta',
+        type: 'sell',
         metodosPagoIds: ['uuid-metodo-001'],
         // direccionFiat deliberately omitted
       });
@@ -78,7 +78,7 @@ describe('createOferta — known business error → canonical envelope', () => {
     const res = await request(buildApp())
       .post('/ofertas')
       .send({
-        tipo: 'compra',
+        type: 'buy',
         // metodosPagoIds deliberately omitted
       });
 
@@ -95,7 +95,7 @@ describe('createOferta — known business error → canonical envelope', () => {
     const res = await request(buildApp())
       .post('/ofertas')
       .send({
-        tipo: 'compra',
+        type: 'buy',
         metodosPagoIds: [],
       });
 
@@ -115,14 +115,14 @@ describe('createOferta — unexpected throw → sanitized 500', () => {
   test('DB explosion → sanitized 500, no raw message leak', async () => {
     const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
-    OfertaP2P.createOffer.mockRejectedValue(
+    P2POffer.createOffer.mockRejectedValue(
       new Error('SECRET: pg connection pool exhausted - host db.internal:5432')
     );
 
     const res = await request(buildApp())
       .post('/ofertas')
       .send({
-        tipo: 'compra',
+        type: 'buy',
         metodosPagoIds: ['uuid-metodo-001'],
       });
 

@@ -16,7 +16,7 @@ jest.mock('../middleware/adminMiddleware.js', () => ({ isAdmin: (_q, _s, n) => n
 
 // Stub every method trading.controller uses in the route file
 const noop = (_req, res) => res.status(200).json({});
-jest.mock('../controllers/trading.controller', () => ({
+jest.mock('../modules/trading/trading.controller', () => ({
   createOrder: (_req, res) => res.status(201).json({ ok: true }),
   cancelOrder: noop,
   getUserOrders: noop,
@@ -27,7 +27,7 @@ jest.mock('../controllers/trading.controller', () => ({
   getSpread: noop,
   getTradingBalance: noop
 }));
-jest.mock('../controllers/trades.controller', () => ({
+jest.mock('../modules/trading/trades.controller', () => ({
   getRecentTrades: noop,
   getUserTrades: noop,
   getUserTradeStats: noop,
@@ -39,7 +39,7 @@ jest.mock('../controllers/trades.controller', () => ({
   getTickers: noop,
   getUserTradingSummary: noop
 }));
-jest.mock('../controllers/tradingPairs.controller', () => ({
+jest.mock('../modules/trading/tradingPairs.controller', () => ({
   getAllPairs: noop,
   getActivePairs: noop,
   getTopPairs: noop,
@@ -52,7 +52,7 @@ jest.mock('../controllers/tradingPairs.controller', () => ({
   updatePairStatus: noop
 }));
 
-const tradingRoutes = require('../routes/trading.routes');
+const tradingRoutes = require('../modules/trading/trading.routes');
 
 test('POST /trading/orders without Idempotency-Key -> 400', async () => {
   const app = express();

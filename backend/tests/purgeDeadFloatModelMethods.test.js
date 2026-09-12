@@ -14,7 +14,7 @@
 const fs = require('fs');
 
 describe('Order.updateOrderFilled borrado (código muerto con float)', () => {
-  const source = fs.readFileSync(require.resolve('../models/order.model.js'), 'utf8');
+  const source = fs.readFileSync(require.resolve('../modules/trading/order.model.js'), 'utf8');
 
   test('order.model.js ya no define Order.updateOrderFilled', () => {
     expect(source).not.toMatch(/Order\.updateOrderFilled\s*=/);
@@ -22,7 +22,7 @@ describe('Order.updateOrderFilled borrado (código muerto con float)', () => {
 });
 
 describe('Trade.createTrade borrado (código muerto con float)', () => {
-  const source = fs.readFileSync(require.resolve('../models/trade.model.js'), 'utf8');
+  const source = fs.readFileSync(require.resolve('../modules/trading/trade.model.js'), 'utf8');
 
   test('trade.model.js ya no define Trade.createTrade', () => {
     expect(source).not.toMatch(/Trade\.createTrade\s*=/);

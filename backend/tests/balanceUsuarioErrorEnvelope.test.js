@@ -6,9 +6,9 @@ const request = require('supertest');
 const express = require('express');
 
 jest.mock('../models/index.js', () => ({
-  BalanceUsuario: {
-    getBalancesConCompartimentos: jest.fn(),
-    hasAvailableEnCompartimento: jest.fn(),
+  UserBalance: {
+    getBalancesWithCompartments: jest.fn(),
+    hasAvailableInCompartment: jest.fn(),
     updateBalance: jest.fn(),
   },
   // transferMisCompartimentos ahora es dueño de su transacción (hardening
@@ -19,9 +19,9 @@ jest.mock('../models/index.js', () => ({
     transaction: jest.fn(async () => ({ finished: false, commit: jest.fn(), rollback: jest.fn() })),
   },
 }));
-jest.mock('../services/ledger/operations', () => ({
-  transferirInterno: jest.fn(),
-  transferirEntreCompartimentos: jest.fn(),
+jest.mock('../modules/balances/ledger/operations', () => ({
+  transferInternal: jest.fn(),
+  transferBetweenCompartments: jest.fn(),
 }));
 jest.mock('../middleware/authMiddleware.js', () => ({
   authenticateToken: (req, _res, nx) => { req.user = { id: 'user-1' }; nx(); },
@@ -33,9 +33,9 @@ jest.mock('../middleware/idempotency.middleware', () => (_q, _s, n) => n());
 // para probar el envelope de error del controller, no el guard de MFA.
 jest.mock('../middleware/operatorMFA.middleware', () => (_q, _s, n) => n());
 
-const { BalanceUsuario } = require('../models/index.js');
+const { UserBalance } = require('../models/index.js');
 const errorHandler = require('../middleware/errorHandler');
-const balanceRoutes = require('../routes/balanceUsuario.routes');
+const balanceRoutes = require('../modules/balances/userBalance.routes');
 
 function buildApp() {
   const app = express();
@@ -49,7 +49,7 @@ beforeEach(() => jest.clearAllMocks());
 
 describe('balanceUsuario — canonical error envelope', () => {
   test('unexpected error → sanitized 500, no raw message leak', async () => {
-    BalanceUsuario.getBalancesConCompartimentos.mockRejectedValue(
+    UserBalance.getBalancesWithCompartments.mockRejectedValue(
       new Error('SECRET: pg pool exhausted at db.internal:5432')
     );
     const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
@@ -66,7 +66,7 @@ describe('balanceUsuario — canonical error envelope', () => {
   test('transfer: missing fields → 400 BALANCE_INVALID_INPUT', async () => {
     const res = await request(buildApp())
       .post('/balances/my/transfer')
-      .send({ origen: 'funding', destino: 'spot' }); // falta criptomonedaId + cantidad
+      .send({ from: 'funding', to: 'spot' }); // falta cryptoId + amount
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('BALANCE_INVALID_INPUT');
@@ -75,32 +75,32 @@ describe('balanceUsuario — canonical error envelope', () => {
   test('transfer: same compartment → 400 BALANCE_INVALID_INPUT', async () => {
     const res = await request(buildApp())
       .post('/balances/my/transfer')
-      .send({ criptomonedaId: 'c1', cantidad: '1', origen: 'funding', destino: 'funding' });
+      .send({ cryptoId: 'c1', amount: '1', from: 'funding', to: 'funding' });
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('BALANCE_INVALID_INPUT');
   });
 
   test('transfer: insufficient (early-check) → 400 BALANCE_INSUFFICIENT', async () => {
-    BalanceUsuario.hasAvailableEnCompartimento.mockResolvedValue(false);
+    UserBalance.hasAvailableInCompartment.mockResolvedValue(false);
     const res = await request(buildApp())
       .post('/balances/my/transfer')
-      .send({ criptomonedaId: 'c1', cantidad: '5', origen: 'funding', destino: 'spot' });
+      .send({ cryptoId: 'c1', amount: '5', from: 'funding', to: 'spot' });
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('BALANCE_INSUFFICIENT');
   });
 
   test('transfer: ledger overdraw (race) → 400 BALANCE_INSUFFICIENT', async () => {
-    BalanceUsuario.hasAvailableEnCompartimento.mockResolvedValue(true);
+    UserBalance.hasAvailableInCompartment.mockResolvedValue(true);
     const sob = new Error('Sobregiro en cuenta funding:disponible');
-    sob.code = 'SOBREGIRO';
-    const { transferirEntreCompartimentos } = require('../services/ledger/operations');
-    transferirEntreCompartimentos.mockRejectedValue(sob);
+    sob.code = 'OVERDRAFT';
+    const { transferBetweenCompartments } = require('../modules/balances/ledger/operations');
+    transferBetweenCompartments.mockRejectedValue(sob);
 
     const res = await request(buildApp())
       .post('/balances/my/transfer')
-      .send({ criptomonedaId: 'c1', cantidad: '5', origen: 'funding', destino: 'spot' });
+      .send({ cryptoId: 'c1', amount: '5', from: 'funding', to: 'spot' });
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('BALANCE_INSUFFICIENT');

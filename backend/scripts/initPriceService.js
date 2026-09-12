@@ -2,7 +2,7 @@
 // Script para inicializar el servicio de precios automáticamente al arrancar la aplicación
 
 const priceService = require('../services/priceService');
-const { ParExchange } = require('../models/index.js');
+const { SwapPair } = require('../models/index.js');
 
 class PriceServiceInitializer {
   static async initializeService() {
@@ -19,8 +19,8 @@ class PriceServiceInitializer {
       }
 
       // Verificar que hay pares activos para actualizar
-      const paresActivos = await ParExchange.count({
-        where: { activo: true }
+      const paresActivos = await SwapPair.count({
+        where: { active: true }
       });
 
       if (paresActivos === 0) {
@@ -30,7 +30,7 @@ class PriceServiceInitializer {
 
       console.log(`📊 Encontrados ${paresActivos} pares activos para actualizar`);
 
-      // Inicializar fuentes de precio automáticas
+      // Inicializar fuentes de price automáticas
       await this.initializePriceSources();
 
       // Iniciar actualización automática
@@ -56,22 +56,22 @@ class PriceServiceInitializer {
       
       // Buscar pares que tengan ambas monedas en CoinGecko pero estén configurados como manuales
       const { Op } = require('sequelize');
-      const { Criptomoneda } = require('../models/index.js');
+      const { Crypto } = require('../models/index.js');
       
-      const paresParaActualizar = await ParExchange.findAll({
+      const paresParaActualizar = await SwapPair.findAll({
         where: {
-          activo: true,
-          fuentePrecio: 'manual'
+          active: true,
+          priceSource: 'manual'
         },
         include: [
           {
-            model: Criptomoneda,
-            as: 'criptoBase',
+            model: Crypto,
+            as: 'baseCrypto',
             where: { symbol: { [Op.in]: coingeckoSymbols } }
           },
           {
-            model: Criptomoneda,
-            as: 'criptoQuote',
+            model: Crypto,
+            as: 'quoteCrypto',
             where: { symbol: { [Op.in]: coingeckoSymbols } }
           }
         ]
@@ -79,26 +79,26 @@ class PriceServiceInitializer {
 
       console.log(`🔧 Configurando ${paresParaActualizar.length} pares para usar CoinGecko`);
 
-      // Actualizar fuente de precio a CoinGecko para pares compatibles
+      // Actualizar fuente de price a CoinGecko para pares compatibles
       for (const par of paresParaActualizar) {
         try {
-          await ParExchange.updatePar(par.id, {
-            fuentePrecio: 'coingecko'
+          await SwapPair.updatePar(par.id, {
+            priceSource: 'coingecko'
           });
-          console.log(`   ✓ ${par.criptoBase.symbol}/${par.criptoQuote.symbol} → CoinGecko`);
+          console.log(`   ✓ ${par.baseCrypto.symbol}/${par.quoteCrypto.symbol} → CoinGecko`);
         } catch (error) {
-          console.warn(`   ⚠️  Error actualizando ${par.criptoBase.symbol}/${par.criptoQuote.symbol}:`, error.message);
+          console.warn(`   ⚠️  Error actualizando ${par.baseCrypto.symbol}/${par.quoteCrypto.symbol}:`, error.message);
         }
       }
 
     } catch (error) {
-      console.warn('⚠️  Error configurando fuentes de precio automáticas:', error.message);
+      console.warn('⚠️  Error configurando fuentes de price automáticas:', error.message);
     }
   }
 
   static setupGracefulShutdown() {
     const shutdown = () => {
-      console.log('\n🛑 Deteniendo servicio de precios...');
+      console.log('.🛑 Deteniendo servicio de precios...');
       priceService.stopPriceUpdates();
       console.log('✅ Servicio de precios detenido correctamente');
       process.exit(0);
@@ -111,17 +111,17 @@ class PriceServiceInitializer {
   static async getServiceStatus() {
     try {
       const stats = priceService.getServiceStats();
-      const paresActivos = await ParExchange.count({
-        where: { activo: true }
+      const paresActivos = await SwapPair.count({
+        where: { active: true }
       });
       
-      const paresPorFuente = await ParExchange.findAll({
+      const paresPorFuente = await SwapPair.findAll({
         attributes: [
-          'fuentePrecio',
+          'priceSource',
           [require('sequelize').fn('COUNT', require('sequelize').col('id')), 'count']
         ],
-        where: { activo: true },
-        group: ['fuentePrecio'],
+        where: { active: true },
+        group: ['priceSource'],
         raw: true
       });
 
@@ -129,17 +129,17 @@ class PriceServiceInitializer {
         serviceStats: stats,
         paresActivos: paresActivos,
         distribucionFuentes: paresPorFuente,
-        ultimaActualizacion: new Date()
+        lastUpdated: new Date()
       };
     } catch (error) {
-      throw new Error(`Error obteniendo estado del servicio: ${error.message}`);
+      throw new Error(`Error obteniendo status del servicio: ${error.message}`);
     }
   }
 
   // Método para crear pares de ejemplo si no existen
   static async createSamplePairs() {
     try {
-      const existingPairs = await ParExchange.count();
+      const existingPairs = await SwapPair.count();
       
       if (existingPairs > 0) {
         console.log('✅ Ya existen pares en la base de datos');
@@ -149,20 +149,20 @@ class PriceServiceInitializer {
       console.log('🔨 Creando pares de ejemplo...');
 
       // Obtener o crear criptomonedas necesarias
-      const { Criptomoneda } = require('../models/index.js');
+      const { Crypto } = require('../models/index.js');
       
       const cryptos = [
-        { symbol: 'BTC', nombre: 'Bitcoin', red: 'bitcoin' },
-        { symbol: 'ETH', nombre: 'Ethereum', red: 'ethereum' },
-        { symbol: 'USDT', nombre: 'Tether', red: 'ethereum' },
-        { symbol: 'USDC', nombre: 'USD Coin', red: 'ethereum' },
-        { symbol: 'BNB', nombre: 'Binance Coin', red: 'bsc' }
+        { symbol: 'BTC', name: 'Bitcoin', network: 'bitcoin' },
+        { symbol: 'ETH', name: 'Ethereum', network: 'ethereum' },
+        { symbol: 'USDT', name: 'Tether', network: 'ethereum' },
+        { symbol: 'USDC', name: 'USD Coin', network: 'ethereum' },
+        { symbol: 'BNB', name: 'Binance Coin', network: 'bsc' }
       ];
 
       const createdCryptos = {};
       
       for (const crypto of cryptos) {
-        let [cryptoInstance] = await Criptomoneda.findOrCreate({
+        let [cryptoInstance] = await Crypto.findOrCreate({
           where: { symbol: crypto.symbol },
           defaults: crypto
         });
@@ -180,13 +180,13 @@ class PriceServiceInitializer {
 
       for (const pair of samplePairs) {
         try {
-          await ParExchange.createPar({
-            criptoBaseId: createdCryptos[pair.base].id,
-            criptoQuoteId: createdCryptos[pair.quote].id,
-            precioActual: pair.price,
-            comisionPorcentaje: pair.commission,
-            fuentePrecio: 'coingecko',
-            activo: true
+          await SwapPair.createPar({
+            baseCryptoId: createdCryptos[pair.base].id,
+            quoteCryptoId: createdCryptos[pair.quote].id,
+            currentPrice: pair.price,
+            feePercent: pair.commission,
+            priceSource: 'coingecko',
+            active: true
           });
           console.log(`   ✓ Creado par ${pair.base}/${pair.quote}`);
         } catch (error) {

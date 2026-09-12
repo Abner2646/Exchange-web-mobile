@@ -7,21 +7,21 @@
 // crea un ethers.Wallet y exige claves privadas por env).
 
 jest.mock('../models', () => ({
-  TransaccionBlockchain: { createDeposit: jest.fn() },
-  DireccionDeposito: {},
-  Criptomoneda: {},
+  BlockchainTransaction: { createDeposit: jest.fn() },
+  DepositAddress: {},
+  Crypto: {},
   BlockchainState: {},
 }));
 
-const { TransaccionBlockchain } = require('../models');
-const EthereumService = require('../services/blockchain/ethereum.service');
+const { BlockchainTransaction } = require('../models');
+const EthereumService = require('../modules/wallets/blockchain/ethereum.service');
 const { ETHEREUM_PROFILES } = require('../config/networks/evm');
 
-// Fase 3: el service toma su identidad de red del NetworkProfile inyectado (un
+// Fase 3: el service toma su identidad de network del NetworkProfile inyectado (un
 // chainClient fake evita el ethers.Wallet real / claves por env).
 describe('ethereum.service — NetworkProfile inyectado', () => {
   const fakeChain = { provider: null, wallet: null };
-  test('mainnet → chainId 1, red ethereum', () => {
+  test('mainnet → chainId 1, network ethereum', () => {
     const s = new EthereumService({ profile: ETHEREUM_PROFILES.mainnet, chainClient: fakeChain });
     expect(s.chainId).toBe(1);
     expect(s.actualNetwork).toBe('ethereum');
@@ -48,17 +48,17 @@ describe('ethereum.createDepositFromTransaction — net y fee exactos', () => {
   beforeEach(() => jest.clearAllMocks());
 
   test('cantidad = amount - fee sin error de coma; fee como string', async () => {
-    TransaccionBlockchain.createDeposit.mockResolvedValue({ id: 'd' });
+    BlockchainTransaction.createDeposit.mockResolvedValue({ id: 'd' });
     const tx = { from: '0xabc', hash: '0xh', confirmations: '3', blockNumber: '100', timeStamp: '1700000000' };
 
     await EthereumService.prototype.createDepositFromTransaction.call(
       { requiredConfirmations: 12 },
-      { userId: 'u', criptomonedaId: 'c', direccion: '0xdst' }, tx, '0.3', '0.1'
+      { userId: 'u', cryptoId: 'c', address: '0xdst' }, tx, '0.3', '0.1'
     );
 
-    const data = TransaccionBlockchain.createDeposit.mock.calls[0][0];
+    const data = BlockchainTransaction.createDeposit.mock.calls[0][0];
     // float: 0.3 - 0.1 = 0.19999999999999998
-    expect(data.cantidad).toBe('0.2');
-    expect(data.feeBlockchain).toBe('0.1');
+    expect(data.amount).toBe('0.2');
+    expect(data.blockchainFee).toBe('0.1');
   });
 });

@@ -2,27 +2,27 @@
 //
 // Cubre AUDITORIA_BACKEND.md Críticos #8: createWithdrawal bloqueaba el
 // balance del usuario al crear el retiro, pero ningún job ni ruta llamaba
-// a processPendingWithdrawals() — que ya estaba bien implementada por red
+// a processPendingWithdrawals() — que ya estaba bien implementada por network
 // — así que los retiros quedaban con fondos bloqueados para siempre.
 
 jest.mock('../models', () => ({
-  TransaccionBlockchain: {},
-  DireccionDeposito: {},
-  Criptomoneda: {},
+  BlockchainTransaction: {},
+  DepositAddress: {},
+  Crypto: {},
   BlockchainState: {},
 }));
 
-jest.mock('../services/blockchain', () => ({
+jest.mock('../modules/wallets/blockchain', () => ({
   getService: jest.fn(),
 }));
 
-const BlockchainServiceManager = require('../services/blockchain');
+const BlockchainServiceManager = require('../modules/wallets/blockchain');
 const BlockchainJobManager = require('../jobs/blockchain.jobs');
 
 describe('BlockchainJobManager.runWithdrawalProcessJob', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  test('llama a processPendingWithdrawals en cada red disponible y suma los resultados', async () => {
+  test('llama a processPendingWithdrawals en cada network disponible y suma los resultados', async () => {
     const ethService = { processPendingWithdrawals: jest.fn().mockResolvedValue([{ id: 'w1' }]) };
     const bscService = { processPendingWithdrawals: jest.fn().mockResolvedValue([]) };
     const btcService = { processPendingWithdrawals: jest.fn().mockResolvedValue([{ id: 'w2' }, { id: 'w3' }]) };

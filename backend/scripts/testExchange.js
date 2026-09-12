@@ -20,7 +20,7 @@ const api = axios.create({
 
 // IDs de ejemplo (reemplazar con IDs reales de tu base de datos)
 const TEST_DATA = {
-  parId: '123e4567-e89b-12d3-a456-426614174000', // Par de tu ParExchange
+  pairId: '123e4567-e89b-12d3-a456-426614174000', // Par de tu SwapPair
   usuarioId: '123e4567-e89b-12d3-a456-426614174001',
   intercambioId: '123e4567-e89b-12d3-a456-426614174002'
 };
@@ -31,7 +31,7 @@ class ExchangeTester {
   }
 
   async test(name, testFunction) {
-    console.log(`\n🧪 Probando: ${name}`);
+    console.log(`.🧪 Probando: ${name}`);
     try {
       const result = await testFunction();
       console.log(`✅ ${name} - OK`);
@@ -53,20 +53,20 @@ class ExchangeTester {
   // ================================
 
   async testPublicEndpoints() {
-    console.log('\n📊 PROBANDO ENDPOINTS PÚBLICOS');
+    console.log('.📊 PROBANDO ENDPOINTS PÚBLICOS');
 
     await this.test('Obtener historial de precios', async () => {
-      const response = await axios.get(`${API_URL}/pairs/${TEST_DATA.parId}/price-history?limit=10`);
+      const response = await axios.get(`${API_URL}/pairs/${TEST_DATA.pairId}/price-history?limit=10`);
       return response.data;
     });
 
-    await this.test('Obtener último precio', async () => {
-      const response = await axios.get(`${API_URL}/pairs/${TEST_DATA.parId}/last-price`);
+    await this.test('Obtener último price', async () => {
+      const response = await axios.get(`${API_URL}/pairs/${TEST_DATA.pairId}/last-price`);
       return response.data;
     });
 
     await this.test('Obtener volumen por par', async () => {
-      const response = await axios.get(`${API_URL}/pairs/${TEST_DATA.parId}/volume`);
+      const response = await axios.get(`${API_URL}/pairs/${TEST_DATA.pairId}/volume`);
       return response.data;
     });
   }
@@ -76,23 +76,23 @@ class ExchangeTester {
   // ================================
 
   async testMainOperations() {
-    console.log('\n💱 PROBANDO OPERACIONES PRINCIPALES');
+    console.log('.💱 PROBANDO OPERACIONES PRINCIPALES');
 
     // Calcular intercambio antes de ejecutar
-    await this.test('Calcular intercambio de compra', async () => {
+    await this.test('Calcular intercambio de buy', async () => {
       const response = await api.post('/calculate', {
-        parId: TEST_DATA.parId,
-        cantidadBase: 0.001,
-        tipo: 'compra'
+        pairId: TEST_DATA.pairId,
+        baseAmount: 0.001,
+        type: 'buy'
       });
       return response.data;
     });
 
-    await this.test('Calcular intercambio de venta', async () => {
+    await this.test('Calcular intercambio de sell', async () => {
       const response = await api.post('/calculate', {
-        parId: TEST_DATA.parId,
-        cantidadBase: 0.001,
-        tipo: 'venta'
+        pairId: TEST_DATA.pairId,
+        baseAmount: 0.001,
+        type: 'sell'
       });
       return response.data;
     });
@@ -100,7 +100,7 @@ class ExchangeTester {
     // Verificar límites
     await this.test('Verificar límite de transacción', async () => {
       const response = await api.post('/check-limit', {
-        cantidadQuote: 100.00
+        quoteAmount: 100.00
       });
       return response.data;
     });
@@ -112,22 +112,22 @@ class ExchangeTester {
     });
 
     // Ejecutar intercambio real (solo si hay balances suficientes)
-    await this.test('Ejecutar intercambio de compra', async () => {
+    await this.test('Ejecutar intercambio de buy', async () => {
       const response = await api.post('/', {
-        parId: TEST_DATA.parId,
-        tipo: 'compra',
-        cantidadBase: 0.0001, // Cantidad muy pequeña para testing
-        precio: 45000.00
+        pairId: TEST_DATA.pairId,
+        type: 'buy',
+        baseAmount: 0.0001, // Cantidad muy pequeña para testing
+        price: 45000.00
       });
       return response.data;
     });
 
-    await this.test('Ejecutar intercambio de venta', async () => {
+    await this.test('Ejecutar intercambio de sell', async () => {
       const response = await api.post('/', {
-        parId: TEST_DATA.parId,
-        tipo: 'venta',
-        cantidadBase: 0.0001, // Cantidad muy pequeña para testing
-        precio: 44000.00
+        pairId: TEST_DATA.pairId,
+        type: 'sell',
+        baseAmount: 0.0001, // Cantidad muy pequeña para testing
+        price: 44000.00
       });
       return response.data;
     });
@@ -138,7 +138,7 @@ class ExchangeTester {
   // ================================
 
   async testUserQueries() {
-    console.log('\n👤 PROBANDO CONSULTAS DE USUARIO');
+    console.log('.👤 PROBANDO CONSULTAS DE USUARIO');
 
     await this.test('Obtener mis intercambios', async () => {
       const response = await api.get('/me?limit=10');
@@ -155,8 +155,8 @@ class ExchangeTester {
       return response.data;
     });
 
-    await this.test('Filtrar mis intercambios por tipo', async () => {
-      const response = await api.get('/me?tipo=compra&limit=5');
+    await this.test('Filtrar mis intercambios por type', async () => {
+      const response = await api.get('/me?type=buy&limit=5');
       return response.data;
     });
 
@@ -173,7 +173,7 @@ class ExchangeTester {
   // ================================
 
   async testAdminEndpoints() {
-    console.log('\n👨‍💼 PROBANDO ENDPOINTS ADMINISTRATIVOS');
+    console.log('.👨‍💼 PROBANDO ENDPOINTS ADMINISTRATIVOS');
 
     await this.test('Listar todos los intercambios', async () => {
       const response = await api.get('/?limit=10');
@@ -196,9 +196,9 @@ class ExchangeTester {
         return response.data;
       });
 
-      await this.test('Actualizar estado de intercambio', async () => {
+      await this.test('Actualizar status de intercambio', async () => {
         const response = await api.put(`/${TEST_DATA.intercambioId}/status`, { 
-          newStatus: 'completado' 
+          newStatus: 'completed' 
         });
         return response.data;
       });
@@ -225,15 +225,15 @@ class ExchangeTester {
   // ================================
 
   async testValidations() {
-    console.log('\n🔍 PROBANDO VALIDACIONES');
+    console.log('.🔍 PROBANDO VALIDACIONES');
 
     await this.test('Validación: Tipo inválido', async () => {
       try {
         await api.post('/', {
-          parId: TEST_DATA.parId,
-          tipo: 'invalido',
-          cantidadBase: 0.001,
-          precio: 45000
+          pairId: TEST_DATA.pairId,
+          type: 'invalido',
+          baseAmount: 0.001,
+          price: 45000
         });
       } catch (error) {
         if (error.response?.status === 400) {
@@ -246,10 +246,10 @@ class ExchangeTester {
     await this.test('Validación: Cantidad negativa', async () => {
       try {
         await api.post('/', {
-          parId: TEST_DATA.parId,
-          tipo: 'compra',
-          cantidadBase: -0.001,
-          precio: 45000
+          pairId: TEST_DATA.pairId,
+          type: 'buy',
+          baseAmount: -0.001,
+          price: 45000
         });
       } catch (error) {
         if (error.response?.status === 400) {
@@ -284,10 +284,10 @@ class ExchangeTester {
     await this.test('Validación: Exceso de decimales', async () => {
       try {
         await api.post('/', {
-          parId: TEST_DATA.parId,
-          tipo: 'compra',
-          cantidadBase: 0.123456789, // 9 decimales (máximo 8)
-          precio: 45000
+          pairId: TEST_DATA.pairId,
+          type: 'buy',
+          baseAmount: 0.123456789, // 9 decimals (máximo 8)
+          price: 45000
         });
       } catch (error) {
         if (error.response?.status === 400) {
@@ -303,7 +303,7 @@ class ExchangeTester {
   // ================================
 
   async testCompleteFlow() {
-    console.log('\n🔄 PROBANDO FLUJO COMPLETO');
+    console.log('.🔄 PROBANDO FLUJO COMPLETO');
 
     // 1. Verificar balances iniciales
     const initialBalances = await this.test('Flujo: Verificar balances iniciales', async () => {
@@ -314,9 +314,9 @@ class ExchangeTester {
     // 2. Calcular intercambio
     const calculation = await this.test('Flujo: Calcular intercambio', async () => {
       const response = await api.post('/calculate', {
-        parId: TEST_DATA.parId,
-        cantidadBase: 0.0001,
-        tipo: 'compra'
+        pairId: TEST_DATA.pairId,
+        baseAmount: 0.0001,
+        type: 'buy'
       });
       return response.data;
     });
@@ -325,7 +325,7 @@ class ExchangeTester {
     if (calculation) {
       await this.test('Flujo: Verificar límites', async () => {
         const response = await api.post('/check-limit', {
-          cantidadQuote: calculation.calculo?.cantidadFinal || 1
+          quoteAmount: calculation.calculo?.finalAmount || 1
         });
         return response.data;
       });
@@ -334,10 +334,10 @@ class ExchangeTester {
     // 4. Ejecutar intercambio (solo si hay fondos)
     const exchange = await this.test('Flujo: Ejecutar intercambio', async () => {
       const response = await api.post('/', {
-        parId: TEST_DATA.parId,
-        tipo: 'compra',
-        cantidadBase: 0.0001,
-        precio: 45000.00
+        pairId: TEST_DATA.pairId,
+        type: 'buy',
+        baseAmount: 0.0001,
+        price: 45000.00
       });
       return response.data;
     });
@@ -366,14 +366,14 @@ class ExchangeTester {
   // ================================
 
   async testPerformance() {
-    console.log('\n⚡ PROBANDO RENDIMIENTO BÁSICO');
+    console.log('.⚡ PROBANDO RENDIMIENTO BÁSICO');
 
-    await this.test('Rendimiento: 10 consultas de precio', async () => {
+    await this.test('Rendimiento: 10 consultas de price', async () => {
       const start = Date.now();
       const promises = [];
       
       for (let i = 0; i < 10; i++) {
-        promises.push(axios.get(`${API_URL}/pairs/${TEST_DATA.parId}/last-price`));
+        promises.push(axios.get(`${API_URL}/pairs/${TEST_DATA.pairId}/last-price`));
       }
       
       await Promise.all(promises);
@@ -392,9 +392,9 @@ class ExchangeTester {
       
       for (let i = 0; i < 5; i++) {
         promises.push(api.post('/calculate', {
-          parId: TEST_DATA.parId,
-          cantidadBase: 0.001 * (i + 1),
-          tipo: i % 2 === 0 ? 'compra' : 'venta'
+          pairId: TEST_DATA.pairId,
+          baseAmount: 0.001 * (i + 1),
+          type: i % 2 === 0 ? 'buy' : 'sell'
         }));
       }
       
@@ -428,7 +428,7 @@ class ExchangeTester {
   }
 
   printSummary() {
-    console.log('\n📋 RESUMEN DE PRUEBAS');
+    console.log('.📋 RESUMEN DE PRUEBAS');
     console.log('====================');
     
     const successful = this.results.filter(r => r.status === 'success').length;
@@ -439,7 +439,7 @@ class ExchangeTester {
     console.log(`📊 Total: ${this.results.length}`);
     
     if (failed > 0) {
-      console.log('\n❌ PRUEBAS FALLIDAS:');
+      console.log('.❌ PRUEBAS FALLIDAS:');
       this.results
         .filter(r => r.status === 'error')
         .forEach(r => {
@@ -452,7 +452,7 @@ class ExchangeTester {
         });
     }
 
-    console.log('\n🎯 CONFIGURACIÓN NECESARIA:');
+    console.log('.🎯 CONFIGURACIÓN NECESARIA:');
     console.log('1. Asegúrate de que el servidor esté corriendo en', BASE_URL);
     console.log('2. Actualiza el authToken con un token JWT válido');
     console.log('3. Reemplaza los TEST_DATA con IDs reales de tu base de datos');
@@ -495,7 +495,7 @@ INSTRUCCIONES PARA EJECUTAR LAS PRUEBAS:
    - Reemplazar los IDs en TEST_DATA con IDs reales de tu base de datos
 
 3. Preparar datos de prueba:
-   - Asegúrate de tener al menos un ParExchange activo
+   - Asegúrate de tener al menos un SwapPair active
    - Verifica que el usuario tenga balances en las criptomonedas del par
    - Confirma que el límite diario del usuario permita transacciones
 
@@ -511,30 +511,30 @@ INSTRUCCIONES PARA EJECUTAR LAS PRUEBAS:
 EJEMPLOS DE CURL PARA PRUEBAS RÁPIDAS:
 
 # Calcular intercambio (requiere auth)
-curl -X POST "http://localhost:3000/api/intercambios/calculate" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_TOKEN" \
+curl -X POST "http://localhost:3000/api/intercambios/calculate" .
+  -H "Content-Type: application/json" .
+  -H "Authorization: Bearer YOUR_TOKEN" .
   -d '{
-    "parId": "PARID",
-    "cantidadBase": 0.001,
-    "tipo": "compra"
+    "pairId": "PARID",
+    "baseAmount": 0.001,
+    "type": "buy"
   }'
 
 # Ejecutar intercambio (requiere auth y fondos)
-curl -X POST "http://localhost:3000/api/intercambios" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_TOKEN" \
+curl -X POST "http://localhost:3000/api/intercambios" .
+  -H "Content-Type: application/json" .
+  -H "Authorization: Bearer YOUR_TOKEN" .
   -d '{
-    "parId": "PARID",
-    "tipo": "compra",
-    "cantidadBase": 0.001,
-    "precio": 45000.00
+    "pairId": "PARID",
+    "type": "buy",
+    "baseAmount": 0.001,
+    "price": 45000.00
   }'
 
 # Obtener mis balances
-curl "http://localhost:3000/api/intercambios/me/balances" \
+curl "http://localhost:3000/api/intercambios/me/balances" .
   -H "Authorization: Bearer YOUR_TOKEN"
 
-# Obtener último precio (público)
+# Obtener último price (público)
 curl "http://localhost:3000/api/intercambios/pairs/PARID/last-price"
 */

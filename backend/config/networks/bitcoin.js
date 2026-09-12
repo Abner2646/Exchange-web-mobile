@@ -3,9 +3,9 @@
 // Fase 3 — NetworkProfile de Bitcoin: ÚNICA fuente de "qué significa testnet vs
 // mainnet para BTC". Antes cada punto (bitcoin.service, setupWallets, direccion
 // de depósito, blockchain.confir) leía `isTestnet`/`BITCOIN_NETWORK` por su cuenta
-// y armaba el objeto de red / coin type / explorador con variaciones sutiles — la
+// y armaba el objeto de network / coin type / explorador con variaciones sutiles — la
 // fuente estructural del bug BIP84-vs-BIP44 (path declarado que no coincide con el
-// derivado) y del riesgo de generar una dirección de una red usando el address
+// derivado) y del riesgo de generar una dirección de una network usando el address
 // space de la otra (testnet vs mainnet NO son intercambiables: HRP tb vs bc).
 //
 // El perfil se inyecta por constructor en el service (no se lee env desde adentro),
@@ -38,10 +38,10 @@ const PROFILES = {
   },
 };
 
-// Selección por nombre de red. Preserva la lógica previa exactamente: sólo
+// Selección por name de network. Preserva la lógica previa exactamente: sólo
 // 'mainnet' selecciona mainnet; cualquier otra cosa (incluido el default
 // 'testnet3' y valores desconocidos) cae en testnet — es la política segura para
-// una red de fondos (nunca elegir mainnet por accidente).
+// una network de fondos (nunca elegir mainnet por accidente).
 function bitcoinNetworkProfile(networkName = process.env.BITCOIN_NETWORK || 'testnet3') {
   return networkName === 'mainnet' ? PROFILES.mainnet : PROFILES.testnet;
 }

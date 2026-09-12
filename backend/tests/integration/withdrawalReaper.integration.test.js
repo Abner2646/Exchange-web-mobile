@@ -2,27 +2,27 @@ require('../helpers/testEnv');
 const { sequelize, resetDb } = require('../helpers/db');
 const f = require('../helpers/factories');
 const FakeEvmClient = require('../helpers/fakeEvmClient');
-const { reapStaleWithdrawals } = require('../../services/blockchain/withdrawalReaper');
-const { TransaccionBlockchain } = require('../../models');
+const { reapStaleWithdrawals } = require('../../modules/wallets/blockchain/withdrawalReaper');
+const { BlockchainTransaction } = require('../../models');
 
 beforeEach(async () => { await resetDb(); });
 afterAll(async () => { await sequelize.close(); });
 
 async function seedEth() {
   const eth = await f.seedCripto('ETH');
-  await eth.update({ red: 'sepolia' });
+  await eth.update({ network: 'sepolia' });
   return eth;
 }
 
-// Force a claimed ('procesando') withdrawal at a chosen age via raw SQL — Sequelize
+// Force a claimed ('processing') withdrawal at a chosen age via raw SQL — Sequelize
 // would otherwise bump updated_at to now on any managed update.
 async function seedStuck(user, eth, { txHash = null, ageMinutes = 60 } = {}) {
-  const w = await TransaccionBlockchain.createWithdrawal({
-    userId: user.id, criptomonedaId: eth.id, cantidad: '1', direccionDestino: '0xrecipient0000000000000000000000000000dead',
+  const w = await BlockchainTransaction.createWithdrawal({
+    userId: user.id, cryptoId: eth.id, amount: '1', destinationAddress: '0xrecipient0000000000000000000000000000dead',
   });
   const oldDate = new Date(Date.now() - ageMinutes * 60000);
   await sequelize.query(
-    `UPDATE transacciones_blockchain SET estado='procesando', tx_hash=:txHash, updated_at=:d WHERE id=:id`,
+    `UPDATE blockchain_transactions SET status='processing', tx_hash=:txHash, updated_at=:d WHERE id=:id`,
     { replacements: { txHash, d: oldDate, id: w.id } }
   );
   return w;
@@ -39,9 +39,9 @@ test('stuck with no txHash → reverted (never broadcast)', async () => {
   const res = await reapStaleWithdrawals({ getClientForNetwork: clientFor(new FakeEvmClient({})) });
 
   expect(res.reverted).toBe(1);
-  const row = await TransaccionBlockchain.findByPk(w.id);
-  expect(row.estado).toBe('fallido');
-  expect((await f.getBalance(user, eth)).balanceDisponible).toBe('5.00000000');
+  const row = await BlockchainTransaction.findByPk(w.id);
+  expect(row.status).toBe('failed');
+  expect((await f.getBalance(user, eth)).availableBalance).toBe('5.00000000');
 });
 
 test('stuck with txHash, tx absent on-chain → reverted', async () => {
@@ -52,9 +52,9 @@ test('stuck with txHash, tx absent on-chain → reverted', async () => {
 
   await reapStaleWithdrawals({ getClientForNetwork: clientFor(new FakeEvmClient({ confirmations: null })) });
 
-  const row = await TransaccionBlockchain.findByPk(w.id);
-  expect(row.estado).toBe('fallido');
-  expect((await f.getBalance(user, eth)).balanceDisponible).toBe('5.00000000');
+  const row = await BlockchainTransaction.findByPk(w.id);
+  expect(row.status).toBe('failed');
+  expect((await f.getBalance(user, eth)).availableBalance).toBe('5.00000000');
 });
 
 test('stuck with txHash, tx present on-chain → left untouched', async () => {
@@ -66,9 +66,9 @@ test('stuck with txHash, tx present on-chain → left untouched', async () => {
   const res = await reapStaleWithdrawals({ getClientForNetwork: clientFor(new FakeEvmClient({ confirmations: 2 })) });
 
   expect(res.left).toBe(1);
-  const row = await TransaccionBlockchain.findByPk(w.id);
-  expect(row.estado).toBe('procesando');
-  expect((await f.getBalance(user, eth)).balanceBloqueado).toBe('1.00000000');
+  const row = await BlockchainTransaction.findByPk(w.id);
+  expect(row.status).toBe('processing');
+  expect((await f.getBalance(user, eth)).blockedBalance).toBe('1.00000000');
 });
 
 test('a tx in mempool (0 confirmations) is treated as present → left', async () => {
@@ -79,8 +79,8 @@ test('a tx in mempool (0 confirmations) is treated as present → left', async (
 
   await reapStaleWithdrawals({ getClientForNetwork: clientFor(new FakeEvmClient({ confirmations: 0 })) });
 
-  const row = await TransaccionBlockchain.findByPk(w.id);
-  expect(row.estado).toBe('procesando'); // 0 confs = mempool = present, do not revert
+  const row = await BlockchainTransaction.findByPk(w.id);
+  expect(row.status).toBe('processing'); // 0 confs = mempool = present, do not revert
 });
 
 test('getConfirmations throwing (transient error) → left untouched, never reverted', async () => {
@@ -95,8 +95,8 @@ test('getConfirmations throwing (transient error) → left untouched, never reve
   const res = await reapStaleWithdrawals({ getClientForNetwork: () => throwingClient });
 
   expect(res.reverted).toBe(0);
-  const row = await TransaccionBlockchain.findByPk(w.id);
-  expect(row.estado).toBe('procesando'); // never revert on a lookup error
+  const row = await BlockchainTransaction.findByPk(w.id);
+  expect(row.status).toBe('processing'); // never revert on a lookup error
 });
 
 test('not stale yet → skipped', async () => {
@@ -107,6 +107,6 @@ test('not stale yet → skipped', async () => {
 
   await reapStaleWithdrawals({ getClientForNetwork: clientFor(new FakeEvmClient({})), staleMinutes: 15 });
 
-  const row = await TransaccionBlockchain.findByPk(w.id);
-  expect(row.estado).toBe('procesando');
+  const row = await BlockchainTransaction.findByPk(w.id);
+  expect(row.status).toBe('processing');
 });

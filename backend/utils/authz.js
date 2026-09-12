@@ -1,7 +1,7 @@
 // utils/authz.js
 //
 // Fase 4.3 — capa de autorización centralizada. Única fuente de las decisiones de
-// rol/ownership, para no repetir `req.user.rol !== 'admin'` (que además rompía la
+// role/ownership, para no repetir `req.user.role !== 'admin'` (que además rompía la
 // jerarquía: trataba a super_admin como no-admin) ni `['admin','super_admin']
 // .includes(...)` por cada controller. Predicados PUROS (devuelven boolean, no
 // tocan res): el controller sigue lanzando su AppError tipado (envelope canónico)
@@ -14,18 +14,18 @@ const LEVEL = {
   super_admin: 3, superadmin: 3, 'super-admin': 3,
 };
 
-function level(rol) {
-  return LEVEL[String(rol || '').toLowerCase()] || 0;
+function level(role) {
+  return LEVEL[String(role || '').toLowerCase()] || 0;
 }
 
-// ¿El usuario tiene rol admin o superior (super_admin incluido)?
+// ¿El usuario tiene role admin o superior (super_admin incluido)?
 function isAdmin(user) {
-  return !!user && level(user.rol) >= LEVEL.admin;
+  return !!user && level(user.role) >= LEVEL.admin;
 }
 
 // ¿El usuario es super_admin?
 function isSuperAdmin(user) {
-  return !!user && level(user.rol) >= LEVEL.super_admin;
+  return !!user && level(user.role) >= LEVEL.super_admin;
 }
 
 // ¿El usuario es el dueño del recurso? Comparación estricta (UUID string).

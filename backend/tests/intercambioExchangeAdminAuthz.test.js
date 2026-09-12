@@ -3,25 +3,25 @@
 // Cubre AUDITORIA_BACKEND.md Críticos #7: router.use(isAdmin) estaba
 // comentado en las rutas administrativas de intercambioExchange, así que
 // cualquier usuario autenticado (no solo admins) podía listar todos los
-// intercambios y cambiar el estado de intercambios ajenos.
+// intercambios y cambiar el status de intercambios ajenos.
 
 process.env.JWT_SECRET = 'test-secret';
 
 jest.mock('../models', () => ({
-  Usuario: { findByPk: jest.fn() },
-  IntercambioExchange: { getAll: jest.fn().mockResolvedValue({ intercambios: [], total: 0 }) },
-  ParExchange: {},
-  BalanceUsuario: {},
-  WalletMaestra: {},
-  Criptomoneda: {},
+  User: { findByPk: jest.fn() },
+  Swap: { getAll: jest.fn().mockResolvedValue({ intercambios: [], total: 0 }) },
+  SwapPair: {},
+  UserBalance: {},
+  MasterWallet: {},
+  Crypto: {},
   sequelize: { transaction: jest.fn() },
 }));
 
 const jwt = require('jsonwebtoken');
 const express = require('express');
 const request = require('supertest');
-const { Usuario } = require('../models');
-const intercambioRoutes = require('../routes/intercambioExchange.routes');
+const { User } = require('../models');
+const intercambioRoutes = require('../modules/swap/swap.routes');
 
 function buildApp() {
   const app = express();
@@ -40,8 +40,8 @@ describe('GET /intercambioExchange (ruta administrativa)', () => {
   beforeEach(() => jest.clearAllMocks());
 
   test('un usuario autenticado normal NO puede listar todos los intercambios', async () => {
-    Usuario.findByPk.mockResolvedValue({
-      id: 'user-1', activo: true, rol: 'usuario', emailVerificado: true,
+    User.findByPk.mockResolvedValue({
+      id: 'user-1', active: true, role: 'usuario', emailVerified: true,
     });
 
     const res = await request(app)
@@ -52,8 +52,8 @@ describe('GET /intercambioExchange (ruta administrativa)', () => {
   });
 
   test('un admin sí puede listar todos los intercambios', async () => {
-    Usuario.findByPk.mockResolvedValue({
-      id: 'admin-1', activo: true, rol: 'admin', emailVerificado: true,
+    User.findByPk.mockResolvedValue({
+      id: 'admin-1', active: true, role: 'admin', emailVerified: true,
     });
 
     const res = await request(app)

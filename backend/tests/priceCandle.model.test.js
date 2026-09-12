@@ -6,10 +6,10 @@
 // campos son DECIMAL: con money.js la agregación de volumen es exacta y el
 // high/low se elige por comparación exacta.
 
-jest.mock('../models/entities/priceCandle.entity');
+jest.mock('../modules/trading/priceCandle.entity');
 
-const initPriceCandle = require('../models/entities/priceCandle.entity');
-const createPriceCandleModel = require('../models/priceCandle.model');
+const initPriceCandle = require('../modules/trading/priceCandle.entity');
+const createPriceCandleModel = require('../modules/trading/priceCandle.model');
 
 const fakeModel = {};
 initPriceCandle.mockReturnValue(fakeModel);

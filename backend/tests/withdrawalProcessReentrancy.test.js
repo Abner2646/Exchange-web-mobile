@@ -7,14 +7,14 @@
 // manual + automático a la vez) seleccionaban las mismas filas 'pendiente' y
 // transmitían el retiro on-chain dos veces = doble salida de la wallet maestra.
 //
-// Este test fuerza el solape y exige que el procesamiento por red ocurra una sola
+// Este test fuerza el solape y exige que el procesamiento por network ocurra una sola
 // vez aunque se disparen dos corridas concurrentes.
 
 // El job requiere ../models al tope; sin mock intenta conectar a Postgres.
 jest.mock('../models', () => ({
-  TransaccionBlockchain: {},
-  DireccionDeposito: {},
-  Criptomoneda: {},
+  BlockchainTransaction: {},
+  DepositAddress: {},
+  Crypto: {},
   BlockchainState: {},
 }));
 
@@ -24,7 +24,7 @@ const mockProcessPending = jest.fn(async () => {
   await new Promise((resolve) => setTimeout(resolve, 25));
   return []; // sin retiros pendientes reales; solo importa la cuenta de llamadas
 });
-jest.mock('../services/blockchain', () => ({
+jest.mock('../modules/wallets/blockchain', () => ({
   getService: () => ({ processPendingWithdrawals: mockProcessPending }),
 }));
 
@@ -37,14 +37,14 @@ describe('runWithdrawalProcessJob — guard de reentrancia (anti doble-gasto)', 
     mockProcessPending.mockClear();
   });
 
-  test('dos corridas concurrentes procesan cada red una sola vez, no dos', async () => {
+  test('dos corridas concurrentes procesan cada network una sola vez, no dos', async () => {
     const run1 = jobManager.runWithdrawalProcessJob();
     const run2 = jobManager.runWithdrawalProcessJob(); // solapada: debe cortarse
 
     await Promise.all([run1, run2]);
 
     // Sin guard: 3 redes x 2 corridas = 6 broadcasts. Con guard: 3 (una corrida
-    // procesa, la otra se saltea antes de tocar ninguna red).
+    // procesa, la otra se saltea antes de tocar ninguna network).
     expect(mockProcessPending).toHaveBeenCalledTimes(NETWORKS);
   });
 

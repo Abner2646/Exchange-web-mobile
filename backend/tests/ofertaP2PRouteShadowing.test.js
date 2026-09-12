@@ -20,8 +20,8 @@ jest.mock('../middleware/adminMiddleware.js', () => ({
   isAdmin: (req, _res, next) => next(),
 }));
 
-// Controller → cada método reporta su nombre, para saber cuál atrapó la ruta.
-jest.mock('../controllers/ofertaP2P.controller.js', () => {
+// Controller → cada método reporta su name, para saber cuál atrapó la ruta.
+jest.mock('../modules/p2p/p2pOffer.controller.js', () => {
   const names = [
     'findCompatibleOffers', 'searchOfertas', 'getOfertasByTipo', 'getOfertasByCrypto',
     'getOfertas', 'getOfertasActivas', 'getOfertaById', 'createOferta', 'updateOferta',
@@ -35,7 +35,7 @@ jest.mock('../controllers/ofertaP2P.controller.js', () => {
   return mod;
 });
 
-const router = require('../routes/ofertaP2P.routes.js');
+const router = require('../modules/p2p/p2pOffer.routes.js');
 
 function buildApp() {
   const app = express();

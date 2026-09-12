@@ -4,7 +4,7 @@ const { sequelize } = require('./models');
 
 const PORT = process.env.PORT || 3001;
 
-// ⭐ Escuchar en 0.0.0.0 para aceptar conexiones de red local
+// ⭐ Escuchar en 0.0.0.0 para aceptar conexiones de network local
 async function startServer() {
   try {
     await sequelize.authenticate();

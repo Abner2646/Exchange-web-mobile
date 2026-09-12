@@ -14,7 +14,7 @@ jest.mock('../models', () => ({
 }));
 
 const { TradingPair } = require('../models');
-const feeCalculator = require('../services/trading/feeCalculator.service');
+const feeCalculator = require('../modules/trading/feeCalculator.service');
 
 beforeEach(() => jest.clearAllMocks());
 

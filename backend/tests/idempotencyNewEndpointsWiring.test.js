@@ -21,7 +21,7 @@ jest.mock('../middleware/rateLimit.middleware.js', () => ({ general: (_q, _s, n)
 const noop = (_req, res) => res.status(200).json({});
 
 // intercambioExchange.controller: createOrder is the swap execution (POST /).
-jest.mock('../controllers/intercambioExchange.controller', () => ({
+jest.mock('../modules/swap/swap.controller', () => ({
   createOrder: (_req, res) => res.status(201).json({ ok: true }),
   calculateExchange: noop,
   checkTransactionLimit: noop,
@@ -43,7 +43,7 @@ jest.mock('../controllers/intercambioExchange.controller', () => ({
 }));
 
 // balanceUsuario.controller: transferMisCompartimentos is the Funding<->Spot transfer.
-jest.mock('../controllers/balanceUsuario.controller', () => ({
+jest.mock('../modules/balances/userBalance.controller', () => ({
   getMyBalances: noop,
   transferMisCompartimentos: (_req, res) => res.status(200).json({ ok: true }),
   updateBalance: noop,
@@ -60,8 +60,8 @@ jest.mock('../controllers/balanceUsuario.controller', () => ({
   getUsersWithBalance: noop
 }));
 
-const intercambioRoutes = require('../routes/intercambioExchange.routes');
-const balanceRoutes = require('../routes/balanceUsuario.routes');
+const intercambioRoutes = require('../modules/swap/swap.routes');
+const balanceRoutes = require('../modules/balances/userBalance.routes');
 
 test('POST /intercambioExchange/ (swap) without Idempotency-Key -> 400', async () => {
   const app = express();
@@ -69,9 +69,9 @@ test('POST /intercambioExchange/ (swap) without Idempotency-Key -> 400', async (
   app.use('/intercambioExchange', intercambioRoutes);
 
   const res = await request(app).post('/intercambioExchange/').send({
-    parId: '123e4567-e89b-12d3-a456-426614174000',
-    tipo: 'compra',
-    cantidadBase: 0.5
+    pairId: '123e4567-e89b-12d3-a456-426614174000',
+    type: 'buy',
+    baseAmount: 0.5
   });
 
   expect(res.status).toBe(400);

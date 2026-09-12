@@ -4,12 +4,12 @@
 // unexpected throws produce a sanitized 500 with no internal-message leak.
 //
 // Transaction/rollback notes (per handler):
-//   - createTransaccion: calls TransaccionP2P.createTransaction, which opens and
+//   - createTransaccion: calls P2PTransaction.createTransaction, which opens and
 //     manages the Sequelize transaction entirely inside the MODEL. The controller
 //     has no direct transaction reference — no rollback to assert in the controller.
 //   - confirmPayment / completeTransaction / cancelTransaction: same pattern —
 //     model methods own the transaction; controller only calls the method.
-//   - forceStatusChange: controller calls TransaccionP2P.findByPk + .update
+//   - forceStatusChange: controller calls P2PTransaction.findByPk + .update
 //     (plain Sequelize instance methods, no explicit transaction opened in the
 //     controller) — no rollback to assert in the controller.
 //   - All other handlers (getTransacciones, getTransaccionById, getMyTransacciones,
@@ -22,7 +22,7 @@ const express = require('express');
 
 // ── Mocks (declared before any require of the modules they replace) ────────────
 jest.mock('../models/index.js', () => ({
-  TransaccionP2P: {
+  P2PTransaction: {
     getAll: jest.fn(),
     getById: jest.fn(),
     findByPk: jest.fn(),
@@ -37,26 +37,26 @@ jest.mock('../models/index.js', () => ({
     getUserVolume: jest.fn(),
     checkTimeouts: jest.fn(),
   },
-  Criptomoneda: {},
-  Usuario: {},
-  OfertaP2P: {
+  Crypto: {},
+  User: {},
+  P2POffer: {
     findByPk: jest.fn(),
   },
 }));
 
-const { TransaccionP2P, OfertaP2P } = require('../models/index.js');
+const { P2PTransaction, P2POffer } = require('../models/index.js');
 const asyncHandler = require('../utils/asyncHandler');
 const errorHandler = require('../middleware/errorHandler');
-const controller = require('../controllers/transaccionesP2P.controller');
+const controller = require('../modules/p2p/p2pTransaction.controller');
 
 // ── App builders ──────────────────────────────────────────────────────────────
 
 /** Mount createTransaccion as POST /transacciones */
-function buildCreateApp({ userId = 'user-uuid-001', rol = 'usuario' } = {}) {
+function buildCreateApp({ userId = 'user-uuid-001', role = 'usuario' } = {}) {
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    req.user = { id: userId, rol };
+    req.user = { id: userId, role };
     next();
   });
   app.post('/transacciones', asyncHandler(controller.createTransaccion));
@@ -65,11 +65,11 @@ function buildCreateApp({ userId = 'user-uuid-001', rol = 'usuario' } = {}) {
 }
 
 /** Mount getTransaccionById as GET /transacciones/:id */
-function buildGetByIdApp({ userId = 'user-uuid-001', rol = 'usuario' } = {}) {
+function buildGetByIdApp({ userId = 'user-uuid-001', role = 'usuario' } = {}) {
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    req.user = { id: userId, rol };
+    req.user = { id: userId, role };
     next();
   });
   app.get('/transacciones/:id', asyncHandler(controller.getTransaccionById));
@@ -78,11 +78,11 @@ function buildGetByIdApp({ userId = 'user-uuid-001', rol = 'usuario' } = {}) {
 }
 
 /** Mount forceStatusChange as PATCH /transacciones/:id/force-status */
-function buildForceStatusApp({ userId = 'admin-uuid-001', rol = 'admin' } = {}) {
+function buildForceStatusApp({ userId = 'admin-uuid-001', role = 'admin' } = {}) {
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    req.user = { id: userId, rol };
+    req.user = { id: userId, role };
     next();
   });
   app.patch('/transacciones/:id/force-status', asyncHandler(controller.forceStatusChange));
@@ -91,15 +91,15 @@ function buildForceStatusApp({ userId = 'admin-uuid-001', rol = 'admin' } = {}) 
 }
 
 /** Mount getUserVolume as GET /transacciones/volume */
-function buildGetVolumeApp({ userId = 'user-uuid-001', rol = 'usuario' } = {}) {
+function buildGetVolumeApp({ userId = 'user-uuid-001', role = 'usuario' } = {}) {
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    req.user = { id: userId, rol };
+    req.user = { id: userId, role };
     next();
   });
-  // Simulate the admin variant that accepts a :usuarioId param
-  app.get('/transacciones/volume/:usuarioId', asyncHandler(controller.getUserVolume));
+  // Simulate the admin variant that accepts a :userId param
+  app.get('/transacciones/volume/:userId', asyncHandler(controller.getUserVolume));
   app.use(errorHandler);
   return app;
 }
@@ -112,11 +112,11 @@ beforeEach(() => {
 
 describe('createTransaccion — known business error → canonical envelope', () => {
   test('offer not found → 404 P2P_TX_OFFER_NOT_FOUND', async () => {
-    OfertaP2P.findByPk.mockResolvedValue(null);
+    P2POffer.findByPk.mockResolvedValue(null);
 
     const res = await request(buildCreateApp())
       .post('/transacciones')
-      .send({ ofertaId: 'offer-uuid-404', cantidad: 1, metodoPagoId: 'mp-001' });
+      .send({ offerId: 'offer-uuid-404', amount: 1, paymentMethodId: 'mp-001' });
 
     expect(res.status).toBe(404);
     expect(res.body).toMatchObject({
@@ -128,16 +128,16 @@ describe('createTransaccion — known business error → canonical envelope', ()
   });
 
   test('user accepting own offer → 400 P2P_TX_OWN_OFFER', async () => {
-    OfertaP2P.findByPk.mockResolvedValue({
-      usuarioId: 'user-uuid-001', // same as req.user.id
-      tipo: 'venta',
-      criptomonedaId: 'crypto-001',
-      precioUnitario: 100,
+    P2POffer.findByPk.mockResolvedValue({
+      userId: 'user-uuid-001', // same as req.user.id
+      type: 'sell',
+      cryptoId: 'crypto-001',
+      unitPrice: 100,
     });
 
     const res = await request(buildCreateApp({ userId: 'user-uuid-001' }))
       .post('/transacciones')
-      .send({ ofertaId: 'offer-uuid-001', cantidad: 1, metodoPagoId: 'mp-001' });
+      .send({ offerId: 'offer-uuid-001', amount: 1, paymentMethodId: 'mp-001' });
 
     expect(res.status).toBe(400);
     expect(res.body).toMatchObject({
@@ -154,19 +154,19 @@ describe('createTransaccion — unexpected throw → sanitized 500', () => {
   test('DB explosion → sanitized 500, no raw message leak', async () => {
     const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
-    OfertaP2P.findByPk.mockResolvedValue({
-      usuarioId: 'seller-uuid-999',
-      tipo: 'venta',
-      criptomonedaId: 'crypto-001',
-      precioUnitario: 100,
+    P2POffer.findByPk.mockResolvedValue({
+      userId: 'seller-uuid-999',
+      type: 'sell',
+      cryptoId: 'crypto-001',
+      unitPrice: 100,
     });
-    TransaccionP2P.createTransaction.mockRejectedValue(
+    P2PTransaction.createTransaction.mockRejectedValue(
       new Error('SECRET: pg connection pool exhausted - host db.internal:5432')
     );
 
     const res = await request(buildCreateApp({ userId: 'buyer-uuid-001' }))
       .post('/transacciones')
-      .send({ ofertaId: 'offer-uuid-001', cantidad: 1, metodoPagoId: 'mp-001' });
+      .send({ offerId: 'offer-uuid-001', amount: 1, paymentMethodId: 'mp-001' });
 
     expect(res.status).toBe(500);
     expect(res.body.error.code).toBe('INTERNAL_ERROR');
@@ -185,7 +185,7 @@ describe('createTransaccion — unexpected throw → sanitized 500', () => {
 
 describe('getTransaccionById — known business error → canonical envelope', () => {
   test('transaction not found → 404 P2P_TX_NOT_FOUND', async () => {
-    TransaccionP2P.getById.mockResolvedValue(null);
+    P2PTransaction.getById.mockResolvedValue(null);
 
     const res = await request(buildGetByIdApp())
       .get('/transacciones/nonexistent-id');
@@ -199,12 +199,12 @@ describe('getTransaccionById — known business error → canonical envelope', (
   });
 
   test('user accessing other user transaction → 403 P2P_TX_FORBIDDEN', async () => {
-    TransaccionP2P.getById.mockResolvedValue({
-      compradorId: 'other-user-001',
-      vendedorId: 'other-user-002',
+    P2PTransaction.getById.mockResolvedValue({
+      buyerId: 'other-user-001',
+      sellerId: 'other-user-002',
     });
 
-    const res = await request(buildGetByIdApp({ userId: 'intruder-uuid', rol: 'usuario' }))
+    const res = await request(buildGetByIdApp({ userId: 'intruder-uuid', role: 'usuario' }))
       .get('/transacciones/some-tx-id');
 
     expect(res.status).toBe(403);
@@ -220,9 +220,9 @@ describe('getTransaccionById — known business error → canonical envelope', (
 
 describe('forceStatusChange — known business error → canonical envelope', () => {
   test('non-admin user → 403 P2P_TX_ADMIN_REQUIRED', async () => {
-    const res = await request(buildForceStatusApp({ userId: 'regular-user', rol: 'usuario' }))
+    const res = await request(buildForceStatusApp({ userId: 'regular-user', role: 'usuario' }))
       .patch('/transacciones/some-id/force-status')
-      .send({ estado: 'completada', motivo: 'manual fix' });
+      .send({ status: 'completed', motivo: 'manual fix' });
 
     expect(res.status).toBe(403);
     expect(res.body).toMatchObject({
@@ -233,11 +233,11 @@ describe('forceStatusChange — known business error → canonical envelope', ()
   });
 
   test('transaction not found (admin) → 404 P2P_TX_NOT_FOUND', async () => {
-    TransaccionP2P.findByPk.mockResolvedValue(null);
+    P2PTransaction.findByPk.mockResolvedValue(null);
 
-    const res = await request(buildForceStatusApp({ userId: 'admin-uuid', rol: 'admin' }))
+    const res = await request(buildForceStatusApp({ userId: 'admin-uuid', role: 'admin' }))
       .patch('/transacciones/nonexistent-id/force-status')
-      .send({ estado: 'completada', motivo: 'manual fix' });
+      .send({ status: 'completed', motivo: 'manual fix' });
 
     expect(res.status).toBe(404);
     expect(res.body).toMatchObject({
@@ -252,7 +252,7 @@ describe('forceStatusChange — known business error → canonical envelope', ()
 
 describe('getUserVolume — known business error → canonical envelope', () => {
   test('non-admin accessing another user volume → 403 P2P_TX_FORBIDDEN', async () => {
-    const res = await request(buildGetVolumeApp({ userId: 'user-A', rol: 'usuario' }))
+    const res = await request(buildGetVolumeApp({ userId: 'user-A', role: 'usuario' }))
       .get('/transacciones/volume/user-B'); // different userId
 
     expect(res.status).toBe(403);

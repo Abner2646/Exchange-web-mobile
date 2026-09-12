@@ -4,12 +4,12 @@ const app = require('../../app');
 const { sequelize, resetDb } = require('../helpers/db');
 const f = require('../helpers/factories');
 const { Order } = require('../../models');
-const posting = require('../../services/ledger/postingService');
-const recon = require('../../services/ledger/reconciliation');
-const { PROPOSITOS } = require('../../services/ledger/ledgerAccounts');
+const posting = require('../../modules/balances/ledger/postingService');
+const recon = require('../../modules/balances/ledger/reconciliation');
+const { PURPOSES } = require('../../modules/balances/ledger/ledgerAccounts');
 
-const casa = (proposito, criptomonedaId) =>
-  posting.getSaldoCuenta({ ownerId: null, proposito, criptomonedaId });
+const casa = (purpose, cryptoId) =>
+  posting.getAccountBalance({ ownerId: null, purpose, cryptoId });
 
 let idemSeq = 0;
 function placeOrder(user, { pair, side, orderType = 'limit', quantity, price }) {
@@ -47,8 +47,8 @@ describe('POST /api/trading/orders — create + lock (synchronous)', () => {
     // settlement (Binance-style), not reserved in quote — so the lock matches what
     // settlement actually consumes (no stuck reserve). See balanceManager.
     const bal = await f.getSpotBalance(user, usdt);
-    expect(bal.disponible).toBe('100.00000000');   // 200 - 100
-    expect(bal.bloqueado).toBe('100.00000000');
+    expect(bal.available).toBe('100.00000000');   // 200 - 100
+    expect(bal.blocked).toBe('100.00000000');
   });
 
   test('insufficient balance → 400 INSUFFICIENT_BALANCE, no order, balance untouched', async () => {
@@ -61,7 +61,7 @@ describe('POST /api/trading/orders — create + lock (synchronous)', () => {
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('INSUFFICIENT_BALANCE');
     expect(await Order.count()).toBe(0);
-    expect((await f.getSpotBalance(user, usdt)).disponible).toBe('10.00000000');
+    expect((await f.getSpotBalance(user, usdt)).available).toBe('10.00000000');
   });
 
   test('missing Idempotency-Key → 400', async () => {
@@ -90,7 +90,7 @@ describe('POST /api/trading/orders — create + lock (synchronous)', () => {
   });
 });
 
-const orderBookService = require('../../services/trading/orderBook.service');
+const orderBookService = require('../../modules/trading/orderBook.service');
 const { Trade } = require('../../models');
 
 // Set up a resting maker order that is 'open' and ready to be matched against.
@@ -125,27 +125,27 @@ describe('spot matching — service level (awaited)', () => {
     // Seller: base blocked -> 0, quote available += 100 - maker fee 0.1 = 99.9
     const sellerBtc = await f.getSpotBalance(seller, btc);
     const sellerUsdt = await f.getSpotBalance(seller, usdt);
-    expect(sellerBtc.bloqueado).toBe('0.00000000');
-    expect(sellerBtc.disponible).toBe('0.00000000');
-    expect(sellerUsdt.disponible).toBe('99.90000000');
+    expect(sellerBtc.blocked).toBe('0.00000000');
+    expect(sellerBtc.available).toBe('0.00000000');
+    expect(sellerUsdt.available).toBe('99.90000000');
 
     // Buyer: base available += 1 - taker fee 0.001 = 0.999; quote blocked 100 -> 0
     // fully consumed by the trade (no stuck fee reserve now that the lock matches
     // settlement); quote available stays at 100 (200 - 100 locked).
     const buyerBtc = await f.getSpotBalance(buyer, btc);
     const buyerUsdt = await f.getSpotBalance(buyer, usdt);
-    expect(buyerBtc.disponible).toBe('0.99900000');
-    expect(buyerUsdt.disponible).toBe('100.00000000');
-    expect(buyerUsdt.bloqueado).toBe('0.00000000'); // FIXED: no stuck fee reserve
+    expect(buyerBtc.available).toBe('0.99900000');
+    expect(buyerUsdt.available).toBe('100.00000000');
+    expect(buyerUsdt.blocked).toBe('0.00000000'); // FIXED: no stuck fee reserve
 
     // Paso D enrichment: both fees are now explicit in fee_revenue (taker fee in
     // base, maker fee in quote), instead of vanishing implicitly.
-    expect(await casa(PROPOSITOS.FEE_REVENUE, btc.id)).toBe('0.00100000');  // taker 0.1% of 1
-    expect(await casa(PROPOSITOS.FEE_REVENUE, usdt.id)).toBe('0.10000000'); // maker 0.1% of 100
+    expect(await casa(PURPOSES.FEE_REVENUE, btc.id)).toBe('0.00100000');  // taker 0.1% of 1
+    expect(await casa(PURPOSES.FEE_REVENUE, usdt.id)).toBe('0.10000000'); // maker 0.1% of 100
 
     // The book closes: internal (projection==SUM) and external (net-zero per crypto).
-    expect((await recon.reconciliarInterno()).ok).toBe(true);
-    expect((await recon.reconciliarExterno()).ok).toBe(true);
+    expect((await recon.reconcileInternal()).ok).toBe(true);
+    expect((await recon.reconcileExternal()).ok).toBe(true);
   });
 
   test('partial fill: buy 0.4 against resting sell 1; sell partially_filled 0.6', async () => {
@@ -172,10 +172,10 @@ describe('spot matching — service level (awaited)', () => {
     expect(buyOrder.status).toBe('filled');
 
     // Seller: base blocked -> 0.6, quote available += 40 - maker fee 0.04 = 39.96
-    expect((await f.getSpotBalance(seller, btc)).bloqueado).toBe('0.60000000');
-    expect((await f.getSpotBalance(seller, usdt)).disponible).toBe('39.96000000');
+    expect((await f.getSpotBalance(seller, btc)).blocked).toBe('0.60000000');
+    expect((await f.getSpotBalance(seller, usdt)).available).toBe('39.96000000');
     // Buyer: base available += 0.4 - taker 0.0004 = 0.3996
-    expect((await f.getSpotBalance(buyer, btc)).disponible).toBe('0.39960000');
+    expect((await f.getSpotBalance(buyer, btc)).available).toBe('0.39960000');
   });
 
   test('self-trade prevention: same user both sides does not match', async () => {
@@ -204,7 +204,7 @@ describe('DELETE /api/trading/orders/:orderId — cancel releases locked balance
     await f.seedSpotBalance(user, usdt, '200'); // Spot for trading
 
     const orderId = await restingOrder(user, { pair, side: 'buy', quantity: 1, price: 100 });
-    expect((await f.getSpotBalance(user, usdt)).bloqueado).toBe('100.00000000');
+    expect((await f.getSpotBalance(user, usdt)).blocked).toBe('100.00000000');
 
     const res = await request(app)
       .delete(`/api/trading/orders/${orderId}`)
@@ -214,8 +214,8 @@ describe('DELETE /api/trading/orders/:orderId — cancel releases locked balance
     expect(res.body.success).toBe(true);
 
     const bal = await f.getSpotBalance(user, usdt);
-    expect(bal.disponible).toBe('200.00000000'); // fully returned
-    expect(bal.bloqueado).toBe('0.00000000');
+    expect(bal.available).toBe('200.00000000'); // fully returned
+    expect(bal.blocked).toBe('0.00000000');
     expect((await Order.findByPk(orderId)).status).toBe('cancelled');
   });
 
@@ -233,7 +233,7 @@ describe('DELETE /api/trading/orders/:orderId — cancel releases locked balance
 
     expect(res.status).toBe(400);
     expect((await Order.findByPk(orderId)).status).not.toBe('cancelled');
-    expect((await f.getSpotBalance(owner, usdt)).bloqueado).toBe('100.00000000'); // still locked
+    expect((await f.getSpotBalance(owner, usdt)).blocked).toBe('100.00000000'); // still locked
   });
 
   test('a filled order cannot be cancelled', async () => {

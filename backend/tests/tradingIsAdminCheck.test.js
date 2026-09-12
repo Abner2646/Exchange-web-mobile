@@ -2,7 +2,7 @@
 //
 // Cubre AUDITORIA_BACKEND.md Altos #4: trading.controller.js y
 // trades.controller.js chequeaban req.user.isAdmin, que nunca existe
-// (authMiddleware solo setea req.user.rol) — ningún admin podía ver
+// (authMiddleware solo setea req.user.role) — ningún admin podía ver
 // órdenes/trades ajenos pese a que el código aparentaba permitirlo.
 
 jest.mock('../models', () => ({
@@ -10,17 +10,17 @@ jest.mock('../models', () => ({
   Trade: { getById: jest.fn() },
   TradingPair: {},
   PriceCandle: {},
-  Criptomoneda: {},
+  Crypto: {},
 }));
-jest.mock('../services/trading/orderBook.service', () => ({}));
-jest.mock('../services/trading/orderValidator.service', () => ({}));
-jest.mock('../services/trading/balanceManager.service', () => ({}));
-jest.mock('../services/trading/feeCalculator.service', () => ({}));
-jest.mock('../services/trading/tradeExecutor.service', () => ({}));
+jest.mock('../modules/trading/orderBook.service', () => ({}));
+jest.mock('../modules/trading/orderValidator.service', () => ({}));
+jest.mock('../modules/trading/balanceManager.service', () => ({}));
+jest.mock('../modules/trading/feeCalculator.service', () => ({}));
+jest.mock('../modules/trading/tradeExecutor.service', () => ({}));
 
 const { Order, Trade } = require('../models');
-const tradingController = require('../controllers/trading.controller');
-const tradesController = require('../controllers/trades.controller');
+const tradingController = require('../modules/trading/trading.controller');
+const tradesController = require('../modules/trading/trades.controller');
 
 function mockRes() {
   return {
@@ -37,7 +37,7 @@ describe('trading.controller.getOrderDetail — chequeo de admin', () => {
   test('un admin SÍ puede ver la orden de otro usuario', async () => {
     Order.getById.mockResolvedValue({ id: 'o1', userId: 'dueño-de-la-orden' });
 
-    const req = { params: { orderId: 'o1' }, user: { id: 'admin-1', rol: 'admin' } };
+    const req = { params: { orderId: 'o1' }, user: { id: 'admin-1', role: 'admin' } };
     const res = mockRes();
 
     await tradingController.getOrderDetail(req, res);
@@ -48,7 +48,7 @@ describe('trading.controller.getOrderDetail — chequeo de admin', () => {
   test('un usuario normal NO puede ver la orden de otro usuario', async () => {
     Order.getById.mockResolvedValue({ id: 'o1', userId: 'dueño-de-la-orden' });
 
-    const req = { params: { orderId: 'o1' }, user: { id: 'otro-usuario', rol: 'normal' } };
+    const req = { params: { orderId: 'o1' }, user: { id: 'otro-usuario', role: 'normal' } };
     const res = mockRes();
 
     await tradingController.getOrderDetail(req, res);
@@ -63,7 +63,7 @@ describe('trades.controller.getTradeDetail — chequeo de admin', () => {
   test('un admin SÍ puede ver un trade ajeno', async () => {
     Trade.getById.mockResolvedValue({ id: 't1', buyerId: 'b', sellerId: 's' });
 
-    const req = { params: { tradeId: 't1' }, user: { id: 'admin-1', rol: 'super_admin' } };
+    const req = { params: { tradeId: 't1' }, user: { id: 'admin-1', role: 'super_admin' } };
     const res = mockRes();
 
     await tradesController.getTradeDetail(req, res);
@@ -74,7 +74,7 @@ describe('trades.controller.getTradeDetail — chequeo de admin', () => {
   test('un usuario ajeno al trade NO puede verlo', async () => {
     Trade.getById.mockResolvedValue({ id: 't1', buyerId: 'b', sellerId: 's' });
 
-    const req = { params: { tradeId: 't1' }, user: { id: 'otro-usuario', rol: 'normal' } };
+    const req = { params: { tradeId: 't1' }, user: { id: 'otro-usuario', role: 'normal' } };
     const res = mockRes();
 
     await tradesController.getTradeDetail(req, res);

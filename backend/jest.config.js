@@ -14,6 +14,11 @@ module.exports = {
     'routes/**/*.js',
     'jobs/**/*.js',
     'utils/**/*.js',
+    // Fase 6.2 migrated domains: every domain now lives under modules/<domain>/.
+    // Keep the whole tree in the coverage denominator (these files were counted
+    // before the reorg, under controllers/ + models/ + services/) so the global
+    // floor stays honest and the per-file money-file floors below still apply.
+    'modules/**/*.js',
   ],
   // Coverage FLOOR: a merge gate that fails CI if coverage drops below these
   // numbers (enforced only when run with --coverage → `npm run test:coverage`).
@@ -29,7 +34,7 @@ module.exports = {
     global: { statements: 22, branches: 9, functions: 14, lines: 23 },
     // Money crown jewels — kept near-fully covered so no untested money code ships.
     '**/money.js': { statements: 95, branches: 90, functions: 95, lines: 95 },
-    '**/intercambioSettlement.service.js': { statements: 90, branches: 90, functions: 90, lines: 90 },
+    '**/swapSettlement.service.js': { statements: 90, branches: 90, functions: 90, lines: 90 },
     // Money services — lock in their current unit coverage so it can't regress.
     // Ratcheted up 2026-08-31 after the mutation-testing hardening pass
     // (mutation score covered: balanceManager 99%, feeCalculator 97%).

@@ -1,15 +1,15 @@
 // config/networks/evm.js
 //
 // Fase 3 — NetworkProfile para las chains EVM (Ethereum, BSC). A diferencia de
-// Bitcoin, la address EVM NO depende de la red (una private key da la misma
+// Bitcoin, la address EVM NO depende de la network (una private key da la misma
 // address en cualquier chain EVM) → acá no hay valores de derivación en juego;
 // lo único que cambia entre entornos es chainId, el RPC, el explorador y las
-// confirmaciones. El perfil es la única fuente de esa identidad de red, en vez de
-// que cada service lea `isTestnet`/`NODE_ENV` y arme chainId/nombre por su cuenta.
+// confirmaciones. El perfil es la única fuente de esa identidad de network, en vez de
+// que cada service lea `isTestnet`/`NODE_ENV` y arme chainId/name por su cuenta.
 //
 // Los SECRETOS (rpc url, private key) siguen en env — el perfil sólo NOMBRA qué
 // env key usar por (chain, entorno) (disciplina Fase 5.0: secretos y config de
-// infra por-ambiente van en env; la identidad de red va en código).
+// infra por-ambiente van en env; la identidad de network va en código).
 
 const ETHEREUM = {
   mainnet: {

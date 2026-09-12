@@ -1,0 +1,728 @@
+// services/blockchain/bitcoin.service.js - VERSIÓN COMPLETA ACTUALIZADA
+require('dotenv').config();
+const bitcoin = require('bitcoinjs-lib');
+const ECPair = require('ecpair');
+const { BlockchainTransaction, DepositAddress, Crypto, BlockchainState } = require('../../../models');
+
+const tinysecp = require('tiny-secp256k1');
+const ECPairFactory = ECPair.ECPairFactory(tinysecp);
+const money = require('../../../utils/money');
+const { bitcoinNetworkProfile } = require('../../../config/networks/bitcoin');
+
+class BitcoinService {
+  // Fase 3: el NetworkProfile (qué significa testnet/mainnet para BTC) se INYECTA
+  // en vez de leer `isTestnet`/env desde adentro. Default = perfil seleccionado por
+  // BITCOIN_NETWORK, así `new BitcoinService()` mantiene el comportamiento previo;
+  // los tests pueden inyectar un perfil de testnet/mainnet aislado.
+  constructor(profile = bitcoinNetworkProfile()) {
+    this.profile = profile;
+    this.networkName = profile.networkName;
+    this.network = profile.bitcoinjsNetwork;
+
+    // Params operacionales overridables por env, con el default del perfil/network.
+    this.requiredConfirmations = parseInt(process.env.BTC_REQUIRED_CONFIRMATIONS) || profile.minConfirmations;
+    this.feePerByte = parseInt(process.env.BTC_FEE_PER_BYTE) || 10;
+
+    this.baseUrl = profile.explorerBaseUrl;
+    this.apiToken = process.env.BLOCKCYPHER_TOKEN ? `?token=${process.env.BLOCKCYPHER_TOKEN}` : '';
+
+    console.log(`Bitcoin Service inicializado - Red: ${this.networkName}`);
+    this.initializeMasterWallet();
+  }
+
+  initializeMasterWallet() {
+    try {
+      if (!process.env.BTC_PRIVATE_KEY) {
+        console.warn('BTC_PRIVATE_KEY no configurada - retiros no disponibles');
+        return;
+      }
+
+      this.keyPair = ECPairFactory.fromWIF(process.env.BTC_PRIVATE_KEY, this.network);
+      
+      const { address } = bitcoin.payments.p2wpkh({ 
+        pubkey: this.keyPair.publicKey, 
+        network: this.network 
+      });
+      
+      this.walletAddress = address;
+      console.log(`Bitcoin Master Wallet: ${this.walletAddress}`);
+      
+    } catch (error) {
+      console.error('Error inicializando Bitcoin wallet:', error.message);
+    }
+  }
+
+  // MÉTODO PRINCIPAL DE ESCANEO
+  async scanForDeposits() {
+    try {
+      console.log('🔍 [BTC] =================== INICIANDO ESCANEO BITCOIN ===================');
+      console.log(`🔍 [BTC] Red: ${this.networkName}`);
+      
+      const direcciones = await this.getActiveUserAddresses();
+      if (direcciones.length === 0) {
+        console.log('ℹ️ [BTC] No hay direcciones activas para escanear');
+        return [];
+      }
+
+      console.log(`🔍 [BTC] Escaneando ${direcciones.length} direcciones...`);
+      
+      // Obtener último bloque desde DB usando el nuevo modelo
+      const lastProcessedBlock = await BlockchainState.getLastProcessedBlock(this.networkName);
+      console.log(`🔍 [BTC] Escaneando desde bloque: ${lastProcessedBlock}`);
+
+      const newDeposits = [];
+
+      for (let i = 0; i < direcciones.length; i++) {
+        const address = direcciones[i];
+        
+        try {
+          console.log(`🔍 [BTC] ================== ESCANEANDO DIRECCIÓN ${i + 1}/${direcciones.length} ==================`);
+          console.log(`🔍 [BTC] Dirección: ${address.address}`);
+          console.log(`🔍 [BTC] Red en DB: ${address.crypto.network}`);
+          console.log(`🔍 [BTC] User ID: ${address.userId}`);
+          
+          const deposits = await this.scanBitcoinAddress(address);
+          newDeposits.push(...deposits);
+          
+          console.log(`🔍 [BTC] Depósitos encontrados para esta dirección: ${deposits.length}`);
+          
+          // Pausa entre direcciones para evitar rate limiting de BlockCypher
+          if (i < direcciones.length - 1) {
+            console.log(`🔍 [BTC] Pausa de 1000ms antes de la siguiente dirección...`);
+            await this.sleep(1000);
+          }
+          
+        } catch (error) {
+          console.error(`❌ [BTC] Error escaneando ${address.address}:`, error.message);
+          console.error(`❌ [BTC] Stack trace:`, error.stack);
+        }
+      }
+
+      // Actualizar último bloque en DB solo si hay nuevos depósitos
+      if (newDeposits.length > 0) {
+        try {
+          // Para Bitcoin, usar el bloque más alto de las transacciones encontradas
+          const maxBlockHeight = Math.max(...newDeposits
+            .filter(d => d.blockHeight && d.blockHeight > 0)
+            .map(d => d.blockHeight)
+          );
+          
+          if (maxBlockHeight > lastProcessedBlock) {
+            await BlockchainState.updateLastProcessedBlock(this.networkName, maxBlockHeight);
+            await BlockchainState.incrementDepositsFound(this.networkName, newDeposits.length);
+            console.log(`✅ [BTC] Último bloque actualizado: ${maxBlockHeight}`);
+          }
+        } catch (blockError) {
+          console.error('⚠️ [BTC] Error actualizando último bloque:', blockError.message);
+        }
+      }
+
+      console.log(`✅ [BTC] =================== ESCANEO BITCOIN COMPLETADO ===================`);
+      console.log(`✅ [BTC] Total depósitos encontrados: ${newDeposits.length}`);
+      console.log(`✅ [BTC] Direcciones escaneadas: ${direcciones.length}`);
+      
+      return newDeposits;
+
+    } catch (error) {
+      console.error('❌ [BTC] Error en escaneo general:', error.message);
+      console.error('❌ [BTC] Stack trace:', error.stack);
+      return [];
+    }
+  }
+
+  async scanBitcoinAddress(address) {
+    const url = `${this.baseUrl}/addrs/${address.address}/full${this.apiToken}`;
+    
+    try {
+      console.log(`🔍 [BTC] URL de API: ${url.replace(this.apiToken, '?token=***')}`);
+      console.log(`🔍 [BTC] Consultando BlockCypher API para ${address.address}...`);
+      
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        if (response.status === 429) {
+          console.log(`⚠️ [BTC] Rate limit alcanzado (429), pausando 10 segundos...`);
+          await this.sleep(10000);
+          return [];
+        }
+        throw new Error(`BlockCypher API error: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log(`🔍 [BTC] Respuesta API:`, {
+        address: data.address,
+        balance: data.balance,
+        unconfirmed_balance: data.unconfirmed_balance,
+        total_received: data.total_received,
+        total_sent: data.total_sent,
+        n_tx: data.n_tx,
+        txs_count: data.txs ? data.txs.length : 0
+      });
+
+      if (!data.txs || data.txs.length === 0) {
+        console.log(`ℹ️ [BTC] No hay transacciones para ${address.address}`);
+        return [];
+      }
+
+      const deposits = [];
+      let incomingTransactions = 0;
+      let validDeposits = 0;
+      
+      console.log(`🔍 [BTC] Analizando ${data.txs.length} transacciones...`);
+      
+      for (const tx of data.txs) {
+        console.log(`🔍 [BTC] TX ${tx.hash}:`);
+        console.log(`  - Block Height: ${tx.block_height || 'Sin confirmar'}`);
+        console.log(`  - Confirmations: ${tx.confirmations || 0}`);
+        console.log(`  - Received: ${tx.received || tx.confirmed}`);
+        
+        // Buscar outputs hacia esta dirección
+        for (let outputIndex = 0; outputIndex < tx.outputs.length; outputIndex++) {
+          const output = tx.outputs[outputIndex];
+          
+          console.log(`  - Output ${outputIndex}:`, {
+            addresses: output.addresses,
+            value: output.value,
+            spent: output.spent_by !== null
+          });
+          
+          if (output.addresses && 
+              output.addresses.includes(address.address) && 
+              output.value > 0) {
+            
+            incomingTransactions++;
+            console.log(`  ✅ Output hacia nuestra dirección: ${output.value} satoshis`);
+            
+            // Verificar que no existe en DB
+            const existing = await BlockchainTransaction.findOne({
+              where: { txHash: tx.hash }
+            });
+
+            if (existing) {
+              console.log(`  ℹ️ TX ${tx.hash} ya existe en DB, saltando...`);
+              continue;
+            }
+
+            validDeposits++;
+            console.log(`  ✅ TX ${tx.hash} es un depósito válido y nuevo!`);
+
+            const amountBTC = money.divide(String(output.value), '100000000');
+            const confirmations = tx.confirmations || 0;
+
+            console.log(`💰 [BTC] Creando depósito:`);
+            console.log(`  - User ID: ${address.userId}`);
+            console.log(`  - Cantidad: ${amountBTC} BTC`);
+            console.log(`  - Confirmaciones: ${confirmations}/${this.requiredConfirmations}`);
+            console.log(`  - Block Height: ${tx.block_height}`);
+
+            const newDeposit = await this.createBitcoinDeposit(
+              address, amountBTC, 0, tx.hash, confirmations, 
+              tx.confirmed || tx.received, tx.block_height
+            );
+
+            // Agregar información extra para tracking
+            newDeposit.blockHeight = tx.block_height;
+            deposits.push(newDeposit);
+            
+            console.log(`✅ [BTC] Depósito creado exitosamente con ID: ${newDeposit.id}`);
+          }
+        }
+      }
+
+      console.log(`📊 [BTC] Resumen para ${address.address}:`);
+      console.log(`  - Total transacciones analizadas: ${data.txs.length}`);
+      console.log(`  - Outputs entrantes: ${incomingTransactions}`);
+      console.log(`  - Depósitos válidos: ${validDeposits}`);
+      console.log(`  - Depósitos nuevos creados: ${deposits.length}`);
+
+      return deposits;
+    } catch (error) {
+      console.error(`❌ [BTC] Error API para ${address.address}:`, error.message);
+      console.error(`❌ [BTC] Stack trace:`, error.stack);
+      return [];
+    }
+  }
+
+  // Convierte un monto en BTC (string decimal, hasta 8 decimals por la columna
+  // DECIMAL(28,8)) al entero exacto de satoshis. Antes: Math.floor(parseFloat(
+  // amount) * 1e8) — el float binario dejaba 0.29*1e8 en 28999999.999999996 y
+  // el floor lo truncaba a 28999999, transmitiendo 1 satoshi de menos. Con
+  // money.js el producto es exacto; round(,0) no altera un valor ya entero.
+  btcToSatoshis(amount) {
+    return Number(money.round(money.multiply(String(amount), '100000000'), 0));
+  }
+
+  async createBitcoinDeposit(address, amount, fee, txid, confirmations, timestamp, blockHeight) {
+    const diff = money.subtract(String(amount), String(fee));
+    const netAmount = money.compare(diff, '0') < 0 ? '0' : diff;
+
+    const depositData = {
+      userId: address.userId,
+      cryptoId: address.cryptoId,
+      amount: netAmount,
+      destinationAddress: address.address,
+      sourceAddress: null,
+      txHash: txid,
+      blockchainFee: String(fee),
+      confirmations: confirmations,
+      requiredConfirmations: this.requiredConfirmations
+    };
+
+    // Agregar timestamp si está disponible
+    if (timestamp) {
+      depositData.timestamp = new Date(timestamp);
+    }
+
+    console.log(`🔧 [BTC] Datos del depósito:`, depositData);
+
+    const deposit = await BlockchainTransaction.createDeposit(depositData);
+    
+    console.log(`✅ [BTC] Depósito creado en DB con ID: ${deposit.id}`);
+    
+    // Agregar información extra para tracking
+    deposit.blockHeight = blockHeight;
+    
+    return deposit;
+  }
+
+  // PROCESAR RETIROS
+  async processPendingWithdrawals() {
+    try {
+      if (!this.keyPair) {
+        console.warn('[BTC] Wallet no inicializada, retiros no disponibles');
+        return [];
+      }
+      
+      const redesToBuscar = [this.networkName, 'bitcoin'];
+      
+      const pendingWithdrawals = await BlockchainTransaction.findAll({
+        where: {
+          type: 'withdrawal',
+          status: 'pending'
+        },
+        include: [
+          {
+            model: Crypto,
+            as: 'crypto',
+            where: { network: redesToBuscar }
+          }
+        ]
+      });
+
+      const processed = [];
+
+      for (const withdrawal of pendingWithdrawals) {
+        try {
+          const result = await this.processWithdrawal(withdrawal);
+          processed.push(result);
+        } catch (error) {
+          console.error(`❌ [BTC] Error procesando retiro ${withdrawal.id}:`, error.message);
+          await BlockchainTransaction.failWithdrawal(withdrawal.id, error.message);
+        }
+      }
+
+      return processed;
+    } catch (error) {
+      throw new Error(`Error procesando retiros BTC: ${error.message}`);
+    }
+  }
+
+  async processWithdrawal(withdrawal) {
+    const { amount, destinationAddress } = withdrawal;
+
+    // Atomic claim BEFORE any broadcast (anti double-spend). If another
+    // concurrent run already claimed this row, skip — do not broadcast again.
+    // The claim mechanism (BlockchainTransaction.claimForProcessing) is proven
+    // atomic; BTC's send path still uses bitcoinjs/BlockCypher inline (its own
+    // chain-client adapter is a follow-up), but the double-spend is closed here.
+    const claimed = await BlockchainTransaction.claimForProcessing(withdrawal.id);
+    if (!claimed) {
+      console.log(`⏭️ [BTC] Retiro ${withdrawal.id} ya reclamado por otra corrida, se saltea`);
+      return null;
+    }
+
+    const amountSatoshis = this.btcToSatoshis(amount);
+
+    // Verificar balance
+    const walletBalance = await this.getWalletBalance();
+    if (money.compare(String(walletBalance), String(amount)) < 0) {
+      throw new Error(`Balance insuficiente en wallet maestra BTC: ${walletBalance} < ${amount}`);
+    }
+
+    // Obtener UTXOs
+    const utxos = await this.getWalletUTXOs();
+    if (utxos.length === 0) {
+      throw new Error('No hay UTXOs disponibles en wallet maestra');
+    }
+
+    // Construir + firmar transacción (aún sin transmitir)
+    const { txHex, actualFee } = await this.buildTransaction(
+      utxos, destinationAddress, amountSatoshis
+    );
+
+    // El txid de una tx Bitcoin firmada es determinista: se conoce ANTES del
+    // broadcast. Lo pre-registramos para que el reaper pueda verificar on-chain
+    // si el retiro salió — sin esto, un crash entre broadcast y mark dejaría la
+    // fila sin txHash y el reaper la revertiría aunque el BTC ya se transmitió
+    // (doble-gasto). Ver spec 2026-08-24-fase2-withdrawal-reaper-onchain.
+    const txid = bitcoin.Transaction.fromHex(txHex).getId();
+    await BlockchainTransaction.recordWithdrawalTxHash(withdrawal.id, txid);
+
+    // Broadcast
+    await this.broadcastTransaction(txHex);
+
+    // Actualizar en DB
+    const updated = await BlockchainTransaction.markWithdrawalAsSent(
+      withdrawal.id,
+      txid,
+      money.divide(String(actualFee), '100000000')
+    );
+
+    console.log(`✅ [BTC] Retiro enviado: ${amount} BTC - TX: ${txid}`);
+    return updated;
+  }
+
+  // ACTUALIZAR CONFIRMACIONES
+  async updateConfirmations() {
+    try {
+      const redesToBuscar = [this.networkName, 'bitcoin'];
+      console.log(`🔄 [BTC] Buscando confirmaciones en redes: ${redesToBuscar.join(', ')}`);
+      
+      const pendingTxs = await BlockchainTransaction.findAll({
+        where: {
+          status: ['pending', 'processing'],
+          txHash: { [require('sequelize').Op.ne]: null }
+        },
+        include: [
+          {
+            model: Crypto,
+            as: 'crypto',
+            where: { network: redesToBuscar }
+          }
+        ]
+      });
+
+      console.log(`🔄 [BTC] Encontradas ${pendingTxs.length} transacciones pendientes para actualizar`);
+
+      const updated = [];
+
+      for (const tx of pendingTxs) {
+        try {
+          console.log(`🔄 [BTC] Actualizando confirmaciones para TX: ${tx.txHash}`);
+          
+          const url = `${this.baseUrl}/txs/${tx.txHash}${this.apiToken}`;
+          const response = await fetch(url);
+          
+          if (!response.ok) {
+            console.warn(`⚠️ [BTC] API warning para TX ${tx.txHash}: ${response.status}`);
+            continue;
+          }
+          
+          const txData = await response.json();
+
+          if (txData.confirmations !== undefined) {
+            const confirmations = txData.confirmations;
+            
+            console.log(`🔄 [BTC] TX ${tx.txHash}: ${confirmations} confirmaciones (requiere ${tx.requiredConfirmations})`);
+
+            if (confirmations !== tx.confirmations) {
+              const updatedTx = await BlockchainTransaction.updateConfirmations(
+                tx.id,
+                confirmations,
+                tx.txHash
+              );
+              updated.push(updatedTx);
+              
+              console.log(`✅ [BTC] Confirmaciones actualizadas ${tx.txHash}: ${confirmations}`);
+              
+              // Si es un depósito que se acaba de confirmar
+              if (tx.type === 'deposit' && confirmations >= tx.requiredConfirmations && tx.confirmations < tx.requiredConfirmations) {
+                console.log(`🎉 [BTC] Depósito confirmado! Balance del usuario debería actualizarse automáticamente`);
+              }
+            }
+          }
+        } catch (error) {
+          console.error(`❌ [BTC] Error actualizando confirmaciones ${tx.txHash}:`, error.message);
+        }
+      }
+
+      return updated;
+    } catch (error) {
+      throw new Error(`Error actualizando confirmaciones BTC: ${error.message}`);
+    }
+  }
+
+  // MÉTODOS AUXILIARES
+  sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  async getActiveUserAddresses() {
+    try {
+      console.log(`🔧 [BTC] Buscando direcciones activas para redes: ${this.networkName}, bitcoin`);
+      
+      const redesToBuscar = [this.networkName, 'bitcoin'];
+      
+      const direcciones = await DepositAddress.findAll({
+        where: { active: true },
+        include: [
+          {
+            model: Crypto,
+            as: 'crypto',
+            where: { 
+              network: redesToBuscar, 
+              active: true 
+            }
+          }
+        ]
+      });
+      
+      console.log(`🔧 [BTC] Direcciones encontradas: ${direcciones.length}`);
+      
+      if (direcciones.length > 0) {
+        direcciones.forEach((dir, index) => {
+          console.log(`🔧 [BTC] Dirección ${index + 1}:`);
+          console.log(`  - Dirección: ${dir.address}`);
+          console.log(`  - Red en DB: ${dir.crypto.network}`);
+          console.log(`  - User ID: ${dir.userId}`);
+        });
+      }
+      
+      return direcciones;
+    } catch (error) {
+      console.error('❌ [BTC] Error obteniendo direcciones:', error.message);
+      return [];
+    }
+  }
+
+  async getWalletBalance() {
+    if (!this.walletAddress) {
+      return '0';
+    }
+
+    const url = `${this.baseUrl}/addrs/${this.walletAddress}/balance${this.apiToken}`;
+
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+
+      const balance = money.divide(String(data.final_balance), '100000000');
+      return balance;
+    } catch (error) {
+      console.error('Error obteniendo balance wallet BTC:', error.message);
+      return '0';
+    }
+  }
+
+  async getWalletUTXOs() {
+    if (!this.walletAddress) {
+      return [];
+    }
+    
+    let url = `${this.baseUrl}/addrs/${this.walletAddress}`;
+    
+    const params = ['unspentOnly=true', 'includeScript=true'];
+    
+    if (this.apiToken) {
+      params.push(`token=${this.apiToken.replace('?token=', '')}`);
+    }
+    
+    url += '?' + params.join('&');
+    
+    try {
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`BlockCypher API error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (!data) {
+        return [];
+      }
+      
+      const allUTXOs = [
+        ...(data.txrefs || []),           
+        ...(data.unconfirmed_txrefs || []) 
+      ];
+      
+      if (allUTXOs.length === 0) {
+        return [];
+      }
+      
+      const processedUTXOs = [];
+      
+      for (const utxo of allUTXOs) {
+        if (!utxo.spent && utxo.value && utxo.value > 0) {
+          let scriptPubKey = utxo.script;
+          
+          if (!scriptPubKey) {
+            try {
+              const txOutput = await this.getTransactionOutput(utxo.tx_hash, utxo.tx_output_n);
+              scriptPubKey = txOutput.scriptPubKey;
+            } catch (scriptError) {
+              console.warn(`No se pudo obtener script para UTXO ${utxo.tx_hash}:${utxo.tx_output_n}`);
+              continue;
+            }
+          }
+          
+          processedUTXOs.push({
+            txid: utxo.tx_hash,
+            vout: utxo.tx_output_n,
+            value: utxo.value,
+            scriptPubKey: scriptPubKey,
+            confirmations: utxo.confirmations || 0
+          });
+        }
+      }
+      
+      processedUTXOs.sort((a, b) => (b.confirmations || 0) - (a.confirmations || 0));
+      
+      return processedUTXOs;
+    } catch (error) {
+      console.error('Error obteniendo UTXOs BTC:', error.message);
+      return [];
+    }
+  }
+
+  async buildTransaction(utxos, toAddress, amountSatoshis) {
+    const psbt = new bitcoin.Psbt({ network: this.network });
+    
+    let totalInput = 0;
+    let selectedUTXOs = [];
+    
+    const sortedUTXOs = [...utxos].sort((a, b) => b.value - a.value);
+    
+    for (const utxo of sortedUTXOs) {
+      selectedUTXOs.push(utxo);
+      totalInput += utxo.value;
+      
+      const inputCount = selectedUTXOs.length;
+      const outputCount = 2;
+      const estimatedSize = this.estimateTransactionSize(inputCount, outputCount);
+      const estimatedFee = estimatedSize * this.feePerByte;
+      
+      if (totalInput >= amountSatoshis + estimatedFee) {
+        break;
+      }
+    }
+    
+    const finalTxSize = this.estimateTransactionSize(selectedUTXOs.length, 2);
+    const finalFee = finalTxSize * this.feePerByte;
+    
+    if (totalInput < amountSatoshis + finalFee) {
+      throw new Error(`UTXOs insuficientes: necesario ${amountSatoshis + finalFee}, disponible ${totalInput}`);
+    }
+
+    for (const utxo of selectedUTXOs) {
+      if (!utxo.scriptPubKey) {
+        throw new Error(`UTXO ${utxo.txid}:${utxo.vout} sin scriptPubKey`);
+      }
+      
+      psbt.addInput({
+        hash: utxo.txid,
+        index: utxo.vout,
+        witnessUtxo: {
+          script: Buffer.from(utxo.scriptPubKey, 'hex'),
+          value: utxo.value,
+        },
+      });
+    }
+
+    psbt.addOutput({
+      address: toAddress,
+      value: amountSatoshis,
+    });
+
+    const change = totalInput - amountSatoshis - finalFee;
+    
+    if (change > 546) {
+      psbt.addOutput({
+        address: this.walletAddress,
+        value: change,
+      });
+    }
+
+    for (let i = 0; i < selectedUTXOs.length; i++) {
+      psbt.signInput(i, this.keyPair);
+    }
+
+    psbt.finalizeAllInputs();
+    const txHex = psbt.extractTransaction().toHex();
+
+    return { txHex, actualFee: finalFee };
+  }
+
+  async broadcastTransaction(txHex) {
+    const url = `${this.baseUrl}/txs/push${this.apiToken}`;
+    
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tx: txHex })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Broadcast failed: ${errorData.error || response.statusText}`);
+      }
+
+      const result = await response.json();
+      return result.tx.hash;
+    } catch (error) {
+      throw new Error(`Error broadcasting BTC transaction: ${error.message}`);
+    }
+  }
+
+  // On-chain lookup for the withdrawal reaper. Returns confirmations (0 if seen
+  // but unconfirmed), or null ONLY when BlockCypher definitively does not know
+  // the tx (404). Transient errors THROW so the reaper leaves the row (never
+  // reverts on a lookup failure). Not exercised by the test harness — verify on
+  // a testnet smoke-test before prod.
+  async getConfirmations(txHash) {
+    const url = `${this.baseUrl}/txs/${txHash}${this.apiToken}`;
+    const response = await fetch(url);
+    if (response.status === 404) return null; // definitively absent on-chain
+    if (!response.ok) throw new Error(`BlockCypher tx lookup failed: ${response.status}`);
+    const data = await response.json();
+    return data.confirmations ?? 0;
+  }
+
+  async getTransactionOutput(txHash, outputIndex) {
+    const url = `${this.baseUrl}/txs/${txHash}${this.apiToken}`;
+    
+    try {
+      const response = await fetch(url);
+      const txData = await response.json();
+      
+      const output = txData.outputs[outputIndex];
+      return {
+        scriptPubKey: output.script
+      };
+    } catch (error) {
+      throw new Error(`Error obteniendo output de transacción: ${error.message}`);
+    }
+  }
+
+  estimateTransactionSize(inputCount, outputCount) {
+    const baseSize = 10;
+    const inputSize = inputCount * 68;
+    const outputSize = outputCount * 31;
+    
+    return baseSize + inputSize + outputSize;
+  }
+
+  async validateAddress(address) {
+    try {
+      bitcoin.address.toOutputScript(address, this.network);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+}
+
+module.exports = BitcoinService;

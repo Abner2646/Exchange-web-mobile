@@ -5,7 +5,7 @@
 // (least privilege / control de acceso). Se aplica DESPUÉS de authenticateToken.
 //
 // Regla: quien ejecuta una acción de operador debe (a) ser admin/super_admin y
-// (b) tener 2FA activado. El flag `dosFactoresActivado` se lee autoritativo de la
+// (b) tener 2FA activado. El flag `twoFactorEnabled` se lee autoritativo de la
 // DB —no del JWT— para que desactivar el 2FA de un operador surta efecto de
 // inmediato sobre las acciones sensibles, sin esperar a que expire su token.
 //
@@ -21,9 +21,9 @@ async function requireOperatorMFA(req, res, next) {
     if (!authz.isAdmin(req.user)) {
       return next(new AppError(403, errorCodes.OPERATOR_REQUIRED, 'Se requieren permisos de operador para esta acción'));
     }
-    const { Usuario } = require('../models');
-    const usuario = await Usuario.findByPk(req.user.id, { attributes: ['dosFactoresActivado'] });
-    if (!usuario || !usuario.dosFactoresActivado) {
+    const { User } = require('../models');
+    const usuario = await User.findByPk(req.user.id, { attributes: ['twoFactorEnabled'] });
+    if (!usuario || !usuario.twoFactorEnabled) {
       return next(new AppError(403, errorCodes.OPERATOR_MFA_REQUIRED,
         'Los operadores deben tener 2FA activado para ejecutar acciones privilegiadas'));
     }

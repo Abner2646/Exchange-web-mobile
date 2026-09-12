@@ -1,14 +1,14 @@
 // tests/balanceUsuarioLazyRequire.test.js
 //
 // Cubre AUDITORIA_BACKEND.md Altos #10: transaccionBlockchain.model.js
-// re-inicializaba la entidad BalanceUsuario cruda a nivel de módulo en vez
+// re-inicializaba la entidad UserBalance cruda a nivel de módulo en vez
 // de usar el modelo que models/index.js ya inicializó y asoció. Se
 // reemplazó por un require('./index') lazy, adentro de cada función que
 // lo necesita (para evitar el require circular a nivel de módulo).
 //
 // Este test prueba que ese require lazy resuelve de verdad, en runtime,
 // al modelo real — no alcanza con "no explota al cargar", hay que probar
-// que _acreditarDeposito efectivamente acredita en el ledger (vía updateBalance)
+// que _creditDeposit efectivamente acredita en el ledger (vía updateBalance)
 // a través del grafo completo de modelos de models/index.js.
 //
 // Postgres real a propósito: es justamente el orden de carga / resolución
@@ -44,11 +44,11 @@ if (!dbAvailable) {
 
 const describeIfDb = dbAvailable ? describe : describe.skip;
 
-describeIfDb('transaccionBlockchain.model.js: require lazy de BalanceUsuario', () => {
-  let sequelize, Usuario, Criptomoneda, BalanceUsuario, TransaccionBlockchain;
+describeIfDb('transaccionBlockchain.model.js: require lazy de UserBalance', () => {
+  let sequelize, User, Crypto, UserBalance, BlockchainTransaction;
 
   beforeAll(async () => {
-    ({ sequelize, Usuario, Criptomoneda, BalanceUsuario, TransaccionBlockchain } = require('../models'));
+    ({ sequelize, User, Crypto, UserBalance, BlockchainTransaction } = require('../models'));
     sequelize.options.logging = false;
     await sequelize.sync({ force: true });
   });
@@ -59,29 +59,29 @@ describeIfDb('transaccionBlockchain.model.js: require lazy de BalanceUsuario', (
 
   test('el archivo ya no importa initBalanceUsuario a nivel de módulo', () => {
     const fs = require('fs');
-    const source = fs.readFileSync(require.resolve('../models/transaccionBlockchain.model'), 'utf8');
+    const source = fs.readFileSync(require.resolve('../modules/wallets/blockchainTransaction.model'), 'utf8');
     expect(source).not.toMatch(/require\(['"]\.\/entities\/balanceUsuario\.entity['"]\)/);
   });
 
-  test('_acreditarDeposito acredita de verdad en el ledger vía el modelo real de models/index.js', async () => {
-    const user = await Usuario.create({ email: 'lazy@test.com', username: 'lazy_user', passwordHash: 'x', rol: 'normal' });
-    const cripto = await Criptomoneda.create({ symbol: 'ETH', nombre: 'Ethereum', red: 'ethereum', decimales: 18 });
+  test('_creditDeposit acredita de verdad en el ledger vía el modelo real de models/index.js', async () => {
+    const user = await User.create({ email: 'lazy@test.com', username: 'lazy_user', passwordHash: 'x', role: 'normal' });
+    const cripto = await Crypto.create({ symbol: 'ETH', name: 'Ethereum', network: 'ethereum', decimals: 18 });
 
     // Paso D: el depósito primero se acredita PENDIENTE (al detectarse), y
-    // _acreditarDeposito (al confirmar) mueve pendiente → disponible. Se prueba
+    // _creditDeposit (al confirmar) mueve pendiente → disponible. Se prueba
     // que el require lazy resuelve el modelo real y que la confirmación llega a la
     // proyección Funding del ledger.
-    const { registrarDepositoPendiente } = require('../services/ledger/operations');
-    await registrarDepositoPendiente({ userId: user.id, criptomonedaId: cripto.id, cantidad: '1.50000000', referencia: `dep-pend:${user.id}` });
+    const { registerPendingDeposit } = require('../modules/balances/ledger/operations');
+    await registerPendingDeposit({ userId: user.id, criptomonedaId: cripto.id, cantidad: '1.50000000', referencia: `dep-pend:${user.id}` });
 
-    await TransaccionBlockchain._acreditarDeposito(
+    await BlockchainTransaction._creditDeposit(
       { id: '99999999-9999-4999-8999-999999999999', userId: user.id, criptomonedaId: cripto.id, cantidad: '1.50000000', estado: 'pendiente' },
       null
     );
 
-    const posting = require('../services/ledger/postingService');
-    const { PROPOSITOS } = require('../services/ledger/ledgerAccounts');
-    const disponible = await posting.getSaldoCuenta({ ownerId: user.id, proposito: PROPOSITOS.FUNDING_DISPONIBLE, criptomonedaId: cripto.id });
+    const posting = require('../modules/balances/ledger/postingService');
+    const { PURPOSES } = require('../modules/balances/ledger/ledgerAccounts');
+    const disponible = await posting.getAccountBalance({ ownerId: user.id, proposito: PURPOSES.FUNDING_AVAILABLE, criptomonedaId: cripto.id });
     expect(disponible).toBe('1.50000000');
   });
 });

@@ -335,6 +335,61 @@ class EmailService {
     }
   }
 
+  // Radar #14 — código para confirmar un cambio de email; se envía AL email NUEVO
+  // (prueba de control de la nueva dirección).
+  async enviarCodigoCambioEmail(nuevoEmail, codigo) {
+    const content = `
+      <h2 class="content-title">Confirmá tu nuevo email</h2>
+      <p class="content-text">Recibimos una solicitud para cambiar el email de tu cuenta de BitFlow a esta dirección. Usá este código para confirmarlo:</p>
+      <div class="code-container">
+        <div class="verification-code">${codigo}</div>
+        <div class="code-hint">Expira en 15 minutos</div>
+      </div>
+      <div class="alert alert-warning">
+        <strong>⚠️ Seguridad:</strong> Si no solicitaste este cambio, ignorá este email.
+      </div>
+    `;
+    const mailOptions = {
+      from: `"BitFlow Exchange" <${process.env.EMAIL_USER}>`,
+      to: nuevoEmail,
+      subject: 'Confirmá tu nuevo email - BitFlow',
+      html: this.getBaseTemplate(content, 'Cambio de email')
+    };
+    try {
+      const result = await this.transporter.sendMail(mailOptions);
+      console.log(`✅ Código de cambio de email enviado a ${nuevoEmail}`);
+      return result;
+    } catch (error) {
+      console.error('❌ Error enviando código de cambio de email:', error);
+      throw new Error('Error al enviar el código de cambio de email');
+    }
+  }
+
+  // Notificar al email VIEJO que el email de la cuenta cambió (anti account-takeover).
+  async notificarCambioEmail(emailViejo, emailNuevo) {
+    const content = `
+      <h2 class="content-title">El email de tu cuenta cambió</h2>
+      <p class="content-text">El email de tu cuenta de BitFlow se cambió a <strong>${emailNuevo}</strong>.</p>
+      <div class="alert alert-warning">
+        <strong>⚠️ ¿No fuiste vos?</strong> Contactá a soporte de inmediato: tu cuenta puede estar comprometida. Por seguridad, los retiros quedan bloqueados temporalmente tras el cambio.
+      </div>
+    `;
+    const mailOptions = {
+      from: `"BitFlow Exchange" <${process.env.EMAIL_USER}>`,
+      to: emailViejo,
+      subject: 'Alerta de seguridad: el email de tu cuenta cambió - BitFlow',
+      html: this.getBaseTemplate(content, 'Cambio de email')
+    };
+    try {
+      const result = await this.transporter.sendMail(mailOptions);
+      console.log(`✅ Notificación de cambio de email enviada a ${emailViejo}`);
+      return result;
+    } catch (error) {
+      console.error('❌ Error notificando cambio de email:', error);
+      throw new Error('Error al notificar el cambio de email');
+    }
+  }
+
   // Enviar código de verificación de email
   async enviarCodigoVerificacionEmail(email, codigo, username) {
     const content = `
@@ -432,7 +487,7 @@ class EmailService {
           <span class="detail-value">${new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">Usuario:</span>
+          <span class="detail-label">User:</span>
           <span class="detail-value">${username}</span>
         </div>
       </div>
@@ -482,7 +537,7 @@ class EmailService {
           <span class="detail-value">${new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">Usuario:</span>
+          <span class="detail-label">User:</span>
           <span class="detail-value">${username}</span>
         </div>
       </div>

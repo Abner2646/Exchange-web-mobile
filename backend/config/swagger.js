@@ -41,17 +41,17 @@ const options = {
             },
           },
         },
-        // Monto de dinero: SIEMPRE string decimal canónico (8 decimales), nunca number.
-        MoneyString: { type: 'string', example: '123.45000000', description: 'Decimal canónico (string, 8 decimales)' },
+        // Monto de dinero: SIEMPRE string decimal canónico (8 decimals), nunca number.
+        MoneyString: { type: 'string', example: '123.45000000', description: 'Decimal canónico (string, 8 decimals)' },
         // Una entrada de "mis balances" (forma compartimentada unificada).
         BalanceEntry: {
           type: 'object',
           properties: {
             userId: { type: 'string', format: 'uuid' },
             criptomonedaId: { type: 'string', format: 'uuid' },
-            balanceDisponible: { $ref: '#/components/schemas/MoneyString' },
-            balanceBloqueado: { $ref: '#/components/schemas/MoneyString' },
-            balancePendiente: { $ref: '#/components/schemas/MoneyString' },
+            availableBalance: { $ref: '#/components/schemas/MoneyString' },
+            blockedBalance: { $ref: '#/components/schemas/MoneyString' },
+            pendingBalance: { $ref: '#/components/schemas/MoneyString' },
             compartimentos: {
               type: 'object',
               properties: {
@@ -72,15 +72,15 @@ const options = {
                 },
               },
             },
-            criptomoneda: {
+            crypto: {
               type: 'object',
               nullable: true,
               properties: {
                 id: { type: 'string', format: 'uuid' },
                 symbol: { type: 'string', example: 'BTC' },
-                nombre: { type: 'string', example: 'Bitcoin' },
-                red: { type: 'string', example: 'bitcoin' },
-                decimales: { type: 'integer', example: 8 },
+                name: { type: 'string', example: 'Bitcoin' },
+                network: { type: 'string', example: 'bitcoin' },
+                decimals: { type: 'integer', example: 8 },
               },
             },
           },
@@ -103,7 +103,10 @@ const options = {
   // Escanea las anotaciones @openapi de los route files. Glob absoluto (no depende
   // del cwd) y con forward-slashes: en Windows path.join da backslashes que el glob
   // de swagger-jsdoc no matchea.
-  apis: [path.join(__dirname, '..', 'routes', '*.js').replace(/\\/g, '/')],
+  apis: [
+    path.join(__dirname, '..', 'routes', '*.js').replace(/\\/g, '/'),
+    path.join(__dirname, '..', 'modules', '**', '*.routes.js').replace(/\\/g, '/'),
+  ],
 };
 
 module.exports = swaggerJsdoc(options);

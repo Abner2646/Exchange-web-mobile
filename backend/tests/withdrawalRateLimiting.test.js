@@ -12,36 +12,36 @@ const jwt = require('jsonwebtoken');
 
 const mockUser = {
   id: 'user-1',
-  activo: true,
+  active: true,
   email: 'user@example.com',
   username: 'user1',
-  rol: 'normal',
-  kycVerificado: true,
-  limiteDiarioUsd: 1000,
-  emailVerificado: true,
+  role: 'normal',
+  kycVerified: true,
+  dailyLimitUsd: 1000,
+  emailVerified: true,
   googleId: null,
-  ultimoLogout: null,
+  lastLogoutAt: null,
 };
 
 jest.mock('../models', () => ({
-  Usuario: { findByPk: jest.fn() },
-  TransaccionBlockchain: {},
-  Criptomoneda: {},
-  BalanceUsuario: {},
-  DireccionDeposito: {},
+  User: { findByPk: jest.fn() },
+  BlockchainTransaction: {},
+  Crypto: {},
+  UserBalance: {},
+  DepositAddress: {},
   // Required by idempotency.middleware (now wired into /withdraw)
   IdempotencyKey: { create: jest.fn().mockResolvedValue({}), findOne: jest.fn(), update: jest.fn(), destroy: jest.fn() },
 }));
 
-jest.mock('../controllers/transaccionBlockchain.controller', () => {
+jest.mock('../modules/wallets/blockchainTransaction.controller', () => {
   const ok = (req, res) => res.json({ success: true });
   return new Proxy({}, { get: () => ok });
 });
 
-const { Usuario } = require('../models');
+const { User } = require('../models');
 const express = require('express');
 const request = require('supertest');
-const transaccionBlockchainRoutes = require('../routes/transaccionBlockchain.routes');
+const transaccionBlockchainRoutes = require('../modules/wallets/blockchainTransaction.routes');
 
 function buildApp() {
   const app = express();
@@ -58,9 +58,9 @@ function tokenFor(userId) {
 // limiter en la ruta): sin esto Joi devuelve 400 antes de llegar al controller
 // mockeado, y el test no puede verificar el 200 previo al 429.
 const validWithdrawal = {
-  criptomonedaId: '11111111-1111-4111-8111-111111111111',
-  cantidad: 0.5,
-  direccionDestino: 'abcdefghij1234567890abcd',
+  cryptoId: '11111111-1111-4111-8111-111111111111',
+  amount: 0.5,
+  destinationAddress: 'abcdefghij1234567890abcd',
 };
 
 describe('POST /transaccionBlockchain/withdraw rate limiting (withdrawal: 10/15min)', () => {
@@ -68,7 +68,7 @@ describe('POST /transaccionBlockchain/withdraw rate limiting (withdrawal: 10/15m
   const auth = `Bearer ${tokenFor(mockUser.id)}`;
 
   beforeEach(() => {
-    Usuario.findByPk.mockResolvedValue(mockUser);
+    User.findByPk.mockResolvedValue(mockUser);
   });
 
   test('permite 10 intentos y bloquea el 11vo con 429', async () => {

@@ -111,7 +111,7 @@ const verifyEmailCodeLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => {
-    // Usuario autenticado: usa su ID
+    // User autenticado: usa su ID
     if (req.user?.id) {
       return `verify_email_${req.user.id}`;
     }
@@ -129,7 +129,7 @@ const verifyEmailCodeLimiter = rateLimit({
 
 /**
  * Rate Limiter para reenvío de código de verificación de email
- * Usuario autenticado que necesita reenviar código
+ * User autenticado que necesita reenviar código
  * Límite: 3 intentos cada hora
  */
 const resendVerificationEmailLimiter = rateLimit({
@@ -159,7 +159,7 @@ const resendVerificationEmailLimiter = rateLimit({
 
 /**
  * Rate Limiter para solicitud de código de recuperación
- * Usuario NO autenticado, identifica por email
+ * User NO autenticado, identifica por email
  * Límite: 3 intentos cada 15 minutos
  */
 const forgotPasswordLimiter = rateLimit({
@@ -311,7 +311,7 @@ const resend2FALimiter = rateLimit({
 
 /**
  * Rate Limiter para cambio de contraseña
- * Usuario autenticado cambiando su contraseña
+ * User autenticado cambiando su contraseña
  * Límite: 3 intentos cada hora
  */
 const changePasswordLimiter = rateLimit({

@@ -19,7 +19,7 @@ describe('POST /api/usuario/login + GET /api/usuario/me', () => {
     await seedLoginUser();
 
     const res = await request(app)
-      .post('/api/usuario/login')
+      .post('/api/user/login')
       .send({ emailOrUsername: 'loginuser@test.local', password: 'password123' });
 
     expect(res.status).toBe(200);
@@ -31,12 +31,12 @@ describe('POST /api/usuario/login + GET /api/usuario/me', () => {
     const user = await seedLoginUser();
 
     const login = await request(app)
-      .post('/api/usuario/login')
+      .post('/api/user/login')
       .send({ emailOrUsername: 'loginuser@test.local', password: 'password123' });
     const token = login.body.token;
 
     const me = await request(app)
-      .get('/api/usuario/me')
+      .get('/api/user/me')
       .set('Authorization', `Bearer ${token}`);
 
     expect(me.status).toBe(200);
@@ -51,7 +51,7 @@ describe('auth rejections', () => {
     await f.seedUser({ email: 'wrongpw@test.local', username: 'wrongpw', passwordHash });
 
     const res = await request(app)
-      .post('/api/usuario/login')
+      .post('/api/user/login')
       .send({ emailOrUsername: 'wrongpw@test.local', password: 'not-the-password' });
 
     expect(res.status).toBe(401);
@@ -59,20 +59,20 @@ describe('auth rejections', () => {
 
   test('login for a nonexistent user → 401', async () => {
     const res = await request(app)
-      .post('/api/usuario/login')
+      .post('/api/user/login')
       .send({ emailOrUsername: 'ghost@test.local', password: 'password123' });
 
     expect(res.status).toBe(401);
   });
 
   test('GET /me without a token → 401', async () => {
-    const res = await request(app).get('/api/usuario/me');
+    const res = await request(app).get('/api/user/me');
     expect(res.status).toBe(401);
   });
 
   test('GET /me with a garbage token → 401', async () => {
     const res = await request(app)
-      .get('/api/usuario/me')
+      .get('/api/user/me')
       .set('Authorization', 'Bearer not-a-real-jwt');
     expect(res.status).toBe(401);
   });

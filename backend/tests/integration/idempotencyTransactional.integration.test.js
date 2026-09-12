@@ -38,13 +38,13 @@ async function claim(userId, key) {
 }
 
 describe('transactional idempotency — swap (POST /intercambioExchange/)', () => {
-  const intercambio = require('../../controllers/intercambioExchange.controller');
+  const intercambio = require('../../modules/swap/swap.controller');
 
   async function seedBuyScenario() {
     const user = await f.seedUser();
     const btc = await f.seedCripto('BTC');
     const usdt = await f.seedCripto('USDT');
-    const par = await f.seedPar({ base: btc, quote: usdt, precio: '0.1', comision: '1' });
+    const par = await f.seedPar({ base: btc, quote: usdt, price: '0.1', comision: '1' });
     await f.seedWalletMaestra(usdt);
     await f.seedBalance(user, usdt, '1');
     return { user, btc, usdt, par };
@@ -56,7 +56,7 @@ describe('transactional idempotency — swap (POST /intercambioExchange/)', () =
 
     const req = {
       user: { id: user.id },
-      body: { parId: par.id, tipo: 'compra', cantidadBase: 3 },
+      body: { pairId: par.id, type: 'buy', baseAmount: 3 },
       app: { locals: {} },
       _idempotency,
     };
@@ -72,8 +72,8 @@ describe('transactional idempotency — swap (POST /intercambioExchange/)', () =
   });
 });
 
-describe('transactional idempotency — createTransferencia (POST /transferencias/)', () => {
-  const transferencia = require('../../controllers/transferencia.controller');
+describe('transactional idempotency — createTransfer (POST /transferencias/)', () => {
+  const transferencia = require('../../modules/balances/transfer.controller');
   const fakeEmail = { locals: { emailService: { enviarCodigoTransferencia: async () => {} } } };
 
   test('completed row is committed inside the transfer tx (survives a missing finish handler)', async () => {
@@ -85,13 +85,13 @@ describe('transactional idempotency — createTransferencia (POST /transferencia
 
     const req = {
       user: { id: sender.id },
-      body: { usuarioDestinatarioId: dest.id, criptomonedaId: btc.id, cantidad: '1' },
+      body: { recipientId: dest.id, cryptoId: btc.id, amount: '1' },
       app: fakeEmail,
       _idempotency,
     };
     const res = resNoFinish();
 
-    await transferencia.createTransferencia(req, res);
+    await transferencia.createTransfer(req, res);
 
     expect(res.statusCode).toBe(201);
     const row = await IdempotencyKey.findOne({ where });
@@ -100,8 +100,8 @@ describe('transactional idempotency — createTransferencia (POST /transferencia
   });
 });
 
-describe('transactional idempotency — transferMisCompartimentos (POST /balances/my/transfer)', () => {
-  const balanceCtrl = require('../../controllers/balanceUsuario.controller');
+describe('transactional idempotency — transferMyCompartments (POST /balances/my/transfer)', () => {
+  const balanceCtrl = require('../../modules/balances/userBalance.controller');
 
   test('completed row is committed inside the compartment-transfer tx (survives a missing finish handler)', async () => {
     const user = await f.seedUser();
@@ -111,13 +111,13 @@ describe('transactional idempotency — transferMisCompartimentos (POST /balance
 
     const req = {
       user: { id: user.id },
-      body: { criptomonedaId: btc.id, cantidad: '2', origen: 'funding', destino: 'spot' },
+      body: { cryptoId: btc.id, amount: '2', from: 'funding', to: 'spot' },
       app: { locals: {} },
       _idempotency,
     };
     const res = resNoFinish();
 
-    await balanceCtrl.transferMisCompartimentos(req, res);
+    await balanceCtrl.transferMyCompartments(req, res);
 
     expect(res.statusCode).toBe(200);
     const row = await IdempotencyKey.findOne({ where });
@@ -127,7 +127,7 @@ describe('transactional idempotency — transferMisCompartimentos (POST /balance
 });
 
 describe('transactional idempotency — createWithdrawal (model static, POST /transactions/withdraw)', () => {
-  const { TransaccionBlockchain } = require('../../models');
+  const { BlockchainTransaction } = require('../../models');
 
   // The withdrawal money movement (block funds + create row) is owned by the model
   // static's own tx. It takes an optional `finalize` hook that runs INSIDE that tx,
@@ -141,8 +141,8 @@ describe('transactional idempotency — createWithdrawal (model static, POST /tr
     const { where, _idempotency } = await claim(user.id, 'withdraw-key-1');
     const req = { _idempotency };
 
-    await TransaccionBlockchain.createWithdrawal(
-      { userId: user.id, criptomonedaId: btc.id, cantidad: 1, direccionDestino: 'addr-x' },
+    await BlockchainTransaction.createWithdrawal(
+      { userId: user.id, cryptoId: btc.id, amount: 1, destinationAddress: 'addr-x' },
       {
         finalize: async (transaction, retiro) => {
           const responseBody = { success: true, message: 'Retiro creado exitosamente', data: retiro };
@@ -159,7 +159,7 @@ describe('transactional idempotency — createWithdrawal (model static, POST /tr
 });
 
 describe('transactional idempotency — trading.createOrder (POST /trading/orders)', () => {
-  const tradingController = require('../../controllers/trading.controller');
+  const tradingController = require('../../modules/trading/trading.controller');
 
   // The order-creation money move (lock Spot balance + create the Order row) is
   // made atomic in one controller-owned tx (fixing the Críticos #5 residual:

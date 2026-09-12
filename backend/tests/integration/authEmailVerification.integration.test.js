@@ -1,7 +1,7 @@
 require('../helpers/testEnv');
 const request = require('supertest');
 const { app, installAuthHarness } = require('../helpers/authHarness');
-const { Usuario } = require('../../models');
+const { User } = require('../../models');
 
 const h = installAuthHarness();
 
@@ -11,52 +11,52 @@ describe('POST /api/usuario/verify-email', () => {
     expect(code).toBeTruthy();
 
     const res = await request(app)
-      .post('/api/usuario/verify-email')
+      .post('/api/user/verify-email')
       .set('Authorization', `Bearer ${token}`)
       .send({ codigo: code });
 
     expect(res.status).toBe(200);
-    expect(res.body.user.emailVerificado).toBe(true);
+    expect(res.body.user.emailVerified).toBe(true);
     expect(typeof res.body.token).toBe('string');
 
-    const user = await Usuario.findOne({ where: { email: 'verify@test.local' } });
-    expect(user.emailVerificado).toBe(true);
+    const user = await User.findOne({ where: { email: 'verify@test.local' } });
+    expect(user.emailVerified).toBe(true);
   });
 
   test('rejects a wrong verification code with 400', async () => {
     const { token } = await h.registerAndGetCode({ email: 'badcode@test.local', username: 'badcodeuser' });
 
     const res = await request(app)
-      .post('/api/usuario/verify-email')
+      .post('/api/user/verify-email')
       .set('Authorization', `Bearer ${token}`)
       .send({ codigo: 'not-the-code' });
 
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/inv[aá]lido|expirado/i);
 
-    const user = await Usuario.findOne({ where: { email: 'badcode@test.local' } });
-    expect(user.emailVerificado).toBe(false);
+    const user = await User.findOne({ where: { email: 'badcode@test.local' } });
+    expect(user.emailVerified).toBe(false);
   });
 });
 
-describe('requireEmailVerified gate (GET /api/transferencia/my)', () => {
+describe('requireEmailVerified gate (GET /api/transfer/my)', () => {
   test('unverified user is 403, then 200 after verifying (same token)', async () => {
     const { token, code } = await h.registerAndGetCode({ email: 'gated@test.local', username: 'gateduser' });
 
     const before = await request(app)
-      .get('/api/transferencia/my')
+      .get('/api/transfer/my')
       .set('Authorization', `Bearer ${token}`);
     expect(before.status).toBe(403);
     expect(before.body.requiresEmailVerification).toBe(true);
 
     const verify = await request(app)
-      .post('/api/usuario/verify-email')
+      .post('/api/user/verify-email')
       .set('Authorization', `Bearer ${token}`)
       .send({ codigo: code });
     expect(verify.status).toBe(200);
 
     const after = await request(app)
-      .get('/api/transferencia/my')
+      .get('/api/transfer/my')
       .set('Authorization', `Bearer ${token}`);
     expect(after.status).toBe(200);
   });
@@ -67,7 +67,7 @@ describe('POST /api/usuario/resend-verification-email', () => {
     const { token } = await h.registerAndGetCode({ email: 'resend@test.local', username: 'resenduser' });
 
     const resend = await request(app)
-      .post('/api/usuario/resend-verification-email')
+      .post('/api/user/resend-verification-email')
       .set('Authorization', `Bearer ${token}`);
     expect(resend.status).toBe(200);
 
@@ -80,10 +80,10 @@ describe('POST /api/usuario/resend-verification-email', () => {
     expect(newCode).toBeTruthy();
 
     const verify = await request(app)
-      .post('/api/usuario/verify-email')
+      .post('/api/user/verify-email')
       .set('Authorization', `Bearer ${token}`)
       .send({ codigo: newCode });
     expect(verify.status).toBe(200);
-    expect(verify.body.user.emailVerificado).toBe(true);
+    expect(verify.body.user.emailVerified).toBe(true);
   });
 });

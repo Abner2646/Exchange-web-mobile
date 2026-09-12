@@ -12,6 +12,10 @@ function createFakeEmailService() {
     enviarCodigo2FA: recordCode('2fa'),
     enviarCodigoRecuperacion: recordCode('recuperacion'),
     enviarCodigoTransferencia: recordCode('transferencia'),
+    enviarCodigoCambioEmail: recordCode('cambioEmail'),
+    notificarCambioEmail: async (emailViejo, emailNuevo) => {
+      sent.push({ type: 'cambioEmailNotif', email: emailViejo, emailNuevo });
+    },
     notificarCambioPassword: async (email, username) => {
       sent.push({ type: 'cambioPassword', email, username });
     },

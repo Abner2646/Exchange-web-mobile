@@ -2,8 +2,8 @@ require('../helpers/testEnv');
 const request = require('supertest');
 const { app, installAuthHarness } = require('../helpers/authHarness');
 const { createFakeGoogleVerifier } = require('../helpers/fakeGoogleVerifier');
-const { Usuario } = require('../../models');
-const userService = require('../../services/user.service');
+const { User } = require('../../models');
+const userService = require('../../modules/users/user.service');
 const f = require('../helpers/factories');
 
 installAuthHarness();
@@ -18,7 +18,7 @@ beforeEach(() => {
   app.locals.googleTokenVerifier = fakeGoogle;
 });
 afterAll(() => {
-  app.locals.googleTokenVerifier = require('../../services/auth/googleTokenVerifier');
+  app.locals.googleTokenVerifier = require('../../modules/users/googleTokenVerifier');
 });
 
 // A canonical passport-google-oauth20 profile is the architectural boundary with
@@ -41,12 +41,12 @@ describe('userService.findOrCreateGoogleUser (the single Google brain)', () => {
     expect(result.googleId).toBe('google-new-1');
     expect(result.email).toBe('alice@test.local');
     expect(result.username).toBe('alice');        // displayName becomes the username, normalized lowercase
-    expect(result.emailVerificado).toBe(true);    // Google already verified the email
+    expect(result.emailVerified).toBe(true);    // Google already verified the email
     expect(result.passwordHash).toBeNull();
 
-    const inDb = await Usuario.findOne({ where: { googleId: 'google-new-1' } });
+    const inDb = await User.findOne({ where: { googleId: 'google-new-1' } });
     expect(inDb).not.toBeNull();
-    expect(inDb.emailVerificado).toBe(true);
+    expect(inDb.emailVerified).toBe(true);
     expect(inDb.passwordHash).toBeNull();
   });
 
@@ -55,7 +55,7 @@ describe('userService.findOrCreateGoogleUser (the single Google brain)', () => {
       email: 'bob@test.local',
       username: 'bob',
       passwordHash: 'a-real-hash',
-      emailVerificado: false,
+      emailVerified: false,
     });
 
     const result = await userService.findOrCreateGoogleUser(
@@ -64,20 +64,20 @@ describe('userService.findOrCreateGoogleUser (the single Google brain)', () => {
 
     expect(result.isNewUser).toBe(false);
     expect(result.googleId).toBe('google-bob');
-    expect(result.emailVerificado).toBe(true);
+    expect(result.emailVerified).toBe(true);
 
     // Same account, now linked and verified — no duplicate row created.
-    const rows = await Usuario.findAll({ where: { email: 'bob@test.local' } });
+    const rows = await User.findAll({ where: { email: 'bob@test.local' } });
     expect(rows).toHaveLength(1);
     expect(rows[0].id).toBe(local.id);
     expect(rows[0].googleId).toBe('google-bob');
-    expect(rows[0].emailVerificado).toBe(true);
+    expect(rows[0].emailVerified).toBe(true);
   });
 
   test('refuses to link/create when the Google profile email is NOT verified (closes the passport takeover path)', async () => {
     // A pre-existing password account at this email.
     const victim = await f.seedUser({
-      email: 'dave@test.local', username: 'dave', passwordHash: 'a-real-hash', emailVerificado: false,
+      email: 'dave@test.local', username: 'dave', passwordHash: 'a-real-hash', emailVerified: false,
     });
 
     // The profile passport hands the shared brain when Google reports the email
@@ -94,18 +94,18 @@ describe('userService.findOrCreateGoogleUser (the single Google brain)', () => {
     ).rejects.toThrow();
 
     // The victim account is untouched: not linked to Google, still unverified.
-    const reloaded = await Usuario.findByPk(victim.id);
+    const reloaded = await User.findByPk(victim.id);
     expect(reloaded.googleId).toBeNull();
-    expect(reloaded.emailVerificado).toBe(false);
+    expect(reloaded.emailVerified).toBe(false);
   });
 
-  test('returns the existing Google user on repeat login and back-fills emailVerificado', async () => {
+  test('returns the existing Google user on repeat login and back-fills emailVerified', async () => {
     const existing = await f.seedUser({
       email: 'carol@test.local',
       username: 'carol',
       passwordHash: null,
       googleId: 'google-carol',
-      emailVerificado: false,
+      emailVerified: false,
     });
 
     const result = await userService.findOrCreateGoogleUser(
@@ -114,29 +114,29 @@ describe('userService.findOrCreateGoogleUser (the single Google brain)', () => {
 
     expect(result.isNewUser).toBe(false);
     expect(result.id).toBe(existing.id);
-    expect(result.emailVerificado).toBe(true);
+    expect(result.emailVerified).toBe(true);
 
-    const reloaded = await Usuario.findByPk(existing.id);
-    expect(reloaded.emailVerificado).toBe(true);
+    const reloaded = await User.findByPk(existing.id);
+    expect(reloaded.emailVerified).toBe(true);
   });
 });
 
 describe('POST /api/usuario/login/google (verifies a Google id_token)', () => {
   test('rejects an unverified / forged id_token with 401 and creates no user', async () => {
     const res = await request(app)
-      .post('/api/usuario/login/google')
+      .post('/api/user/login/google')
       .send({ idToken: 'forged-token' }); // not registered in the fake -> verify throws
 
     expect(res.status).toBe(401);
 
-    const count = await Usuario.count();
+    const count = await User.count();
     expect(count).toBe(0);
   });
 
   test('rejects a token whose Google email is NOT verified — no takeover of an existing email account', async () => {
     // A pre-existing password account at this email.
     const victim = await f.seedUser({
-      email: 'victim@test.local', username: 'victim', passwordHash: 'a-real-hash', emailVerificado: false,
+      email: 'victim@test.local', username: 'victim', passwordHash: 'a-real-hash', emailVerified: false,
     });
     // Attacker presents a validly-signed Google token for the victim's email,
     // but Google marks it email_verified:false (alias / unverified domain).
@@ -148,15 +148,15 @@ describe('POST /api/usuario/login/google (verifies a Google id_token)', () => {
     });
 
     const res = await request(app)
-      .post('/api/usuario/login/google')
+      .post('/api/user/login/google')
       .send({ idToken: 'unverified-token' });
 
     expect(res.status).toBe(401);
 
     // The victim account is untouched: not linked to Google, still unverified.
-    const reloaded = await Usuario.findByPk(victim.id);
+    const reloaded = await User.findByPk(victim.id);
     expect(reloaded.googleId).toBeNull();
-    expect(reloaded.emailVerificado).toBe(false);
+    expect(reloaded.emailVerified).toBe(false);
   });
 
   test('logs in an existing Google user from a verified token (isNew false, same account)', async () => {
@@ -174,7 +174,7 @@ describe('POST /api/usuario/login/google (verifies a Google id_token)', () => {
     });
 
     const res = await request(app)
-      .post('/api/usuario/login/google')
+      .post('/api/user/login/google')
       .send({ idToken: 'good-token' });
 
     expect(res.status).toBe(200);
@@ -184,8 +184,8 @@ describe('POST /api/usuario/login/google (verifies a Google id_token)', () => {
   });
 
   // NOTE: the happy new-user provisioning path (isNew + inicializarUsuarioCompleto
-  // succeeding) is NOT covered here: WalletMaestra.getByCriptomoneda references a
-  // non-existent `criptomoneda.derivationPath` column, so provisioning throws in
+  // succeeding) is NOT covered here: MasterWallet.getByCrypto references a
+  // non-existent `crypto.derivationPath` column, so provisioning throws in
   // the harness (and likely in prod). Flagged separately in ROADMAP; the
   // atomicity guarantee below is what matters for this fix.
   test('a failed provisioning rolls back the whole new-user signup — no orphaned account', async () => {
@@ -202,12 +202,12 @@ describe('POST /api/usuario/login/google (verifies a Google id_token)', () => {
     });
 
     const res = await request(app)
-      .post('/api/usuario/login/google')
+      .post('/api/user/login/google')
       .send({ idToken: 'brandnew-token' });
 
     expect(res.status).toBe(400); // provisioning failed
     // The atomicity guarantee: the user row was rolled back with it.
-    const orphan = await Usuario.findOne({ where: { googleId: 'brand-new-google-id' } });
+    const orphan = await User.findOne({ where: { googleId: 'brand-new-google-id' } });
     expect(orphan).toBeNull();
   });
 });
