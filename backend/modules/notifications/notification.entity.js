@@ -40,6 +40,7 @@ function initNotification(sequelize) {
       allowNull: true,
       field: 'sent_at'
     },
+    sourceEventId: { type: DataTypes.UUID, allowNull: true, field: 'source_event_id' },
   }, {
     sequelize,
     modelName: 'Notification',
@@ -53,7 +54,8 @@ function initNotification(sequelize) {
       { fields: ['type'] },
       { fields: ['important'] },
       { fields: ['created_at'] },
-      { fields: ['user_id', 'read'] }
+      { fields: ['user_id', 'read'] },
+      { unique: true, fields: ['source_event_id', 'user_id'] }
     ]
   });
 
