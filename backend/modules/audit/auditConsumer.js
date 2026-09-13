@@ -17,7 +17,9 @@ async function auditConsumer(event) {
     eventType: event.type,
     payload: event.payload,
     aggregateId: event.aggregateId ?? null,
-    occurredAt: event.createdAt,
+    // OutboxEvent stores the timestamp as `created_at` (underscored column);
+    // plain event objects (tests, future emitters) use `createdAt`.
+    occurredAt: event.createdAt ?? event.created_at,
   };
   const hash = computeHash(fields, prevHash);
 
