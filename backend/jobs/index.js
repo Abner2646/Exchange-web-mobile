@@ -67,8 +67,10 @@ class JobManager {
       console.error('❌ Error iniciando Reconciliation:', error.message);
     }
 
-    if (this.jobs.outboxPublisher && typeof this.jobs.outboxPublisher.start === 'function') {
+    try {
       this.jobs.outboxPublisher.start();
+    } catch (error) {
+      console.error('❌ Error iniciando Outbox Publisher:', error.message);
     }
 
     console.log('\n✅ ===== TODOS LOS JOBS INICIADOS ===== ✅\n');

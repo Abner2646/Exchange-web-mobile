@@ -16,10 +16,18 @@ async function publishBatch({ events, dispatch, markDispatched, markFailed, comp
   for (const event of events) {
     try {
       await dispatch(event);
-      await markDispatched(event);
+      try {
+        await markDispatched(event);
+      } catch (persistErr) {
+        console.error(`[outbox] markDispatched failed for event ${event.id}:`, persistErr.message);
+      }
       ok++;
     } catch (error) {
-      await markFailed(event, computeRetryState(event, error));
+      try {
+        await markFailed(event, computeRetryState(event, error));
+      } catch (persistErr) {
+        console.error(`[outbox] markFailed failed for event ${event.id}:`, persistErr.message);
+      }
       failed++;
     }
   }

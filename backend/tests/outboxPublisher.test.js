@@ -5,7 +5,8 @@ describe('computeRetry', () => {
   test('reschedules with exponential backoff below max attempts', () => {
     expect(computeRetry({ attempts: 0 }, new Error('e'), opts))
       .toEqual({ status: 'pending', attempts: 1, lastError: 'e', availableAt: new Date(1000) });
-    expect(computeRetry({ attempts: 1 }, new Error('e'), opts).availableAt).toEqual(new Date(2000));
+    expect(computeRetry({ attempts: 1 }, new Error('e'), opts))
+      .toEqual({ status: 'pending', attempts: 2, lastError: 'e', availableAt: new Date(2000) });
   });
   test('dead-letters at max attempts', () => {
     expect(computeRetry({ attempts: 2 }, new Error('boom'), opts))
