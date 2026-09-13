@@ -5,6 +5,7 @@ const candleGeneratorJob = require('./candleGenerator.job');
 const blockchainJobs = require('./blockchain.jobs'); // Tu job existente
 const idempotencyCleanupJob = require('./idempotencyCleanup.job');
 const reconciliationJob = require('./reconciliation.job');
+const outboxPublisherJob = require('./outboxPublisher.job');
 
 class JobManager {
 
@@ -15,7 +16,8 @@ class JobManager {
       candleGenerator: candleGeneratorJob,
       blockchain: blockchainJobs,
       idempotencyCleanup: idempotencyCleanupJob,
-      reconciliation: reconciliationJob
+      reconciliation: reconciliationJob,
+      outboxPublisher: outboxPublisherJob,
     };
   }
 
@@ -63,6 +65,10 @@ class JobManager {
       this.jobs.reconciliation.start();
     } catch (error) {
       console.error('❌ Error iniciando Reconciliation:', error.message);
+    }
+
+    if (this.jobs.outboxPublisher && typeof this.jobs.outboxPublisher.start === 'function') {
+      this.jobs.outboxPublisher.start();
     }
 
     console.log('\n✅ ===== TODOS LOS JOBS INICIADOS ===== ✅\n');
