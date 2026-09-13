@@ -9,10 +9,10 @@ function initAuditLog(sequelize) {
     eventId: { type: DataTypes.UUID, allowNull: false, unique: true, field: 'event_id' },
     eventType: { type: DataTypes.STRING, allowNull: false, field: 'event_type' },
     payload: { type: DataTypes.JSONB, allowNull: false },
-    aggregateId: { type: DataTypes.UUID, allowNull: true, field: 'aggregate_id' },
+    aggregateId: { type: DataTypes.TEXT, allowNull: true, field: 'aggregate_id' },
     occurredAt: { type: DataTypes.DATE, allowNull: false, field: 'occurred_at' },
-    prevHash: { type: DataTypes.CHAR(64), allowNull: true, field: 'prev_hash' },
-    hash: { type: DataTypes.CHAR(64), allowNull: false },
+    prevHash: { type: DataTypes.STRING(64), allowNull: true, field: 'prev_hash' },
+    hash: { type: DataTypes.STRING(64), allowNull: false },
   }, {
     sequelize,
     modelName: 'AuditLog',
