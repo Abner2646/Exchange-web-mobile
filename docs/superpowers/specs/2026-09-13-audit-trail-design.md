@@ -53,10 +53,10 @@ English identifiers, snake_case columns:
 | `eventId` | `event_id` | UUID, **UNIQUE**, not null | source outbox event id; idempotency key (one row per event) |
 | `eventType` | `event_type` | STRING not null | e.g. `P2PTransactionCompleted` |
 | `payload` | `payload` | JSONB not null | snapshot of the event facts |
-| `aggregateId` | `aggregate_id` | UUID nullable | affected entity (correlation/query) |
+| `aggregateId` | `aggregate_id` | TEXT nullable | affected entity (correlation/query). TEXT, not UUID: a generic audit log must accept non-UUID aggregate ids from future non-money events (KYC/admin/login). |
 | `occurredAt` | `occurred_at` | DATE not null | when it happened (the event's outbox `created_at`) |
-| `prevHash` | `prev_hash` | CHAR(64) nullable | hash of the previous row (null/genesis for the first) |
-| `hash` | `hash` | CHAR(64) not null | this row's hash — the chain link |
+| `prevHash` | `prev_hash` | VARCHAR(64) nullable | hash of the previous row (null/genesis for the first). VARCHAR, not CHAR(64): CHAR blank-pads the short `GENESIS` sentinel, which would corrupt the recompute comparison. |
+| `hash` | `hash` | VARCHAR(64) not null | this row's hash — the chain link (VARCHAR for symmetry with `prev_hash`). |
 | `createdAt` | `created_at` | DATE | when audited |
 
 Indexes: unique `(event_id)`; `(event_type)`; `(aggregate_id)`. PK `id` gives order.
