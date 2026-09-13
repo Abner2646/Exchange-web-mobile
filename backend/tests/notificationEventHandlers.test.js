@@ -25,3 +25,13 @@ test('unknown type is ignored', async () => {
   await handleP2PTransactionEvent({ id: 'e', type: 'Nope', payload: {} });
   expect(Notification.notifyBothParties).not.toHaveBeenCalled();
 });
+
+test('malformed known event with missing payload does not call notifyBothParties', async () => {
+  await handleP2PTransactionEvent({ id: 'e', type: 'P2PTransactionCompleted', payload: {} });
+  expect(Notification.notifyBothParties).not.toHaveBeenCalled();
+});
+
+test('malformed known event with null payload does not call notifyBothParties', async () => {
+  await handleP2PTransactionEvent({ id: 'e', type: 'P2PTransactionCompleted', payload: null });
+  expect(Notification.notifyBothParties).not.toHaveBeenCalled();
+});

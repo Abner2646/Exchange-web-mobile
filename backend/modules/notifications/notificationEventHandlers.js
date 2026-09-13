@@ -12,6 +12,7 @@ const TYPE_TO_STATUS = {
 async function handleP2PTransactionEvent(event) {
   const status = TYPE_TO_STATUS[event.type];
   if (!status) return;
+  if (!event.payload || !event.payload.transaction) return;
   const { Notification } = require('../../models');
   const { buyerId, sellerId, transaction } = event.payload;
   const transaccionData = {
