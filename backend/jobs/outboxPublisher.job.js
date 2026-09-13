@@ -11,6 +11,7 @@ const FREQUENCY_MS = n(process.env.OUTBOX_PUBLISHER_INTERVAL_MS, 2000);
 const MAX_ATTEMPTS = n(process.env.OUTBOX_MAX_ATTEMPTS, 10);
 const BATCH_SIZE = n(process.env.OUTBOX_BATCH_SIZE, 100);
 const BASE_BACKOFF_MS = n(process.env.OUTBOX_BASE_BACKOFF_MS, 5000);
+const OUTBOX_MAX_BACKOFF_MS = n(process.env.OUTBOX_MAX_BACKOFF_MS, 300000);
 
 class OutboxPublisherJob {
   constructor() { this.interval = null; this.isRunning = false; this.publishing = false; this.lastRunAt = null; }
@@ -48,7 +49,7 @@ class OutboxPublisherJob {
           }
           return ev.update(next);
         },
-        computeRetryState: (ev, err) => computeRetry(ev, err, { maxAttempts: MAX_ATTEMPTS, baseBackoffMs: BASE_BACKOFF_MS, now: Date.now() }),
+        computeRetryState: (ev, err) => computeRetry(ev, err, { maxAttempts: MAX_ATTEMPTS, baseBackoffMs: BASE_BACKOFF_MS, maxBackoffMs: OUTBOX_MAX_BACKOFF_MS, now: Date.now() }),
       });
       this.lastRunAt = new Date();
     } catch (error) {

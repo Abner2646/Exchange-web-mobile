@@ -2,12 +2,12 @@
 // Pure retry/backoff decision + batch orchestration. No DB/bus deps — everything
 // is injected, so it unit-tests without a database.
 
-function computeRetry(event, error, { maxAttempts, baseBackoffMs, now }) {
+function computeRetry(event, error, { maxAttempts, baseBackoffMs, maxBackoffMs, now }) {
   const attempts = event.attempts + 1;
   if (attempts >= maxAttempts) {
     return { status: 'failed', attempts, lastError: error.message };
   }
-  const backoff = baseBackoffMs * 2 ** (attempts - 1);
+  const backoff = Math.min(baseBackoffMs * 2 ** (attempts - 1), maxBackoffMs);
   return { status: 'pending', attempts, lastError: error.message, availableAt: new Date(now + backoff) };
 }
 

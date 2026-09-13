@@ -4,7 +4,11 @@
 const eventBus = require('./eventBus');
 const notificationHandlers = require('../notifications/notificationEventHandlers');
 
+let wired = false;
+
 function registerAllHandlers() {
+  if (wired) return;
+  wired = true;
   notificationHandlers.register(eventBus);
 }
 

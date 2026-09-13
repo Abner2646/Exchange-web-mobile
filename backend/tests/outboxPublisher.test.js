@@ -1,7 +1,7 @@
 const { computeRetry, publishBatch } = require('../modules/events/outboxPublisher');
 
 describe('computeRetry', () => {
-  const opts = { maxAttempts: 3, baseBackoffMs: 1000, now: 0 };
+  const opts = { maxAttempts: 3, baseBackoffMs: 1000, maxBackoffMs: 1000000, now: 0 };
   test('reschedules with exponential backoff below max attempts', () => {
     expect(computeRetry({ attempts: 0 }, new Error('e'), opts))
       .toEqual({ status: 'pending', attempts: 1, lastError: 'e', availableAt: new Date(1000) });
@@ -11,6 +11,12 @@ describe('computeRetry', () => {
   test('dead-letters at max attempts', () => {
     expect(computeRetry({ attempts: 2 }, new Error('boom'), opts))
       .toEqual({ status: 'failed', attempts: 3, lastError: 'boom' });
+  });
+  test('caps backoff at maxBackoffMs', () => {
+    const capOpts = { maxAttempts: 10, baseBackoffMs: 1000, maxBackoffMs: 3000, now: 0 };
+    // attempts=0 → raw=1000, attempts=1 → raw=2000, attempts=2 → raw=4000 (exceeds cap)
+    expect(computeRetry({ attempts: 2 }, new Error('e'), capOpts))
+      .toEqual({ status: 'pending', attempts: 3, lastError: 'e', availableAt: new Date(3000) });
   });
 });
 
