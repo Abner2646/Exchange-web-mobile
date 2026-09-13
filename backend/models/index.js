@@ -29,6 +29,7 @@ const orderModel = require('../modules/trading/order.model');
 const tradeModel = require('../modules/trading/trade.model');
 const priceCandleModel = require('../modules/trading/priceCandle.model');
 const idempotencyKeyModel = require('./idempotencyKey.model');
+const outboxEventModel = require('../modules/events/outbox.model');
 
 // LEDGER (partida doble) — Radar #1 + #10
 const initLedgerAccount = require('../modules/balances/ledger/ledgerAccount.entity');
@@ -81,6 +82,7 @@ const Order = orderModel(sequelize);
 const Trade = tradeModel(sequelize);
 const PriceCandle = priceCandleModel(sequelize);
 const IdempotencyKey = idempotencyKeyModel(sequelize);
+const OutboxEvent = outboxEventModel(sequelize);
 
 // 🆕 LEDGER MODELS (partida doble)
 const LedgerAccount = initLedgerAccount(sequelize);
@@ -340,6 +342,7 @@ module.exports = {
   Trade,
   PriceCandle,
   IdempotencyKey,
+  OutboxEvent,
   // 🆕 LEDGER MODELS (partida doble)
   LedgerAccount,
   LedgerEntry,
