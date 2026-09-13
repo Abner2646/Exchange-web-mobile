@@ -19,4 +19,25 @@ describe('eventBus', () => {
     eventBus.on('B', 'boom', async () => { throw new Error('fail'); });
     await expect(eventBus.dispatch({ type: 'B', payload: 1 })).rejects.toThrow('fail');
   });
+
+  test('onAny handlers run for every event type', async () => {
+    const seen = [];
+    eventBus.onAny('audit', async (e) => seen.push(e.type));
+    await eventBus.dispatch({ type: 'A', payload: 1 });
+    await eventBus.dispatch({ type: 'Z', payload: 2 });
+    expect(seen).toEqual(['A', 'Z']);
+  });
+
+  test('onAny handlers run BEFORE per-type handlers', async () => {
+    const order = [];
+    eventBus.on('A', 'typed', async () => order.push('typed'));
+    eventBus.onAny('any', async () => order.push('any'));
+    await eventBus.dispatch({ type: 'A', payload: 1 });
+    expect(order).toEqual(['any', 'typed']);
+  });
+
+  test('a throwing onAny handler propagates', async () => {
+    eventBus.onAny('boom', async () => { throw new Error('fail'); });
+    await expect(eventBus.dispatch({ type: 'A', payload: 1 })).rejects.toThrow('fail');
+  });
 });
