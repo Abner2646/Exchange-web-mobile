@@ -57,7 +57,10 @@ async function resolveCase(req, res) {
     const wId = c.evidence.withdrawalId;
     if (decision === 'approve') {
       // Clear hold so claimForProcessing's WHERE (requiresApproval:false) matches.
-      await BlockchainTransaction.approveWithdrawal(wId, req.user.id);
+      // approveWithdrawal is a no-op (returns false) if the row is no longer a
+      // pending withdrawal — don't close the case on a silent no-op.
+      const ok = await BlockchainTransaction.approveWithdrawal(wId, req.user.id);
+      if (!ok) return res.status(409).json({ error: 'Retiro no encontrado o ya no está pendiente' });
     } else {
       // Refund reserved funds via the existing reaper path: unblocks balance +
       // marks withdrawal failed. Guards against non-pending/processing status.

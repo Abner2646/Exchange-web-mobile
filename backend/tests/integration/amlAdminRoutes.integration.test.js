@@ -60,6 +60,31 @@ describe('AML admin routes', () => {
     expect((await AmlCase.findByPk(c.id)).status).toBe('closed');
   });
 
+  test('resolve S5 case: reject fails the held withdrawal and refunds the reserved funds', async () => {
+    const h = f.authHeader(await adminConMFA());
+    await businessConfig.set('aml.monitoring.enabled', 'true');
+    await businessConfig.set('aml.holdEnforcement.enabled', 'true');
+    const denylist = require('../../modules/aml/denylist.model');
+    await denylist.addAddress({ address: '0xbad', network: 'ethereum', source: 'OFAC' });
+    const user = await f.seedUser();
+    const eth = await Crypto.create({ symbol: 'ETH', name: 'ETH', network: 'ethereum' });
+    await f.seedBalance(user, eth, '10');
+    const w = await BlockchainTransaction.createWithdrawal({
+      userId: user.id, cryptoId: eth.id, amount: '1', destinationAddress: '0xbad',
+    });
+    const c = await AmlCase.findOne({ where: { signalId: 'S5' } });
+
+    await request(app).put(`/api/aml/cases/${c.id}/resolve`).set(h).send({ decision: 'reject' }).expect(200);
+
+    // Withdrawal marked failed, case closed, and the reserved funds are back in available.
+    expect((await BlockchainTransaction.findByPk(w.id)).status).toBe('failed');
+    expect((await AmlCase.findByPk(c.id)).status).toBe('closed');
+    const posting = require('../../modules/balances/ledger/postingService');
+    const { PURPOSES } = require('../../modules/balances/ledger/ledgerAccounts');
+    const avail = await posting.getAccountBalance({ ownerId: user.id, purpose: PURPOSES.FUNDING_AVAILABLE, cryptoId: eth.id });
+    expect(Number(avail)).toBe(10); // 10 blocked→1 on withdraw, refunded on reject
+  });
+
   test('unauthenticated request is rejected', async () => {
     await request(app).get('/api/aml/cases').expect(401);
   });
