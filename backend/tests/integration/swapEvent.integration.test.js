@@ -28,6 +28,7 @@ describe('SwapExecuted event', () => {
       .send({ pairId: par.id, type: 'buy', baseAmount: 1 });
 
     expect(res.status).toBe(201);
+    const swapId = res.body.data.id;
 
     const rows = await OutboxEvent.findAll({ where: { type: 'SwapExecuted' } });
     expect(rows).toHaveLength(1);
@@ -35,9 +36,10 @@ describe('SwapExecuted event', () => {
     const evt = rows[0];
     expect(evt.status).toBe('pending');
     expect(evt.payload.userId).toBe(user.id);
-    expect(evt.payload.swapId).toBeDefined();
-    // aggregateId must equal the swapId embedded in the payload
-    expect(evt.aggregateId).toBe(evt.payload.swapId);
+    // swapId + aggregateId must both equal the actual persisted swap PK
+    expect(evt.payload.swapId).toBe(swapId);
+    expect(evt.aggregateId).toBe(swapId);
+    expect(evt.payload.pairId).toBe(par.id);
     // Spot-check numeric fields are stored as canonical strings
     expect(evt.payload.type).toBe('buy');
     expect(typeof evt.payload.baseAmount).toBe('string');
