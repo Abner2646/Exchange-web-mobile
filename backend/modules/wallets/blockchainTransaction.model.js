@@ -596,6 +596,16 @@ function createTransaccionBlockchainModel(sequelize) {
     }
   };
 
+  // Operator clears an AML S5 hold: the withdrawal becomes claimable again.
+  // Sets requiresApproval=false so claimForProcessing's WHERE clause matches.
+  BlockchainTransaction.approveWithdrawal = async (id, adminId) => {
+    const [affected] = await BlockchainTransaction.update(
+      { requiresApproval: false, approvedBy: adminId, approvalDate: new Date() },
+      { where: { id, type: 'withdrawal', status: 'pending' } }
+    );
+    return affected === 1;
+  };
+
   // =================== MÉTODOS DE CONSULTA ESPECÍFICOS ===================
 
   BlockchainTransaction.getPendingDeposits = async () => {
