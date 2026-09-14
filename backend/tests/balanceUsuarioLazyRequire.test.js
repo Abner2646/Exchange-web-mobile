@@ -74,14 +74,21 @@ describeIfDb('transaccionBlockchain.model.js: require lazy de UserBalance', () =
     const { registerPendingDeposit } = require('../modules/balances/ledger/operations');
     await registerPendingDeposit({ userId: user.id, criptomonedaId: cripto.id, cantidad: '1.50000000', referencia: `dep-pend:${user.id}` });
 
+    // Nombres de campo actuales (rename Fase 6.2, chunk 4): cryptoId/amount/status.
+    // Se corre dentro de una transacción real para que la acreditación en el
+    // ledger y el evento DepositConfirmed que _creditDeposit emite al outbox
+    // sean atómicos (igual que en producción vía updateConfirmations); antes
+    // se pasaba null y el emit escribía en autocommit una fila fuera de la tx.
+    const t = await sequelize.transaction();
     await BlockchainTransaction._creditDeposit(
-      { id: '99999999-9999-4999-8999-999999999999', userId: user.id, criptomonedaId: cripto.id, cantidad: '1.50000000', estado: 'pendiente' },
-      null
+      { id: '99999999-9999-4999-8999-999999999999', userId: user.id, cryptoId: cripto.id, amount: '1.50000000', txHash: `dep-conf:${user.id}`, status: 'pendiente' },
+      t
     );
+    await t.commit();
 
     const posting = require('../modules/balances/ledger/postingService');
     const { PURPOSES } = require('../modules/balances/ledger/ledgerAccounts');
-    const disponible = await posting.getAccountBalance({ ownerId: user.id, proposito: PURPOSES.FUNDING_AVAILABLE, criptomonedaId: cripto.id });
+    const disponible = await posting.getAccountBalance({ ownerId: user.id, purpose: PURPOSES.FUNDING_AVAILABLE, cryptoId: cripto.id });
     expect(disponible).toBe('1.50000000');
   });
 });
