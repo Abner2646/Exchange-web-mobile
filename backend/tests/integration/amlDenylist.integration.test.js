@@ -20,6 +20,14 @@ describe('AML denylist model', () => {
     expect(await denylist.isDenylisted('bc1qexample', 'bitcoin')).not.toBeNull();
   });
 
+  test('network is canonicalized: an operator typo does not defeat screening', async () => {
+    // Operator types a mixed-case / padded network; the withdrawal side screens
+    // with the canonical crypto.network ('ethereum'). Must still match (address
+    // is also EVM-lowercased because the network canonicalizes to 'ethereum').
+    await denylist.addAddress({ address: '0xFEED', network: ' Ethereum ', source: 'OFAC' });
+    expect(await denylist.isDenylisted('0xfeed', 'ethereum')).not.toBeNull();
+  });
+
   test('list + remove', async () => {
     const row = await denylist.addAddress({ address: '0xdead', network: 'ethereum' });
     expect(await denylist.listAddresses()).toHaveLength(1);

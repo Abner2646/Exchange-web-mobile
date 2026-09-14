@@ -62,9 +62,15 @@ async function resolveCase(req, res) {
       const ok = await BlockchainTransaction.approveWithdrawal(wId, req.user.id);
       if (!ok) return res.status(409).json({ error: 'Retiro no encontrado o ya no está pendiente' });
     } else {
-      // Refund reserved funds via the existing reaper path: unblocks balance +
-      // marks withdrawal failed. Guards against non-pending/processing status.
-      await BlockchainTransaction.failWithdrawal(wId, 'AML S5 rejected');
+      // Only refund/fail a withdrawal that is STILL held and pending. A shadow-mode
+      // case (opened with held:false, the withdrawal was allowed to proceed) or an
+      // already-progressed/approved withdrawal must NOT be failed — failWithdrawal
+      // would throw on its status guard (500) or wrongly refund in-flight funds.
+      // In those cases we just close the case without touching money.
+      const w = await BlockchainTransaction.findByPk(wId);
+      if (w && w.status === 'pending' && w.requiresApproval) {
+        await BlockchainTransaction.failWithdrawal(wId, 'AML S5 rejected');
+      }
     }
   }
 

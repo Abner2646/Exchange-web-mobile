@@ -85,6 +85,29 @@ describe('AML admin routes', () => {
     expect(Number(avail)).toBe(10); // 10 blocked→1 on withdraw, refunded on reject
   });
 
+  test('reject a shadow-mode S5 case closes it without failing the (non-held) withdrawal', async () => {
+    const h = f.authHeader(await adminConMFA());
+    // Shadow mode: case is opened but the withdrawal is NOT held and proceeds.
+    await businessConfig.set('aml.monitoring.enabled', 'true');
+    await businessConfig.set('aml.holdEnforcement.enabled', 'false');
+    const denylist = require('../../modules/aml/denylist.model');
+    await denylist.addAddress({ address: '0xbad', network: 'ethereum', source: 'OFAC' });
+    const user = await f.seedUser();
+    const eth = await Crypto.create({ symbol: 'ETH', name: 'ETH', network: 'ethereum' });
+    await f.seedBalance(user, eth, '10');
+    const w = await BlockchainTransaction.createWithdrawal({
+      userId: user.id, cryptoId: eth.id, amount: '1', destinationAddress: '0xbad',
+    });
+    expect(w.requiresApproval).toBe(false); // shadow: not held
+    const c = await AmlCase.findOne({ where: { signalId: 'S5' } });
+
+    // Reject must NOT 500 (failWithdrawal would throw on a non-held row) and must
+    // leave the withdrawal untouched.
+    await request(app).put(`/api/aml/cases/${c.id}/resolve`).set(h).send({ decision: 'reject' }).expect(200);
+    expect((await AmlCase.findByPk(c.id)).status).toBe('closed');
+    expect((await BlockchainTransaction.findByPk(w.id)).status).toBe('pending'); // not failed
+  });
+
   test('unauthenticated request is rejected', async () => {
     await request(app).get('/api/aml/cases').expect(401);
   });
