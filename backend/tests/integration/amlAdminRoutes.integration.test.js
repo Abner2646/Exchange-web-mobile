@@ -108,6 +108,38 @@ describe('AML admin routes', () => {
     expect((await BlockchainTransaction.findByPk(w.id)).status).toBe('pending'); // not failed
   });
 
+  test('approve on a shadow-mode case closes it WITHOUT stamping approvedBy on the non-held withdrawal', async () => {
+    const h = f.authHeader(await adminConMFA());
+    await businessConfig.set('aml.monitoring.enabled', 'true');
+    await businessConfig.set('aml.holdEnforcement.enabled', 'false'); // shadow
+    const denylist = require('../../modules/aml/denylist.model');
+    await denylist.addAddress({ address: '0xbad', network: 'ethereum', source: 'OFAC' });
+    const user = await f.seedUser();
+    const eth = await Crypto.create({ symbol: 'ETH', name: 'ETH', network: 'ethereum' });
+    await f.seedBalance(user, eth, '10');
+    const w = await BlockchainTransaction.createWithdrawal({
+      userId: user.id, cryptoId: eth.id, amount: '1', destinationAddress: '0xbad',
+    });
+    const c = await AmlCase.findOne({ where: { signalId: 'S5' } });
+
+    await request(app).put(`/api/aml/cases/${c.id}/resolve`).set(h).send({ decision: 'approve' }).expect(200);
+    expect((await AmlCase.findByPk(c.id)).status).toBe('closed');
+    // The withdrawal was never held → approve must not touch it (no false approval stamp).
+    const row = await BlockchainTransaction.findByPk(w.id);
+    expect(row.approvedBy).toBeNull();
+    expect(row.approvalDate).toBeNull();
+  });
+
+  test('resolving an already-closed case returns 409', async () => {
+    const h = f.authHeader(await adminConMFA());
+    const user = await f.seedUser();
+    const { case: c } = await require('../../modules/aml/case.model').openCase({
+      userId: user.id, signalId: 'S5', severity: 'high', evidence: {}, dedupeKey: `${user.id}:S5:x`,
+    });
+    await require('../../modules/aml/case.model').resolveCase(c.id, { status: 'closed', resolvedBy: user.id });
+    await request(app).put(`/api/aml/cases/${c.id}/resolve`).set(h).send({ decision: 'approve' }).expect(409);
+  });
+
   test('unauthenticated request is rejected', async () => {
     await request(app).get('/api/aml/cases').expect(401);
   });

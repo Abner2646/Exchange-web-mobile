@@ -68,8 +68,9 @@ function initBlockchainTransaction(sequelize) {
     },
     requiresApproval: {
       type: DataTypes.BOOLEAN,
-      defaultValue: false,
-      field: 'requires_approval'
+      allowNull: false, // NOT NULL: el pipeline de transmisión filtra `requiresApproval:false`
+      defaultValue: false, // con igualdad estricta SQL (= false), que excluye filas NULL y las
+      field: 'requires_approval' // dejaría trabadas. Sin NULL posible, esos filtros son correctos.
     },
     approvedBy: {
       type: DataTypes.UUID,

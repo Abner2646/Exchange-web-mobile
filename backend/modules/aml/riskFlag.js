@@ -4,6 +4,12 @@
 const RANK = { low: 0, medium: 1, high: 2 };
 
 async function raiseUserRisk(userId, targetLevel, transaction = null) {
+  // Fail loud on an unknown level: RANK[unknown] is undefined and `undefined > n`
+  // is false, which would SILENTLY skip flagging an account — a compliance miss.
+  // Better a thrown programming error than a quietly un-flagged high-risk user.
+  if (RANK[targetLevel] === undefined) {
+    throw new Error(`raiseUserRisk: nivel de riesgo desconocido '${targetLevel}'`);
+  }
   const { User } = require('../../models');
   const user = await User.findByPk(userId, { transaction });
   if (!user) return;

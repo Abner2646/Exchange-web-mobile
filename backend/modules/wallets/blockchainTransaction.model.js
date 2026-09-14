@@ -416,7 +416,13 @@ function createTransaccionBlockchainModel(sequelize) {
       const amlOn = await amlConfig.isMonitoringEnabled();
       if (amlOn) {
         const crypto = await sequelize.models.Crypto.findByPk(data.cryptoId, { transaction });
-        const network = crypto ? crypto.network : null;
+        // Fail-closed: if we can't resolve the network we can't screen the address,
+        // and letting an unscreened withdrawal through would silently bypass OFAC/S5.
+        // Roll back rather than transmit blind. (crypto is normally always present.)
+        if (!crypto || !crypto.network) {
+          throw new Error('No se puede screenear el retiro: red de la cripto no resuelta');
+        }
+        const network = crypto.network;
         const screen = await amlScreening.checkWithdrawal(
           { address: data.destinationAddress, network }, transaction
         );

@@ -52,24 +52,22 @@ async function resolveCase(req, res) {
   }
   const c = await cases.getCase(req.params.id);
   if (!c) return res.status(404).json({ error: 'Caso no encontrado' });
+  // Don't re-resolve: a second resolve would overwrite resolvedBy/resolvedAt and,
+  // for a genuinely-held row, could re-touch the withdrawal. One resolution only.
+  if (c.status === 'closed') return res.status(409).json({ error: 'El caso ya está resuelto' });
 
+  // Only touch the withdrawal when it is STILL held (requiresApproval + pending).
+  // A shadow-mode case (held:false, the withdrawal proceeded) or one whose
+  // withdrawal already progressed is closed WITHOUT any fund action — approving a
+  // never-held row would poison approvedBy/approvalDate, and failing a non-pending
+  // row would throw. The human decision is still recorded by closing the case.
   if (c.signalId === 'S5' && c.evidence && c.evidence.withdrawalId) {
-    const wId = c.evidence.withdrawalId;
-    if (decision === 'approve') {
-      // Clear hold so claimForProcessing's WHERE (requiresApproval:false) matches.
-      // approveWithdrawal is a no-op (returns false) if the row is no longer a
-      // pending withdrawal — don't close the case on a silent no-op.
-      const ok = await BlockchainTransaction.approveWithdrawal(wId, req.user.id);
-      if (!ok) return res.status(409).json({ error: 'Retiro no encontrado o ya no está pendiente' });
-    } else {
-      // Only refund/fail a withdrawal that is STILL held and pending. A shadow-mode
-      // case (opened with held:false, the withdrawal was allowed to proceed) or an
-      // already-progressed/approved withdrawal must NOT be failed — failWithdrawal
-      // would throw on its status guard (500) or wrongly refund in-flight funds.
-      // In those cases we just close the case without touching money.
-      const w = await BlockchainTransaction.findByPk(wId);
-      if (w && w.status === 'pending' && w.requiresApproval) {
-        await BlockchainTransaction.failWithdrawal(wId, 'AML S5 rejected');
+    const w = await BlockchainTransaction.findByPk(c.evidence.withdrawalId);
+    if (w && w.status === 'pending' && w.requiresApproval) {
+      if (decision === 'approve') {
+        await BlockchainTransaction.approveWithdrawal(w.id, req.user.id); // clear hold → claimable
+      } else {
+        await BlockchainTransaction.failWithdrawal(w.id, 'AML S5 rejected'); // refund reserved funds
       }
     }
   }
