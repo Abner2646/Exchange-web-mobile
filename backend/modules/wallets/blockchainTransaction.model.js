@@ -4,6 +4,10 @@ const initTransaccionBlockchain = require('./blockchainTransaction.entity');
 const { Op } = require('sequelize');
 const money = require('../../utils/money');
 const { emitEvent } = require('../events/emitEvent');
+const amlConfig = require('../aml/amlConfig');
+const amlScreening = require('../aml/amlScreening');
+const amlCases = require('../aml/case.model');
+const amlRiskFlag = require('../aml/riskFlag');
 
 function createTransaccionBlockchainModel(sequelize) {
   const BlockchainTransaction = initTransaccionBlockchain(sequelize);
@@ -399,17 +403,53 @@ function createTransaccionBlockchainModel(sequelize) {
       // retiro" para el caller.
       await UserBalance.blockBalance(data.userId, data.cryptoId, String(data.amount), transaction);
 
+      // AML S5 (sanctions screening) — only when monitoring is enabled; otherwise
+      // this is byte-for-byte the legacy path. A denylist hit HOLDS the withdrawal
+      // (requiresApproval=true → the transmit claim skips it) when enforcement is on,
+      // or is observed-only (shadow) when off.
+      let hold = false;
+      let s5Match = null;
+      const amlOn = await amlConfig.isMonitoringEnabled();
+      if (amlOn) {
+        const crypto = await sequelize.models.Crypto.findByPk(data.cryptoId, { transaction });
+        const network = crypto ? crypto.network : null;
+        const screen = await amlScreening.checkWithdrawal(
+          { address: data.destinationAddress, network }, transaction
+        );
+        if (screen.denylisted) {
+          s5Match = screen.match;
+          hold = await amlConfig.isHoldEnforcementEnabled();
+        }
+      }
+
       // Crear transacción de retiro
       const retiroData = {
         ...data,
         type: 'withdrawal',
         status: 'pending',
         confirmations: 0,
-        requiresApproval: false, // Automático por ahora
+        requiresApproval: hold,
         blockchainFee: data.blockchainFee || 0
       };
 
       const nuevoRetiro = await BlockchainTransaction.create(retiroData, { transaction });
+
+      if (s5Match) {
+        await amlCases.openCase({
+          userId: data.userId,
+          signalId: 'S5',
+          severity: 'high',
+          evidence: {
+            withdrawalId: nuevoRetiro.id,
+            address: data.destinationAddress,
+            source: s5Match.source || null,
+            held: hold,
+          },
+          dedupeKey: `${data.userId}:S5:${nuevoRetiro.id}`,
+        }, transaction);
+        await amlRiskFlag.raiseUserRisk(data.userId, 'high', transaction);
+      }
+
       // Lectura enriquecida DENTRO de la tx: así el body que el caller almacena en
       // la key (para replay) es idéntico al que devuelve/serializa la respuesta.
       const retiro = await BlockchainTransaction.getById(nuevoRetiro.id, transaction);
@@ -438,7 +478,7 @@ function createTransaccionBlockchainModel(sequelize) {
   BlockchainTransaction.claimForProcessing = async (id) => {
     const [affected] = await BlockchainTransaction.update(
       { status: 'processing' },
-      { where: { id, type: 'withdrawal', status: 'pending' } }
+      { where: { id, type: 'withdrawal', status: 'pending', requiresApproval: false } }
     );
     return affected === 1;
   };
