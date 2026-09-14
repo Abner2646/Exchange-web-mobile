@@ -38,7 +38,8 @@ describe('amlDataAccess', () => {
     await tx({ userId: u.id, cryptoId: c.id, type: 'withdrawal', amount: '2', status: 'failed', created_at: new Date(now - HOUR) });
     await tx({ userId: u.id, cryptoId: c.id, type: 'withdrawal', amount: '3', status: 'completed', created_at: new Date(now - 48 * HOUR) });
     const rows = await da.withdrawalsInWindow(u.id, new Date(now - 24 * HOUR));
-    expect(rows.map(r => String(r.amount))).toEqual(['1']); // only the recent non-failed one
+    // amount stays a canonical Decimal string ('1.00000000'); compare numerically.
+    expect(rows.map(r => Number(r.amount))).toEqual([1]); // only the recent non-failed one
   });
 
   test('confirmedDepositsInWindow filters by crypto + confirmed status + window', async () => {
@@ -50,7 +51,7 @@ describe('amlDataAccess', () => {
     await tx({ userId: u.id, cryptoId: btc.id, type: 'deposit', amount: '9', status: 'pending', created_at: new Date(now - 10 * 60 * 1000) });
     await tx({ userId: u.id, cryptoId: eth.id, type: 'deposit', amount: '7', status: 'confirmed', created_at: new Date(now - 10 * 60 * 1000) });
     const rows = await da.confirmedDepositsInWindow(u.id, btc.id, new Date(now - 60 * 60 * 1000));
-    expect(rows.map(r => String(r.amount))).toEqual(['5']);
+    expect(rows.map(r => Number(r.amount))).toEqual([5]);
   });
 
   test('p2pCompletedCountBetween counts the unordered pair, completed only, in window', async () => {

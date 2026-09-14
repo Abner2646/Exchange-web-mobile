@@ -9,7 +9,7 @@ async function withdrawalsInWindow(userId, since, transaction = null) {
     where: { userId, type: 'withdrawal', status: { [Op.ne]: 'failed' }, created_at: { [Op.gte]: since } },
     transaction,
   });
-  return rows.map(r => ({ id: r.id, cryptoId: r.cryptoId, amount: String(parseFloat(r.amount)), createdAt: r.created_at }));
+  return rows.map(r => ({ id: r.id, cryptoId: r.cryptoId, amount: String(r.amount), createdAt: r.created_at }));
 }
 
 async function onchainMovementsInWindow(userId, since, transaction = null) {
@@ -25,7 +25,7 @@ async function onchainMovementsInWindow(userId, since, transaction = null) {
     },
     transaction,
   });
-  return rows.map(r => ({ id: r.id, type: r.type, cryptoId: r.cryptoId, amount: String(parseFloat(r.amount)), createdAt: r.created_at }));
+  return rows.map(r => ({ id: r.id, type: r.type, cryptoId: r.cryptoId, amount: String(r.amount), createdAt: r.created_at }));
 }
 
 async function confirmedDepositsInWindow(userId, cryptoId, since, transaction = null) {
@@ -34,7 +34,7 @@ async function confirmedDepositsInWindow(userId, cryptoId, since, transaction = 
     where: { userId, cryptoId, type: 'deposit', status: { [Op.in]: ['confirmed', 'completed'] }, created_at: { [Op.gte]: since } },
     transaction,
   });
-  return rows.map(r => ({ id: r.id, amount: String(parseFloat(r.amount)), createdAt: r.created_at }));
+  return rows.map(r => ({ id: r.id, amount: String(r.amount), createdAt: r.created_at }));
 }
 
 async function p2pCompletedCountBetween(userIdA, userIdB, since, transaction = null) {
