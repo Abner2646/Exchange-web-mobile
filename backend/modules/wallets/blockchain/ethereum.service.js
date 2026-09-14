@@ -500,7 +500,8 @@ class EthereumService {
       const pendingWithdrawals = await BlockchainTransaction.findAll({
         where: {
           type: 'withdrawal',
-          status: 'pending'
+          status: 'pending',
+          requiresApproval: false // AML S5: no cargar retiros en hold al pipeline de transmisión
         },
         include: [
           {

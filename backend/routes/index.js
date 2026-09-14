@@ -21,10 +21,12 @@ const userRoutes = require('../modules/users/user.routes.js')
 const valoracionRoutes = require('../modules/p2p/rating.routes.js')
 const walletMaestraRoutes = require('../modules/wallets/masterWallet.routes.js')
 const businessConfigRoutes = require('../modules/config/businessConfig.routes.js')
+const amlRoutes = require('../modules/aml/aml.routes.js')
 
 // Derive routes
 router.use('/auth', authRoutes)
 router.use('/balances', balanceUsuarioRoutes)
+router.use('/aml', amlRoutes)
 router.use('/config', businessConfigRoutes)
 router.use('/crypto', cryptoRoutes)
 router.use('/direccionDeposito', direccionDepositoRoutes)
