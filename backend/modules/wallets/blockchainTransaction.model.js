@@ -265,7 +265,11 @@ function createTransaccionBlockchainModel(sequelize) {
         } else if (transaccion.type === 'withdrawal' && transaccion.status === 'processing') {
           updateData.status = 'confirmed';
         }
-      } else if (confirmaciones > 0 && transaccion.status === 'pending') {
+      } else if (confirmaciones > 0 && transaccion.status === 'pending' && !transaccion.requiresApproval) {
+        // AML S5: un retiro en hold (requiresApproval) NUNCA pasa a 'processing'
+        // por confirmaciones — solo un operador que lo aprueba puede liberarlo.
+        // Hoy es defensa en profundidad (un retiro en hold no tiene txHash, así que
+        // los pollers no lo levantan), pero cierra el guard a nivel modelo.
         updateData.status = 'processing';
       }
 
@@ -513,6 +517,14 @@ function createTransaccionBlockchainModel(sequelize) {
       // envío). Cualquier otro estado (confirmado/completado/fallido) es inválido.
       if (retiro.status !== 'pending' && retiro.status !== 'processing') {
         throw new Error('El retiro no está en estado pendiente ni procesando');
+      }
+
+      // AML S5: un retiro en hold (requiresApproval) NO puede marcarse como enviado
+      // — sería transmitir fondos a una dirección sancionada. El pipeline normal
+      // pasa por claimForProcessing (que ya excluye los held), pero este guard a
+      // nivel modelo cierra el footgun para cualquier caller directo (rutas, etc.).
+      if (retiro.requiresApproval) {
+        throw new Error('No se puede enviar un retiro con hold AML activo (requiere aprobación)');
       }
 
       await BlockchainTransaction.update(

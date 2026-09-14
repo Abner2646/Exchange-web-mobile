@@ -51,6 +51,9 @@ describe('S5 withdrawal hold', () => {
     const u = await User.findByPk(user.id);
     expect(u.amlRiskLevel).toBe('high');
     expect(u.amlReviewPending).toBe(true);
+    // Defense-in-depth: even a direct markWithdrawalAsSent cannot transmit a held row.
+    await expect(BlockchainTransaction.markWithdrawalAsSent(w.id, '0xhash', 0))
+      .rejects.toThrow(/hold AML/);
   });
 
   test('shadow mode (monitoring ON, enforcement OFF): case opened but NOT held', async () => {
@@ -60,6 +63,7 @@ describe('S5 withdrawal hold', () => {
     const { w } = await seedAndWithdraw('0xbad');
     expect(w.requiresApproval).toBe(false); // NOT held
     expect(await AmlCase.count()).toBe(1); // but observed
+    expect(await BlockchainTransaction.claimForProcessing(w.id)).toBe(true); // proceeds normally
   });
 
   test('monitoring ON, clean address: no case, claimable', async () => {
