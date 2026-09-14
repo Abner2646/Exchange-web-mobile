@@ -14,7 +14,7 @@ function initAmlCase(sequelize) {
     status: { type: DataTypes.ENUM('open', 'in_review', 'closed'), allowNull: false, defaultValue: 'open' },
     evidence: { type: DataTypes.JSONB, allowNull: false },
     sourceEventId: { type: DataTypes.UUID, allowNull: true, field: 'source_event_id' },
-    dedupeKey: { type: DataTypes.STRING, allowNull: false, unique: true, field: 'dedupe_key' },
+    dedupeKey: { type: DataTypes.STRING, allowNull: false, field: 'dedupe_key' },
     resolvedBy: { type: DataTypes.UUID, allowNull: true, field: 'resolved_by' },
     resolvedAt: { type: DataTypes.DATE, allowNull: true, field: 'resolved_at' },
   }, {
