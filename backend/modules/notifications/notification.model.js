@@ -473,9 +473,9 @@ function createNotificacionModel(sequelize) {
   };
 
   // 🆕 Nuevo método para notificar a AMBAS partes de la transacción
-  Notification.notifyBothParties = async (buyerId, sellerId, transaccionData, status) => {
+  Notification.notifyBothParties = async (buyerId, sellerId, transaccionData, status, { sourceEventId } = {}) => {
     const { id: transactionId, amount, crypto, fiatAmount, fiatCurrency } = transaccionData;
-    
+
     const templates = {
       'initiated': {
         buyer: 'P2P_NUEVA_TRANSACCION_COMPRADOR',
@@ -498,7 +498,7 @@ function createNotificacionModel(sequelize) {
     const estadoTemplates = templates[status];
     if (!estadoTemplates) return null;
 
-    const templateData = { 
+    const templateData = {
       transactionId,
       amount,
       symbol: crypto?.symbol || 'crypto',
@@ -511,12 +511,14 @@ function createNotificacionModel(sequelize) {
       Notification.createNotification({
         userId: buyerId,
         template: estadoTemplates.buyer,
-        templateData
+        templateData,
+        sourceEventId,
       }),
       Notification.createNotification({
         userId: sellerId,
         template: estadoTemplates.seller,
-        templateData
+        templateData,
+        sourceEventId,
       })
     ]);
 
@@ -557,14 +559,15 @@ function createNotificacionModel(sequelize) {
   };
 
   Notification.createNotification = async (data, options = {}) => {
-    const { 
-      userId, 
-      type, 
-      title, 
-      message, 
+    const {
+      userId,
+      type,
+      title,
+      message,
       important = false,
       template = null,
-      templateData = {}
+      templateData = {},
+      sourceEventId
     } = data;
 
     let finalData = { userId, type, title, message, important };
@@ -583,7 +586,17 @@ function createNotificacionModel(sequelize) {
 
     finalData.sentAt = new Date();
 
-    // 🆕 SOPORTAR TRANSACCIONES DE BD
+    if (data.sourceEventId) {
+      finalData.sourceEventId = data.sourceEventId;
+      const [notification] = await Notification.findOrCreate({
+        where: { sourceEventId: data.sourceEventId, userId: finalData.userId },
+        defaults: finalData,
+        transaction: options?.transaction,
+      });
+      return notification;
+    }
+
+    // SOPORTAR TRANSACCIONES DE BD
     return await Notification.create(finalData, options);
   };
 

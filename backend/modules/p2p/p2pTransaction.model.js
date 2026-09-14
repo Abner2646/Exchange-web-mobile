@@ -3,6 +3,7 @@
 const initTransaccionP2P = require('./p2pTransaction.entity');
 const { Op } = require('sequelize');
 const money = require('../../utils/money');
+const { emitEvent } = require('../events/emitEvent');
 
 function createTransaccionP2PModel(sequelize) {
   const P2PTransaction = initTransaccionP2P(sequelize);
@@ -97,9 +98,7 @@ P2PTransaction.createTransaction = async (data) => {
       status: 'initiated'
     }, { transaction });
 
-    // 📧 NOTIFICAR A AMBAS PARTES
-    const { Notification } = require('../../models/index');
-    
+    // 📧 EMITIR EVENTO AL OUTBOX
     const transaccionConDatos = {
       id: nuevaTransaccion.id,
       amount: cantidadNum,
@@ -108,13 +107,17 @@ P2PTransaction.createTransaction = async (data) => {
       fiatCurrency: oferta.fiatCurrency
     };
 
-    await Notification.notifyBothParties(
+    await emitEvent('P2PTransactionCreated', {
       buyerId,
       sellerId,
-      transaccionConDatos,
-      'initiated',
-      { transaction }
-    );
+      transaction: {
+        id: transaccionConDatos.id,
+        amount: transaccionConDatos.amount,
+        cryptoSymbol: transaccionConDatos.crypto?.symbol,
+        fiatAmount: transaccionConDatos.fiatAmount,
+        fiatCurrency: transaccionConDatos.fiatCurrency,
+      },
+    }, { transaction, aggregateId: transaccionConDatos.id });
 
     await transaction.commit();
     
@@ -171,9 +174,7 @@ P2PTransaction.completeTransaction = async (id, userId) => {
       completedAt: new Date()
     }, { transaction });
 
-    // 📧 NOTIFICAR A AMBAS PARTES
-    const { Notification } = require('../../models/index');
-    
+    // 📧 EMITIR EVENTO AL OUTBOX
     const transaccionConDatos = {
       id: transaccion.id,
       amount,
@@ -182,18 +183,22 @@ P2PTransaction.completeTransaction = async (id, userId) => {
       fiatCurrency: transaccion.fiatCurrency
     };
 
-    await Notification.notifyBothParties(
-      transaccion.buyerId,
-      transaccion.sellerId,
-      transaccionConDatos,
-      'completed',
-      { transaction }
-    );
+    await emitEvent('P2PTransactionCompleted', {
+      buyerId: transaccion.buyerId,
+      sellerId: transaccion.sellerId,
+      transaction: {
+        id: transaccionConDatos.id,
+        amount: transaccionConDatos.amount,
+        cryptoSymbol: transaccionConDatos.crypto?.symbol,
+        fiatAmount: transaccionConDatos.fiatAmount,
+        fiatCurrency: transaccionConDatos.fiatCurrency,
+      },
+    }, { transaction, aggregateId: transaccionConDatos.id });
 
     await transaction.commit();
-    
+
     return await P2PTransaction.getById(id);
-    
+
   } catch (error) {
     if (!transaction.finished) {
       await transaction.rollback();
@@ -243,9 +248,7 @@ P2PTransaction.cancelTransaction = async (id, userId) => {
       status: 'cancelled'
     }, { transaction });
 
-    // 📧 NOTIFICAR A AMBAS PARTES
-    const { Notification } = require('../../models/index');
-    
+    // 📧 EMITIR EVENTO AL OUTBOX
     const transaccionConDatos = {
       id: transaccion.id,
       amount,
@@ -254,18 +257,22 @@ P2PTransaction.cancelTransaction = async (id, userId) => {
       fiatCurrency: transaccion.fiatCurrency
     };
 
-    await Notification.notifyBothParties(
-      transaccion.buyerId,
-      transaccion.sellerId,
-      transaccionConDatos,
-      'cancelled',
-      { transaction }
-    );
+    await emitEvent('P2PTransactionCancelled', {
+      buyerId: transaccion.buyerId,
+      sellerId: transaccion.sellerId,
+      transaction: {
+        id: transaccionConDatos.id,
+        amount: transaccionConDatos.amount,
+        cryptoSymbol: transaccionConDatos.crypto?.symbol,
+        fiatAmount: transaccionConDatos.fiatAmount,
+        fiatCurrency: transaccionConDatos.fiatCurrency,
+      },
+    }, { transaction, aggregateId: transaccionConDatos.id });
 
     await transaction.commit();
-    
+
     return await P2PTransaction.getById(id);
-    
+
   } catch (error) {
     if (!transaction.finished) {
       await transaction.rollback();
@@ -304,9 +311,7 @@ P2PTransaction.cancelTransaction = async (id, userId) => {
         paymentConfirmedAt: new Date()
       }, { transaction });
 
-      // 📧 NOTIFICAR A AMBAS PARTES
-      const { Notification } = require('../../models/index');
-      
+      // 📧 EMITIR EVENTO AL OUTBOX
       const transaccionConDatos = {
         id: transaccion.id,
         amount: String(transaccion.amount),
@@ -315,13 +320,17 @@ P2PTransaction.cancelTransaction = async (id, userId) => {
         fiatCurrency: transaccion.fiatCurrency
       };
 
-      await Notification.notifyBothParties(
-        transaccion.buyerId,
-        transaccion.sellerId,
-        transaccionConDatos,
-        'payment_confirmed',
-        { transaction }
-      );
+      await emitEvent('P2PPaymentConfirmed', {
+        buyerId: transaccion.buyerId,
+        sellerId: transaccion.sellerId,
+        transaction: {
+          id: transaccionConDatos.id,
+          amount: transaccionConDatos.amount,
+          cryptoSymbol: transaccionConDatos.crypto?.symbol,
+          fiatAmount: transaccionConDatos.fiatAmount,
+          fiatCurrency: transaccionConDatos.fiatCurrency,
+        },
+      }, { transaction, aggregateId: transaccionConDatos.id });
 
       await transaction.commit();
       

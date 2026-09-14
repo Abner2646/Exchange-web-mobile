@@ -3,6 +3,7 @@ require('dotenv').config();
 const initTransaccionBlockchain = require('./blockchainTransaction.entity');
 const { Op } = require('sequelize');
 const money = require('../../utils/money');
+const { emitEvent } = require('../events/emitEvent');
 
 function createTransaccionBlockchainModel(sequelize) {
   const BlockchainTransaction = initTransaccionBlockchain(sequelize);
@@ -211,6 +212,14 @@ function createTransaccionBlockchainModel(sequelize) {
         referencia: `deposito-pend:${nuevoDeposito.id}`,
       }, transaction);
 
+      await emitEvent('DepositRegistered', {
+        blockchainTransactionId: nuevoDeposito.id,
+        userId: nuevoDeposito.userId,
+        cryptoId: nuevoDeposito.cryptoId,
+        amount: String(nuevoDeposito.amount),
+        txHash: nuevoDeposito.txHash,
+      }, { transaction, aggregateId: nuevoDeposito.id });
+
       await transaction.commit();
 
       return await BlockchainTransaction.getById(nuevoDeposito.id);
@@ -279,6 +288,15 @@ function createTransaccionBlockchainModel(sequelize) {
           cantidad: String(transaccion.amount),
           referencia: `retiro:${transaccion.id}`,
         }, transaction);
+
+        await emitEvent('WithdrawalTransmitted', {
+          blockchainTransactionId: transaccion.id,
+          userId: transaccion.userId,
+          cryptoId: transaccion.cryptoId,
+          amount: String(transaccion.amount),
+          destinationAddress: transaccion.destinationAddress,
+          txHash: transaccion.txHash,
+        }, { transaction, aggregateId: transaccion.id });
       }
 
       await transaction.commit();
@@ -318,6 +336,14 @@ function createTransaccionBlockchainModel(sequelize) {
         cantidad: String(transaccion.amount),
         referencia: `deposito-conf:${transaccion.id}`,
       }, transaction);
+
+      await emitEvent('DepositConfirmed', {
+        blockchainTransactionId: transaccion.id,
+        userId: transaccion.userId,
+        cryptoId: transaccion.cryptoId,
+        amount: String(transaccion.amount),
+        txHash: transaccion.txHash,
+      }, { transaction, aggregateId: transaccion.id });
 
       // ✅ CORRECCIÓN: Marcar transacción como completada (no confirmada)
       await BlockchainTransaction.update(

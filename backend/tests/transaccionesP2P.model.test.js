@@ -7,6 +7,9 @@
 // con money.js el fiat y los montos bloqueados son exactos como string.
 
 jest.mock('../modules/p2p/p2pTransaction.entity');
+jest.mock('../modules/events/emitEvent', () => ({
+  emitEvent: jest.fn().mockResolvedValue({ id: 'evt1' }),
+}));
 jest.mock('../models/index', () => ({
   P2POffer: {},
   UserBalance: {},

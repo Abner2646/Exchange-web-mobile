@@ -21,6 +21,9 @@ async function startServer() {
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     });
 
+    const { registerAllHandlers } = require('./modules/events/registerHandlers');
+    registerAllHandlers();
+
     const JobManager = require('./jobs');
     await JobManager.startAll();
   } catch (error) {
