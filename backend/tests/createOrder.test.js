@@ -39,6 +39,10 @@ jest.mock('../models/index.js', () => ({
 // la delegación; el resultado real en el ledger lo cubre el test de integración.
 jest.mock('../modules/balances/ledger/operations', () => ({ settleSwap: jest.fn() }));
 
+// emitEvent hace un lazy-require de models (OutboxEvent). Se mockea aquí para
+// que el test unitario (sin DB) no intente crear una fila en el outbox.
+jest.mock('../modules/events/emitEvent', () => ({ emitEvent: jest.fn().mockResolvedValue({ id: 'evt' }) }));
+
 const {
   Swap,
   User,

@@ -7,6 +7,7 @@ const money = require('../../utils/money');
 const { calculateSettlement } = require('./swapSettlement.service');
 const { settleSwap } = require('../balances/ledger/operations');
 const idempotency = require('../../middleware/idempotency.middleware');
+const { emitEvent } = require('../events/emitEvent');
 
 // Función auxiliar para validar fechas
 const isValidDate = (dateString) => {
@@ -171,6 +172,17 @@ const createOrder = async (req, res) => {
       compartimento,
       referencia: `swap:${newOrder.id}`,
     }, transaction);
+
+    await emitEvent('SwapExecuted', {
+      swapId: newOrder.id,
+      userId: newOrder.userId,
+      pairId: newOrder.pairId,
+      type: newOrder.type,
+      baseAmount: String(newOrder.baseAmount),
+      quoteAmount: String(newOrder.quoteAmount),
+      price: String(newOrder.price),
+      feeAmount: String(newOrder.feeAmount),
+    }, { transaction, aggregateId: newOrder.id });
 
     const responseBody = {
       message: 'Intercambio realizado exitosamente',
