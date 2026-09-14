@@ -32,6 +32,7 @@ const idempotencyKeyModel = require('./idempotencyKey.model');
 const outboxEventModel = require('../modules/events/outbox.model');
 const auditLogModel = require('../modules/audit/auditLog.model');
 const amlDenylistModel = require('../modules/aml/denylist.entity');
+const amlCaseModel = require('../modules/aml/case.entity');
 
 // LEDGER (partida doble) — Radar #1 + #10
 const initLedgerAccount = require('../modules/balances/ledger/ledgerAccount.entity');
@@ -87,6 +88,7 @@ const IdempotencyKey = idempotencyKeyModel(sequelize);
 const OutboxEvent = outboxEventModel(sequelize);
 const AuditLog = auditLogModel(sequelize);
 const AmlDenylistedAddress = amlDenylistModel(sequelize);
+const AmlCase = amlCaseModel(sequelize);
 
 // 🆕 LEDGER MODELS (partida doble)
 const LedgerAccount = initLedgerAccount(sequelize);
@@ -349,6 +351,7 @@ module.exports = {
   OutboxEvent,
   AuditLog,
   AmlDenylistedAddress,
+  AmlCase,
   // 🆕 LEDGER MODELS (partida doble)
   LedgerAccount,
   LedgerEntry,
