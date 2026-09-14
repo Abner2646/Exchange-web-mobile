@@ -38,6 +38,11 @@ async function evaluate(event) {
     );
     const f4 = s4({ count, threshold });
     if (f4) {
+      // Record BOTH parties in the evidence: S4 flags the seller's risk too
+      // (`alsoFlag`), so the case must name the seller for that elevated risk to be
+      // traceable back to a case (audit-trail requirement — no flag without a case).
+      f4.evidence.buyerId = p.buyerId;
+      f4.evidence.sellerId = p.sellerId;
       const pairKey = [p.buyerId, p.sellerId].sort().join(':');
       results.push({
         userId: p.buyerId,

@@ -54,6 +54,10 @@ describe('amlConsumer (S3, S4)', () => {
     const cases = await AmlCase.findAll();
     expect(cases).toHaveLength(1);
     expect(cases[0].signalId).toBe('S4');
+    // both parties are named in the case evidence → the seller's raised risk is
+    // traceable to a case (no flag without a case).
+    expect(cases[0].evidence.buyerId).toBe(a.id);
+    expect(cases[0].evidence.sellerId).toBe(b.id);
     // both parties flagged
     expect((await User.findByPk(a.id)).amlRiskLevel).toBe('medium');
     expect((await User.findByPk(b.id)).amlRiskLevel).toBe('medium');
