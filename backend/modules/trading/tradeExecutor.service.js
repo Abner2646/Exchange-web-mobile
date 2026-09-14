@@ -3,6 +3,7 @@ const { Trade, Order } = require('../../models');
 const balanceManager = require('./balanceManager.service');
 const feeCalculator = require('./feeCalculator.service');
 const money = require('../../utils/money');
+const { emitEvent } = require('../events/emitEvent');
 
 class TradeExecutorService {
 
@@ -50,6 +51,18 @@ class TradeExecutorService {
 
       // 6. Actualizar estadísticas del trading pair
       await this.updateTradingPairStats(buyOrder.tradingPairId, trade, transaction);
+
+      // 7. Emitir evento de dominio al outbox (mismo transaction → atómico)
+      await emitEvent('TradeExecuted', {
+        tradeId: trade.id,
+        tradingPairId: trade.tradingPairId,
+        buyerId: trade.buyerId,
+        sellerId: trade.sellerId,
+        price: String(trade.price),
+        quantity: String(trade.quantity),
+        buyerFee: String(trade.buyerFee),
+        sellerFee: String(trade.sellerFee),
+      }, { transaction, aggregateId: trade.id });
 
       return trade;
 

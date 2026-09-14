@@ -19,9 +19,11 @@ jest.mock('../modules/trading/balanceManager.service', () => ({
 jest.mock('../modules/trading/feeCalculator.service', () => ({
   calculateBothSidesFees: jest.fn(),
 }));
+jest.mock('../modules/events/emitEvent', () => ({ emitEvent: jest.fn().mockResolvedValue({ id: 'evt' }) }));
 
 const { Trade, TradingPair } = require('../models');
 const feeCalculator = require('../modules/trading/feeCalculator.service');
+const { emitEvent } = require('../modules/events/emitEvent');
 const tradeExecutor = require('../modules/trading/tradeExecutor.service');
 
 beforeEach(() => jest.clearAllMocks());
@@ -72,7 +74,11 @@ describe('executeTrade — totalValue exacto', () => {
       buyer: { fee: '0', feePercent: '0', isMaker: true },
       seller: { fee: '0', feePercent: '0', isMaker: false },
     });
-    Trade.create.mockResolvedValue({ id: 't', price: '0.2', quantity: '0.1' });
+    Trade.create.mockResolvedValue({
+      id: 't', price: '0.2', quantity: '0.1',
+      tradingPairId: 'p', buyerId: 'b', sellerId: 's',
+      buyerFee: '0', sellerFee: '0',
+    });
     jest.spyOn(tradeExecutor, 'updateOrderAfterTrade').mockResolvedValue();
     jest.spyOn(tradeExecutor, 'updateTradingPairStats').mockResolvedValue();
 
@@ -88,6 +94,22 @@ describe('executeTrade — totalValue exacto', () => {
     expect(Trade.create).toHaveBeenCalledWith(
       expect.objectContaining({ totalValue: '0.02' }),
       { transaction: {} }
+    );
+
+    // emitEvent called with TradeExecuted and correct payload shape
+    expect(emitEvent).toHaveBeenCalledWith(
+      'TradeExecuted',
+      expect.objectContaining({
+        tradeId: 't',
+        tradingPairId: 'p',
+        buyerId: 'b',
+        sellerId: 's',
+        price: '0.2',
+        quantity: '0.1',
+        buyerFee: '0',
+        sellerFee: '0',
+      }),
+      expect.objectContaining({ transaction: {}, aggregateId: 't' })
     );
 
     tradeExecutor.updateOrderAfterTrade.mockRestore();
