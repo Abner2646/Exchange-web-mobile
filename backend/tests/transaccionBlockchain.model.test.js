@@ -10,11 +10,14 @@ jest.mock('../models/index', () => ({ UserBalance: {} }));
 jest.mock('../modules/balances/ledger/operations', () => ({
   confirmDeposit: jest.fn(),
   registerPendingDeposit: jest.fn(),
+  markWithdrawalTransmitted: jest.fn(),
 }));
+jest.mock('../modules/events/emitEvent', () => ({ emitEvent: jest.fn().mockResolvedValue({ id: 'evt' }) }));
 
 const initTransaccionBlockchain = require('../modules/wallets/blockchainTransaction.entity');
 const { UserBalance } = require('../models/index');
-const { confirmDeposit } = require('../modules/balances/ledger/operations');
+const { confirmDeposit, registerPendingDeposit, markWithdrawalTransmitted } = require('../modules/balances/ledger/operations');
+const { emitEvent } = require('../modules/events/emitEvent');
 const createTransaccionBlockchainModel = require('../modules/wallets/blockchainTransaction.model');
 
 const fakeModel = {};
@@ -35,6 +38,69 @@ describe('_creditDeposit — delega en confirmDeposit (pendiente→disponible)',
     expect(confirmDeposit).toHaveBeenCalledWith(
       expect.objectContaining({ userId: 'u', criptomonedaId: 'c', cantidad: '0.2', referencia: 'deposito-conf:t1' }),
       {}
+    );
+  });
+
+  test('emite DepositConfirmed al outbox en la misma transacción', async () => {
+    BlockchainTransaction.update = jest.fn().mockResolvedValue([1]);
+    sequelize.models.Crypto.findByPk.mockResolvedValue({ symbol: 'BTC' });
+
+    const tx = {};
+    const transaccion = { id: 't2', userId: 'u2', cryptoId: 'c2', amount: '1.5', txHash: '0xabc', status: 'confirmed' };
+    await BlockchainTransaction._creditDeposit(transaccion, tx);
+
+    expect(emitEvent).toHaveBeenCalledWith(
+      'DepositConfirmed',
+      expect.objectContaining({ blockchainTransactionId: 't2', userId: 'u2', cryptoId: 'c2', amount: '1.5', txHash: '0xabc' }),
+      expect.objectContaining({ transaction: tx, aggregateId: 't2' })
+    );
+  });
+});
+
+describe('createDeposit — emite DepositRegistered al outbox', () => {
+  test('emite DepositRegistered con el id del nuevo depósito como aggregateId', async () => {
+    const tx = { commit: jest.fn(), rollback: jest.fn() };
+    sequelize.transaction.mockResolvedValue(tx);
+    const nuevoDeposito = { id: 'd1', userId: 'u1', cryptoId: 'c1', amount: '0.5', txHash: '0xhash1', type: 'deposit', status: 'pending' };
+    BlockchainTransaction.findOne = jest.fn().mockResolvedValue(null);
+    BlockchainTransaction.create = jest.fn().mockResolvedValue(nuevoDeposito);
+    BlockchainTransaction.getById = jest.fn().mockResolvedValue(nuevoDeposito);
+    registerPendingDeposit.mockResolvedValue({});
+
+    await BlockchainTransaction.createDeposit({ userId: 'u1', cryptoId: 'c1', amount: '0.5', txHash: '0xhash1' });
+
+    expect(emitEvent).toHaveBeenCalledWith(
+      'DepositRegistered',
+      expect.objectContaining({ blockchainTransactionId: 'd1', userId: 'u1', cryptoId: 'c1', amount: '0.5', txHash: '0xhash1' }),
+      expect.objectContaining({ transaction: tx, aggregateId: 'd1' })
+    );
+  });
+});
+
+describe('updateConfirmations — emite WithdrawalTransmitted al confirmar un retiro', () => {
+  test('emite WithdrawalTransmitted cuando un withdrawal pasa a confirmed', async () => {
+    const tx = { commit: jest.fn(), rollback: jest.fn() };
+    sequelize.transaction.mockResolvedValue(tx);
+    const transaccion = {
+      id: 'w1', userId: 'u1', cryptoId: 'c1', amount: '0.3',
+      txHash: '0xwith1', destinationAddress: 'addr1',
+      type: 'withdrawal', status: 'processing',
+      requiredConfirmations: 3,
+    };
+    BlockchainTransaction.findByPk = jest.fn().mockResolvedValue(transaccion);
+    BlockchainTransaction.update = jest.fn().mockResolvedValue([1]);
+    BlockchainTransaction.getById = jest.fn().mockResolvedValue(transaccion);
+    markWithdrawalTransmitted.mockResolvedValue({});
+
+    await BlockchainTransaction.updateConfirmations('w1', 3);
+
+    expect(emitEvent).toHaveBeenCalledWith(
+      'WithdrawalTransmitted',
+      expect.objectContaining({
+        blockchainTransactionId: 'w1', userId: 'u1', cryptoId: 'c1',
+        amount: '0.3', destinationAddress: 'addr1', txHash: '0xwith1',
+      }),
+      expect.objectContaining({ transaction: tx, aggregateId: 'w1' })
     );
   });
 });
