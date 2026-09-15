@@ -69,6 +69,19 @@ async function userDailyLimit(userId, transaction = null) {
   return u && u.dailyLimitUsd != null ? String(u.dailyLimitUsd) : null;
 }
 
+// Fetches both createdAt and dailyLimitUsd in a single query (used by the S1+S6 block
+// in amlEvaluator to avoid two separate User.findByPk calls for the same row).
+// dailyLimitUsd follows the same null-not-zero contract as userDailyLimit above.
+async function userProfile(userId, transaction = null) {
+  const { User } = require('../../models');
+  const u = await User.findByPk(userId, { transaction });
+  if (!u) return { createdAt: null, dailyLimitUsd: null };
+  return {
+    createdAt: u.created_at,
+    dailyLimitUsd: u.dailyLimitUsd != null ? String(u.dailyLimitUsd) : null,
+  };
+}
+
 // ── Cross-user recent finders (for the periodic sweep, Slice C) ─────────────
 // Single query for both withdrawal and deposit money-rows. Only CONFIRMED/completed
 // withdrawals are included — the exact state at which the real `WithdrawalTransmitted`
@@ -106,4 +119,4 @@ async function recentCompletedP2P(since, transaction = null) {
   return rows.map(r => ({ id: r.id, buyerId: r.buyerId, sellerId: r.sellerId }));
 }
 
-module.exports = { withdrawalsInWindow, onchainMovementsInWindow, confirmedDepositsInWindow, p2pCompletedCountBetween, userCreatedAt, userDailyLimit, recentMoneyTransactions, recentCompletedP2P };
+module.exports = { withdrawalsInWindow, onchainMovementsInWindow, confirmedDepositsInWindow, p2pCompletedCountBetween, userCreatedAt, userDailyLimit, userProfile, recentMoneyTransactions, recentCompletedP2P };

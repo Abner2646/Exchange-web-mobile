@@ -92,11 +92,12 @@ async function evaluate(event) {
   // S1 + S6: shared block for all on-chain movements (deposits and withdrawals)
   if (event.type === 'DepositConfirmed' || event.type === 'WithdrawalTransmitted') {
     const userId = p.userId;
+    // One query for both S1 (dailyLimitUsd) and S6 (createdAt).
+    const { createdAt, dailyLimitUsd: limitUsd } = await da.userProfile(userId);
 
     // S1 volume over the rolling window vs the user's daily limit
     const s1Hours = await amlConfig.getThreshold('aml.s1.windowHours', 24);
-    const s1Mult = await amlConfig.getThreshold('aml.s1.multiplier', 3);
-    const limitUsd = await da.userDailyLimit(userId);
+    const s1Mult  = await amlConfig.getThreshold('aml.s1.multiplier', 3);
     // Skip S1 when there's no positive limit (missing/null/0): a 0 ceiling would
     // fire on any volume (ghost-user false positive). Only evaluate against a real limit.
     if (limitUsd !== null && money.compare(limitUsd, '0') > 0) {
@@ -112,8 +113,7 @@ async function evaluate(event) {
 
     // S6 new-account volume since signup
     const maxAgeDays = await amlConfig.getThreshold('aml.s6.accountAgeDays', 7);
-    const volumeUsd = await amlConfig.getThreshold('aml.s6.volumeUsd', 50000);
-    const createdAt = await da.userCreatedAt(userId);
+    const volumeUsd  = await amlConfig.getThreshold('aml.s6.volumeUsd', 50000);
     if (createdAt) {
       const ageDays = (Date.now() - new Date(createdAt).getTime()) / 86400000;
       if (ageDays < maxAgeDays) {
