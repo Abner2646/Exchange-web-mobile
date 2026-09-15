@@ -13,24 +13,30 @@ async function handleEvent(event) {
   // enables monitoring. This is load-bearing for the existing test suite.
   if (!(await amlConfig.isMonitoringEnabled())) return;
 
+  const { sequelize } = require('../../models');
   const results = await evaluator.evaluate(event);
   for (const r of results) {
-    const { created } = await cases.openCase({
-      userId: r.userId,
-      signalId: r.finding.signalId,
-      severity: r.finding.severity,
-      evidence: r.finding.evidence,
-      dedupeKey: r.dedupeKey,
-      sourceEventId: event.id,
-    });
-    // Only raise risk and flag alsoFlag parties when a NEW case is created.
-    // If openCase returns created=false the case already exists — idempotent.
-    if (created) {
-      await riskFlag.raiseUserRisk(r.userId, r.finding.severity);
-      for (const other of (r.alsoFlag || [])) {
-        await riskFlag.raiseUserRisk(other, r.finding.severity);
+    // Open the case and raise the risk flag ATOMICALLY. If the raise throws after
+    // the case commits, a later at-least-once retry would see created=false and
+    // never raise the flag — the elevation would be permanently lost. One
+    // transaction makes them commit or roll back together, so a retry re-does both.
+    await sequelize.transaction(async (t) => {
+      const { created } = await cases.openCase({
+        userId: r.userId,
+        signalId: r.finding.signalId,
+        severity: r.finding.severity,
+        evidence: r.finding.evidence,
+        dedupeKey: r.dedupeKey,
+        sourceEventId: event.id,
+      }, t);
+      // Only raise on a NEW case — a duplicate delivery (created=false) is a no-op.
+      if (created) {
+        await riskFlag.raiseUserRisk(r.userId, r.finding.severity, t);
+        for (const other of (r.alsoFlag || [])) {
+          await riskFlag.raiseUserRisk(other, r.finding.severity, t);
+        }
       }
-    }
+    });
   }
 }
 

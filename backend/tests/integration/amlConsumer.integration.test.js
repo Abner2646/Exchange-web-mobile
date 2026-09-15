@@ -62,4 +62,13 @@ describe('amlConsumer (S3, S4)', () => {
     expect((await User.findByPk(a.id)).amlRiskLevel).toBe('medium');
     expect((await User.findByPk(b.id)).amlRiskLevel).toBe('medium');
   });
+
+  test('a WithdrawalTransmitted for a non-existent user opens no case and does not crash (no ghost-user S1)', async () => {
+    await businessConfig.set('aml.monitoring.enabled', 'true');
+    const c = await Crypto.create({ symbol: 'BTC', name: 'BTC', network: 'bitcoin' });
+    const ghost = randomUUID(); // no User row
+    await consumer.handleEvent({ id: randomUUID(), type: 'WithdrawalTransmitted', payload: { blockchainTransactionId: 'w-ghost', userId: ghost, cryptoId: c.id, amount: '999999' } });
+    // S1 must be skipped (no positive limit → no $0-ceiling false positive); no crash.
+    expect(await AmlCase.count()).toBe(0);
+  });
 });

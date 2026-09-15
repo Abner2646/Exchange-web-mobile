@@ -97,13 +97,17 @@ async function evaluate(event) {
     const s1Hours = await amlConfig.getThreshold('aml.s1.windowHours', 24);
     const s1Mult = await amlConfig.getThreshold('aml.s1.multiplier', 3);
     const limitUsd = await da.userDailyLimit(userId);
-    const moves1 = await da.onchainMovementsInWindow(userId, new Date(Date.now() - s1Hours * 3600000));
-    const { sumUsd: vol1, unvaluable: unv1, unvaluableCryptoIds: unvIds1 } = await valueItems(moves1);
-    const f1 = s1({ totalUsd: vol1, limitUsd, multiplier: s1Mult });
-    if (f1) {
-      f1.evidence.unvaluable = unv1;
-      f1.evidence.unvaluableCryptoIds = unvIds1;
-      results.push({ userId, finding: f1, dedupeKey: `${userId}:S1:${utcDay()}` });
+    // Skip S1 when there's no positive limit (missing/null/0): a 0 ceiling would
+    // fire on any volume (ghost-user false positive). Only evaluate against a real limit.
+    if (limitUsd !== null && money.compare(limitUsd, '0') > 0) {
+      const moves1 = await da.onchainMovementsInWindow(userId, new Date(Date.now() - s1Hours * 3600000));
+      const { sumUsd: vol1, unvaluable: unv1, unvaluableCryptoIds: unvIds1 } = await valueItems(moves1);
+      const f1 = s1({ totalUsd: vol1, limitUsd, multiplier: s1Mult });
+      if (f1) {
+        f1.evidence.unvaluable = unv1;
+        f1.evidence.unvaluableCryptoIds = unvIds1;
+        results.push({ userId, finding: f1, dedupeKey: `${userId}:S1:${utcDay()}` });
+      }
     }
 
     // S6 new-account volume since signup

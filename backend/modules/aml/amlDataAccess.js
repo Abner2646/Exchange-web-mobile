@@ -58,13 +58,15 @@ async function userCreatedAt(userId, transaction = null) {
   return u ? u.created_at : null;
 }
 
-// The user's configured daily USD limit (S1 baseline). Returns '0' if the user is
-// missing so a value-based signal can't fire off a null limit. Lives here so the
-// evaluator gets every fact through amlDataAccess, never touching the ORM directly.
+// The user's configured daily USD limit (S1 baseline), as a string, or null when it
+// can't be determined (user missing, or dailyLimitUsd is null). Returning null — not
+// '0' — is deliberate: a '0' limit would make S1's ceiling 0 and fire on ANY volume
+// (a ghost-user false positive), and String(null) would crash money.multiply. The
+// evaluator skips S1 when this is null. Lives here so the evaluator never touches the ORM.
 async function userDailyLimit(userId, transaction = null) {
   const { User } = require('../../models');
   const u = await User.findByPk(userId, { transaction });
-  return u ? String(u.dailyLimitUsd) : '0';
+  return u && u.dailyLimitUsd != null ? String(u.dailyLimitUsd) : null;
 }
 
 module.exports = { withdrawalsInWindow, onchainMovementsInWindow, confirmedDepositsInWindow, p2pCompletedCountBetween, userCreatedAt, userDailyLimit };
