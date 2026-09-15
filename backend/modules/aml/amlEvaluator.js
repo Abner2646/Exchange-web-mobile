@@ -16,13 +16,22 @@ function utcDay() { return new Date().toISOString().slice(0, 10); }
 // valueItems: values a list of {amount, cryptoId} items via amlValuation.
 // Drops unvaluable assets (records the count so callers can attach it to evidence).
 // Returns { sumUsd, valuedUsds, unvaluable }.
+// Memoizes getUsdValue per cryptoId within a single call: fetches the unit price
+// (amount='1') once per unique asset and scales by each item's actual amount, so
+// repeated assets (e.g. several BTC withdrawals in S2) avoid redundant DB lookups.
 async function valueItems(items) {
   let sumUsd = '0';
   const valuedUsds = [];
   const unvaluableCryptoIds = [];
+  const cache = new Map(); // memoize per cryptoId within this call
   for (const it of items) {
-    const { usd } = await valuation.getUsdValue(it.cryptoId, it.amount);
-    if (usd === null) { unvaluableCryptoIds.push(it.cryptoId); continue; }
+    if (!cache.has(it.cryptoId)) {
+      cache.set(it.cryptoId, await valuation.getUsdValue(it.cryptoId, '1'));
+    }
+    const { usd: unitUsd } = cache.get(it.cryptoId);
+    if (unitUsd === null) { unvaluableCryptoIds.push(it.cryptoId); continue; }
+    // Scale the unit price by the actual amount.
+    const usd = money.multiply(unitUsd, String(it.amount));
     valuedUsds.push(usd);
     sumUsd = money.add(sumUsd, usd);
   }
@@ -132,4 +141,4 @@ async function evaluate(event) {
   return results;
 }
 
-module.exports = { evaluate, utcDay };
+module.exports = { evaluate, utcDay, valueItems };
