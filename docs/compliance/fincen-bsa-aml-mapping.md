@@ -40,6 +40,11 @@
 
 ### Transaction monitoring — implemented (AML monitor slices A–C)
 
+> **Demo/portfolio scope (no overclaim):** the monitoring ENGINE runs, but this is
+> not a live compliance program — **no real SAR/CTR is filed**, the **denylist is
+> manually seeded (no live OFAC feed)**, and there is no regulatory certification.
+> Everything below is toggle-gated and **default-off**.
+
 - **Real-time (on-event):** every money-path domain event (deposit confirmed,
   withdrawal transmitted, P2P completed, swap/trade) is evaluated against the S1–S6
   signal catalog as it happens (`backend/modules/aml/amlConsumer`), opening

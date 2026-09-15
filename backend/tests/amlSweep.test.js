@@ -22,7 +22,7 @@ describe('amlSweep.runSweep', () => {
   test('monitoring OFF → no enumeration, no replay', async () => {
     amlConfig.isMonitoringEnabled.mockResolvedValue(false);
     const res = await sweep.runSweep();
-    expect(res).toEqual({ scanned: 0, byType: { WithdrawalTransmitted: 0, DepositConfirmed: 0, P2PTransactionCompleted: 0 } });
+    expect(res).toEqual({ scanned: 0, byType: { WithdrawalTransmitted: 0, DepositConfirmed: 0, P2PTransactionCompleted: 0 }, errors: 0 });
     expect(da.recentWithdrawals).not.toHaveBeenCalled();
     expect(consumer.handleEvent).not.toHaveBeenCalled();
   });
@@ -49,6 +49,7 @@ describe('amlSweep.runSweep', () => {
     consumer.handleEvent.mockRejectedValueOnce(new Error('boom')); // w1 throws
     const res = await sweep.runSweep();
     expect(res.scanned).toBe(2); // both attempted
+    expect(res.errors).toBe(1);  // exactly one failed → distinguishable from a clean pass
     expect(consumer.handleEvent).toHaveBeenCalledTimes(2);
   });
 });

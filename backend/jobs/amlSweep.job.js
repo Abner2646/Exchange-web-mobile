@@ -13,8 +13,9 @@ class AmlSweepJob {
     this.interval = null;
     this.isRunning = false;
     this.sweeping = false; // re-entrancy guard (un pase escanea todas las txs recientes)
-    this.lastRunAt = null;
-    this.lastResult = null;
+    this.lastRunAt = null;   // set on EVERY attempt (success or error), so a
+    this.lastResult = null;  // permanently-erroring AML safety net isn't invisible.
+    this.lastError = null;
   }
 
   start() {
@@ -39,10 +40,12 @@ class AmlSweepJob {
       return;
     }
     this.sweeping = true;
+    this.lastRunAt = new Date(); // attempt time — updated even if the pass throws below
     try {
       this.lastResult = await amlSweep.runSweep();
-      this.lastRunAt = new Date();
+      this.lastError = null;
     } catch (error) {
+      this.lastError = error.message;
       console.error('❌ AML Sweep Job error:', error.message);
     } finally {
       this.sweeping = false;
@@ -50,7 +53,7 @@ class AmlSweepJob {
   }
 
   getStatus() {
-    return { isRunning: this.isRunning, frequencyMs: FREQUENCY_MS, lastRunAt: this.lastRunAt, lastResult: this.lastResult };
+    return { isRunning: this.isRunning, frequencyMs: FREQUENCY_MS, lastRunAt: this.lastRunAt, lastResult: this.lastResult, lastError: this.lastError };
   }
 }
 
