@@ -19,14 +19,16 @@ function utcDay() { return new Date().toISOString().slice(0, 10); }
 async function valueItems(items) {
   let sumUsd = '0';
   const valuedUsds = [];
-  let unvaluable = 0;
+  const unvaluableCryptoIds = [];
   for (const it of items) {
     const { usd } = await valuation.getUsdValue(it.cryptoId, it.amount);
-    if (usd === null) { unvaluable++; continue; }
+    if (usd === null) { unvaluableCryptoIds.push(it.cryptoId); continue; }
     valuedUsds.push(usd);
     sumUsd = money.add(sumUsd, usd);
   }
-  return { sumUsd, valuedUsds, unvaluable };
+  // `unvaluable` = count (back-compat); `unvaluableCryptoIds` = which assets went
+  // unpriced, so a compliance reviewer sees the exact gap, not just a number.
+  return { sumUsd, valuedUsds, unvaluable: unvaluableCryptoIds.length, unvaluableCryptoIds };
 }
 
 async function evaluate(event) {
@@ -54,10 +56,11 @@ async function evaluate(event) {
     const s2count = await amlConfig.getThreshold('aml.s2.count', 3);
     const s2Hours = await amlConfig.getThreshold('aml.s2.windowHours', 24);
     const wds = await da.withdrawalsInWindow(p.userId, new Date(Date.now() - s2Hours * 3600000));
-    const { valuedUsds, unvaluable: unvS2 } = await valueItems(wds);
+    const { valuedUsds, unvaluable: unvS2, unvaluableCryptoIds: unvIdsS2 } = await valueItems(wds);
     const f2 = s2({ withdrawalUsds: valuedUsds, thresholdUsd: T, count: s2count });
     if (f2) {
-      f2.evidence.unvaluable = unvS2; // record how many withdrawals couldn't be USD-valued
+      f2.evidence.unvaluable = unvS2; // how many withdrawals couldn't be USD-valued
+      f2.evidence.unvaluableCryptoIds = unvIdsS2; // which assets — the exact pricing gap
       results.push({ userId: p.userId, finding: f2, dedupeKey: `${p.userId}:S2:${utcDay()}` });
     }
   }
@@ -95,10 +98,11 @@ async function evaluate(event) {
     const s1Mult = await amlConfig.getThreshold('aml.s1.multiplier', 3);
     const limitUsd = await da.userDailyLimit(userId);
     const moves1 = await da.onchainMovementsInWindow(userId, new Date(Date.now() - s1Hours * 3600000));
-    const { sumUsd: vol1, unvaluable: unv1 } = await valueItems(moves1);
+    const { sumUsd: vol1, unvaluable: unv1, unvaluableCryptoIds: unvIds1 } = await valueItems(moves1);
     const f1 = s1({ totalUsd: vol1, limitUsd, multiplier: s1Mult });
     if (f1) {
       f1.evidence.unvaluable = unv1;
+      f1.evidence.unvaluableCryptoIds = unvIds1;
       results.push({ userId, finding: f1, dedupeKey: `${userId}:S1:${utcDay()}` });
     }
 
@@ -110,10 +114,11 @@ async function evaluate(event) {
       const ageDays = (Date.now() - new Date(createdAt).getTime()) / 86400000;
       if (ageDays < maxAgeDays) {
         const movesAll = await da.onchainMovementsInWindow(userId, new Date(createdAt));
-        const { sumUsd: vol6, unvaluable: unv6 } = await valueItems(movesAll);
+        const { sumUsd: vol6, unvaluable: unv6, unvaluableCryptoIds: unvIds6 } = await valueItems(movesAll);
         const f6 = s6({ accountAgeDays: ageDays, maxAgeDays, totalUsd: vol6, volumeUsd });
         if (f6) {
           f6.evidence.unvaluable = unv6;
+          f6.evidence.unvaluableCryptoIds = unvIds6;
           results.push({ userId, finding: f6, dedupeKey: `${userId}:S6:${utcDay()}` });
         }
       }

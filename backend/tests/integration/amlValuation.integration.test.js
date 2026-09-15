@@ -30,4 +30,13 @@ describe('amlValuation.getUsdValue', () => {
     const r = await valuation.getUsdValue(doge.id, '1000');
     expect(r).toEqual({ usd: null, priceAsOf: null, source: 'unknown' });
   });
+
+  test('a stale/corrupt price of 0 is treated as unknown, not $0 (no silent AML miss)', async () => {
+    const btc = await Crypto.create({ symbol: 'BTC', name: 'Bitcoin', network: 'bitcoin', decimals: 8 });
+    const usdt = await Crypto.create({ symbol: 'USDT', name: 'Tether', network: 'ethereum', decimals: 6 });
+    await SwapPair.create({ baseCryptoId: btc.id, quoteCryptoId: usdt.id, currentPrice: '0', feePercent: '0.1', active: true });
+    const r = await valuation.getUsdValue(btc.id, '0.5');
+    expect(r.source).toBe('unknown');
+    expect(r.usd).toBeNull();
+  });
 });

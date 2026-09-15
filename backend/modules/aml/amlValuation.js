@@ -18,6 +18,10 @@ async function getUsdValue(cryptoId, amount, transaction = null) {
 
   const pairs = await SwapPair.findAll({ where: { baseCryptoId: cryptoId, active: true }, transaction });
   for (const pair of pairs) {
+    // A stale/corrupt price ≤ 0 would value the asset at $0 (or nonsense) and
+    // silently under-count a value-based signal — treat it as no usable price
+    // rather than trusting it. Better 'unknown' (recorded) than a $0 AML miss.
+    if (money.compare(String(pair.currentPrice), '0') <= 0) continue;
     const quote = await Crypto.findByPk(pair.quoteCryptoId, { transaction });
     if (quote && STABLE_SYMBOLS.includes(quote.symbol)) {
       return {
