@@ -69,4 +69,32 @@ async function userDailyLimit(userId, transaction = null) {
   return u && u.dailyLimitUsd != null ? String(u.dailyLimitUsd) : null;
 }
 
-module.exports = { withdrawalsInWindow, onchainMovementsInWindow, confirmedDepositsInWindow, p2pCompletedCountBetween, userCreatedAt, userDailyLimit };
+// ── Cross-user recent finders (for the periodic sweep, Slice C) ─────────────
+async function recentWithdrawals(since, transaction = null) {
+  const { BlockchainTransaction } = require('../../models');
+  const rows = await BlockchainTransaction.findAll({
+    where: { type: 'withdrawal', status: { [Op.ne]: 'failed' }, created_at: { [Op.gte]: since } },
+    transaction,
+  });
+  return rows.map(r => ({ id: r.id, userId: r.userId, cryptoId: r.cryptoId, amount: String(r.amount) }));
+}
+
+async function recentConfirmedDeposits(since, transaction = null) {
+  const { BlockchainTransaction } = require('../../models');
+  const rows = await BlockchainTransaction.findAll({
+    where: { type: 'deposit', status: { [Op.in]: ['confirmed', 'completed'] }, created_at: { [Op.gte]: since } },
+    transaction,
+  });
+  return rows.map(r => ({ id: r.id, userId: r.userId, cryptoId: r.cryptoId, amount: String(r.amount) }));
+}
+
+async function recentCompletedP2P(since, transaction = null) {
+  const { P2PTransaction } = require('../../models');
+  const rows = await P2PTransaction.findAll({
+    where: { status: 'completed', created_at: { [Op.gte]: since } },
+    transaction,
+  });
+  return rows.map(r => ({ id: r.id, buyerId: r.buyerId, sellerId: r.sellerId }));
+}
+
+module.exports = { withdrawalsInWindow, onchainMovementsInWindow, confirmedDepositsInWindow, p2pCompletedCountBetween, userCreatedAt, userDailyLimit, recentWithdrawals, recentConfirmedDeposits, recentCompletedP2P };
