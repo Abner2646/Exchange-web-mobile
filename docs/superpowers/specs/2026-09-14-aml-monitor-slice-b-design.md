@@ -49,13 +49,19 @@ gap is visible rather than a silent false-negative. Amounts stay strings (`money
 Each signal is a pure function over facts. Severity → risk flag: high →
 `amlRiskLevel='high'`; medium → raise to `medium` only if currently `low`.
 
+"Volume" for S1/S6 = Σ USD of the user's **on-chain movements (deposits + withdrawals)**
+in the window — the custody-boundary value moved, the most AML-relevant measure. This
+deliberately excludes internal swaps/trades (which don't move money in/out and would
+add internal-pair valuation surface for little AML value). Both signals need only the
+`blockchain_transaction` table + `amlValuation`.
+
 | # | Rule | Trigger event(s) | Config keys (default) | Severity |
 |---|---|---|---|---|
-| **S1** Volume | Σ USD value of the user's withdrawals+swaps+trades in the last `windowHours` > `dailyLimitUsd × multiplier` | SwapExecuted, TradeExecuted, WithdrawalTransmitted | `aml.s1.windowHours` (24), `aml.s1.multiplier` (3) | medium |
+| **S1** Volume | Σ USD of the user's on-chain deposits+withdrawals in the last `windowHours` > `dailyLimitUsd × multiplier` | DepositConfirmed, WithdrawalTransmitted | `aml.s1.windowHours` (24), `aml.s1.multiplier` (3) | medium |
 | **S2** Structuring | ≥ `count` withdrawals whose USD value ∈ [`0.8×T`, `T`) within `windowHours`, and Σ of those ≥ `T` | WithdrawalTransmitted | `aml.s2.thresholdUsd` (10000), `aml.s2.count` (3), `aml.s2.windowHours` (24) | high |
 | **S3** Velocity (layering) | a withdrawal of crypto C with amount ≥ `ratio` × a confirmed deposit of the SAME crypto C to the same user within the last `windowMinutes` | WithdrawalTransmitted | `aml.s3.ratio` (0.9), `aml.s3.windowMinutes` (60) | high |
 | **S4** P2P repeat | ≥ `count` completed P2P tx between the same (buyer,seller) unordered pair within `windowHours` | P2PTransactionCompleted | `aml.s4.count` (5), `aml.s4.windowHours` (168) | medium |
-| **S6** New-account volume | account age < `accountAgeDays` AND Σ USD value of the user's activity since signup > `volumeUsd` | DepositConfirmed, SwapExecuted, TradeExecuted | `aml.s6.accountAgeDays` (7), `aml.s6.volumeUsd` (50000) | medium |
+| **S6** New-account volume | account age < `accountAgeDays` AND Σ USD of the user's on-chain deposits+withdrawals since signup > `volumeUsd` | DepositConfirmed, WithdrawalTransmitted | `aml.s6.accountAgeDays` (7), `aml.s6.volumeUsd` (50000) | medium |
 
 `T` for S2 = `aml.s2.thresholdUsd`. Amounts compared with `money.compare`.
 
