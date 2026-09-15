@@ -42,9 +42,12 @@ atomically), `amlDataAccess`, the signal functions, `case.model`, `riskFlag`.
 2. `since = now - aml.sweep.lookbackHours`.
 3. Enumerate, via a small set of queries (reuse `amlDataAccess` where possible, add
    sweep-specific finders otherwise):
-   - **Withdrawals** in `[since, now]` with `status != 'failed'` → replay as
-     `WithdrawalTransmitted` with payload `{ blockchainTransactionId: row.id, userId,
-     cryptoId, amount: String(row.amount) }`.
+   - **Withdrawals** in `[since, now]` with `status IN ('confirmed','completed')` →
+     replay as `WithdrawalTransmitted` with payload `{ blockchainTransactionId: row.id,
+     userId, cryptoId, amount: String(row.amount) }`. (Confirmed/completed = actually
+     transmitted on-chain — the exact state at which the real event fires; including
+     pending/processing would replay a "transmitted" event for a withdrawal that
+     hasn't left, a false positive.)
    - **Deposits** in `[since, now]` with `status IN ('confirmed','completed')` →
      replay as `DepositConfirmed` with payload `{ blockchainTransactionId: row.id,
      userId, cryptoId, amount: String(row.amount) }`.

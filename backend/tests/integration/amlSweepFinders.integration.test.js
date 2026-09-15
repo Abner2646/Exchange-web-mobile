@@ -26,8 +26,9 @@ describe('amlDataAccess recent (cross-user) finders', () => {
     const u1 = await f.seedUser(); const u2 = await f.seedUser();
     const c = await Crypto.create({ symbol: 'BTC', name: 'BTC', network: 'bitcoin' });
     const now = Date.now();
-    await tx({ userId: u1.id, cryptoId: c.id, type: 'withdrawal', amount: '1', status: 'processing', created_at: new Date(now - HOUR) });
+    await tx({ userId: u1.id, cryptoId: c.id, type: 'withdrawal', amount: '1', status: 'confirmed', created_at: new Date(now - HOUR) });  // included (transmitted)
     await tx({ userId: u2.id, cryptoId: c.id, type: 'withdrawal', amount: '2', status: 'failed', created_at: new Date(now - HOUR) });   // excluded
+    await tx({ userId: u1.id, cryptoId: c.id, type: 'withdrawal', amount: '4', status: 'processing', created_at: new Date(now - HOUR) }); // excluded: not yet transmitted
     await tx({ userId: u1.id, cryptoId: c.id, type: 'withdrawal', amount: '3', status: 'completed', created_at: new Date(now - 72 * HOUR) }); // too old
     await tx({ userId: u2.id, cryptoId: c.id, type: 'deposit', amount: '5', status: 'confirmed', created_at: new Date(now - HOUR) });
     await tx({ userId: u2.id, cryptoId: c.id, type: 'deposit', amount: '9', status: 'pending', created_at: new Date(now - HOUR) });   // excluded

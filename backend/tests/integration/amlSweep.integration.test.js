@@ -14,7 +14,9 @@ async function seedFastDepositThenWithdrawal() {
   const u = await f.seedUser();
   const c = await Crypto.create({ symbol: 'BTC', name: 'BTC', network: 'bitcoin' });
   await BlockchainTransaction.create({ userId: u.id, cryptoId: c.id, type: 'deposit', amount: '1', status: 'confirmed', txHash: `d-${Math.random()}`, confirmations: 3, requiresApproval: false });
-  const w = await BlockchainTransaction.create({ userId: u.id, cryptoId: c.id, type: 'withdrawal', amount: '0.95', status: 'processing', txHash: `w-${Math.random()}`, confirmations: 0, requiresApproval: false });
+  // 'confirmed' = transmitted on-chain: the state the sweep's recentWithdrawals picks up
+  // (mirrors when the real WithdrawalTransmitted event fires).
+  const w = await BlockchainTransaction.create({ userId: u.id, cryptoId: c.id, type: 'withdrawal', amount: '0.95', status: 'confirmed', txHash: `w-${Math.random()}`, confirmations: 3, requiresApproval: false });
   return { u, c, w };
 }
 

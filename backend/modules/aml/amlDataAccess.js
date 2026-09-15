@@ -72,8 +72,13 @@ async function userDailyLimit(userId, transaction = null) {
 // ── Cross-user recent finders (for the periodic sweep, Slice C) ─────────────
 async function recentWithdrawals(since, transaction = null) {
   const { BlockchainTransaction } = require('../../models');
+  // Only CONFIRMED/completed withdrawals — these are the ones that actually
+  // transmitted on-chain, i.e. the exact state at which the real
+  // `WithdrawalTransmitted` event fires (blockchainTransaction.model: status→confirmed).
+  // Including pending/processing would replay a "transmitted" event for a withdrawal
+  // that hasn't left yet — a false positive and real-time/batch drift.
   const rows = await BlockchainTransaction.findAll({
-    where: { type: 'withdrawal', status: { [Op.ne]: 'failed' }, created_at: { [Op.gte]: since } },
+    where: { type: 'withdrawal', status: { [Op.in]: ['confirmed', 'completed'] }, created_at: { [Op.gte]: since } },
     transaction,
   });
   return rows.map(r => ({ id: r.id, userId: r.userId, cryptoId: r.cryptoId, amount: String(r.amount) }));
