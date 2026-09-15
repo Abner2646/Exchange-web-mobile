@@ -6,6 +6,7 @@ const blockchainJobs = require('./blockchain.jobs'); // Tu job existente
 const idempotencyCleanupJob = require('./idempotencyCleanup.job');
 const reconciliationJob = require('./reconciliation.job');
 const outboxPublisherJob = require('./outboxPublisher.job');
+const amlSweepJob = require('./amlSweep.job');
 
 class JobManager {
 
@@ -18,6 +19,7 @@ class JobManager {
       idempotencyCleanup: idempotencyCleanupJob,
       reconciliation: reconciliationJob,
       outboxPublisher: outboxPublisherJob,
+      amlSweep: amlSweepJob,
     };
   }
 
@@ -71,6 +73,12 @@ class JobManager {
       this.jobs.outboxPublisher.start();
     } catch (error) {
       console.error('❌ Error iniciando Outbox Publisher:', error.message);
+    }
+
+    try {
+      this.jobs.amlSweep.start();
+    } catch (error) {
+      console.error('❌ Error iniciando AML Sweep:', error.message);
     }
 
     console.log('\n✅ ===== TODOS LOS JOBS INICIADOS ===== ✅\n');

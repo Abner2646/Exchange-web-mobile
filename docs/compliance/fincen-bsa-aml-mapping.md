@@ -38,6 +38,27 @@
 | **Travel Rule** — 31 CFR 1010.410(f), transmittals ≥ $3,000 (2019 FinCEN VASP guidance) | 🔴 | Withdrawals do not attach originator/beneficiary (VASP) information | Design: capture + transmit required party info on transfers ≥ threshold |
 | Risk assessment (basis of the risk-based program) | 🔴 | None formal | Document a money-laundering/TF risk assessment |
 
+### Transaction monitoring — implemented (AML monitor slices A–C)
+
+> **Demo/portfolio scope (no overclaim):** the monitoring ENGINE runs, but this is
+> not a live compliance program — **no real SAR/CTR is filed**, the **denylist is
+> manually seeded (no live OFAC feed)**, and there is no regulatory certification.
+> Everything below is toggle-gated and **default-off**.
+
+- **Real-time (on-event):** every money-path domain event (deposit confirmed,
+  withdrawal transmitted, P2P completed, swap/trade) is evaluated against the S1–S6
+  signal catalog as it happens (`backend/modules/aml/amlConsumer`), opening
+  hash-chain-audited cases (§500.06) and raising an account risk flag.
+- **Batch (periodic sweep):** a scheduled job (`backend/jobs/amlSweep.job`) replays
+  recent activity through the SAME consumer/ruleset — one consistent engine for
+  real-time and batch, a safety net for missed events and a whole-window pass. No
+  drift between the two paths (independent-testing property).
+- **Sanctions screening (OFAC):** withdrawals are screened against a denylist at
+  creation; a hit holds the withdrawal pending operator review (slice A, S5).
+- **Case → SAR:** each case is a SAR candidate worked from the admin surface;
+  resolution is written to the immutable audit trail.
+- Toggle-gated, default-off, thresholds in business-config; shadow mode for tuning.
+
 ## Design-readiness items (cheap now, expensive on real data — Radar #3)
 
 | Item | State | Evidence / notes |
