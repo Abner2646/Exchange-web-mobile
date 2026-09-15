@@ -13,6 +13,8 @@ async function replay(id, type, payload, byType) {
     // Per-row isolation: one poison row must not abort the whole pass.
     console.error(`[amlSweep] replay ${type} ${id} failed:`, err.message);
   }
+  // Counter is OUTSIDE the try on purpose: `scanned` counts every row we attempted,
+  // whether or not its replay threw (do not move this inside the try).
   byType[type]++;
 }
 

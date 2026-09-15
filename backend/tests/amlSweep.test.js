@@ -39,6 +39,8 @@ describe('amlSweep.runSweep', () => {
     expect(consumer.handleEvent).toHaveBeenCalledWith({ id: 'w1', type: 'WithdrawalTransmitted', payload: { blockchainTransactionId: 'w1', userId: 'u1', cryptoId: 'c1', amount: '2.5' } });
     expect(consumer.handleEvent).toHaveBeenCalledWith({ id: 'd1', type: 'DepositConfirmed', payload: { blockchainTransactionId: 'd1', userId: 'u2', cryptoId: 'c1', amount: '1' } });
     expect(consumer.handleEvent).toHaveBeenCalledWith({ id: 'p1', type: 'P2PTransactionCompleted', payload: { buyerId: 'a', sellerId: 'b', transaction: { id: 'p1' } } });
+    // Lock the exact config key + default so a future typo is caught.
+    expect(amlConfig.getThreshold).toHaveBeenCalledWith('aml.sweep.lookbackHours', 48);
   });
 
   test('a throwing handleEvent for one row does not stop the others (per-row isolation)', async () => {
