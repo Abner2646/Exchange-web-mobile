@@ -1,12 +1,13 @@
 # AML signal catalog & monitoring design (Fase 4.8)
 
-> **Scope for this phase (per ROADMAP §4.8): design, not engine.** While this is a
-> demo/portfolio, no real AML engine runs and no SAR/STR is filed. The deliverable
-> is (a) a documented, explicit **signal catalog** so the data needed is already
-> being stored, and (b) the **account risk-flag** and **case-queue** design, ready
-> to activate. Monitoring rules are **queries over the append-only ledger**
-> (Radar #1) — not fragile reconstructions of a mutable balance. Feeds the FinCEN
-> BSA/AML mapping (transaction monitoring, SAR). Companion to `fincen-bsa-aml-mapping.md`.
+> **Status: ACTIVATED (Fase 4.8 + AML monitor slices A–C).** The engine runs:
+> S5 sanctions screening + hold at withdrawal creation (slice A), the S1–S6
+> detective signals on-event (slice B), and a periodic sweep replaying recent
+> activity through the same consumer (slice C). All toggle-gated
+> (`aml.monitoring.enabled` / `aml.holdEnforcement.enabled`), **default-off**, with
+> a shadow mode. Cases + the account risk flag are admin-only (tipping-off).
+> Thresholds are business-config (`aml.*`). Still a demo/portfolio: no real SAR/CTR
+> is filed and the denylist is manually seeded (no live OFAC feed).
 
 ## Principles (fixed)
 
