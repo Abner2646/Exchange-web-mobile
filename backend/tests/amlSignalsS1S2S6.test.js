@@ -23,6 +23,12 @@ describe('S2 structuring', () => {
     // 5000 is below 0.8×10000=8000; 10000 is not < T
     expect(s2({ withdrawalUsds: ['5000', '10000', '9000'], thresholdUsd: '10000', count: 3 })).toBeNull();
   });
+  test('a non-integer count config is floored (3.9 → 3, not 4)', () => {
+    // Three matched withdrawals with count=3.9 — should still fire (floor → 3 required).
+    const result = s2({ withdrawalUsds: ['9000', '9000', '9000'], thresholdUsd: 10000, count: 3.9 });
+    expect(result).not.toBeNull();
+    expect(result.evidence.matched).toBe(3);
+  });
 });
 
 describe('S6 new-account volume', () => {

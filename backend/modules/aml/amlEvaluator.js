@@ -44,6 +44,16 @@ async function evaluate(event) {
   const results = [];
   const p = event.payload || {};
 
+  // Guard: a malformed event (missing key fields) must not crash signal logic or
+  // produce false cases. Return empty rather than propagating undefined through
+  // money.multiply / dedupeKey string interpolation.
+  if (event.type === 'WithdrawalTransmitted' || event.type === 'DepositConfirmed') {
+    if (!p.userId || !p.cryptoId || p.amount == null) return results;
+  }
+  if (event.type === 'P2PTransactionCompleted') {
+    if (!p.buyerId || !p.sellerId) return results;
+  }
+
   if (event.type === 'WithdrawalTransmitted') {
     // S3 velocity: deposit-then-withdraw same asset inside the window
     const ratio = await amlConfig.getThreshold('aml.s3.ratio', 0.9);
