@@ -54,9 +54,12 @@ async function evaluate(event) {
     const s2count = await amlConfig.getThreshold('aml.s2.count', 3);
     const s2Hours = await amlConfig.getThreshold('aml.s2.windowHours', 24);
     const wds = await da.withdrawalsInWindow(p.userId, new Date(Date.now() - s2Hours * 3600000));
-    const { valuedUsds } = await valueItems(wds);
+    const { valuedUsds, unvaluable: unvS2 } = await valueItems(wds);
     const f2 = s2({ withdrawalUsds: valuedUsds, thresholdUsd: T, count: s2count });
-    if (f2) results.push({ userId: p.userId, finding: f2, dedupeKey: `${p.userId}:S2:${utcDay()}` });
+    if (f2) {
+      f2.evidence.unvaluable = unvS2; // record how many withdrawals couldn't be USD-valued
+      results.push({ userId: p.userId, finding: f2, dedupeKey: `${p.userId}:S2:${utcDay()}` });
+    }
   }
 
   if (event.type === 'P2PTransactionCompleted') {
@@ -90,9 +93,7 @@ async function evaluate(event) {
     // S1 volume over the rolling window vs the user's daily limit
     const s1Hours = await amlConfig.getThreshold('aml.s1.windowHours', 24);
     const s1Mult = await amlConfig.getThreshold('aml.s1.multiplier', 3);
-    const { User } = require('../../models');
-    const user = await User.findByPk(userId);
-    const limitUsd = user ? String(user.dailyLimitUsd) : '0';
+    const limitUsd = await da.userDailyLimit(userId);
     const moves1 = await da.onchainMovementsInWindow(userId, new Date(Date.now() - s1Hours * 3600000));
     const { sumUsd: vol1, unvaluable: unv1 } = await valueItems(moves1);
     const f1 = s1({ totalUsd: vol1, limitUsd, multiplier: s1Mult });
