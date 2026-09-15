@@ -34,9 +34,7 @@ async function runSweep() {
   ]);
 
   for (const r of moneyRows) {
-    const payload = r.eventType === 'WithdrawalTransmitted'
-      ? { blockchainTransactionId: r.id, userId: r.userId, cryptoId: r.cryptoId, amount: r.amount }
-      : { blockchainTransactionId: r.id, userId: r.userId, cryptoId: r.cryptoId, amount: r.amount };
+    const payload = { blockchainTransactionId: r.id, userId: r.userId, cryptoId: r.cryptoId, amount: r.amount };
     await replay(r.id, r.eventType, payload, counters);
   }
   for (const r of p2pRows) {
