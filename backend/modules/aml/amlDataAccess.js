@@ -70,27 +70,31 @@ async function userDailyLimit(userId, transaction = null) {
 }
 
 // ── Cross-user recent finders (for the periodic sweep, Slice C) ─────────────
-async function recentWithdrawals(since, transaction = null) {
-  const { BlockchainTransaction } = require('../../models');
-  // Only CONFIRMED/completed withdrawals — these are the ones that actually
-  // transmitted on-chain, i.e. the exact state at which the real
-  // `WithdrawalTransmitted` event fires (blockchainTransaction.model: status→confirmed).
-  // Including pending/processing would replay a "transmitted" event for a withdrawal
-  // that hasn't left yet — a false positive and real-time/batch drift.
-  const rows = await BlockchainTransaction.findAll({
-    where: { type: 'withdrawal', status: { [Op.in]: ['confirmed', 'completed'] }, created_at: { [Op.gte]: since } },
-    transaction,
-  });
-  return rows.map(r => ({ id: r.id, userId: r.userId, cryptoId: r.cryptoId, amount: String(r.amount) }));
-}
-
-async function recentConfirmedDeposits(since, transaction = null) {
+// Single query for both withdrawal and deposit money-rows. Only CONFIRMED/completed
+// withdrawals are included — the exact state at which the real `WithdrawalTransmitted`
+// event fires (blockchainTransaction.model: status→confirmed). Including
+// pending/processing would replay a "transmitted" event for a withdrawal that hasn't
+// left yet — a false positive and real-time/batch drift.
+async function recentMoneyTransactions(since, transaction = null) {
   const { BlockchainTransaction } = require('../../models');
   const rows = await BlockchainTransaction.findAll({
-    where: { type: 'deposit', status: { [Op.in]: ['confirmed', 'completed'] }, created_at: { [Op.gte]: since } },
+    where: {
+      status: { [Op.in]: ['confirmed', 'completed'] },
+      created_at: { [Op.gte]: since },
+      [Op.or]: [
+        { type: 'withdrawal' },
+        { type: 'deposit' },
+      ],
+    },
     transaction,
   });
-  return rows.map(r => ({ id: r.id, userId: r.userId, cryptoId: r.cryptoId, amount: String(r.amount) }));
+  return rows.map(r => ({
+    id: r.id,
+    userId: r.userId,
+    cryptoId: r.cryptoId,
+    amount: String(r.amount),
+    eventType: r.type === 'withdrawal' ? 'WithdrawalTransmitted' : 'DepositConfirmed',
+  }));
 }
 
 async function recentCompletedP2P(since, transaction = null) {
@@ -102,4 +106,4 @@ async function recentCompletedP2P(since, transaction = null) {
   return rows.map(r => ({ id: r.id, buyerId: r.buyerId, sellerId: r.sellerId }));
 }
 
-module.exports = { withdrawalsInWindow, onchainMovementsInWindow, confirmedDepositsInWindow, p2pCompletedCountBetween, userCreatedAt, userDailyLimit, recentWithdrawals, recentConfirmedDeposits, recentCompletedP2P };
+module.exports = { withdrawalsInWindow, onchainMovementsInWindow, confirmedDepositsInWindow, p2pCompletedCountBetween, userCreatedAt, userDailyLimit, recentMoneyTransactions, recentCompletedP2P };
