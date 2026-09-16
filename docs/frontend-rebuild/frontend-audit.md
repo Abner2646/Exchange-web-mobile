@@ -1,22 +1,22 @@
-# Frontend rebuild audit
+# Web frontend legacy audit
 
 **Date:** 2026-09-16  
-**Scope:** the Vite/TypeScript application currently loaded by `src/main.tsx`, the
-legacy CRA application under `src/`, and the backend contract recorded in
-[`backend-contract-changes.md`](./backend-contract-changes.md). This is a static
+**Scope:** the existing CRA/React web application under `frontend/`, and the
+backend contract recorded in
+[`backend-contract-changes.md`](./backend-contract-changes.md). The separate
+Expo/React Native application under `mobile/` is intentionally excluded. This is a static
 audit. It does not claim that a request succeeds until the replacement feature
 has an integration test against the test backend.
 
 ## Executive assessment
 
-The legacy frontend is not a safe migration target. Its API namespace predates
+The legacy web frontend is not a safe migration target. Its API namespace predates
 the backend module rename, money handling discards decimal precision, and the
-styling model has no component boundary. The new Vite entry point is a suitable
-foundation, but it deliberately contains placeholders; it is not yet a usable
-exchange UI.
+styling model has no component boundary.
 
-The rebuild must be a replacement, feature by feature. Do not re-enable a
-legacy page simply because it renders: rendering is not evidence that its
+The rebuild must use this existing web frontend as its migration baseline,
+feature by feature. Do not keep a legacy page simply because it renders:
+rendering is not evidence that its
 backend contract, money semantics, authorization flow, or accessibility still
 work.
 
@@ -26,10 +26,10 @@ work.
 
 | Finding | Evidence | Required resolution |
 | --- | --- | --- |
-| Legacy monetary code loses precision. | There are 99 `parseFloat` uses under `frontend/src`, including swap, trading, transfer, withdrawal, P2P, balance valuation, and display helpers. The live API contract returns canonical decimal **strings**. | Remove all legacy money helpers from the new bundle. Use a decimal library for arithmetic and an exact string formatter for display. Network request/response money fields remain strings. |
+| Legacy monetary code loses precision. | There are 99 `parseFloat` uses under `frontend/src`, including swap, trading, transfer, withdrawal, P2P, balance valuation, and display helpers. The live API contract returns canonical decimal **strings**. | Replace the affected helpers page by page. Use a decimal library for arithmetic and an exact string formatter for display. Network request/response money fields remain strings. |
 | Idempotency is absent from legacy money requests. | `Idempotency-Key` has zero occurrences in the legacy client. The backend requires it for order, withdrawal, user transfer, swap, and Funding↔Spot transfer POSTs. | Every user intent owns a generated UUID, disables its submit control while pending, and reuses that UUID only for a retry of that same intent. Implement this in the shared mutation client, never ad hoc per page. |
 | Legacy API routes are stale after the backend rename. | `src/api/endpoints.js` calls `/usuario/*`, `/criptomoneda/*`, `/transferencia/*`, and `/transactions/withdraw`; `backend/routes/index.js` mounts `/user`, `/crypto`, `/transfer`, and `/transaccionBlockchain`. | Retire `endpoints.js`; define typed endpoint modules beside their feature, with contract tests before a feature page is released. |
-| The active authentication design stores a bearer JWT in `localStorage`. | Both the legacy `api/client.js` and the new `features/auth/AuthProvider.tsx` read/write `token` there. | Treat this as a security-design dependency, not a cosmetic frontend fix. Move to an `HttpOnly; Secure; SameSite` cookie plus CSRF design when the backend auth contract is changed. Until then, minimize XSS surface, never persist PII or tokens elsewhere, and do not call this production-ready. OWASP explicitly advises against storing JWTs/session identifiers in web storage. [OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html) |
+| The current authentication design stores a bearer JWT in `localStorage`. | `frontend/src/api/client.js` and `frontend/src/context/AuthContext.jsx` read/write `token` there. | Treat this as a security-design dependency, not a cosmetic frontend fix. Move to an `HttpOnly; Secure; SameSite` cookie plus CSRF design when the backend auth contract is changed. Until then, minimize XSS surface, never persist PII or tokens elsewhere, and do not call this production-ready. OWASP explicitly advises against storing JWTs/session identifiers in web storage. [OWASP](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html) |
 
 ### P1 — blocks a correct, trustworthy user experience
 
@@ -38,17 +38,17 @@ work.
 | Contract changes made in the backend are not represented in UI state. | Legacy balances assume one balance per asset; they do not model `funding`, `spot`, or `pending`. Profile/KYC UI uses an obsolete mock submission and fields such as `nombreCompleto`/document number rather than the current profile and provider-driven KYC flow. | Model the current balance shape and its missing-as-zero rule. Build funding↔spot transfer before trading; deposits show pending separately; withdrawals only offer Funding. Profile uses `displayName`, `pais`, `estado`, and `locale`; KYC is a provider flow, never a free-form PII mock. |
 | Error handling is presentation-driven rather than contract-driven. | Legacy services branch on heterogeneous response shapes, toast raw messages, and emit 331 `console.*` calls. The backend has canonical `{ error: { code, message } }` errors. | Create a single `ApiError` decoder and i18n `code → message` catalog. Log sanitized, structured diagnostics only in development/approved telemetry; never surface unknown backend strings as product copy. |
 | Important authentication routes are missing or misleading. | The legacy login links to `/forgot-password`, but `App.jsx` has no matching route. Email change, reset-password, recovery-code, and Google Identity Services flows are not represented as complete pages. | Rebuild account journeys together: register → verify email → login/2FA → recover password → email change confirmation. Google sign-in sends only the verified GIS `idToken`; never recreate the old client-supplied identity payload or JWT-in-query behavior. |
-| Client routing is inconsistent with domain routing. | Legacy `/p2p/transaction/:id` is a page route but is also stored as `P2P_TRANSACCION_DETAILS` as if it were an API endpoint. New protected page names (`wallet`, `trade`) are intentionally placeholders and do not yet match a product information architecture. | Keep browser routes and API paths in separate modules and types. Define public, authenticated, verified-email, and operator routes explicitly. |
-| New i18n is not yet functional. | `src/i18n/config.ts` has empty resources, no UI consumes translations, and `index.html` is fixed to `lang="en"`. | Translate all fixed copy from day one, set document language from the selected locale, format dates/numbers in the render layer, and localize inputs before converting them to canonical decimal strings. |
+| Client routing is inconsistent with domain routing. | Legacy `/p2p/transaction/:id` is a page route but is also stored as `P2P_TRANSACCION_DETAILS` as if it were an API endpoint. | Keep browser routes and API paths in separate modules and types. Define public, authenticated, verified-email, and operator routes explicitly. |
+| There is no i18n layer. | Fixed copy is distributed across JSX, toasts, validators, and service errors; there is no translation catalog or locale ownership. | Translate all fixed copy from day one, set document language from the selected locale, format dates/numbers in the render layer, and localize inputs before converting them to canonical decimal strings. |
 
 ### P2 — architecture, maintainability, and visual-system debt
 
 | Finding | Evidence | Required resolution |
 | --- | --- | --- |
-| Two applications coexist in `src/`. | Vite enters through `main.tsx`; CRA `index.js`/`App.jsx`, 121 JS/JSX files, and 38 stylesheet files remain. | The legacy subtree is reference-only until each replacement passes contract and UX acceptance. Delete a legacy feature in the same commit that replaces it. Do not import legacy services, hooks, contexts, or CSS into the new application. |
+| The web application has no architectural boundaries. | CRA enters through `index.js`/`App.jsx`; `frontend/src` contains 121 JS/JSX files and 38 stylesheet files with shared services, hooks, contexts, pages, and CSS coupled by convention. | Migrate this existing tree feature by feature. Delete a legacy service, hook, context, or stylesheet only in the commit that replaces its feature and passes contract/UX acceptance. |
 | CSS has global coupling and conflicting ownership. | `styles/global.css` imports duplicate font families and globally changes headings, inputs, scrollbars, `.container`, and `.card`; page styles repeat generic selectors such as `.form-group`, `.loading-spinner`, and modal classes. | Use a minimal global reset/tokens layer plus CSS Modules per component/page. Global selectors are reserved for tokens, reset, typography defaults, and accessibility primitives. CSS Modules provide the required component boundary; global CSS otherwise matches every node in the tree. [MDN](https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Scoping) |
-| Test coverage is not commensurate with financial flows. | The new app has three unit assertions for exact formatting; the legacy frontend has no maintained component or end-to-end suite. | Add unit tests for API/money parsers, component tests for every form state, and Playwright golden flows before enabling wallet, swap, trading, P2P, or withdrawal pages. |
-| The mobile navigation hides primary navigation without an alternative. | `src/app/global.css` hides `nav` below 700px. | Build an accessible menu with focus management, Escape-to-close, visible current location, and 44px touch targets. WCAG 2.2 also requires visible focus and at least 24px minimum pointer targets at AA. [W3C WCAG 2.2](https://www.w3.org/TR/WCAG22/) |
+| Test coverage is not commensurate with financial flows. | The legacy frontend has no maintained component or end-to-end suite. | Add unit tests for API/money parsers, component tests for every form state, and Playwright golden flows before releasing wallet, swap, trading, P2P, or withdrawal pages. |
+| Responsive navigation and controls have no documented accessibility contract. | The existing page styles rely on ad-hoc hitboxes and page-specific responsive rules. | Build an accessible menu with focus management, Escape-to-close, visible current location, and 44px touch targets. WCAG 2.2 also requires visible focus and at least 24px minimum pointer targets at AA. [W3C WCAG 2.2](https://www.w3.org/TR/WCAG22/) |
 
 ## Backend-route compatibility matrix
 
@@ -155,7 +155,7 @@ src/
 3. Keyboard-only and mobile viewport checks pass; visible focus is not hidden.
 4. A user cannot submit a money operation twice, mistake Funding for Spot, or
    interpret pending funds as spendable.
-5. The legacy equivalent is removed only after the replacement passes its
+5. The existing implementation is removed only after the replacement passes its
    feature-level acceptance test.
 
 ## Follow-up scope outside the frontend
