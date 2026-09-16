@@ -1,1 +1,0 @@
-export function WorkspacePage({ title }: { title: string }) { return <section className="workspace"><p className="eyebrow">{title}</p><h1>{title}</h1><p className="status">This route is protected and ready for its feature slice. It will consume canonical money strings, typed API errors, and idempotent money mutations from the shared foundation.</p></section>; }

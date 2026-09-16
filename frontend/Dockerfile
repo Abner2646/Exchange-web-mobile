@@ -1,17 +1,17 @@
 # frontend/Dockerfile
-FROM node:22-alpine
+FROM node:18-alpine
 
 WORKDIR /app
 
 # Install dependencies
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 
 # Copy source code
 COPY . .
 
 # Expose port
-EXPOSE 4173
+EXPOSE 3000
 
 # Default command
-CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0"]
+CMD ["npm", "start"]
