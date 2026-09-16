@@ -48,7 +48,7 @@ async function evaluate(event) {
   // produce false cases. Return empty rather than propagating undefined through
   // money.multiply / dedupeKey string interpolation.
   if (event.type === 'WithdrawalTransmitted' || event.type === 'DepositConfirmed') {
-    if (!p.userId || !p.cryptoId || p.amount == null) return results;
+    if (!p.userId || !p.cryptoId || p.amount == null || !p.blockchainTransactionId) return results;
   }
   if (event.type === 'P2PTransactionCompleted') {
     if (!p.buyerId || !p.sellerId) return results;

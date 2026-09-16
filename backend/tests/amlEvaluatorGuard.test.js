@@ -21,4 +21,12 @@ describe('amlEvaluator payload validation', () => {
     const results = await evaluator.evaluate({ type: 'P2PTransactionCompleted', payload: { sellerId: 's1', transaction: { id: 't1' } } });
     expect(results).toEqual([]);
   });
+
+  it('returns [] for WithdrawalTransmitted missing blockchainTransactionId', async () => {
+    const results = await evaluator.evaluate({
+      type: 'WithdrawalTransmitted',
+      payload: { userId: 'u1', cryptoId: 'c1', amount: '100' }, // no blockchainTransactionId
+    });
+    expect(results).toEqual([]);
+  });
 });

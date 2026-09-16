@@ -52,4 +52,23 @@ describe('PeriodicJob base class', () => {
     job.stop();
     jest.useRealTimers();
   });
+
+  it('start() after stop()-mid-flight skips eager run but schedules interval', async () => {
+    let resolveWork;
+    const workPromise = new Promise(r => { resolveWork = r; });
+    job.doWork = jest.fn(() => workPromise);
+
+    job.start(); // first start: triggers eager run, _running=true
+    expect(job._running).toBe(true);
+
+    job.stop(); // stop mid-flight: isRunning=false, but _running still true
+
+    job.start(); // second start: should NOT call run() eagerly
+    // run() was called once from the first start(); after stop+start it should NOT be called again yet
+    expect(job.doWork).toHaveBeenCalledTimes(1);
+
+    resolveWork(); // let original doWork finish
+    await new Promise(r => setImmediate(r)); // flush
+    expect(job._running).toBe(false);
+  });
 });

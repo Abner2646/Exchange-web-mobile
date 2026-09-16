@@ -19,7 +19,7 @@ class PeriodicJob {
 
   start() {
     if (this.isRunning) return;
-    this.run();
+    if (!this._running) this.run();
     this.interval = setInterval(() => this.run(), this.frequencyMs);
     this.isRunning = true;
     console.log(`✅ ${this.name} started`);
