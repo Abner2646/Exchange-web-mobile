@@ -28,13 +28,16 @@ async function runSweep() {
   const lookbackHours = await amlConfig.getThreshold('aml.sweep.lookbackHours', 48);
   const since = new Date(Date.now() - lookbackHours * 3600000);
 
-  for (const r of await da.recentWithdrawals(since)) {
-    await replay(r.id, 'WithdrawalTransmitted', { blockchainTransactionId: r.id, userId: r.userId, cryptoId: r.cryptoId, amount: r.amount }, counters);
+  const [moneyRows, p2pRows] = await Promise.all([
+    da.recentMoneyTransactions(since),
+    da.recentCompletedP2P(since),
+  ]);
+
+  for (const r of moneyRows) {
+    const payload = { blockchainTransactionId: r.id, userId: r.userId, cryptoId: r.cryptoId, amount: r.amount };
+    await replay(r.id, r.eventType, payload, counters);
   }
-  for (const r of await da.recentConfirmedDeposits(since)) {
-    await replay(r.id, 'DepositConfirmed', { blockchainTransactionId: r.id, userId: r.userId, cryptoId: r.cryptoId, amount: r.amount }, counters);
-  }
-  for (const r of await da.recentCompletedP2P(since)) {
+  for (const r of p2pRows) {
     await replay(r.id, 'P2PTransactionCompleted', { buyerId: r.buyerId, sellerId: r.sellerId, transaction: { id: r.id } }, counters);
   }
 

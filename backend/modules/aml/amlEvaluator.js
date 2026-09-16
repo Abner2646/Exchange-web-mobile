@@ -16,13 +16,22 @@ function utcDay() { return new Date().toISOString().slice(0, 10); }
 // valueItems: values a list of {amount, cryptoId} items via amlValuation.
 // Drops unvaluable assets (records the count so callers can attach it to evidence).
 // Returns { sumUsd, valuedUsds, unvaluable }.
+// Memoizes getUsdValue per cryptoId within a single call: fetches the unit price
+// (amount='1') once per unique asset and scales by each item's actual amount, so
+// repeated assets (e.g. several BTC withdrawals in S2) avoid redundant DB lookups.
 async function valueItems(items) {
   let sumUsd = '0';
   const valuedUsds = [];
   const unvaluableCryptoIds = [];
+  const cache = new Map(); // memoize per cryptoId within this call
   for (const it of items) {
-    const { usd } = await valuation.getUsdValue(it.cryptoId, it.amount);
-    if (usd === null) { unvaluableCryptoIds.push(it.cryptoId); continue; }
+    if (!cache.has(it.cryptoId)) {
+      cache.set(it.cryptoId, await valuation.getUsdValue(it.cryptoId, '1'));
+    }
+    const { usd: unitUsd } = cache.get(it.cryptoId);
+    if (unitUsd === null) { unvaluableCryptoIds.push(it.cryptoId); continue; }
+    // Scale the unit price by the actual amount.
+    const usd = money.multiply(unitUsd, String(it.amount));
     valuedUsds.push(usd);
     sumUsd = money.add(sumUsd, usd);
   }
@@ -34,6 +43,16 @@ async function valueItems(items) {
 async function evaluate(event) {
   const results = [];
   const p = event.payload || {};
+
+  // Guard: a malformed event (missing key fields) must not crash signal logic or
+  // produce false cases. Return empty rather than propagating undefined through
+  // money.multiply / dedupeKey string interpolation.
+  if (event.type === 'WithdrawalTransmitted' || event.type === 'DepositConfirmed') {
+    if (!p.userId || !p.cryptoId || p.amount == null || !p.blockchainTransactionId) return results;
+  }
+  if (event.type === 'P2PTransactionCompleted') {
+    if (!p.buyerId || !p.sellerId) return results;
+  }
 
   if (event.type === 'WithdrawalTransmitted') {
     // S3 velocity: deposit-then-withdraw same asset inside the window
@@ -92,11 +111,12 @@ async function evaluate(event) {
   // S1 + S6: shared block for all on-chain movements (deposits and withdrawals)
   if (event.type === 'DepositConfirmed' || event.type === 'WithdrawalTransmitted') {
     const userId = p.userId;
+    // One query for both S1 (dailyLimitUsd) and S6 (createdAt).
+    const { createdAt, dailyLimitUsd: limitUsd } = await da.userProfile(userId);
 
     // S1 volume over the rolling window vs the user's daily limit
     const s1Hours = await amlConfig.getThreshold('aml.s1.windowHours', 24);
-    const s1Mult = await amlConfig.getThreshold('aml.s1.multiplier', 3);
-    const limitUsd = await da.userDailyLimit(userId);
+    const s1Mult  = await amlConfig.getThreshold('aml.s1.multiplier', 3);
     // Skip S1 when there's no positive limit (missing/null/0): a 0 ceiling would
     // fire on any volume (ghost-user false positive). Only evaluate against a real limit.
     if (limitUsd !== null && money.compare(limitUsd, '0') > 0) {
@@ -112,8 +132,7 @@ async function evaluate(event) {
 
     // S6 new-account volume since signup
     const maxAgeDays = await amlConfig.getThreshold('aml.s6.accountAgeDays', 7);
-    const volumeUsd = await amlConfig.getThreshold('aml.s6.volumeUsd', 50000);
-    const createdAt = await da.userCreatedAt(userId);
+    const volumeUsd  = await amlConfig.getThreshold('aml.s6.volumeUsd', 50000);
     if (createdAt) {
       const ageDays = (Date.now() - new Date(createdAt).getTime()) / 86400000;
       if (ageDays < maxAgeDays) {
@@ -132,4 +151,4 @@ async function evaluate(event) {
   return results;
 }
 
-module.exports = { evaluate, utcDay };
+module.exports = { evaluate, utcDay, valueItems };

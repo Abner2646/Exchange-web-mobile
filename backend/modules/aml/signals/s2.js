@@ -12,7 +12,7 @@ module.exports = function s2({ withdrawalUsds, thresholdUsd, count }) {
   const matched = withdrawalUsds.filter(
     v => money.compare(String(v), floor) >= 0 && money.compare(String(v), T) < 0
   );
-  if (matched.length < count) return null;
+  if (matched.length < Math.floor(count)) return null;
   const sum = matched.reduce((acc, v) => money.add(acc, String(v)), '0');
   if (money.compare(sum, T) < 0) return null;
   return {

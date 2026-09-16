@@ -39,4 +39,19 @@ describe('amlValuation.getUsdValue', () => {
     expect(r.source).toBe('unknown');
     expect(r.usd).toBeNull();
   });
+
+  test('a price older than the stale threshold emits a warning (but still returns a value)', async () => {
+    const btc = await Crypto.create({ symbol: 'BTC', name: 'Bitcoin', network: 'bitcoin', decimals: 8 });
+    const usdt = await Crypto.create({ symbol: 'USDT', name: 'Tether', network: 'ethereum', decimals: 6 });
+    // lastUpdated set to 2 hours ago
+    const staleDate = new Date(Date.now() - 2 * 3600 * 1000);
+    await SwapPair.create({ baseCryptoId: btc.id, quoteCryptoId: usdt.id, currentPrice: '40000', feePercent: '0.1', active: true, lastUpdated: staleDate });
+
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const r = await valuation.getUsdValue(btc.id, '1');
+    expect(r.source).toBe('pair');
+    expect(Number(r.usd)).toBe(40000);
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('[amlValuation] stale price'));
+    warnSpy.mockRestore();
+  });
 });

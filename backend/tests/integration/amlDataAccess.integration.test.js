@@ -67,6 +67,28 @@ describe('amlDataAccess', () => {
     expect(rows.map(r => r.amount).sort()).toEqual(['1.00000000', '2.00000000']);
   });
 
+  test('userProfile returns both createdAt and dailyLimitUsd in one call', async () => {
+    const u = await f.seedUser();
+    // f.seedUser creates a User; set a known dailyLimitUsd
+    await u.update({ dailyLimitUsd: '5000' });
+    const p = await da.userProfile(u.id);
+    expect(p.createdAt).toBeInstanceOf(Date);
+    expect(p.dailyLimitUsd).toBe('5000.00'); // canonical decimal string
+  });
+
+  test('userProfile returns nulls for a missing user', async () => {
+    // Users table uses UUIDs; use a nil UUID that cannot exist in the DB.
+    const p = await da.userProfile('00000000-0000-0000-0000-000000000000');
+    expect(p).toEqual({ createdAt: null, dailyLimitUsd: null });
+  });
+
+  test('userProfile returns null dailyLimitUsd when the field is null', async () => {
+    const u = await f.seedUser();
+    await u.update({ dailyLimitUsd: null });
+    const p = await da.userProfile(u.id);
+    expect(p.dailyLimitUsd).toBeNull();
+  });
+
   test('p2pCompletedCountBetween counts the unordered pair, completed only, in window', async () => {
     const a = await f.seedUser(); const b = await f.seedUser();
     const c = await Crypto.create({ symbol: 'BTC', name: 'BTC', network: 'bitcoin' });
