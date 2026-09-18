@@ -39,11 +39,13 @@ export const formatTime = (date) => {
  * @returns {String} "Ahora", "Hace 3m", "Hace 2h", "Hace 5d", "15 Oct"
  */
 export const formatRelativeDate = (dateString) => {
-  if (!dateString) return 'N/A';
+  if (!dateString) return 'Reciente';
   
   const date = new Date(dateString);
+  if (isNaN(date.getTime())) return 'Reciente';
+
   const now = new Date();
-  const diffInMs = now - date;
+  const diffInMs = Math.max(0, now - date);
   const diffInMinutes = Math.floor(diffInMs / 60000);
   const diffInHours = Math.floor(diffInMs / 3600000);
   const diffInDays = Math.floor(diffInMs / 86400000);

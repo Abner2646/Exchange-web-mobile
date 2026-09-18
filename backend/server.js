@@ -10,9 +10,9 @@ async function startServer() {
     await sequelize.authenticate();
     console.log('✅ Database connected');
 
-    // ⚠️ TEMPORAL: Una sola vez para recrear ENUMs
-    await sequelize.sync({ force: true });
-    console.log('⚠️ Database reset (recreating ENUMs)');
+    // Sincronizar modelos sin destruir datos
+    await sequelize.sync();
+    console.log('✅ Database models synchronized');
 
     app.listen(PORT, '0.0.0.0', () => {
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');

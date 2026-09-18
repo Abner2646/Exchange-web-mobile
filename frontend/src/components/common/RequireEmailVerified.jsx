@@ -14,16 +14,18 @@ const RequireEmailVerified = ({ children }) => {
   const location = useLocation();
   const [hasShownToast, setHasShownToast] = useState(false);
 
+  const isEmailVerified = Boolean(user?.emailVerificado || user?.emailVerified);
+
   useEffect(() => {
     // Mostrar toast solo una vez por sesión
-    if (user && !user.emailVerificado && !user.googleId && !hasShownToast) {
+    if (user && !isEmailVerified && !user.googleId && !hasShownToast) {
       toast.error('Debes verificar tu email para acceder a esta función', {
         duration: 4000,
         icon: '🔒',
       });
       setHasShownToast(true);
     }
-  }, [user, hasShownToast]);
+  }, [user, isEmailVerified, hasShownToast]);
 
   if (!user) {
     // Si no está autenticado, redirigir a login
@@ -36,7 +38,7 @@ const RequireEmailVerified = ({ children }) => {
   }
 
   // ⭐ Si el email NO está verificado, redirigir a /verificar-email
-  if (!user.emailVerificado) {
+  if (!isEmailVerified) {
     return <Navigate to="/verificar-email" state={{ from: location }} replace />;
   }
 

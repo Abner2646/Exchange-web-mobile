@@ -38,7 +38,7 @@ export const useAdmin = () => {
 
   // Query: Obtener información del usuario actual
   const {
-    data: userInfo,
+    data: rawUserInfo,
     isLoading: loadingUser,
     error: userError,
   } = useQuery(
@@ -49,13 +49,19 @@ export const useAdmin = () => {
       retry: false, // No reintentar si falla
       onSuccess: (data) => {
         console.log('✅ [useAdmin] User data loaded:', data);
-        console.log('✅ [useAdmin] User rol:', data?.rol);
+        console.log('✅ [useAdmin] User rol:', data?.role || data?.rol);
       },
       onError: (error) => {
         console.error('❌ [useAdmin] Error loading user:', error);
       },
     }
   );
+
+  const userInfo = rawUserInfo ? {
+    ...rawUserInfo,
+    rol: rawUserInfo.role || rawUserInfo.rol,
+    role: rawUserInfo.role || rawUserInfo.rol,
+  } : null;
 
   // Query: Obtener criptomonedas activas
   const {
@@ -77,7 +83,7 @@ export const useAdmin = () => {
     {
       staleTime: 30000, // 30 segundos
       retry: false, // No reintentar si falla para evitar múltiples 401
-      enabled: !!userInfo && userInfo.rol === 'super_admin', // Solo cargar si es super_admin
+      enabled: !!userInfo && (userInfo.role === 'super_admin' || userInfo.rol === 'super_admin'), // Solo cargar si es super_admin
       onError: (error) => {
         console.error('❌ [useAdmin] Error loading balance stats:', error);
         // No mostrar toast, solo log en consola
@@ -303,18 +309,20 @@ export const useAdmin = () => {
   };
 
   // Filtrar criptomonedas para balance
-  const criptosFiltradas = criptomonedas.filter(
-    (crypto) =>
-      crypto.nombre.toLowerCase().includes(searchCrypto.toLowerCase()) ||
-      crypto.symbol.toLowerCase().includes(searchCrypto.toLowerCase())
-  );
+  const criptosFiltradas = criptomonedas.filter((crypto) => {
+    const name = String(crypto.nombre || crypto.name || '').toLowerCase();
+    const symbol = String(crypto.symbol || '').toLowerCase();
+    const search = String(searchCrypto || '').toLowerCase();
+    return name.includes(search) || symbol.includes(search);
+  });
 
   // Filtrar criptomonedas para stats
-  const criptosFiltadasStats = criptomonedas.filter(
-    (crypto) =>
-      crypto.nombre.toLowerCase().includes(searchCryptoStats.toLowerCase()) ||
-      crypto.symbol.toLowerCase().includes(searchCryptoStats.toLowerCase())
-  );
+  const criptosFiltadasStats = criptomonedas.filter((crypto) => {
+    const name = String(crypto.nombre || crypto.name || '').toLowerCase();
+    const symbol = String(crypto.symbol || '').toLowerCase();
+    const search = String(searchCryptoStats || '').toLowerCase();
+    return name.includes(search) || symbol.includes(search);
+  });
 
   // Obtener estadísticas de la cripto seleccionada en el panel de stats
   const selectedCryptoStats = criptoSeleccionadaStats

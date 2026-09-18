@@ -12,6 +12,7 @@
     "axios": "^1.10.0",
     "classnames": "^2.3.2",
     "date-fns": "^2.30.0",
+    "decimal.js": "^10.6.0",
     "firebase": "^12.3.0",
     "jspdf": "^3.0.3",
     "jwt-decode": "^4.0.0",

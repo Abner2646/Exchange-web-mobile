@@ -11,9 +11,27 @@ class BalanceService {
     const response = await apiClient.get(ENDPOINTS.MY_BALANCES);
     
     // Normalizar respuesta
-    if (Array.isArray(response.data)) return response.data;
-    if (response.data?.data) return response.data.data;
-    return [];
+    const rawList = Array.isArray(response.data) ? response.data : (response.data?.data || []);
+    return rawList.map(b => {
+      const available = b.availableBalance ?? b.balanceDisponible ?? b.disponible ?? b.saldoDisponible ?? b.compartments?.funding?.available ?? 0;
+      const blocked = b.blockedBalance ?? b.balanceBloqueado ?? b.bloqueado ?? b.compartments?.funding?.blocked ?? 0;
+      const cryptoId = b.criptomonedaId || b.cryptoId || b.crypto?.id;
+      const symbol = b.crypto?.symbol || b.symbol;
+      
+      return {
+        ...b,
+        availableBalance: String(available),
+        balanceDisponible: String(available),
+        disponible: String(available),
+        saldoDisponible: String(available),
+        blockedBalance: String(blocked),
+        balanceBloqueado: String(blocked),
+        bloqueado: String(blocked),
+        criptomonedaId: cryptoId,
+        cryptoId: cryptoId,
+        symbol: symbol,
+      };
+    });
   }
 
   /**
@@ -29,20 +47,31 @@ class BalanceService {
     }
 
     const totalUSDT = balances.reduce((acc, balance) => {
-      const crypto = cryptos.find(c => c.id === balance.criptomonedaId);
-      const price = prices[crypto?.symbol] || 0;
-      return acc + (parseFloat(balance.balanceDisponible) * price);
+      const crypto = balance.crypto || cryptos.find(c => c.id === (balance.criptomonedaId || balance.cryptoId));
+      const symbol = crypto?.symbol || balance.symbol || '';
+      const price = prices[symbol] ?? (symbol === 'USDT' ? 1 : 0);
+      
+      const available = parseFloat(balance.availableBalance ?? balance.balanceDisponible ?? 0) || 0;
+      const blocked = parseFloat(balance.blockedBalance ?? balance.balanceBloqueado ?? 0) || 0;
+      const amount = available + blocked;
+      
+      const value = amount * price;
+      return acc + (isNaN(value) ? 0 : value);
     }, 0);
 
     const btcPrice = prices['BTC'];
     
-    if (!btcPrice || btcPrice === 0) {
-      return { totalUSDT, totalBTC: 0, btcPriceError: true };
+    if (!btcPrice || btcPrice === 0 || isNaN(btcPrice)) {
+      return { totalUSDT: isNaN(totalUSDT) ? 0 : totalUSDT, totalBTC: 0, btcPriceError: true };
     }
     
     const totalBTC = totalUSDT / btcPrice;
 
-    return { totalUSDT, totalBTC, btcPriceError: false };
+    return { 
+      totalUSDT: isNaN(totalUSDT) ? 0 : totalUSDT, 
+      totalBTC: isNaN(totalBTC) ? 0 : totalBTC, 
+      btcPriceError: false 
+    };
   }
 
   /**
@@ -55,19 +84,28 @@ class BalanceService {
   enrichBalances(balances, cryptos, prices) {
     return balances
       .map(balance => {
-        const crypto = cryptos.find(c => c.id === balance.criptomonedaId);
+        const crypto = balance.crypto || cryptos.find(c => c.id === (balance.criptomonedaId || balance.cryptoId));
         if (!crypto) return null;
 
-        const price = prices[crypto.symbol] || 0;
-        const balanceAmount = parseFloat(balance.balanceDisponible);
+        const symbol = crypto.symbol || balance.symbol;
+        const price = prices[symbol] ?? (symbol === 'USDT' ? 1 : 0);
+        const available = parseFloat(balance.availableBalance ?? balance.balanceDisponible ?? 0) || 0;
+        const blocked = parseFloat(balance.blockedBalance ?? balance.balanceBloqueado ?? 0) || 0;
+        const balanceAmount = available + blocked;
         const valueInUSDT = balanceAmount * price;
 
         return {
           ...balance,
           crypto,
           price,
-          valueInUSDT,
-          balanceAmount
+          valueInUSDT: isNaN(valueInUSDT) ? 0 : valueInUSDT,
+          balanceAmount: isNaN(balanceAmount) ? 0 : balanceAmount,
+          availableBalance: available,
+          blockedBalance: blocked,
+          compartments: balance.compartments || {
+            funding: { available: String(available), blocked: String(blocked), pending: '0' },
+            spot: { available: '0', blocked: '0' },
+          },
         };
       })
       .filter(b => b !== null);
@@ -109,6 +147,52 @@ class BalanceService {
       balance: asset.balanceAmount,
       percentage: total > 0 ? ((asset.valueInUSDT / total) * 100).toFixed(1) : '0.0',
     }));
+  }
+
+  /**
+   * Transferir fondos entre compartimentos (Funding <-> Spot)
+   * @param {Object} params - { cryptoId, amount, from, to }
+   * @returns {Promise<Object>}
+   */
+  async transferCompartments({ cryptoId, amount, from, to }) {
+    const idempotencyKey = (typeof window !== 'undefined' && window.crypto?.randomUUID)
+      ? window.crypto.randomUUID()
+      : `transfer-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
+    const response = await apiClient.post(
+      ENDPOINTS.BALANCE_TRANSFER_COMPARTMENTS,
+      {
+        cryptoId,
+        amount: String(amount),
+        from,
+        to,
+      },
+      {
+        headers: {
+          'Idempotency-Key': idempotencyKey,
+        },
+      }
+    );
+    return response.data;
+  }
+
+  /**
+   * Reclamar fondos de prueba del faucet (Testnet)
+   * @param {Object} [params] - { symbol, amount }
+   * @returns {Promise<Object>}
+   */
+  async claimTestnetFaucet(params = {}) {
+    const response = await apiClient.post(ENDPOINTS.BALANCE_TESTNET_FAUCET, params);
+    return response.data;
+  }
+
+  /**
+   * Reclamar 1 BTC de prueba (Legacy Faucet)
+   * @returns {Promise<Object>}
+   */
+  async claimBtc() {
+    const response = await apiClient.put(ENDPOINTS.BALANCE_CLAIM_BTC);
+    return response.data;
   }
 }
 

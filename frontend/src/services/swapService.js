@@ -17,8 +17,12 @@ class SwapService {
       console.log('[SwapService] Exchange pair found:', response.data);
       
       // Normalizar respuesta
-      if (response.data?.data) return response.data.data;
-      return response.data;
+      const data = response.data?.data || response.data;
+      if (data) {
+        data.activo = data.active !== undefined ? data.active : (data.activo !== undefined ? data.activo : true);
+        data.active = data.activo;
+      }
+      return data;
     } catch (error) {
       console.warn(`[SwapService] Pair ${baseSymbol}/${quoteSymbol} not found:`, error.message);
       throw error;
@@ -56,46 +60,71 @@ class SwapService {
 
   /**
    * Calcular intercambio
-   * @param {Number} parId - ID del par de exchange
-   * @param {Number} cantidadBase - Cantidad base a intercambiar
-   * @param {String} tipo - Tipo de operación ('venta' o 'compra')
+   * @param {String} parId - ID del par de exchange (UUID)
+   * @param {Number|String} cantidadBase - Cantidad base a intercambiar
+   * @param {String} tipo - Tipo de operación ('sell'|'buy' o 'venta'|'compra')
    * @returns {Promise<Object>}
    */
-  async calculateExchange(parId, cantidadBase, tipo = 'venta') {
-    console.log('[SwapService] Calculating exchange:', { parId, cantidadBase, tipo });
+  async calculateExchange(parId, cantidadBase, tipo = 'sell') {
+    const normType = (tipo === 'compra' || tipo === 'buy') ? 'buy' : 'sell';
+    const numAmount = parseFloat(cantidadBase);
+    console.log('[SwapService] Calculating exchange:', { parId, cantidadBase: numAmount, tipo: normType });
     
     const response = await apiClient.post(ENDPOINTS.EXCHANGE_CALCULATE, {
-      parId,
-      cantidadBase,
-      tipo,
+      pairId: parId,
+      parId: parId,
+      baseAmount: numAmount,
+      cantidadBase: numAmount,
+      type: normType,
+      tipo: normType,
     });
 
     console.log('[SwapService] Calculate response:', response.data);
     
-    // Normalizar respuesta
     if (response.data?.data) return response.data.data;
     return response.data;
   }
 
   /**
    * Ejecutar intercambio
-   * @param {Number} parId - ID del par de exchange
-   * @param {Number} cantidadBase - Cantidad base
-   * @param {String} tipo - Tipo de operación
+   * @param {String} parId - ID del par de exchange (UUID)
+   * @param {Number|String} cantidadBase - Cantidad base
+   * @param {String} tipo - Tipo de operación ('sell'|'buy' o 'venta'|'compra')
+   * @param {String} compartimento - Compartimento de saldo ('funding'|'spot')
    * @returns {Promise<Object>}
    */
-  async executeSwap(parId, cantidadBase, tipo = 'venta') {
-    console.log('[SwapService] Executing swap:', { parId, cantidadBase, tipo });
+  async executeSwap(parId, cantidadBase, tipo = 'sell', compartimento = 'funding') {
+    const normType = (tipo === 'compra' || tipo === 'buy') ? 'buy' : 'sell';
+    const numAmount = parseFloat(cantidadBase);
+    const idempotencyKey = (typeof window !== 'undefined' && window.crypto && window.crypto.randomUUID)
+      ? window.crypto.randomUUID()
+      : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+          const r = (Math.random() * 16) | 0;
+          return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+        });
+
+    console.log('[SwapService] Executing swap:', { parId, cantidadBase: numAmount, tipo: normType, idempotencyKey });
     
-    const response = await apiClient.post(ENDPOINTS.EXCHANGE_EXECUTE, {
-      parId,
-      tipo,
-      cantidadBase,
-    });
+    const response = await apiClient.post(
+      ENDPOINTS.EXCHANGE_EXECUTE,
+      {
+        pairId: parId,
+        parId: parId,
+        type: normType,
+        tipo: normType,
+        baseAmount: numAmount,
+        cantidadBase: numAmount,
+        compartimento,
+      },
+      {
+        headers: {
+          'Idempotency-Key': idempotencyKey,
+        },
+      }
+    );
 
     console.log('[SwapService] Swap executed:', response.data);
     
-    // Normalizar respuesta
     if (response.data?.data) return response.data.data;
     return response.data;
   }

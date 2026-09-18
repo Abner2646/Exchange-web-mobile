@@ -22,22 +22,22 @@ function initSwapPair(sequelize) {
       field: 'quote_crypto_id'
     },
     currentPrice: {
-      type: DataTypes.DECIMAL(18, 8),
+      type: DataTypes.DECIMAL(28, 8),
       allowNull: false,
       field: 'current_price'
     },
     previousPrice: {
-      type: DataTypes.DECIMAL(18, 8),
+      type: DataTypes.DECIMAL(28, 8),
       allowNull: true,
       field: 'previous_price'
     },
     volume24h: {
-      type: DataTypes.DECIMAL(18, 8),
+      type: DataTypes.DECIMAL(28, 8),
       defaultValue: 0,
       field: 'volume_24h'
     },
     volumeBase24h: {
-      type: DataTypes.DECIMAL(18, 8),
+      type: DataTypes.DECIMAL(28, 8),
       defaultValue: 0,
       field: 'volume_base_24h'
     },
@@ -47,12 +47,12 @@ function initSwapPair(sequelize) {
       field: 'operations_count_24h'
     },
     maxPrice24h: {
-      type: DataTypes.DECIMAL(18, 8),
+      type: DataTypes.DECIMAL(28, 8),
       allowNull: true,
       field: 'max_price_24h'
     },
     minPrice24h: {
-      type: DataTypes.DECIMAL(18, 8),
+      type: DataTypes.DECIMAL(28, 8),
       allowNull: true,
       field: 'min_price_24h'
     },

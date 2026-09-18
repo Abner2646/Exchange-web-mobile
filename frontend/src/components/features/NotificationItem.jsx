@@ -79,33 +79,39 @@ import { formatRelativeDate } from '../../utils/formatters';
 import { getNotificationIcon } from '../../utils/notificationHelpers';
 
 const NotificationItem = ({ notification, onToggleRead }) => {
+  const isRead = Boolean(notification.leida ?? notification.read);
+  const title = notification.titulo || notification.title || 'Notificación';
+  const message = notification.mensaje || notification.message || '';
+  const type = notification.tipo || notification.type || 'sistema';
+  const date = notification.fechaEnviada || notification.sentAt || notification.createdAt;
+
   const handleToggleClick = (e) => {
     e.stopPropagation();
     onToggleRead(notification);
   };
 
   return (
-    <div className={`notif-item ${!notification.leida ? 'unread' : ''}`}>
-      {!notification.leida && <div className="notif-unread-indicator"></div>}
+    <div className={`notif-item ${!isRead ? 'unread' : ''}`}>
+      {!isRead && <div className="notif-unread-indicator"></div>}
 
       <div className="notif-item-icon-wrapper">
-        {getNotificationIcon(notification.tipo, 'notif-icon')}
+        {getNotificationIcon(type, 'notif-icon')}
       </div>
 
       <div className="notif-item-content">
-        <h3 className="notif-item-title">{notification.titulo}</h3>
-        <p className="notif-item-message">{notification.mensaje}</p>
+        <h3 className="notif-item-title">{title}</h3>
+        {message && <p className="notif-item-message">{message}</p>}
       </div>
 
       <div className="notif-item-right">
-        <span className="notif-item-time">{formatRelativeDate(notification.fechaEnviada)}</span>
+        <span className="notif-item-time">{formatRelativeDate(date)}</span>
 
         <button
-          className={`notif-toggle-btn ${notification.leida ? 'read' : 'unread'}`}
+          className={`notif-toggle-btn ${isRead ? 'read' : 'unread'}`}
           onClick={handleToggleClick}
-          title={notification.leida ? 'Marcar como no leída' : 'Marcar como leída'}
+          title={isRead ? 'Marcar como no leída' : 'Marcar como leída'}
         >
-          {notification.leida ? (
+          {isRead ? (
             <CheckIconSolid className="notif-toggle-icon" />
           ) : (
             <CheckIcon className="notif-toggle-icon" />

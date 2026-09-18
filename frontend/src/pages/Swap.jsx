@@ -12,6 +12,8 @@ const Swap = () => {
     fromAmount,
     toAmount,
     exchangeRate,
+    feeAmount,
+    feePercent,
     isLoading,
     priceLoading,
     isExecuting,
@@ -174,7 +176,7 @@ const Swap = () => {
                         </div>
                         <div className="swap-page-crypto-info">
                           <div className="swap-page-crypto-symbol">{crypto.symbol}</div>
-                          <div className="swap-page-crypto-name">{crypto.nombre}</div>
+                          <div className="swap-page-crypto-name">{crypto.nombre || crypto.name}</div>
                         </div>
                       </button>
                     ))
@@ -307,7 +309,7 @@ const Swap = () => {
                         </div>
                         <div className="swap-page-crypto-info">
                           <div className="swap-page-crypto-symbol">{crypto.symbol}</div>
-                          <div className="swap-page-crypto-name">{crypto.nombre}</div>
+                          <div className="swap-page-crypto-name">{crypto.nombre || crypto.name}</div>
                         </div>
                       </button>
                     ))
@@ -396,6 +398,8 @@ const Swap = () => {
           fromAmount={fromAmount}
           toAmount={toAmount}
           exchangeRate={exchangeRate}
+          feeAmount={feeAmount}
+          feePercent={feePercent}
           isLoading={isExecuting}
         />
       )}

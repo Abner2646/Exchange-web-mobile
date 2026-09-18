@@ -69,7 +69,9 @@ const SuperAdmin = () => {
     );
   }
 
-  if (hasError || userInfo?.rol !== 'super_admin') {
+  const userRole = userInfo?.role || userInfo?.rol;
+
+  if (hasError || (userRole !== 'super_admin' && userRole !== 'admin')) {
     return (
       <div className="sa-container">
         <div className="sa-error">No tienes permisos para acceder a esta página</div>
@@ -83,7 +85,7 @@ const SuperAdmin = () => {
         <h1 className="sa-title">Panel de Super Administrador</h1>
         <div className="sa-user-info">
           <span className="sa-username">{userInfo?.username}</span>
-          <span className="sa-role">{userInfo?.rol}</span>
+          <span className="sa-role">{userRole}</span>
         </div>
       </div>
 
@@ -155,7 +157,7 @@ const SuperAdmin = () => {
                       </div>
                       <div className="sa-crypto-info">
                         <span className="sa-crypto-symbol">{criptoSeleccionadaStats.symbol}</span>
-                        <span className="sa-crypto-name">{criptoSeleccionadaStats.nombre}</span>
+                        <span className="sa-crypto-name">{criptoSeleccionadaStats.nombre || criptoSeleccionadaStats.name}</span>
                       </div>
                     </div>
                   ) : (
@@ -200,7 +202,7 @@ const SuperAdmin = () => {
                             {crypto.symbol.slice(0, 3)}
                           </div>
                           <span className="sa-crypto-item-symbol">{crypto.symbol}</span>
-                          <span className="sa-crypto-item-name">{crypto.nombre}</span>
+                          <span className="sa-crypto-item-name">{crypto.nombre || crypto.name}</span>
                         </button>
                       ))}
                     </div>
@@ -226,19 +228,19 @@ const SuperAdmin = () => {
               <div className="sa-stats-grid">
                 <div className="sa-stat-card">
                   <div className="sa-stat-label">Total de Usuarios</div>
-                  <div className="sa-stat-value">{selectedCryptoStats.totalUsers}</div>
+                  <div className="sa-stat-value">{selectedCryptoStats.totalUsers ?? 0}</div>
                 </div>
                 <div className="sa-stat-card">
                   <div className="sa-stat-label">Balance Disponible</div>
                   <div className="sa-stat-value">
-                    {parseFloat(selectedCryptoStats.totalDisponible).toFixed(8)}
+                    {parseFloat(selectedCryptoStats.totalDisponible ?? selectedCryptoStats.totalAvailable ?? 0).toFixed(8)}
                   </div>
                   <div className="sa-stat-symbol">{criptoSeleccionadaStats.symbol}</div>
                 </div>
                 <div className="sa-stat-card">
                   <div className="sa-stat-label">Balance Bloqueado</div>
                   <div className="sa-stat-value">
-                    {parseFloat(selectedCryptoStats.totalBloqueado).toFixed(8)}
+                    {parseFloat(selectedCryptoStats.totalBloqueado ?? selectedCryptoStats.totalBlocked ?? 0).toFixed(8)}
                   </div>
                   <div className="sa-stat-symbol">{criptoSeleccionadaStats.symbol}</div>
                 </div>
@@ -317,7 +319,7 @@ const SuperAdmin = () => {
                       </div>
                       <div className="sa-crypto-info">
                         <span className="sa-crypto-symbol">{criptoSeleccionada.symbol}</span>
-                        <span className="sa-crypto-name">{criptoSeleccionada.nombre}</span>
+                        <span className="sa-crypto-name">{criptoSeleccionada.nombre || criptoSeleccionada.name}</span>
                       </div>
                     </div>
                   ) : (
@@ -362,7 +364,7 @@ const SuperAdmin = () => {
                             {crypto.symbol.slice(0, 3)}
                           </div>
                           <span className="sa-crypto-item-symbol">{crypto.symbol}</span>
-                          <span className="sa-crypto-item-name">{crypto.nombre}</span>
+                          <span className="sa-crypto-item-name">{crypto.nombre || crypto.name}</span>
                         </button>
                       ))}
                     </div>

@@ -1,50 +1,48 @@
-# Welcome to your Expo app 👋
+# Mobile App — Arquitectura Técnica y Guía de Desarrollo
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+> **Ubicación:** `mobile/`  
+> **Stack:** React Native / Expo, TypeScript, Axios, React Navigation.  
+> **Referencia de Contratos:** [**`docs/frontend-rebuild/backend-contract-changes.md`**](file:///C:/Users/Abner/Desktop/Exchange-web-mobile/docs/frontend-rebuild/backend-contract-changes.md).
 
-## Get started
+---
 
-1. Install dependencies
+## 1. Misión de la Aplicación Mobile
 
-   ```bash
-   npm install
-   ```
+La aplicación móvil proporciona a los usuarios una experiencia ágil, segura y optimizada para operar en el exchange desde cualquier dispositivo iOS o Android.
 
-2. Start the app
+Comparte exactamente los mismos contratos, reglas de seguridad y modelos contables que la aplicación web:
+* Múltiples billeteras (Billetera Fondos y Billetera Spot).
+* Soporte para `Idempotency-Key` en transferencias, retiros, compras y swaps.
+* Consumo canónico de montos en strings exactos de 8 decimales.
+* Envoltura canónica de errores `{ error: { code, message } }`.
 
-   ```bash
-   npx expo start
-   ```
+---
 
-In the output, you'll find options to open the app in a
+## 2. Pantallas Principales
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+1. **Autenticación y Seguridad:** Login con 2FA, registro con verificación de email por código, recuperación de contraseña y cambio de email con cooldown de retiros.
+2. **Billeteras y Fondos:** Vista consolidada de balance con desglose en pestañas:
+   * **Fondos:** Generación de código QR para depósito on-chain, formulario de retiro con advertencias de confirmaciones y saldo disponible.
+   * **Spot:** Consulta de saldo disponible y bloqueado en órdenes abiertas.
+   * **Transferir:** Modal intuitivo para transferir saldo entre Fondos y Spot al instante.
+3. **Swap (Conversión):** Widget de intercambio rápido con cotización en tiempo real.
+4. **Trading Spot:** Gráfico simplificado, libro de órdenes compacto y formulario de órdenes Limit/Market.
+5. **Mercado P2P:** Explorador de anuncios con filtros por método de pago fiat local y flujo guiado de custodia temporal (escrow).
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+---
 
-## Get a fresh project
-
-When you're ready, run:
+## 3. Comandos de Desarrollo
 
 ```bash
-npm run reset-project
+# Instalar dependencias
+npm install
+
+# Iniciar servidor Expo
+npx expo start
+
+# Ejecutar en emulador Android
+npx expo run:android
+
+# Ejecutar en simulador iOS
+npx expo run:ios
 ```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.

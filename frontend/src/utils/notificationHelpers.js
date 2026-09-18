@@ -19,22 +19,29 @@ import {
  */
 export const getNotificationIcon = (tipo, className = 'notif-icon') => {
   const iconProps = { className };
+  const normalizedType = String(tipo || '').toLowerCase();
 
-  switch (tipo) {
+  switch (normalizedType) {
     case 'deposito':
+    case 'deposit':
       return <BanknotesIcon {...iconProps} />;
     case 'seguridad':
+    case 'security':
+    case 'kyc':
       return <ShieldCheckIcon {...iconProps} />;
     case 'sistema':
+    case 'system':
       return <CogIcon {...iconProps} />;
     case 'transaccion':
+    case 'transaction':
       return <ArrowsRightLeftIcon {...iconProps} />;
     case 'p2p':
       return <UserGroupIcon {...iconProps} />;
     case 'swap':
+    case 'exchange':
       return <ArrowPathIcon {...iconProps} />;
     default:
-      return <ExclamationTriangleIcon {...iconProps} />;
+      return <BellIcon {...iconProps} />;
   }
 };
 

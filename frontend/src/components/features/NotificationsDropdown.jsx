@@ -38,25 +38,33 @@ const NotificationsDropdown = ({
         {isLoading ? (
           <div className="navbar-notification-loading">Cargando notificaciones...</div>
         ) : notifications.length > 0 ? (
-          notifications.slice(0, 5).map((notification) => (
-            <div
-              key={notification.id}
-              className={`navbar-notification-item ${
-                !notification.leida ? 'navbar-notification-unread' : ''
-              }`}
-            >
-              <div className="navbar-notification-icon-wrapper">
-                {getNotificationIcon(notification.tipo, 'navbar-notification-custom-icon')}
+          notifications.slice(0, 5).map((notification) => {
+            const isUnread = !(notification.leida ?? notification.read);
+            const title = notification.titulo || notification.title || 'Notificación';
+            const message = notification.mensaje || notification.message || '';
+            const type = notification.tipo || notification.type || 'sistema';
+            const date = notification.fechaEnviada || notification.sentAt || notification.createdAt;
+
+            return (
+              <div
+                key={notification.id}
+                className={`navbar-notification-item ${
+                  isUnread ? 'navbar-notification-unread' : ''
+                }`}
+              >
+                <div className="navbar-notification-icon-wrapper">
+                  {getNotificationIcon(type, 'navbar-notification-custom-icon')}
+                </div>
+                <div className="navbar-notification-content">
+                  <p className="navbar-notification-title">{title}</p>
+                  {message && <p className="navbar-notification-message">{message}</p>}
+                  <span className="navbar-notification-time">
+                    {formatRelativeDate(date)}
+                  </span>
+                </div>
               </div>
-              <div className="navbar-notification-content">
-                <p className="navbar-notification-title">{notification.titulo}</p>
-                <p className="navbar-notification-message">{notification.mensaje}</p>
-                <span className="navbar-notification-time">
-                  {formatRelativeDate(notification.fechaEnviada)}
-                </span>
-              </div>
-            </div>
-          ))
+            );
+          })
         ) : (
           <div className="navbar-notification-empty">No hay notificaciones</div>
         )}

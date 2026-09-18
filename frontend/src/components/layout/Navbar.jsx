@@ -8,6 +8,8 @@ import NotificationsDropdown from '../features/NotificationsDropdown';
 import UserDropdown from '../features/UserDropdown';
 import WalletDropdown from '../features/WalletDropdown';
 import LoadingSpinner from '../common/LoadingSpinner';
+import apiClient from '../../api/client';
+import { toast } from 'react-hot-toast';
 import {
   ArrowsRightLeftIcon,
   UserGroupIcon,
@@ -155,27 +157,19 @@ const Navbar = () => {
     markAllAsRead();
   };
 
-  // Handler: Reclamar regalo BTC
+  // Handler: Reclamar fondos de prueba
   const handleClaimGift = async () => {
     if (isClaimingGift || !canClaimGift) return;
     
     try {
       setIsClaimingGift(true);
       
-      const response = await fetch('http://localhost:3001/api/balances/reclamarBTC', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Error al reclamar el regalo');
+      try {
+        await apiClient.post('/balances/testnet-faucet', { symbol: 'ALL' });
+      } catch (faucetErr) {
+        // Fallback al endpoint clásico si testnet-faucet falla
+        await apiClient.put('/balances/reclamarBTC');
       }
-
-      const data = await response.json();
-      console.log('[Navbar] Regalo reclamado:', data);
       
       // Guardar timestamp del reclamo
       localStorage.setItem('lastBTCClaimTime', Date.now().toString());
@@ -186,14 +180,21 @@ const Navbar = () => {
       
       // Mostrar mensaje de éxito
       setShowGiftMessage(true);
+      toast.success('¡Felicidades! Has reclamado fondos de prueba (USDT + BTC) 🎉', { duration: 4000 });
       
       // Recargar la página después de 1 segundo
       setTimeout(() => {
         window.location.reload();
-      }, 1000);
+      }, 1200);
     } catch (error) {
       console.error('[Navbar] Error claiming gift:', error);
-      alert('Hubo un error al reclamar el regalo. Por favor, intenta de nuevo.');
+      const msg = 
+        error.errorMessage ||
+        (typeof error.response?.data?.error === 'string' ? error.response.data.error : error.response?.data?.error?.message) || 
+        error.response?.data?.message || 
+        error.message || 
+        'Hubo un error al reclamar los fondos de prueba. Por favor, intenta de nuevo.';
+      toast.error(msg, { duration: 5000 });
       setIsClaimingGift(false);
     }
   };
@@ -421,7 +422,7 @@ const Navbar = () => {
                         notifications={notifications}
                         unreadCount={unreadCount}
                         isLoading={notificationsLoading}
-                        onMarkAllAsRead={handleMarkAllAsRead}
+                        onMarkAllAsRead={markAllAsRead}
                         onClose={() => setIsNotificationsDropdownOpen(false)}
                         onMouseEnter={handleNotificationsMouseEnter}
                         onMouseLeave={handleNotificationsMouseLeave}

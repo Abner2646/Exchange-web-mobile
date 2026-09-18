@@ -1,5 +1,6 @@
 // src/pages/Login.jsx (front web)
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLoginFlow } from '../hooks/useLoginFlow';
 import '../styles/Login.css';
@@ -133,9 +134,9 @@ const Login = () => {
                   required
                 />
                 <div className="login-forgot-password">
-                  <a href="/forgot-password" className="forgot-password-link">
+                  <Link to="/forgot-password" className="forgot-password-link">
                     ¿Olvidaste tu contraseña?
-                  </a>
+                  </Link>
                 </div>
               </div>
             </>

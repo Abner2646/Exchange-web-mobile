@@ -31,6 +31,8 @@ services:
       dockerfile: Dockerfile.dev
     container_name: app_backend
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       NODE_ENV: development
       PORT: 3001
@@ -42,6 +44,11 @@ services:
       JWT_SECRET: palabra #${JWT_SECRET}
       secretOrPrivateKey: palabra #
       JWT_EXPIRES_IN: 1h
+      EMAIL_HOST: smtp.gmail.com
+      EMAIL_PORT: 587
+      EMAIL_USER: yourcryptocurrencyexchange@gmail.com
+      EMAIL_PASS: tzoe vrgj yidm gwiv
+      DISABLE_RATE_LIMIT: "true"
     # Example for allowing multiple origins in development via ALLOWED_ORIGINS
     # ALLOWED_ORIGINS: "http://localhost:3000,https://exchange-backend-3.onrender.com"
     # CORS_ORIGIN removed: handle CORS at proxy or hosting level if needed
@@ -66,7 +73,7 @@ services:
     container_name: app_frontend
     restart: unless-stopped
     environment:
-      - REACT_APP_API_URL=http://localhost:3001/api
+      - REACT_APP_API_URL=${REACT_APP_API_URL:-/api}
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
       - FAST_REFRESH=true
@@ -74,6 +81,7 @@ services:
       - WDS_SOCKET_PORT=3000
       - WDS_SOCKET_PATH=/ws
       - HOST=0.0.0.0
+      - DISABLE_ESLINT_PLUGIN=true
     ports:
       - "3000:3000"
     volumes:

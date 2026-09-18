@@ -26,6 +26,8 @@ const VerificarEmail = () => {
     isResending,
     canResend,
     resendCountdown,
+    errorMessage,
+    clearError,
   } = useEmailVerification();
 
   // ⭐ Verificar si el email ya está verificado o si es usuario de Google
@@ -41,7 +43,7 @@ const VerificarEmail = () => {
     }
 
     // Si el usuario ya tiene el email verificado, redirigir a home
-    if (user?.emailVerificado) {
+    if (user?.emailVerificado || user?.emailVerified) {
       toast.success('Tu email ya está verificado', {
         duration: 3000,
         icon: '✅',
@@ -63,6 +65,7 @@ const VerificarEmail = () => {
 
   // Handler para cambio de input
   const handleCodeChange = (e) => {
+    if (errorMessage && clearError) clearError();
     const value = e.target.value.replace(/\D/g, '').slice(0, 6);
     setCodigo(value);
   };
@@ -128,6 +131,26 @@ const VerificarEmail = () => {
               Ingresa el código de 6 dígitos que recibiste
             </p>
           </div>
+
+          {errorMessage && (
+            <div
+              className="verifyemail-error-alert"
+              role="alert"
+              style={{
+                color: '#dc3545',
+                background: '#f8d7da',
+                border: '1px solid #f5c6cb',
+                padding: '10px 14px',
+                borderRadius: '8px',
+                marginBottom: '16px',
+                fontSize: '14px',
+                textAlign: 'center',
+                fontWeight: '500'
+              }}
+            >
+              ⚠️ {errorMessage}
+            </div>
+          )}
 
           {/* Botón verificar */}
           <button

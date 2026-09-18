@@ -17,6 +17,8 @@ export const useSwap = () => {
   const [fromAmount, setFromAmount] = useState('');
   const [toAmount, setToAmount] = useState('');
   const [exchangeRate, setExchangeRate] = useState(null);
+  const [feeAmount, setFeeAmount] = useState('0');
+  const [feePercent, setFeePercent] = useState('0.1');
   const [isPairValid, setIsPairValid] = useState(true);
   const [priceLoading, setPriceLoading] = useState(false);
 
@@ -48,16 +50,22 @@ export const useSwap = () => {
 
   // Obtener balance de una criptomoneda
   const getBalance = (symbol) => {
-    if (!symbol || !balances.length || !cryptos.length) return 0;
+    if (!symbol || !balances.length) return 0;
 
-    const crypto = cryptos.find((c) => c.symbol === symbol);
-    if (!crypto) return 0;
-
-    const balance = balances.find((b) => b.criptomonedaId === crypto.id);
+    const balance = balances.find((b) => 
+      b.crypto?.symbol === symbol ||
+      b.symbol === symbol ||
+      (cryptos.length && b.criptomonedaId === cryptos.find((c) => c.symbol === symbol)?.id)
+    );
     if (!balance) return 0;
 
     const disponible =
-      balance.balanceDisponible || balance.disponible || balance.saldoDisponible || 0;
+      balance.availableBalance ??
+      balance.balanceDisponible ??
+      balance.disponible ??
+      balance.saldoDisponible ??
+      balance.compartments?.funding?.available ??
+      0;
 
     return parseFloat(disponible) || 0;
   };
@@ -74,6 +82,7 @@ export const useSwap = () => {
       setIsPairValid(false);
       setToAmount('');
       setExchangeRate(null);
+      setFeeAmount('0');
       return;
     }
 
@@ -83,26 +92,50 @@ export const useSwap = () => {
       try {
         // Primero verificar si el par existe
         const pair = await swapService.getExchangePair(fromCrypto.symbol, toCrypto.symbol);
+        const isPairActive = pair && (pair.active !== undefined ? pair.active : (pair.activo !== undefined ? pair.activo : true));
         
-        if (!pair || !pair.activo) {
+        if (!pair || !isPairActive) {
           setIsPairValid(false);
           setToAmount('');
           setExchangeRate(null);
+          setFeeAmount('0');
           setPriceLoading(false);
           return;
         }
 
         setIsPairValid(true);
 
-        // Obtener precio actual
+        // 1. Intentar cálculo canónico oficial con backend (/calculate)
+        try {
+          const calcResult = await swapService.calculateExchange(pair.id, fromAmount, 'sell');
+          if (calcResult?.calculo) {
+            const finalAmt = calcResult.calculo.finalAmount || calcResult.calculo.quoteAmount;
+            setToAmount(parseFloat(finalAmt).toFixed(8));
+            setFeeAmount(String(calcResult.calculo.feeAmount || '0'));
+            setFeePercent(String(calcResult.calculo.feePercent || pair.feePercent || '0.1'));
+            setExchangeRate(parseFloat(calcResult.calculo.precioEfectivo || pair.currentPrice));
+            setPriceLoading(false);
+            return;
+          }
+        } catch (calcErr) {
+          console.warn('[useSwap] calculateExchange fallback to fast price:', calcErr?.message);
+        }
+
+        // 2. Fallback con cotización rápida si no se pudo calcular por API
         const price = await swapService.getCurrentPrice(fromCrypto.symbol, toCrypto.symbol);
 
         if (!price || price <= 0) {
           throw new Error('No se pudo obtener el precio');
         }
 
-        const calculatedAmount = parseFloat(fromAmount) * price;
-        setToAmount(calculatedAmount.toFixed(8));
+        const feeRate = parseFloat(pair.feePercent || '0.1') / 100;
+        const grossAmount = parseFloat(fromAmount) * price;
+        const feeEst = grossAmount * feeRate;
+        const netAmount = grossAmount - feeEst;
+
+        setToAmount(netAmount.toFixed(8));
+        setFeeAmount(feeEst.toFixed(8));
+        setFeePercent(String(pair.feePercent || '0.1'));
         setExchangeRate(price);
       } catch (error) {
         console.error('[useSwap] Error getting price:', error);
@@ -110,26 +143,35 @@ export const useSwap = () => {
         // Intentar par inverso
         try {
           const inversePair = await swapService.getExchangePair(toCrypto.symbol, fromCrypto.symbol);
+          const isInvActive = inversePair && (inversePair.active !== undefined ? inversePair.active : (inversePair.activo !== undefined ? inversePair.activo : true));
           
-          if (inversePair && inversePair.activo) {
+          if (inversePair && isInvActive) {
             setIsPairValid(true);
             const inversePrice = await swapService.getCurrentPrice(toCrypto.symbol, fromCrypto.symbol);
             
             if (inversePrice > 0) {
               const price = 1 / inversePrice;
-              const calculatedAmount = parseFloat(fromAmount) * price;
-              setToAmount(calculatedAmount.toFixed(8));
+              const feeRate = parseFloat(inversePair.feePercent || '0.1') / 100;
+              const grossAmount = parseFloat(fromAmount) * price;
+              const feeEst = grossAmount * feeRate;
+              const netAmount = grossAmount - feeEst;
+
+              setToAmount(netAmount.toFixed(8));
+              setFeeAmount(feeEst.toFixed(8));
+              setFeePercent(String(inversePair.feePercent || '0.1'));
               setExchangeRate(price);
             }
           } else {
             setIsPairValid(false);
             setToAmount('');
             setExchangeRate(null);
+            setFeeAmount('0');
           }
         } catch (inverseError) {
           setIsPairValid(false);
           setToAmount('');
           setExchangeRate(null);
+          setFeeAmount('0');
         }
       } finally {
         setPriceLoading(false);
@@ -169,7 +211,7 @@ export const useSwap = () => {
       }
 
       // Ejecutar swap
-      const result = await swapService.executeSwap(pair.id, parseFloat(fromAmount), 'venta');
+      const result = await swapService.executeSwap(pair.id, parseFloat(fromAmount), 'sell');
 
       return result;
     },
@@ -187,13 +229,17 @@ export const useSwap = () => {
         setFromAmount('');
         setToAmount('');
         setExchangeRate(null);
+        setFeeAmount('0');
 
         toast.success('¡Intercambio realizado exitosamente!');
       },
       onError: (error) => {
         console.error('[useSwap] Error executing swap:', error);
         const errorMessage =
-          error.response?.data?.error || error.message || 'Error al ejecutar el intercambio';
+          error.response?.data?.error?.message ||
+          error.response?.data?.error ||
+          error.message ||
+          'Error al ejecutar el intercambio';
         toast.error(errorMessage);
       },
     }
@@ -211,6 +257,7 @@ export const useSwap = () => {
     setFromAmount('');
     setToAmount('');
     setExchangeRate(null);
+    setFeeAmount('0');
     setIsPairValid(true);
   };
 
@@ -225,6 +272,7 @@ export const useSwap = () => {
     setFromAmount('');
     setToAmount('');
     setExchangeRate(null);
+    setFeeAmount('0');
     setIsPairValid(true);
   };
 
@@ -241,6 +289,7 @@ export const useSwap = () => {
     setFromAmount('');
     setToAmount('');
     setExchangeRate(null);
+    setFeeAmount('0');
   };
 
   const handleUseMaxBalance = () => {
@@ -277,6 +326,8 @@ export const useSwap = () => {
     fromAmount,
     toAmount,
     exchangeRate,
+    feeAmount,
+    feePercent,
     isPairValid,
 
     // Estados de carga

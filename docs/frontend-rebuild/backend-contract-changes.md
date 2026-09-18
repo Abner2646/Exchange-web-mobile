@@ -295,6 +295,21 @@ Authorization: Bearer <token>
 - The ledger guard (double-entry FOR UPDATE) is the authoritative anti-overdraft
   check; the endpoint also runs an early-error availability check before posting.
 
+**`POST /api/balances/testnet-faucet` — testnet multi-asset faucet (staging & internal preview)**
+
+Testnet-only endpoint for employees and QA to claim test assets in 1 click:
+
+```
+POST /api/balances/testnet-faucet
+Authorization: Bearer <token>
+{ "symbol": "ALL", "amount": "10000" }
+```
+
+- When `symbol: "ALL"` (or omitted), credits 10,000 USDT + 1.00 BTC to Funding wallet.
+- When `symbol` is a specific token (e.g. `"USDT"`, `"BTC"`, `"ETH"`), credits that token.
+- Returns **404** automatically when `NODE_ENV === 'production'`.
+- Returns **200** with `{ message: "...", data: { credited: [...], balances: [...] } }`.
+
 **Swap `compartimento` param (landing in Task 9)**
 
 The swap endpoint will accept an optional `compartimento` parameter (default

@@ -40,10 +40,50 @@ class NotificationService {
 
       console.log('[NotificationService] Notifications count:', notificationsArray.length);
 
+      const typeMap = {
+        security: 'seguridad',
+        transaction: 'transaccion',
+        kyc: 'seguridad',
+        system: 'sistema',
+        p2p: 'p2p',
+        exchange: 'swap',
+      };
+
+      const normalized = notificationsArray.map((notif) => {
+        const rawType = notif.type || notif.tipo || 'system';
+        const mappedType = typeMap[rawType] || rawType;
+        const title = notif.title || notif.titulo || 'Notificación';
+        const message = notif.message || notif.mensaje || '';
+        const isRead = notif.read !== undefined ? Boolean(notif.read) : (notif.leida !== undefined ? Boolean(notif.leida) : false);
+        const isImportant = notif.important !== undefined ? Boolean(notif.important) : (notif.importante !== undefined ? Boolean(notif.importante) : false);
+        const dateValue = notif.sentAt || notif.sent_at || notif.createdAt || notif.created_at || notif.fechaEnviada || new Date().toISOString();
+
+        return {
+          ...notif,
+          id: notif.id,
+          title,
+          titulo: title,
+          message,
+          mensaje: message,
+          type: rawType,
+          tipo: mappedType,
+          read: isRead,
+          leida: isRead,
+          important: isImportant,
+          importante: isImportant,
+          sentAt: dateValue,
+          fechaEnviada: dateValue,
+          createdAt: notif.createdAt || notif.created_at || dateValue,
+          fecha: dateValue,
+        };
+      });
+
       // Ordenar por fecha descendente (más recientes primero)
-      const sortedData = notificationsArray.sort(
-        (a, b) => new Date(b.fechaEnviada) - new Date(a.fechaEnviada)
-      );
+      const sortedData = normalized.sort((a, b) => {
+        const dateA = new Date(a.fechaEnviada || a.createdAt).getTime();
+        const dateB = new Date(b.fechaEnviada || b.createdAt).getTime();
+        return (isNaN(dateB) ? 0 : dateB) - (isNaN(dateA) ? 0 : dateA);
+      });
 
       console.log('[NotificationService] First notification:', sortedData[0]);
       return sortedData;

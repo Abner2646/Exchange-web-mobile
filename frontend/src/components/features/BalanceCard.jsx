@@ -7,12 +7,15 @@ const BalanceCard = ({ totalUSDT, totalBTC, btcPriceError, onNavigate, isLoading
   const portfolioRef = useRef(null);
   const [hasAnimated, setHasAnimated] = useState(false);
 
+  const displayUSDT = (typeof totalUSDT === 'number' && !isNaN(totalUSDT)) ? totalUSDT : 0;
+  const displayBTC = (typeof totalBTC === 'number' && !isNaN(totalBTC)) ? totalBTC : 0;
+
   useEffect(() => {
-    if (!hasAnimated && totalUSDT > 0 && !isLoading) {
-      animateValue(0, totalUSDT, 1500);
+    if (!hasAnimated && displayUSDT > 0 && !isLoading) {
+      animateValue(0, displayUSDT, 1500);
       setHasAnimated(true);
     }
-  }, [totalUSDT, hasAnimated, isLoading]);
+  }, [displayUSDT, hasAnimated, isLoading]);
 
   const animateValue = (start, end, duration) => {
     const range = end - start;
@@ -26,7 +29,7 @@ const BalanceCard = ({ totalUSDT, totalBTC, btcPriceError, onNavigate, isLoading
         clearInterval(timer);
       }
       if (portfolioRef.current) {
-        portfolioRef.current.textContent = current.toFixed(2);
+        portfolioRef.current.textContent = (typeof current === 'number' && !isNaN(current)) ? current.toFixed(2) : '0.00';
       }
     }, 16);
   };
@@ -54,12 +57,12 @@ const BalanceCard = ({ totalUSDT, totalBTC, btcPriceError, onNavigate, isLoading
               <div className="balance-amount-container">
                 <span className="balance-currency">$</span>
                 <h1 className="balance-amount" ref={portfolioRef}>
-                  {totalUSDT.toFixed(2)}
+                  {displayUSDT.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </h1>
                 <span className="balance-currency">USD</span>
               </div>
               {!btcPriceError ? (
-                <p className="balance-btc">≈ {totalBTC.toFixed(8)} BTC</p>
+                <p className="balance-btc">≈ {displayBTC.toFixed(8)} BTC</p>
               ) : (
                 <p className="balance-btc balance-btc-error">
                   Precio BTC no disponible
@@ -74,8 +77,11 @@ const BalanceCard = ({ totalUSDT, totalBTC, btcPriceError, onNavigate, isLoading
             <button className="home-action-btn" onClick={() => onNavigate('/retiros')}>
               Retirar
             </button>
+            <button className="home-action-btn" onClick={() => onNavigate('/activos')}>
+              Entre Billeteras
+            </button>
             <button className="home-action-btn" onClick={() => onNavigate('/transferir')}>
-              Transferir
+              Transferir P2P
             </button>
             <button className="home-action-btn primary" onClick={() => onNavigate('/swap')}>
               Swap

@@ -46,8 +46,10 @@ export const useRegister = () => {
             id: registerResponse.user.id, 
             username: registerResponse.user.username,
             email: registerResponse.user.email,
-            emailVerificado: registerResponse.user.emailVerificado || false,
-            googleId: registerResponse.user.googleId || null, // ⭐ Detectar si es usuario de Google
+            emailVerificado: registerResponse.user.emailVerified !== undefined ? registerResponse.user.emailVerified : (registerResponse.user.emailVerificado || false),
+            emailVerified: registerResponse.user.emailVerified !== undefined ? registerResponse.user.emailVerified : (registerResponse.user.emailVerificado || false),
+            role: registerResponse.user.role || registerResponse.user.rol || 'user',
+            googleId: registerResponse.user.googleId || null,
           };
           
           login(userData);

@@ -8,6 +8,7 @@ import OrderForm from '../components/features/OrderForm';
 import TradingPairSelector from '../components/features/TradingPairSelector';
 import UserOrders from '../components/features/UserOrders';
 import TradeHistory from '../components/features/TradeHistory';
+import TransferModal from '../components/features/TransferModal';
 import Toast from '../components/common/Toast';
 import '../styles/Trading.css';
 
@@ -15,6 +16,8 @@ const Trading = () => {
   const navigate = useNavigate();
   const [selectedInterval, setSelectedInterval] = useState('1h');
   const [toast, setToast] = useState(null);
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const [transferCryptoId, setTransferCryptoId] = useState('');
 
   const {
     tradingPairs,
@@ -32,9 +35,15 @@ const Trading = () => {
     createOrder,
     cancelOrder,
     loadActiveOrders,
+    loadTradingBalance,
     startRealTimeUpdates,
     stopRealTimeUpdates,
   } = useTrading('BTC/USDT');
+
+  const handleOpenTransfer = (cryptoId = '') => {
+    setTransferCryptoId(cryptoId);
+    setIsTransferModalOpen(true);
+  };
 
   // Iniciar actualizaciones en tiempo real
   useEffect(() => {
@@ -90,11 +99,36 @@ const Trading = () => {
   return (
     <div className="trading-container">
       {/* Header */}
-      <div className="trading-header">
-        <h1 className="trading-title">Trading Spot</h1>
-        <p className="trading-description">
-          Opera con las principales criptomonedas en tiempo real
-        </p>
+      <div className="trading-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <h1 className="trading-title">Trading Spot</h1>
+          <p className="trading-description">
+            Opera con las principales criptomonedas en tiempo real
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => handleOpenTransfer()}
+          style={{
+            background: '#2563eb',
+            color: '#ffffff',
+            border: 'none',
+            padding: '0.6rem 1.25rem',
+            borderRadius: '0.75rem',
+            fontWeight: '700',
+            fontSize: '0.875rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            boxShadow: '0 4px 12px rgba(37, 99, 235, 0.35)',
+            transition: 'transform 0.15s ease',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
+        >
+          ⇄ Transferir Fondos (Funding ↔ Spot)
+        </button>
       </div>
 
       {/* Main layout */}
@@ -139,6 +173,7 @@ const Trading = () => {
               balance={tradingBalance}
               onSubmit={handleCreateOrder}
               loading={loading.orders}
+              onTransferClick={handleOpenTransfer}
             />
           </div>
 
@@ -170,6 +205,18 @@ const Trading = () => {
           onClose={() => setToast(null)}
         />
       )}
+
+      {/* Modal de Transferencia entre Billeteras */}
+      <TransferModal
+        isOpen={isTransferModalOpen}
+        onClose={() => setIsTransferModalOpen(false)}
+        onSuccess={() => {
+          loadTradingBalance();
+        }}
+        defaultCryptoId={transferCryptoId}
+        defaultFrom="funding"
+        defaultTo="spot"
+      />
     </div>
   );
 };

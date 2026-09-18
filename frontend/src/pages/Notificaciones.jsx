@@ -35,7 +35,7 @@ const Notificaciones = () => {
   const filteredNotifications =
     selectedType === 'todas'
       ? notifications
-      : notifications.filter((n) => n.tipo === selectedType);
+      : notifications.filter((n) => n.tipo === selectedType || n.type === selectedType);
 
   console.log('[Notificaciones] Filtered notifications:', filteredNotifications.length);
 

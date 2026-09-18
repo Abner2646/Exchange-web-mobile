@@ -42,8 +42,9 @@ export const useLoginFlow = () => {
             id: data.user.id,
             email: data.user.email,
             username: data.user.username,
-            role: data.user.rol || data.user.role,
-            emailVerificado: data.user.emailVerificado || false,
+            role: data.user.role || data.user.rol || 'user',
+            emailVerified: data.user.emailVerified !== undefined ? data.user.emailVerified : (data.user.emailVerificado || false),
+            emailVerificado: data.user.emailVerified !== undefined ? data.user.emailVerified : (data.user.emailVerificado || false),
             googleId: data.user.googleId || null,
           });
           toast.success('¡Bienvenido!');
@@ -71,8 +72,9 @@ export const useLoginFlow = () => {
           id: data.user.id,
           email: data.user.email,
           username: data.user.username,
-          role: data.user.rol || data.user.role,
-          emailVerificado: data.user.emailVerificado || false,
+          role: data.user.role || data.user.rol || 'user',
+          emailVerified: data.user.emailVerified !== undefined ? data.user.emailVerified : (data.user.emailVerificado || false),
+          emailVerificado: data.user.emailVerified !== undefined ? data.user.emailVerified : (data.user.emailVerificado || false),
           googleId: data.user.googleId || null,
         });
         toast.success('¡Verificación exitosa! Bienvenido.');

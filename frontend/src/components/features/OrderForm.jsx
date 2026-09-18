@@ -2,7 +2,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import '../../styles/OrderForm.css';
 
-const OrderForm = ({ pair, balance, onSubmit, loading }) => {
+const OrderForm = ({ pair, balance, onSubmit, loading, onTransferClick }) => {
   const [side, setSide] = useState('buy'); // 'buy' | 'sell'
   const [orderType, setOrderType] = useState('limit'); // 'limit' | 'market'
   const [price, setPrice] = useState('');
@@ -171,12 +171,39 @@ const availableBalance = useMemo(() => {
         </button>
       </div>
 
-      {/* Available balance */}
-      <div className="orderform-balance">
-        <span className="orderform-balance-label">Disponible:</span>
-        <span className="orderform-balance-value">
-          {availableBalance.toFixed(pair?.quantityPrecision || 4)} {side === 'buy' ? pair?.quoteAsset?.simbolo : pair?.baseAsset?.simbolo}
-        </span>
+      {/* Available balance in Spot with quick Transfer action */}
+      <div className="orderform-balance" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <span className="orderform-balance-label">Spot Disp: </span>
+          <span className="orderform-balance-value">
+            {availableBalance.toFixed(pair?.quantityPrecision || 4)}{' '}
+            {side === 'buy'
+              ? (pair?.quoteAsset?.simbolo || pair?.quoteAsset?.symbol || 'USDT')
+              : (pair?.baseAsset?.simbolo || pair?.baseAsset?.symbol || 'BTC')}
+          </span>
+        </div>
+        {onTransferClick && (
+          <button
+            type="button"
+            onClick={() => onTransferClick(side === 'buy' ? pair?.quoteAssetId : pair?.baseAssetId)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#38bdf8',
+              fontSize: '0.8rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.2rem',
+              padding: '0.15rem 0.4rem',
+              borderRadius: '0.25rem',
+            }}
+            title="Transferir fondos desde Funding a Spot"
+          >
+            ⇄ Transferir
+          </button>
+        )}
       </div>
 
       {/* Form */}
