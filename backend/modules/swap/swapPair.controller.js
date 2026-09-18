@@ -474,9 +474,25 @@ const getCurrentPrice = async (req, res) => {
   try {
     const { baseSymbol, quoteSymbol } = req.params;
     
-    const par = await SwapPair.getBySymbols(baseSymbol, quoteSymbol);
+    let par = await SwapPair.getBySymbols(baseSymbol, quoteSymbol);
     
     if (!par) {
+      try {
+        const priceService = require('../../services/priceService');
+        const priceResult = await priceService.getPrice(baseSymbol, quoteSymbol);
+        if (priceResult && priceResult.price > 0) {
+          return res.json({
+            pair: `${baseSymbol}/${quoteSymbol}`,
+            price: priceResult.price,
+            source: priceResult.source || 'live',
+            timestamp: new Date().toISOString(),
+            updated: true,
+            commission: 0.1
+          });
+        }
+      } catch (err) {
+        // Continue to 404
+      }
       return res.status(404).json({ 
         error: `Par ${baseSymbol}/${quoteSymbol} no encontrado` 
       });
@@ -527,16 +543,15 @@ const getCurrentPrice = async (req, res) => {
   }
 };
 
-  // ✨ NUEVA FUNCIÓN: Generar todos los pares automáticamente
+  // ✨ FUNCIÓN OPTIMIZADA: Generar todos los pares automáticamente
   const generateAllPairs = async (req, res) => {
-    const { Crypto } = require('../../models/index.js')  // ✅ BIEN
+    const { Crypto, SwapPair } = require('../../models/index.js');
+    const axios = require('axios');
     try {
       console.log('🚀 Iniciando generación automática de pares...');
       
-      // Obtener comisión por defecto del .env
       const defaultFee = parseFloat(process.env.EXCHANGE_FEE_PERCENTAGE || 0.1);
       
-      // Obtener todas las criptomonedas activas
       const criptomonedas = await Crypto.findAll({
         where: { active: true },
         attributes: ['id', 'symbol', 'name'],
@@ -549,122 +564,134 @@ const getCurrentPrice = async (req, res) => {
           error: 'Se necesitan al menos 2 criptomonedas activas para generar pares'
         });
       }
-      
+
+      // 1. Obtener precios USD en bulto desde CoinGecko en 1 sola llamada rápida
+      const coingeckoMap = priceService.constructor.COINGECKO_MAP || {};
+      const ids = criptomonedas
+        .map(c => coingeckoMap[c.symbol])
+        .filter(Boolean)
+        .join(',');
+
+      const usdPrices = {};
+      try {
+        const cgRes = await axios.get(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`, {
+          timeout: 10000
+        });
+        for (const crypto of criptomonedas) {
+          const cgId = coingeckoMap[crypto.symbol];
+          if (cgId && cgRes.data[cgId]?.usd) {
+            usdPrices[crypto.symbol] = cgRes.data[cgId].usd;
+          }
+        }
+        console.log(`✓ Precios en bulto obtenidos para ${Object.keys(usdPrices).length} criptomonedas`);
+      } catch (err) {
+        console.warn('⚠️ Advertencia obteniendo precios en bulto de CoinGecko:', err.message);
+      }
+
+      // Precios de respaldo para cualquier cripto que CoinGecko no entregue
+      const fallbackUSD = {
+        'BTC': 76000,
+        'ETH': 2500,
+        'BNB': 730,
+        'SOL': 100,
+        'USDT': 1.0,
+        'USDC': 1.0,
+        'DAI': 1.0,
+        'AAVE': 130,
+        'MKR': 1400,
+        'LINK': 15,
+        'UNI': 8,
+        'ADA': 0.25,
+        'XRP': 0.6,
+        'DOGE': 0.1,
+        'DOT': 6,
+        'LTC': 80,
+        'MATIC': 0.4,
+        'ARB': 0.5,
+        'OP': 1.5,
+        'WBTC': 76000,
+        'PEPE': 0.000008,
+        'SHIB': 0.000015
+      };
+
+      for (const crypto of criptomonedas) {
+        if (!usdPrices[crypto.symbol]) {
+          usdPrices[crypto.symbol] = fallbackUSD[crypto.symbol] || 1.0;
+        }
+      }
+
       const results = {
         total: 0,
         created: 0,
-        skipped: 0,
+        updated: 0,
         failed: 0,
-        details: []
       };
-      
-      // Generar todas las combinaciones (bidireccionales)
+
       for (let i = 0; i < criptomonedas.length; i++) {
         for (let j = 0; j < criptomonedas.length; j++) {
-          // Saltar si es la misma crypto
           if (i === j) continue;
           
           const base = criptomonedas[i];
           const quote = criptomonedas[j];
-          
           results.total++;
-          
+
           try {
-            // Verificar si ya existe el par
-            const existingPar = await SwapPair.findOne({
+            const baseUSD = usdPrices[base.symbol] || 1.0;
+            const quoteUSD = usdPrices[quote.symbol] || 1.0;
+            const pairPrice = baseUSD / quoteUSD;
+
+            // Formatear para DECIMAL(18, 8)
+            let formattedPrice = parseFloat(pairPrice.toFixed(8));
+            if (formattedPrice <= 0) {
+              formattedPrice = 0.00000001;
+            }
+
+            const [par, created] = await SwapPair.findOrCreate({
               where: {
                 baseCryptoId: base.id,
                 quoteCryptoId: quote.id
+              },
+              defaults: {
+                currentPrice: formattedPrice,
+                feePercent: defaultFee,
+                priceSource: 'coingecko',
+                externalSymbol: `${base.symbol}${quote.symbol}`,
+                active: true,
+                lastUpdated: new Date()
               }
             });
-            
-            if (existingPar) {
-              results.skipped++;
-              results.details.push({
-                pair: `${base.symbol}/${quote.symbol}`,
-                status: 'skipped',
-                reason: 'Ya existe'
+
+            if (created) {
+              results.created++;
+            } else {
+              await par.update({
+                currentPrice: formattedPrice,
+                lastUpdated: new Date(),
+                active: true
               });
-              continue;
+              results.updated++;
             }
-            
-            // Intentar obtener price desde las APIs
-            console.log(`⚡ Verificando price para ${base.symbol}/${quote.symbol}...`);
-            
-            let priceResult;
-            try {
-              priceResult = await priceService.getPrice(base.symbol, quote.symbol);
-            } catch (priceError) {
-              results.skipped++;
-              results.details.push({
-                pair: `${base.symbol}/${quote.symbol}`,
-                status: 'skipped',
-                reason: `No disponible en APIs: ${priceError.message}`
-              });
-              continue;
-            }
-            
-            if (!priceResult || !priceResult.price || priceResult.price <= 0) {
-              results.skipped++;
-              results.details.push({
-                pair: `${base.symbol}/${quote.symbol}`,
-                status: 'skipped',
-                reason: 'Precio inválido o cero'
-              });
-              continue;
-            }
-            
-            // Crear el par
-            const nuevoPar = await SwapPair.create({
-              baseCryptoId: base.id,
-              quoteCryptoId: quote.id,
-              currentPrice: priceResult.price,
-              feePercent: defaultFee,
-              priceSource: priceResult.source || 'binance',
-              externalSymbol: `${base.symbol}${quote.symbol}`,
-              active: true,
-              lastUpdated: new Date()
-            });
-            
-            results.created++;
-            results.details.push({
-              pair: `${base.symbol}/${quote.symbol}`,
-              status: 'created',
-              price: priceResult.price,
-              source: priceResult.source,
-              id: nuevoPar.id
-            });
-            
-            console.log(`✅ Par creado: ${base.symbol}/${quote.symbol} - Precio: ${priceResult.price}`);
-            
           } catch (error) {
             results.failed++;
-            results.details.push({
-              pair: `${base.symbol}/${quote.symbol}`,
-              status: 'failed',
-              error: error.message
-            });
-            console.error(`❌ Error creando par ${base.symbol}/${quote.symbol}:`, error.message);
+            console.error(`❌ Error creando/actualizando par ${base.symbol}/${quote.symbol}:`, error.message);
           }
         }
       }
-      
-      console.log('✅ Generación de pares completada');
-      
+
+      console.log(`✅ Generación de pares completada: ${results.created} creados, ${results.updated} actualizados de ${results.total} pares.`);
+
       res.status(201).json({
         success: true,
-        message: 'Generación de pares completada',
+        message: `Generación de pares completada: ${results.created} nuevos creados, ${results.updated} actualizados`,
         summary: {
           totalCombinaciones: results.total,
           creados: results.created,
-          saltados: results.skipped,
+          actualizados: results.updated,
           fallidos: results.failed,
           comisionDefecto: `${defaultFee}%`,
           criptomonedasProcesadas: criptomonedas.length
-        },
-        details: results.details
+        }
       });
-      
     } catch (error) {
       console.error('❌ Error en generación de pares:', error);
       res.status(500).json({
@@ -673,8 +700,7 @@ const getCurrentPrice = async (req, res) => {
         details: error.message
       });
     }
-
-};
+  };
 
 
 

@@ -303,6 +303,7 @@ class EmailService {
 
   // Enviar código de recuperación de contraseña
   async enviarCodigoRecuperacion(email, codigo, username) {
+    console.log(`\n========================================\n🔑 [DEV EMAIL] Código recuperación para ${email}: ${codigo}\n========================================\n`);
     const content = `
       <h2 class="content-title">Recuperación de Contraseña</h2>
       <p class="content-text">Hola <strong>${username}</strong>,</p>
@@ -319,7 +320,7 @@ class EmailService {
     `;
 
     const mailOptions = {
-      from: `"BitFlow Exchange" <${process.env.EMAIL_USER}>`,
+      from: `"BitFlow Exchange" <${process.env.EMAIL_USER || 'soporte@bitflow.com'}>`,
       to: email,
       subject: 'Código de recuperación de contraseña - BitFlow',
       html: this.getBaseTemplate(content, 'Recuperación de Contraseña')
@@ -330,7 +331,11 @@ class EmailService {
       console.log(`✅ Código de recuperación enviado a ${email}`);
       return result;
     } catch (error) {
-      console.error('❌ Error enviando código de recuperación:', error);
+      console.error('❌ Error enviando código de recuperación:', error.message);
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('⚠️ [DEV] Omitiendo fallo de envío SMTP en desarrollo. Código:', codigo);
+        return { messageId: 'dev-recovery-fallback' };
+      }
       throw new Error('Error al enviar email de recuperación');
     }
   }
@@ -338,6 +343,7 @@ class EmailService {
   // Radar #14 — código para confirmar un cambio de email; se envía AL email NUEVO
   // (prueba de control de la nueva dirección).
   async enviarCodigoCambioEmail(nuevoEmail, codigo) {
+    console.log(`\n========================================\n🔑 [DEV EMAIL] Código cambio email para ${nuevoEmail}: ${codigo}\n========================================\n`);
     const content = `
       <h2 class="content-title">Confirmá tu nuevo email</h2>
       <p class="content-text">Recibimos una solicitud para cambiar el email de tu cuenta de BitFlow a esta dirección. Usá este código para confirmarlo:</p>
@@ -350,18 +356,22 @@ class EmailService {
       </div>
     `;
     const mailOptions = {
-      from: `"BitFlow Exchange" <${process.env.EMAIL_USER}>`,
+      from: `"BitFlow Exchange" <${process.env.EMAIL_USER || 'soporte@bitflow.com'}>`,
       to: nuevoEmail,
       subject: 'Confirmá tu nuevo email - BitFlow',
-      html: this.getBaseTemplate(content, 'Cambio de email')
+      html: this.getBaseTemplate(content, 'Confirmá tu nuevo email')
     };
     try {
       const result = await this.transporter.sendMail(mailOptions);
       console.log(`✅ Código de cambio de email enviado a ${nuevoEmail}`);
       return result;
     } catch (error) {
-      console.error('❌ Error enviando código de cambio de email:', error);
-      throw new Error('Error al enviar el código de cambio de email');
+      console.error('❌ Error enviando código de cambio de email:', error.message);
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('⚠️ [DEV] Omitiendo fallo de envío SMTP en desarrollo. Código:', codigo);
+        return { messageId: 'dev-emailchange-fallback' };
+      }
+      throw new Error('Error al enviar email de cambio de dirección');
     }
   }
 
@@ -392,6 +402,7 @@ class EmailService {
 
   // Enviar código de verificación de email
   async enviarCodigoVerificacionEmail(email, codigo, username) {
+    console.log(`\n========================================\n🔑 [DEV EMAIL] Código verificación email para ${email}: ${codigo}\n========================================\n`);
     const content = `
       <h2 class="content-title">¡Bienvenido a BitFlow!</h2>
       <p class="content-text">Hola <strong>${username}</strong>,</p>
@@ -408,7 +419,7 @@ class EmailService {
     `;
 
     const mailOptions = {
-      from: `"BitFlow Exchange" <${process.env.EMAIL_USER}>`,
+      from: `"BitFlow Exchange" <${process.env.EMAIL_USER || 'soporte@bitflow.com'}>`,
       to: email,
       subject: 'Verifica tu email - BitFlow',
       html: this.getBaseTemplate(content, 'Verificación de Email')
@@ -419,13 +430,18 @@ class EmailService {
       console.log(`✅ Código de verificación de email enviado a ${email}`);
       return result;
     } catch (error) {
-      console.error('❌ Error enviando código de verificación de email:', error);
+      console.error('❌ Error enviando código de verificación de email:', error.message);
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('⚠️ [DEV] Omitiendo fallo de envío SMTP en desarrollo. Código:', codigo);
+        return { messageId: 'dev-email-verification-fallback' };
+      }
       throw new Error('Error al enviar email de verificación');
     }
   }
 
   // Enviar código de autenticación de dos factores
   async enviarCodigo2FA(email, codigo, username) {
+    console.log(`\n========================================\n🔑 [DEV EMAIL] Código 2FA para ${email}: ${codigo}\n========================================\n`);
     const content = `
       <h2 class="content-title">Verificación en Dos Pasos</h2>
       <p class="content-text">Hola <strong>${username}</strong>,</p>
@@ -442,7 +458,7 @@ class EmailService {
     `;
 
     const mailOptions = {
-      from: `"BitFlow Exchange" <${process.env.EMAIL_USER}>`,
+      from: `"BitFlow Exchange" <${process.env.EMAIL_USER || 'soporte@bitflow.com'}>`,
       to: email,
       subject: 'Código de verificación en dos pasos - BitFlow',
       html: this.getBaseTemplate(content, 'Verificación en Dos Pasos')
@@ -453,7 +469,11 @@ class EmailService {
       console.log(`✅ Código 2FA enviado a ${email}`);
       return result;
     } catch (error) {
-      console.error('❌ Error enviando código 2FA:', error);
+      console.error('❌ Error enviando código 2FA:', error.message);
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('⚠️ [DEV] Omitiendo fallo de envío SMTP en desarrollo. Código:', codigo);
+        return { messageId: 'dev-2fa-fallback' };
+      }
       throw new Error('Error al enviar código de verificación');
     }
   }
@@ -602,18 +622,24 @@ class EmailService {
     `;
 
     const mailOptions = {
-      from: `"BitFlow Exchange" <${process.env.EMAIL_USER}>`,
+      from: `"BitFlow Exchange" <${process.env.EMAIL_USER || 'soporte@bitflow.com'}>`,
       to: email,
       subject: `Código de verificación para transferencia de ${cantidad} ${simbolo} - BitFlow`,
       html: this.getBaseTemplate(content, 'Verificación de Transferencia')
     };
+
+    console.log(`\n========================================\n🔑 [DEV EMAIL] Código transferencia para ${email}: ${codigo}\n========================================\n`);
 
     try {
       const result = await this.transporter.sendMail(mailOptions);
       console.log(`✅ Código de verificación de transferencia enviado a ${email}`);
       return result;
     } catch (error) {
-      console.error('❌ Error enviando código de verificación de transferencia:', error);
+      console.error('❌ Error enviando código de verificación de transferencia:', error.message);
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('⚠️ [DEV] Omitiendo fallo de envío SMTP en desarrollo. Código:', codigo);
+        return { messageId: 'dev-transfer-fallback' };
+      }
       throw new Error('Error al enviar email de verificación de transferencia');
     }
   }

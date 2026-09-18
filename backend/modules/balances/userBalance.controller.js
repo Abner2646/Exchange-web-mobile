@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const { UserBalance, sequelize } = require('../../models/index.js');
-const { transferInternal, transferBetweenCompartments } = require('./ledger/operations');
+const { transferInternal, transferBetweenCompartments, creditFaucet } = require('./ledger/operations');
 const money = require('../../utils/money');
 const AppError = require('../../utils/AppError');
 const errorCodes = require('../../utils/errorCodes');
@@ -100,6 +100,61 @@ const claimBtc = async (req, res) => {
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
   }
+};
+
+// POST /api/balances/testnet-faucet
+// Faucet multi-activo de prueba para staging y empleados (deshabilitado en producción)
+const claimTestnetFaucet = async (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    throw new AppError(404, errorCodes.NOT_FOUND, 'Faucet de prueba no disponible en producción');
+  }
+
+  const userId = req.user.id;
+  const { symbol = 'ALL', amount } = req.body || {};
+  const Crypto = sequelize.models.Crypto;
+
+  const targets = [];
+  if (symbol === 'ALL') {
+    const usdt = await Crypto.getBySymbol('USDT');
+    const btc = await Crypto.getBySymbol('BTC');
+    if (usdt) targets.push({ crypto: usdt, amount: String(amount || '10000') });
+    if (btc) targets.push({ crypto: btc, amount: '1' });
+  } else {
+    const cryptoInstance = await Crypto.getBySymbol(String(symbol).toUpperCase());
+    if (!cryptoInstance) {
+      throw new AppError(404, errorCodes.BALANCE_INVALID_INPUT, `Criptomoneda ${symbol} no encontrada`);
+    }
+    targets.push({ crypto: cryptoInstance, amount: String(amount || '1000') });
+  }
+
+  if (targets.length === 0) {
+    throw new AppError(400, errorCodes.BALANCE_INVALID_INPUT, 'No se encontraron criptomonedas para fondear');
+  }
+
+  const transaction = await sequelize.transaction();
+  try {
+    for (const item of targets) {
+      await creditFaucet({
+        userId,
+        criptomonedaId: item.crypto.id,
+        cantidad: item.amount,
+        referencia: `testnet-faucet:${userId}:${item.crypto.id}:${crypto.randomUUID ? crypto.randomUUID() : Date.now()}`,
+      }, transaction);
+    }
+    await transaction.commit();
+  } catch (err) {
+    if (!transaction.finished) await transaction.rollback();
+    throw err;
+  }
+
+  const balances = await UserBalance.getBalancesWithCompartments(userId);
+  res.json({
+    message: 'Fondos de prueba acreditados exitosamente 🎉',
+    data: {
+      credited: targets.map((t) => ({ symbol: t.crypto.symbol, amount: t.amount })),
+      balances,
+    },
+  });
 };
 
 // Bloquear balance (admin)
@@ -237,5 +292,6 @@ module.exports = {
   getUsersWithBalance,
   getBalanceStats,
   transferBalance,
-  transferMyCompartments
+  transferMyCompartments,
+  claimTestnetFaucet,
 };

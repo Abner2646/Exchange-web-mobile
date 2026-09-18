@@ -249,6 +249,30 @@ const validateForTransaction = async (req, res) => {
   }
 };
 
+// Mapeo de iconos oficiales (CoinGecko CDN)
+const COINGECKO_ICONS = {
+  'BTC': 'https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png',
+  'ETH': 'https://coin-images.coingecko.com/coins/images/279/large/ethereum.png',
+  'USDT': 'https://coin-images.coingecko.com/coins/images/325/large/Tether.png',
+  'BNB': 'https://coin-images.coingecko.com/coins/images/825/large/bnb-icon2_2x.png',
+  'XRP': 'https://coin-images.coingecko.com/coins/images/44/large/xrp-symbol-white-128.png',
+  'USDC': 'https://coin-images.coingecko.com/coins/images/6319/large/USDC.png',
+  'SOL': 'https://coin-images.coingecko.com/coins/images/4128/large/solana.png',
+  'DOGE': 'https://coin-images.coingecko.com/coins/images/5/large/dogecoin.png',
+  'WBTC': 'https://coin-images.coingecko.com/coins/images/7598/large/WBTCLOGO.png',
+  'LINK': 'https://coin-images.coingecko.com/coins/images/877/large/Chainlink_Logo_500.png',
+  'ADA': 'https://coin-images.coingecko.com/coins/images/975/large/cardano.png',
+  'UNI': 'https://coin-images.coingecko.com/coins/images/12504/large/uniswap-logo.png',
+  'DAI': 'https://coin-images.coingecko.com/coins/images/9956/large/Badge_Dai.png',
+  'SHIB': 'https://coin-images.coingecko.com/coins/images/11939/large/shiba.png',
+  'AAVE': 'https://coin-images.coingecko.com/coins/images/12645/large/aave-token-round.png',
+  'PEPE': 'https://coin-images.coingecko.com/coins/images/29850/large/pepe-token.jpeg',
+  'ARB': 'https://coin-images.coingecko.com/coins/images/16547/large/arb.jpg',
+  'OP': 'https://coin-images.coingecko.com/coins/images/25244/large/Token.png',
+  'MKR': 'https://coin-images.coingecko.com/coins/images/1364/large/Mark_Maker.png',
+  'MATIC': 'https://coin-images.coingecko.com/coins/images/4713/large/polygon.png'
+};
+
 // ✨ NUEVO: Generar URL de icono automáticamente
 const generateIconUrl = async (req, res) => {
   try {
@@ -259,13 +283,13 @@ const generateIconUrl = async (req, res) => {
       return res.status(404).json({ error: 'Criptomoneda no encontrada' });
     }
 
-    // SVG transparente
-    const iconUrl = `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/svg/color/${crypto.symbol.toLowerCase()}.svg`;
+    const iconUrl = COINGECKO_ICONS[crypto.symbol] ||
+      `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/svg/color/${crypto.symbol.toLowerCase()}.svg`;
     
     const updated = await Crypto.updateCriptomoneda(id, { iconUrl });
     
     res.json({
-      message: 'URL de icono SVG transparente generada',
+      message: 'URL de icono generada',
       data: updated
     });
   } catch (error) {
@@ -273,22 +297,21 @@ const generateIconUrl = async (req, res) => {
   }
 };
 
-// ✨ Generar todos con SVG transparente
+// ✨ Generar todos los iconos
 const generateAllIconUrls = async (req, res) => {
   try {
     const criptomonedas = await Crypto.getAll({});
     const updated = [];
     
     for (const crypto of criptomonedas) {
-      if (!crypto.iconUrl) {
-        const iconUrl = `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/svg/color/${crypto.symbol.toLowerCase()}.svg`;
-        const updatedCrypto = await Crypto.updateCriptomoneda(crypto.id, { iconUrl });
-        updated.push(updatedCrypto);
-      }
+      const iconUrl = COINGECKO_ICONS[crypto.symbol] ||
+        `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/svg/color/${crypto.symbol.toLowerCase()}.svg`;
+      const updatedCrypto = await Crypto.updateCriptomoneda(crypto.id, { iconUrl });
+      updated.push(updatedCrypto);
     }
     
     res.json({
-      message: `${updated.length} iconos SVG transparentes generados`,
+      message: `${updated.length} iconos generados`,
       data: updated
     });
   } catch (error) {

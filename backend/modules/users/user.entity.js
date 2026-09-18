@@ -63,9 +63,13 @@ class User extends Model {
 
   // Método para validar código de verificación de email
   validateEmailVerificationCode(codigo) {
-    return this.emailVerificationCode === codigo && 
-           this.emailVerificationCodeExpiresAt && 
-           new Date() < this.emailVerificationCodeExpiresAt;
+    const storedCode = String(this.emailVerificationCode || '').trim();
+    const inputCode = String(codigo || '').trim();
+    const expiresAt = this.emailVerificationCodeExpiresAt ? new Date(this.emailVerificationCodeExpiresAt).getTime() : 0;
+    const notExpired = expiresAt > Date.now();
+    const matches = storedCode === inputCode;
+    console.log(`🔍 [VALIDATE CODE] Input: "${inputCode}", Stored: "${storedCode}", Matches: ${matches}, NotExpired: ${notExpired}`);
+    return matches && notExpired;
   }
 
   // Método para limpiar código de verificación después de uso

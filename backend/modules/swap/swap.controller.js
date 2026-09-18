@@ -39,10 +39,15 @@ const createOrder = async (req, res) => {
 
   try {
     const userId = req.user.id;
-    const { pairId, type, baseAmount } = req.body;
+    const pairId = req.body.pairId || req.body.parId;
+    let type = req.body.type || req.body.tipo;
+    if (type === 'venta') type = 'sell';
+    if (type === 'compra') type = 'buy';
+    const rawAmount = req.body.baseAmount !== undefined ? req.body.baseAmount : req.body.cantidadBase;
+    const baseAmount = typeof rawAmount === 'string' ? parseFloat(rawAmount) : rawAmount;
     const compartimento = req.body.compartimento || 'funding';
 
-    if (!pairId || !type || !baseAmount) {
+    if (!pairId || !type || baseAmount === undefined || baseAmount === null) {
       await transaction.rollback();
       throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'pairId, type y baseAmount son requeridos');
     }
@@ -221,10 +226,15 @@ const createOrder = async (req, res) => {
 
 // Calcular intercambio antes de ejecutar
 const calculateExchange = async (req, res) => {
-  const { pairId, baseAmount, type } = req.body;
+  const pairId = req.body.pairId || req.body.parId;
+  let type = req.body.type || req.body.tipo;
+  if (type === 'venta') type = 'sell';
+  if (type === 'compra') type = 'buy';
+  const rawAmount = req.body.baseAmount !== undefined ? req.body.baseAmount : req.body.cantidadBase;
+  const baseAmount = typeof rawAmount === 'string' ? parseFloat(rawAmount) : rawAmount;
 
   // Validaciones
-  if (!pairId || !baseAmount || !type) {
+  if (!pairId || baseAmount === undefined || baseAmount === null || !type) {
     throw new AppError(400, errorCodes.EXCHANGE_INVALID_INPUT, 'pairId, baseAmount y type son requeridos');
   }
 

@@ -43,7 +43,8 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'idempotency-key', 'X-Requested-With', 'Accept'],
+  exposedHeaders: ['Idempotency-Key'],
   optionsSuccessStatus: 204,
 }));
 
@@ -53,7 +54,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 app.use(session({
-  secret: process.env.SESSION_SECRET,
+  secret: process.env.SESSION_SECRET || process.env.JWT_SECRET || 'dev_session_secret',
   resave: false,
   saveUninitialized: false,
   cookie: {

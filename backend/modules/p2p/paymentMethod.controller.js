@@ -26,7 +26,9 @@ const getMetodoPagoById = async (req, res) => {
 // Crear nuevo método de pago
 const createMetodoPago = async (req, res) => {
   try {
-    const { name, description, active = true } = req.body;
+    const name = req.body.name || req.body.nombre;
+    const description = req.body.description !== undefined ? req.body.description : req.body.descripcion;
+    const active = req.body.active !== undefined ? req.body.active : true;
     
     if (!name) {
       return res.status(400).json({ 

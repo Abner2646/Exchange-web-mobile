@@ -93,7 +93,34 @@ const getMyNotificaciones = async (req, res) => {
     const filters = { ...req.query };
     
     const result = await Notification.getUserNotifications(usuarioId, filters);
-    res.json(result);
+
+    const typeMap = {
+      security: 'seguridad',
+      transaction: 'transaccion',
+      kyc: 'seguridad',
+      system: 'sistema',
+      p2p: 'p2p',
+      exchange: 'swap'
+    };
+
+    const notificacionesFormateadas = (result.notificaciones || []).map((notif) => {
+      const data = notif.toJSON ? notif.toJSON() : notif;
+      const fecha = data.sentAt || data.sent_at || data.created_at || data.createdAt;
+      return {
+        ...data,
+        titulo: data.title,
+        mensaje: data.message,
+        leida: data.read,
+        tipo: typeMap[data.type] || data.type,
+        fechaEnviada: fecha,
+        importante: data.important
+      };
+    });
+
+    res.json({
+      ...result,
+      notificaciones: notificacionesFormateadas
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

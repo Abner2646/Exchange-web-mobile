@@ -33,21 +33,21 @@ function initSwap(sequelize) {
       allowNull: false
     },
     baseAmount: {
-      type: DataTypes.DECIMAL(18, 8),
+      type: DataTypes.DECIMAL(28, 8),
       allowNull: false,
       field: 'base_amount'
     },
     quoteAmount: {
-      type: DataTypes.DECIMAL(18, 8),
+      type: DataTypes.DECIMAL(28, 8),
       allowNull: false,
       field: 'quote_amount'
     },
     price: {
-      type: DataTypes.DECIMAL(18, 8),
+      type: DataTypes.DECIMAL(28, 8),
       allowNull: false
     },
     feeAmount: {
-      type: DataTypes.DECIMAL(18, 8),
+      type: DataTypes.DECIMAL(28, 8),
       allowNull: false,
       field: 'fee_amount'
     },

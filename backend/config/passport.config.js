@@ -3,6 +3,11 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const userService = require('../modules/users/user.service');
 
 const configurePassport = () => {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    console.log('⚠️ Google OAuth no configurado: falta GOOGLE_CLIENT_ID o GOOGLE_CLIENT_SECRET');
+    return;
+  }
+
   // 🔧 Construir la URL completa del callback
   const callbackURL = process.env.GOOGLE_CALLBACK_URL || 
     `${process.env.BACKEND_URL}/auth/google/callback`;

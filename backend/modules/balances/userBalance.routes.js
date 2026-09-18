@@ -81,6 +81,31 @@ router.put('/user/:userId/crypto/:cryptoId', authenticateToken, isAdmin, require
 // (controller-level check) y ahora tiene rate limit.
 router.put('/reclamarBTC', authenticateToken, rateLimitMiddleware.general, asyncHandler(balanceUserController.claimBtc));
 
+/**
+ * @openapi
+ * /balances/testnet-faucet:
+ *   post:
+ *     tags: [Balances]
+ *     summary: Reclamar fondos de prueba para preview y empleados (Testnet/Dev)
+ *     description: Acredita saldo de prueba (USDT + BTC o token específico) a la billetera Funding del usuario autenticado. Deshabilitado en producción.
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               symbol: { type: string, default: ALL, description: Símbolo del token o ALL para bundle inicial }
+ *               amount: { type: string, default: "10000", description: Cantidad a acreditar }
+ *     responses:
+ *       200:
+ *         description: Fondos de prueba acreditados exitosamente
+ *       400: { $ref: '#/components/responses/BadRequest' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ *       404: { description: No disponible en producción }
+ */
+router.post('/testnet-faucet', authenticateToken, rateLimitMiddleware.general, asyncHandler(balanceUserController.claimTestnetFaucet));
+
 // =============== NO TESTEADO ===============
 
 // RUTAS PÚBLICAS/ADMIN

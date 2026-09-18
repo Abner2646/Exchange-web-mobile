@@ -105,6 +105,7 @@ const googleLoginLimiter = rateLimit({
 const verifyEmailCodeLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
   max: 5,
+  skip: () => process.env.DISABLE_RATE_LIMIT === 'true' || process.env.NODE_ENV === 'development',
   message: {
     error: 'Demasiados intentos de verificación.'
   },
@@ -135,6 +136,7 @@ const verifyEmailCodeLimiter = rateLimit({
 const resendVerificationEmailLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hora
   max: 3,
+  skip: () => process.env.DISABLE_RATE_LIMIT === 'true' || process.env.NODE_ENV === 'development',
   message: {
     error: 'Demasiados intentos de reenvío.'
   },
