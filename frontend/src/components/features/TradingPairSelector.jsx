@@ -15,6 +15,8 @@ const CoinIcon = ({ coin, className }) => {
     'cryptologos.cc', 
     's2.coinmarketcap.com',
     'assets.coingecko.com',
+    'coin-images.coingecko.com',
+    'coingecko.com',
     'cryptoicons.org'
   ];
 

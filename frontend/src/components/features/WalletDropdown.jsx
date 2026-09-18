@@ -5,6 +5,7 @@ import {
   ArrowDownTrayIcon,
   ArrowUpTrayIcon,
   PaperAirplaneIcon,
+  ArrowsRightLeftIcon,
 } from '@heroicons/react/24/outline';
 
 const WalletDropdown = ({ onClose, onMouseEnter, onMouseLeave }) => {
@@ -22,6 +23,10 @@ const WalletDropdown = ({ onClose, onMouseEnter, onMouseLeave }) => {
         <WalletIcon className="navbar-dropdown-icon" />
         Mis Activos
       </Link>
+      <Link to="/activos" className="navbar-dropdown-item" onClick={handleLinkClick}>
+        <ArrowsRightLeftIcon className="navbar-dropdown-icon" />
+        Funding ↔ Spot
+      </Link>
       <Link to="/depositos" className="navbar-dropdown-item" onClick={handleLinkClick}>
         <ArrowDownTrayIcon className="navbar-dropdown-icon" />
         Depositar
@@ -32,7 +37,7 @@ const WalletDropdown = ({ onClose, onMouseEnter, onMouseLeave }) => {
       </Link>
       <Link to="/transferir" className="navbar-dropdown-item" onClick={handleLinkClick}>
         <PaperAirplaneIcon className="navbar-dropdown-icon" />
-        Transferir
+        Transferir P2P
       </Link>
     </div>
   );

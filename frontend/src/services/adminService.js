@@ -35,7 +35,12 @@ class AdminService {
       cryptoArray = response.data.criptomonedas;
     }
 
-    return cryptoArray;
+    return cryptoArray.map((c) => ({
+      ...c,
+      nombre: c.nombre || c.name || c.symbol || 'Criptomoneda',
+      name: c.name || c.nombre || c.symbol || 'Criptomoneda',
+      symbol: c.symbol || '',
+    }));
   }
 
   // Inicializar wallets (operación sensible)
@@ -64,6 +69,8 @@ class AdminService {
   // Crear método de pago
   async createPaymentMethod(nombre, descripcion) {
     const response = await apiClient.post(ENDPOINTS.PAYMENT_METHOD_CREATE, {
+      name: nombre,
+      description: descripcion,
       nombre,
       descripcion,
     });

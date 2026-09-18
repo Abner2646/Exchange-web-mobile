@@ -25,10 +25,36 @@ apiClient.interceptors.request.use(
 // ⭐ PÁGINAS PÚBLICAS que NO deben redirigir al login
 const PUBLIC_PATHS = ['/', '/login', '/register', '/auth-success'];
 
-// Interceptor: Manejar errores de autenticación
+// Interceptor: Manejar errores de API y autenticación
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Normalizar error canónico { error: { code, message } }
+    const data = error.response?.data;
+    let normalizedMsg = 'Ocurrió un error inesperado';
+    let code = null;
+
+    if (data) {
+      if (typeof data.error === 'string') {
+        normalizedMsg = data.error;
+      } else if (data.error && typeof data.error === 'object') {
+        normalizedMsg = data.error.message || 'Error en la solicitud';
+        code = data.error.code || null;
+      } else if (typeof data.message === 'string') {
+        normalizedMsg = data.message;
+      }
+
+      // Asegurar que message siempre exista como string en data para compatibilidad
+      if (!data.message && normalizedMsg) {
+        data.message = normalizedMsg;
+      }
+    } else if (error.message) {
+      normalizedMsg = error.message;
+    }
+
+    error.errorMessage = normalizedMsg;
+    error.errorCode = code;
+
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       

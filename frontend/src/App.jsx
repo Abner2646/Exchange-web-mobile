@@ -11,6 +11,8 @@ import ScrollToTop from './components/common/ScrollToTop.jsx';
 import HomePage from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register.jsx';
+import ForgotPassword from './pages/ForgotPassword.jsx';
+import ResetPassword from './pages/ResetPassword.jsx';
 import AuthSuccess from './pages/AuthSuccess';
 
 // Páginas protegidas
@@ -51,13 +53,15 @@ function App() {
         <AuthProvider>
           <BrowserRouter>
             <ScrollToTop />
-            {/*<Toaster position="top-right" />*/}
+            <Toaster position="top-right" />
             <Routes>
               <Route path="/" element={<Layout />}>
                 {/* ========== RUTAS PÚBLICAS ========== */}
                 <Route index element={<HomePage />} />
                 <Route path="login" element={<Login />} />
                 <Route path="register" element={<Register />} />
+                <Route path="forgot-password" element={<ForgotPassword />} />
+                <Route path="reset-password" element={<ResetPassword />} />
                 <Route path="auth-success" element={<AuthSuccess />} />
 
                 {/* ========== RUTAS PROTEGIDAS (solo autenticación) ========== */}
@@ -204,6 +208,16 @@ function App() {
                 {/* Super Admin - Requiere email verificado */}
                 <Route
                   path="super_admin"
+                  element={
+                    <ProtectedRoute>
+                      <RequireEmailVerified>
+                        <SuperAdmin />
+                      </RequireEmailVerified>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="admin"
                   element={
                     <ProtectedRoute>
                       <RequireEmailVerified>

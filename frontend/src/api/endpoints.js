@@ -1,36 +1,44 @@
 // src/api/endpoints.js 
 export const ENDPOINTS = {
-  // Auth
+  // Auth & Usuarios
   AUTH_GOOGLE: '/auth/google',
   AUTH_LOGOUT: '/auth/logout',
-  USER_PROFILE: '/usuario/me',
-  USER_SEARCH: '/usuario/search',
+  USER_PROFILE: '/user/me',
+  USER_SEARCH: '/user/search',
 
-  //Registros
-  USER_REGISTER: '/usuario/register',
+  // Registros
+  USER_REGISTER: '/user/register',
 
-  //Login
-  USER_LOGIN: '/usuario/login',
-  USER_VERIFY_2FA: '/usuario/verify-2fa',
-  USER_RESEND_2FA: '/usuario/resend-2fa',
+  // Login & 2FA
+  USER_LOGIN: '/user/login',
+  USER_VERIFY_2FA: '/user/verify-2fa',
+  USER_RESEND_2FA: '/user/resend-2fa',
 
-  //Verificación de Email
-  USER_VERIFY_EMAIL: '/usuario/verify-email',
-  USER_RESEND_VERIFICATION_EMAIL: '/usuario/resend-verification-email',
+  // Recuperación de Contraseña
+  USER_FORGOT_PASSWORD: '/user/forgot-password',
+  USER_VERIFY_RESET_CODE: '/user/verify-reset-code',
+  USER_RESET_PASSWORD: '/user/reset-password',
 
-  //Super_admin
+  // Verificación de Email
+  USER_VERIFY_EMAIL: '/user/verify-email',
+  USER_RESEND_VERIFICATION_EMAIL: '/user/resend-verification-email',
+
+  // Super_admin
   SETUP_WALLETS_INITIALIZE: '/setupWallets/initialize',
   EXCHANGE_PAIRS_GENERATE: '/parExchange/generate-all',
   PAYMENT_METHOD_CREATE: '/metodoPago',
 
   // Cryptos
-  CRYPTOS_ACTIVE: '/criptomoneda/public/active',
-  CRYPTO_BY_ID: (id) => `/criptomoneda/${id}`,
-  CRYPTO_BY_SYMBOL: (symbol) => `/criptomoneda/symbol/${symbol}`,
-  CRYPTO_GENERATE_ALL_ICONS: '/criptomoneda/generate-all-icons',
+  CRYPTOS_ACTIVE: '/crypto/public/active',
+  CRYPTO_BY_ID: (id) => `/crypto/${id}`,
+  CRYPTO_BY_SYMBOL: (symbol) => `/crypto/symbol/${symbol}`,
+  CRYPTO_GENERATE_ALL_ICONS: '/crypto/generate-all-icons',
 
   // Balances
   MY_BALANCES: '/balances/my/balances',
+  BALANCE_TRANSFER_COMPARTMENTS: '/balances/my/transfer',
+  BALANCE_TESTNET_FAUCET: '/balances/testnet-faucet',
+  BALANCE_CLAIM_BTC: '/balances/reclamarBTC',
   BALANCE_UPDATE_USER: (userId, cryptoId) => `/balances/user/${userId}/crypto/${cryptoId}`,
   BALANCE_STATS: '/balances/stats',
 
@@ -38,25 +46,25 @@ export const ENDPOINTS = {
   PRICE: (from, to) => `/parExchange/price/${from}/${to}`,
 
   // Transfers
-  TRANSFERS: '/transferencia',
-  MY_TRANSFERS: '/transferencia/my',
-  TRANSFER_VERIFY_FUNDS: '/transferencia/verify-funds',
-  TRANSFER_PROCESS: (id) => `/transferencia/${id}/process`,
-  TRANSFER_RESEND_CODE: (id) => `/transferencia/${id}/resend-code`,
+  TRANSFERS: '/transfer',
+  MY_TRANSFERS: '/transfer/my',
+  TRANSFER_VERIFY_FUNDS: '/transfer/verify-funds',
+  TRANSFER_PROCESS: (id) => `/transfer/${id}/process`,
+  TRANSFER_RESEND_CODE: (id) => `/transfer/${id}/resend-code`,
   
-  //Depositos
+  // Depositos
   DEPOSIT_ADDRESS_BY_CRYPTO: (cryptoId) => `/direccionDeposito/user/me/crypto/${cryptoId}`,
 
-  //Retiros
-  TRANSACTIONS_WITHDRAW: '/transactions/withdraw',
+  // Retiros
+  TRANSACTIONS_WITHDRAW: '/transaccionBlockchain/withdraw',
 
-  //P2P:
-  P2P_CRYPTOS: '/criptomoneda',
+  // P2P:
+  P2P_CRYPTOS: '/crypto',
   P2P_METODOS_PAGO_ACTIVOS: '/metodoPago/status/active',
   P2P_OFERTAS: '/ofertaP2P',
-  P2P_USER_PUBLIC_PROFILE: (userId) => `/usuario/public/${userId}`,
+  P2P_USER_PUBLIC_PROFILE: (userId) => `/user/public/${userId}`,
 
-  //P2P Mis Operaciones:
+  // P2P Mis Operaciones:
   P2P_MY_OFERTAS: '/ofertaP2P/me/ofertas',
   P2P_MY_TRANSACCIONES: '/transaccionP2P/me/transacciones',
   P2P_MY_TRANSACCIONES_PENDING: '/transaccionP2P/me/pending',
@@ -64,7 +72,7 @@ export const ENDPOINTS = {
   P2P_TRANSACCION_CONFIRM_PAYMENT: (transaccionId) => `/transaccionP2P/${transaccionId}/confirm-payment`,
   P2P_TRANSACCION_COMPLETE: (transaccionId) => `/transaccionP2P/${transaccionId}/complete`,
   P2P_TRANSACCION_CANCEL: (transaccionId) => `/transaccionP2P/${transaccionId}/cancel`,
-  P2P_TRANSACCION_DETAILS: (transaccionId) => `/p2p/transaction/${transaccionId}`,
+  P2P_TRANSACCION_DETAILS: (transaccionId) => `/transaccionP2P/${transaccionId}`,
 
   // P2P Crear Oferta:
   P2P_CREATE_OFERTA: '/ofertaP2P',
@@ -76,15 +84,15 @@ export const ENDPOINTS = {
   NOTIFICATIONS_MARK_READ: (id) => `/notificaciones/me/${id}/mark-read`,
   NOTIFICATIONS_MARK_UNREAD: (id) => `/notificaciones/me/${id}/mark-unread`,
 
-  //Usuario - Configuración del perfil
-  USER_CHANGE_PASSWORD: '/usuario/me/change-password',
-  USER_2FA_TOGGLE: '/usuario/me/2fa-toggle',
+  // Usuario - Configuración del perfil
+  USER_CHANGE_PASSWORD: '/user/me/change-password',
+  USER_2FA_TOGGLE: '/user/me/2fa-toggle',
 
   // Swap/Exchange
   EXCHANGE_PAIR_BY_SYMBOLS: (base, quote) => `/parExchange/symbols/${base}/${quote}`,
   EXCHANGE_PRICE: (base, quote) => `/parExchange/price/${base}/${quote}`,
   EXCHANGE_CALCULATE: '/intercambioExchange/calculate',
-  EXCHANGE_EXECUTE: '/intercambioExchange/',
+  EXCHANGE_EXECUTE: '/intercambioExchange',
   EXCHANGE_CHECK_LIMIT: '/intercambioExchange/check-limit',
   BALANCE_CHECK: (userId, cryptoId, amount) => `/balances/user/${userId}/crypto/${cryptoId}/check?amount=${amount}`,
 
@@ -134,7 +142,7 @@ export const TRADING_ENDPOINTS = {
   CHART_DATA: (tradingPairId) => `/trading/chart/${tradingPairId}/binance`,
 
   // Statistics
-  PAIR_STATS: (tradingPairId) => `/i/trading/stats/${tradingPairId}`,
+  PAIR_STATS: (tradingPairId) => `/trading/stats/${tradingPairId}`,
   VOLUME: '/trading/volume',
   TICKERS: '/trading/tickers',
   USER_SUMMARY: '/trading/summary',

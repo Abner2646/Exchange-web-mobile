@@ -37,8 +37,9 @@ class AuthService {
       id: payload.userId || payload.id || payload.sub,
       email: payload.email,
       username: payload.username || payload.user || payload.name || 'Usuario',
-      role: payload.rol || payload.role || 'user',
-      emailVerificado: payload.emailVerificado || false,
+      role: payload.role || payload.rol || 'user',
+      emailVerificado: payload.emailVerified !== undefined ? payload.emailVerified : (payload.emailVerificado || false),
+      emailVerified: payload.emailVerified !== undefined ? payload.emailVerified : (payload.emailVerificado || false),
       googleId: payload.googleId || null,
     };
   }
@@ -220,6 +221,50 @@ class AuthService {
     const response = await apiClient.patch(ENDPOINTS.USER_2FA_TOGGLE);
 
     console.log('✅ AuthService: 2FA toggled:', response.data);
+    return response.data;
+  }
+
+  // ========== RECUPERACIÓN DE CONTRASEÑA ==========
+
+  /**
+   * Solicitar código de restablecimiento de contraseña
+   * @param {string} email
+   * @returns {Promise<Object>}
+   */
+  async requestPasswordReset(email) {
+    console.log('🔐 AuthService: Solicitando reseteo de contraseña para:', email);
+    const response = await apiClient.post(ENDPOINTS.USER_FORGOT_PASSWORD, { email });
+    return response.data;
+  }
+
+  /**
+   * Verificar código de restablecimiento
+   * @param {string} email
+   * @param {string} codigo
+   * @returns {Promise<Object>}
+   */
+  async verifyResetCode(email, codigo) {
+    console.log('🔐 AuthService: Verificando código de reset');
+    const response = await apiClient.post(ENDPOINTS.USER_VERIFY_RESET_CODE, { email, codigo });
+    return response.data;
+  }
+
+  /**
+   * Restablecer contraseña con código
+   * @param {string} email
+   * @param {string} codigo
+   * @param {string} newPassword
+   * @param {string} confirmPassword
+   * @returns {Promise<Object>}
+   */
+  async resetPassword(email, codigo, newPassword, confirmPassword) {
+    console.log('🔐 AuthService: Restableciendo contraseña');
+    const response = await apiClient.post(ENDPOINTS.USER_RESET_PASSWORD, {
+      email,
+      codigo,
+      newPassword,
+      confirmPassword,
+    });
     return response.data;
   }
 

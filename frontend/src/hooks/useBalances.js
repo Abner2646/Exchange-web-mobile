@@ -40,8 +40,14 @@ export const useBalances = () => {
     async () => {
       if (balances.length === 0) return [];
 
+      // Si los balances ya traen la crypto adjunta por el backend
+      const directCryptos = balances.map(b => b.crypto).filter(Boolean);
+      if (directCryptos.length === balances.length) {
+        return directCryptos;
+      }
+
       // Extraer IDs únicos de criptomonedas que el usuario tiene
-      const cryptoIds = [...new Set(balances.map(b => b.criptomonedaId))];
+      const cryptoIds = [...new Set(balances.map(b => b.criptomonedaId || b.cryptoId || b.crypto?.id).filter(Boolean))];
       
       if (cryptoIds.length === 0) return [];
 
@@ -51,8 +57,8 @@ export const useBalances = () => {
       return cryptoData;
     },
     {
-      enabled: !!user && balances.length > 0, // ⭐ MODIFICADO - Agregar verificación de usuario
-      staleTime: 60000, // 1 minuto
+      enabled: !!user && balances.length > 0,
+      staleTime: 60000,
     }
   );
 
@@ -61,30 +67,32 @@ export const useBalances = () => {
     data: prices = {},
     isLoading: loadingPrices,
   } = useQuery(
-    ['pricesForBalances', criptomonedas],
+    ['pricesForBalances', criptomonedas, balances],
     async () => {
-      if (criptomonedas.length === 0) return {};
-
-      // Siempre incluir BTC para el cálculo del balance total
-      const cryptosToFetch = [...criptomonedas];
-      const hasBTC = criptomonedas.some(c => c.symbol === 'BTC');
-
-      // Si no tiene BTC en su balance, agregarlo para obtener su precio
-      if (!hasBTC) {
-        const btcData = await cryptoService.getCryptoBySymbol('BTC');
-        if (btcData) {
-          cryptosToFetch.push(btcData);
+      // Unir todas las criptos conocidas (desde query o desde balances directamente)
+      const allKnownCryptos = [...criptomonedas];
+      for (const b of balances) {
+        if (b.crypto && !allKnownCryptos.some(c => c.symbol === b.crypto.symbol)) {
+          allKnownCryptos.push(b.crypto);
         }
       }
 
+      // Siempre incluir BTC para el cálculo del balance total
+      const hasBTC = allKnownCryptos.some(c => c.symbol === 'BTC');
+      if (!hasBTC) {
+        allKnownCryptos.push({ symbol: 'BTC' });
+      }
+
+      if (allKnownCryptos.length === 0) return {};
+
       // Obtener precios en paralelo
-      const pricesMap = await cryptoService.getPricesForCryptos(cryptosToFetch, 'USDT');
+      const pricesMap = await cryptoService.getPricesForCryptos(allKnownCryptos, 'USDT');
       
       return pricesMap;
     },
     {
-      enabled: !!user && criptomonedas.length > 0, // ⭐ MODIFICADO - Agregar verificación de usuario
-      staleTime: 30000, // 30 segundos
+      enabled: !!user,
+      staleTime: 30000,
     }
   );
 

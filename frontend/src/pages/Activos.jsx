@@ -1,12 +1,19 @@
 // src/pages/BalancePage.jsx
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { useBalances } from '../hooks/useBalances';
+import balanceService from '../services/balanceService';
+import TransferModal from '../components/features/TransferModal';
 import '../styles/BalancePage.css';
 
 const BalancePage = () => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const [transferDefaultCryptoId, setTransferDefaultCryptoId] = useState('');
+  const [isClaimingFaucet, setIsClaimingFaucet] = useState(false);
   
   const {
     enrichedBalances,
@@ -26,6 +33,32 @@ const BalancePage = () => {
       navigate(path);
     } else {
       navigate('/login');
+    }
+  };
+
+  const handleOpenTransfer = (cryptoId = '') => {
+    setTransferDefaultCryptoId(cryptoId);
+    setIsTransferModalOpen(true);
+  };
+
+  const handleClaimFaucet = async () => {
+    try {
+      setIsClaimingFaucet(true);
+      await balanceService.claimTestnetFaucet({ symbol: 'ALL' });
+      toast.success('¡10,000 USDT y 1 BTC de prueba acreditados exitosamente! 🎉');
+      refetch();
+    } catch (err) {
+      console.error('Error reclamando faucet:', err);
+      try {
+        await balanceService.claimBtc();
+        toast.success('¡1 BTC de regalo acreditado exitosamente! 🎉');
+        refetch();
+      } catch (fallbackErr) {
+        const msg = err.errorMessage || err.response?.data?.message || err.message || 'Error al reclamar fondos de prueba';
+        toast.error(msg);
+      }
+    } finally {
+      setIsClaimingFaucet(false);
     }
   };
 
@@ -100,6 +133,21 @@ const BalancePage = () => {
               onClick={() => handleNavigation('/transferir')}
             >
               Transferir
+            </button>
+            <button 
+              className="bp-action-btn"
+              style={{ background: '#2563eb', color: '#ffffff', border: 'none', fontWeight: '600' }}
+              onClick={() => handleOpenTransfer()}
+            >
+              ⇄ Entre Billeteras
+            </button>
+            <button 
+              className="bp-action-btn"
+              style={{ background: '#059669', color: '#ffffff', border: 'none', fontWeight: '600' }}
+              onClick={handleClaimFaucet}
+              disabled={isClaimingFaucet}
+            >
+              {isClaimingFaucet ? 'Reclamando...' : '🎁 Fondos de Prueba'}
             </button>
           </div>
         </div>
@@ -183,7 +231,10 @@ const BalancePage = () => {
                   </td>
                   <td className="bp-amount-cell">
                     <div className="bp-amount-crypto">
-                      {balance.balanceAmount.toFixed(8)}
+                      {balance.balanceAmount.toFixed(8)} {balance.crypto.symbol}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.25rem' }}>
+                      Funding: {parseFloat(balance.compartments?.funding?.available || 0).toFixed(4)} | Spot: {parseFloat(balance.compartments?.spot?.available || 0).toFixed(4)}
                     </div>
                   </td>
                   <td className="bp-value-cell">
@@ -195,7 +246,24 @@ const BalancePage = () => {
                     </div>
                   </td>
                   <td className="bp-actions-cell">
-                    <button className="bp-expand-btn">⋯</button>
+                    <button 
+                      className="bp-action-btn-transfer"
+                      onClick={() => handleOpenTransfer(balance.criptomonedaId || balance.cryptoId || balance.crypto?.id)}
+                      title="Transferir entre billeteras Funding y Spot"
+                      style={{
+                        padding: '0.4rem 0.8rem',
+                        borderRadius: '0.5rem',
+                        background: 'rgba(56, 189, 248, 0.15)',
+                        border: '1px solid rgba(56, 189, 248, 0.3)',
+                        color: '#38bdf8',
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                        fontSize: '0.8rem',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      ⇄ Transferir
+                    </button>
                   </td>
                 </tr>
               ))
@@ -203,6 +271,15 @@ const BalancePage = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Modal de Transferencia entre Billeteras */}
+      <TransferModal
+        isOpen={isTransferModalOpen}
+        onClose={() => setIsTransferModalOpen(false)}
+        onSuccess={() => refetch()}
+        defaultCryptoId={transferDefaultCryptoId}
+        balances={enrichedBalances}
+      />
     </div>
   );
 };

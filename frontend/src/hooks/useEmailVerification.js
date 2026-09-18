@@ -17,12 +17,17 @@ export const useEmailVerification = () => {
   // Estado para el contador de reenvío
   const [canResend, setCanResend] = useState(true);
   const [resendCountdown, setResendCountdown] = useState(0);
+  const [errorMessage, setErrorMessage] = useState('');
 
   // Mutation: Verificar código de email
   const verifyEmailMutation = useMutation(
-    (codigo) => authService.verifyEmail(codigo),
+    (codigo) => {
+      setErrorMessage('');
+      return authService.verifyEmail(codigo);
+    },
     {
       onSuccess: (data) => {
+        setErrorMessage('');
         // ⭐ GUARDAR EL NUEVO TOKEN (con emailVerificado: true)
         if (data.token) {
           authService.setAuthToken(data.token);
@@ -30,7 +35,7 @@ export const useEmailVerification = () => {
         }
         
         // ⭐ Actualizar el estado del user en el context
-        updateUser({ emailVerificado: true });
+        updateUser({ emailVerificado: true, emailVerified: true });
         
         toast.success('¡Email verificado exitosamente!', {
           duration: 4000,
@@ -44,12 +49,15 @@ export const useEmailVerification = () => {
       },
       onError: (error) => {
         console.error('❌ Error en verificación de email:', error);
-        const errorMessage = 
-          error.response?.data?.message || 
-          error.response?.data?.error || 
+        const errData = error.response?.data;
+        const msg = 
+          (typeof errData?.error === 'string' ? errData.error : errData?.error?.message) ||
+          errData?.message ||
+          error.message ||
           'Código de verificación incorrecto. Por favor, inténtalo de nuevo.';
         
-        toast.error(errorMessage, {
+        setErrorMessage(msg);
+        toast.error(msg, {
           duration: 5000,
         });
       },
@@ -58,9 +66,13 @@ export const useEmailVerification = () => {
 
   // Mutation: Reenviar código de verificación
   const resendCodeMutation = useMutation(
-    () => authService.resendVerificationEmail(),
+    () => {
+      setErrorMessage('');
+      return authService.resendVerificationEmail();
+    },
     {
       onSuccess: () => {
+        setErrorMessage('');
         toast.success('Nuevo código enviado a tu email', {
           duration: 4000,
           icon: '📧',
@@ -83,12 +95,14 @@ export const useEmailVerification = () => {
       },
       onError: (error) => {
         console.error('❌ Error al reenviar código:', error);
-        const errorMessage = 
-          error.response?.data?.message || 
-          error.response?.data?.error || 
+        const errData = error.response?.data;
+        const msg = 
+          (typeof errData?.error === 'string' ? errData.error : errData?.error?.message) ||
+          errData?.message ||
           'Error al reenviar código. Intenta de nuevo.';
         
-        toast.error(errorMessage);
+        setErrorMessage(msg);
+        toast.error(msg);
       },
     }
   );
@@ -108,9 +122,11 @@ export const useEmailVerification = () => {
     resendCode: resendCodeMutation.mutate,
     skipVerification,
 
-    // Estados de carga
+    // Estados de carga y error
     isVerifying: verifyEmailMutation.isLoading,
     isResending: resendCodeMutation.isLoading,
+    errorMessage,
+    clearError: () => setErrorMessage(''),
 
     // Estado de reenvío
     canResend,

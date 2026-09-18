@@ -9,6 +9,8 @@ const SwapConfirmModal = ({
   fromAmount,
   toAmount,
   exchangeRate,
+  feeAmount,
+  feePercent,
   isLoading,
 }) => {
   if (!isOpen) return null;
@@ -93,12 +95,16 @@ const SwapConfirmModal = ({
             <div className="swap-page-detail-row">
               <span className="swap-page-detail-label">Método de pago</span>
               <span className="swap-page-detail-value">
-                {fromCrypto.nombre} ({fromCrypto.symbol})
+                {fromCrypto.nombre || fromCrypto.name || fromCrypto.symbol} ({fromCrypto.symbol})
               </span>
             </div>
             <div className="swap-page-detail-row">
               <span className="swap-page-detail-label">Comisiones de transacción</span>
-              <span className="swap-page-detail-value">0 {toCrypto.symbol}</span>
+              <span className="swap-page-detail-value">
+                {feeAmount && parseFloat(feeAmount) > 0 
+                  ? `${feeAmount} ${toCrypto.symbol} (${feePercent || '0.1'}%)` 
+                  : `${feePercent || '0.1'}%`}
+              </span>
             </div>
           </div>
 
