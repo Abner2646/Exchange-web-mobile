@@ -41,14 +41,13 @@ services:
       DB_NAME: app_database
       DB_USER: app_user
       DB_PASSWORD: app_password
-      JWT_SECRET: palabra #${JWT_SECRET}
-      secretOrPrivateKey: palabra #
-      JWT_EXPIRES_IN: 1h
-      EMAIL_HOST: smtp.gmail.com
-      EMAIL_PORT: 587
-      EMAIL_USER: yourcryptocurrencyexchange@gmail.com
-      EMAIL_PASS: tzoe vrgj yidm gwiv
-      DISABLE_RATE_LIMIT: "true"
+      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1h}
+      EMAIL_HOST: ${EMAIL_HOST:-smtp.gmail.com}
+      EMAIL_PORT: ${EMAIL_PORT:-587}
+      EMAIL_USER: ${EMAIL_USER:-}
+      EMAIL_PASS: ${EMAIL_PASS:-}
+      DISABLE_RATE_LIMIT: ${DISABLE_RATE_LIMIT:-true}
     # Example for allowing multiple origins in development via ALLOWED_ORIGINS
     # ALLOWED_ORIGINS: "http://localhost:3000,https://exchange-backend-3.onrender.com"
     # CORS_ORIGIN removed: handle CORS at proxy or hosting level if needed
