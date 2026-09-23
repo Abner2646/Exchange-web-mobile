@@ -2,6 +2,31 @@
 
 **Started:** 2026-09-23. Coordinator: Claude (Opus). Abner is away for several days; full autonomy.
 
+## ⚠️ 2026-09-23 (session resume) — BRANCH RECONCILIATION (important, read first)
+The HANDOFF premise "main intacto" was **WRONG**. Reality found on resume:
+- `dev` was built on a **stale base** (`f4d2e5a`, pre-PR #31). Meanwhile `origin/main`
+  advanced **36 commits** via PRs #31–#37: AML perf pass (`3472239`), `PeriodicJob` base
+  class refactor, swap/balance controller fixes, testnet faucet + catalog seeding, staging
+  docs (`AGENTS.md`, `PROJECT_VISION.md`, `DEPLOYMENT_STAFF_STAGING.md`, `backend/README.md`).
+- dev had 33 unique commits (this run's frontend TS rebuild + oracle/alerts/referrals/
+  launchpad/kyc/governance backend modules) that main lacks.
+- **They reconcile cleanly**: main made ZERO net frontend changes vs base, so dev's 106-file
+  TS rebuild does not collide. Trial merge = 0 conflicts.
+- **ACTION TAKEN:** merged `origin/main` → `dev` (merge commit, `ort` strategy, clean).
+  dev is now `0` behind / `34` ahead of origin/main. **main was NOT touched.**
+- **VERIFIED GREEN post-merge:** frontend `tsc --noEmit` exit 0; backend unit **481 passed,
+  3 skipped, 0 failures** (94 suites, 52s). Both main-only (`backend/jobs/PeriodicJob.js`,
+  staging docs) and dev-only (governance/kyc/launchpad/referrals, `money.ts`, `src/app`)
+  artifacts confirmed present in the merged tree — merge is genuine, no anomaly.
+- **Local `dev` was 37 commits ahead of `origin/dev` — the ENTIRE run was unpushed (data-loss
+  risk).** Pushed: `30db5f4..d54e9d7  dev -> dev` (clean fast-forward). origin/dev == local dev now.
+- **dev→main NOT done** — deferred to a dedicated next burst: run `/code-review` high-effort on
+  the dev↔main delta (whole frontend rebuild + 6 backend modules is money/security-heavy), fix
+  findings, then auto-merge per Abner's §5 authorization. Not rushed into this session's tail.
+- Junk untracked scratch files in repo root (fix*.js/py, clean.js, untitled*.md, test_fix.py)
+  are NOT mine and NOT committed — left in place, flagged for Abner.
+
+
 **Standing rules (from Abner):**
 - Fleet: Antigravity (`agy` headless) + Claude Code sub-agents. Kimi is DOWN (403). No other agents.
 - Delegate everything EXCEPT security/custody/keys/auth/Maker-Checker/HD-derivation → those are mine.
