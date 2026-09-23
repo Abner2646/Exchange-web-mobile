@@ -46,6 +46,8 @@ const MONEY_POST_PATTERNS: RegExp[] = [
   /\/intercambioExchange(?:\/|$)/,
   /\/api\/balances\/my\/transfer/,
   /\/balances\/my\/transfer/,
+  /\/api\/referrals\/claim/,
+  /\/referrals\/claim/,
 ];
 
 /**
