@@ -1,5 +1,4 @@
-const { sequelize, Crypto } = require('../../models');
-const crypto = require('crypto');
+const { sequelize, Crypto, LedgerEntry } = require('../../models');
 const { ReferralLink, ReferralBalance } = require('./referrals.model');
 const { postTransaction } = require('../balances/ledger/postingService');
 const { PURPOSES } = require('../balances/ledger/ledgerAccounts');
@@ -46,8 +45,27 @@ async function accrueCommission({ inviteeUserId, feeAmount, feeAsset, feeUsdtEqu
   if (!link) {
     return null;
   }
+  // No self-referral: a user can never earn a commission on their own trading fees.
+  if (link.sponsorId === inviteeUserId) {
+    return null;
+  }
+  // A stable source-event ref is REQUIRED so a retried/duplicated fee settlement is
+  // idempotent. A random fallback would defeat dedup and double-accrue the commission.
+  if (!sourceRef) {
+    throw new AppError(400, errorCodes.VALIDATION_ERROR, 'sourceRef es requerido para devengar comisión de referidos');
+  }
+  const reference = `referral_accrual:${sourceRef}`;
 
   const execute = async (transaction) => {
+    // Idempotency guard: if this accrual was already posted, do NOT touch the per-user
+    // balance again. postTransaction dedups the LEDGER by reference, but the balance
+    // projection below would otherwise double-count on a retry and diverge from the
+    // ledger liability (letting a later claim overdraw REFERRAL_LIABILITY).
+    const existing = await LedgerEntry.findOne({ where: { reference }, transaction });
+    if (existing) {
+      return null;
+    }
+
     const usdt = await resolveUsdt();
 
     const [balance] = await ReferralBalance.findOrCreate({
@@ -61,9 +79,7 @@ async function accrueCommission({ inviteeUserId, feeAmount, feeAsset, feeUsdtEqu
     await balance.update({ saldoReferidosPendienteUsdt: newSaldo }, { transaction });
 
     // Fund the liability: move the earned commission out of house revenue into the
-    // referral liability account (balanced, USDT). Dedup by the source event ref so a
-    // retried fee settlement does not double-accrue.
-    const reference = `referral_accrual:${sourceRef || crypto.randomUUID()}`;
+    // referral liability account (balanced, USDT).
     await postTransaction({
       type: 'referral_accrual',
       reference,

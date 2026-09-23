@@ -4,6 +4,8 @@
 const errorCodes = Object.freeze({
   INTERNAL_ERROR: 'INTERNAL_ERROR',
   NOT_FOUND: 'NOT_FOUND',
+  // Generic request/business-rule validation failure (referrals, launchpad, ...)
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
 
   // Operator access controls (Fase 4.9 — NYDFS Part 500 §500.7/§500.12)
   OPERATOR_REQUIRED: 'OPERATOR_REQUIRED',

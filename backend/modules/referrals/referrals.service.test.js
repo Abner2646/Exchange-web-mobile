@@ -12,10 +12,11 @@ jest.mock('../../models', () => {
       transaction: transactionMock,
     },
     Crypto: { getBySymbol: jest.fn() },
+    LedgerEntry: { findOne: jest.fn() },
   };
 });
 
-const { Crypto } = require('../../models');
+const { Crypto, LedgerEntry } = require('../../models');
 
 jest.mock('./referrals.model', () => ({
   ReferralLink: { findOne: jest.fn() },
@@ -99,6 +100,57 @@ describe('Referrals Service', () => {
         feeAsset: 'USDT'
       });
       expect(commission).toBeNull();
+    });
+
+    it('requires a sourceRef when there is a real commission to accrue (no random-UUID fallback that defeats dedup)', async () => {
+      businessConfig.getNumber.mockResolvedValue(0.1);
+      ReferralLink.findOne.mockResolvedValue({ sponsorId: 'sponsor-uuid' });
+
+      await expect(accrueCommission({
+        inviteeUserId: 'invitee-uuid',
+        feeAmount: '200',
+        feeAsset: 'USDT'
+        // sourceRef intentionally omitted
+      })).rejects.toThrow(/sourceRef/i);
+
+      // Must not have touched the balance or the ledger.
+      expect(ReferralBalance.findOrCreate).not.toHaveBeenCalled();
+      expect(postTransaction).not.toHaveBeenCalled();
+    });
+
+    it('is idempotent: if the accrual entry already exists it does NOT re-increment the balance (prevents balance/ledger divergence)', async () => {
+      businessConfig.getNumber.mockResolvedValue(0.1);
+      ReferralLink.findOne.mockResolvedValue({ sponsorId: 'sponsor-uuid' });
+      Crypto.getBySymbol.mockResolvedValue({ id: 'usdt-uuid' });
+      LedgerEntry.findOne.mockResolvedValue({ id: 'existing-entry', reference: 'referral_accrual:trade-42' });
+
+      const result = await accrueCommission({
+        inviteeUserId: 'invitee-uuid',
+        feeAmount: '200',
+        feeAsset: 'USDT',
+        sourceRef: 'trade-42'
+      });
+
+      expect(result).toBeNull();
+      // Critical: the per-user balance must NOT be mutated on a retry, and no second ledger post.
+      expect(ReferralBalance.findOrCreate).not.toHaveBeenCalled();
+      expect(postTransaction).not.toHaveBeenCalled();
+    });
+
+    it('does not pay a commission on a self-referral (sponsor === invitee)', async () => {
+      businessConfig.getNumber.mockResolvedValue(0.1);
+      ReferralLink.findOne.mockResolvedValue({ sponsorId: 'invitee-uuid' });
+
+      const result = await accrueCommission({
+        inviteeUserId: 'invitee-uuid',
+        feeAmount: '200',
+        feeAsset: 'USDT',
+        sourceRef: 'trade-99'
+      });
+
+      expect(result).toBeNull();
+      expect(ReferralBalance.findOrCreate).not.toHaveBeenCalled();
+      expect(postTransaction).not.toHaveBeenCalled();
     });
   });
 
