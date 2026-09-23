@@ -407,6 +407,16 @@ Exchange-administered token presales. Money as canonical strings.
 
 ---
 
+### 13. KYC (Persona) (Hito 7) — LIVE (2026-09-23)
+
+- `GET /api/kyc/status` (auth): returns the caller's current KYC tier/verification status. Use it to drive tier-gated UI.
+- `POST /api/kyc/persona-webhook` is **server-to-server only** (HMAC-signed, not called by the client). On approval the
+  user is upgraded to Tier 1 server-side; the client should re-read `/kyc/status` (or the user profile) after the
+  provider flow completes. The withdrawal KYC requirement is gated by business config `kyc_required_for_withdrawals`
+  (default false); enforcement in the withdrawal path is a pending server-side follow-up.
+
+---
+
 ## Expected upcoming contract changes (heads-up, not yet done)
 
 These are tracked in `ROADMAP.md`; listed here so the rebuild anticipates them and
