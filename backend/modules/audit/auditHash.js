@@ -1,5 +1,7 @@
 // modules/audit/auditHash.js
 // Pure hashing for the audit-trail chain. No DB. Node built-in crypto only.
+'use strict';
+
 const crypto = require('crypto');
 
 const GENESIS = 'GENESIS';

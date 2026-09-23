@@ -203,3 +203,6 @@ public/uploads/
 
 # Local development
 .local
+
+# Local autonomous-run handoff (kept out of history by request)
+HANDOFF.md

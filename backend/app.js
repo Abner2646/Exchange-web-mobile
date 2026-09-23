@@ -50,7 +50,10 @@ app.use(cors({
 
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
-app.use(express.json({ limit: '10mb' }));
+// Capture the raw request bytes so webhook handlers (e.g. Persona KYC) can verify
+// an HMAC signature over the EXACT payload. JSON.stringify(req.body) does not
+// reproduce the signed bytes, so the raw buffer is required. Additive: parsing is unchanged.
+app.use(express.json({ limit: '10mb', verify: (req, _res, buf) => { req.rawBody = buf; } }));
 app.use(express.urlencoded({ extended: true }));
 
 app.use(session({

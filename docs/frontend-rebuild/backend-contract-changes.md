@@ -375,6 +375,62 @@ profile edit.
 
 ---
 
+### 11. Referral program (Hito 8) — LIVE (2026-09-23)
+
+One-level referral program. Money-path; all amounts are canonical decimal strings.
+
+- `GET /api/referrals/summary` (auth): returns
+  `{ pendingUsdt: "0.00000000", invitedCount: <n>, invited: [{ email, createdAt }] }`.
+  Invited emails are **anonymized** server-side (e.g. `"jo***@domain.com"`) — never raw.
+- `POST /api/referrals/claim` (auth, **`Idempotency-Key` header required**): atomically
+  moves the accrued referral balance into the user's `funding:disponible` via the ledger and
+  zeroes the pending balance in the same transaction. Returns
+  `{ amountClaimed: "<string>", asset: "USDT" }`. Reusing the same key is idempotent (no double
+  credit). `400 VALIDATION_ERROR` if there is nothing to claim or the key is missing.
+- Commission rate is admin-configurable via business config `referral_commission_pct`
+  (default `0.1`). Accrual books the commission to a dedicated house `referral_liability` ledger
+  account at earn time (funded from `fee_revenue`); a claim drains that liability into the user's
+  funding balance. Accrual from invitee trading fees is server-side; the automatic hook into the
+  trade-fee settlement flow is a pending server-side follow-up.
+
+---
+
+### 12. Launchpad / token presales (Hito 10) — LIVE (2026-09-23)
+
+Exchange-administered token presales. Money as canonical strings.
+
+- `GET /api/launchpad/presales`: list presales (token, price in USDT, hard/soft cap, ticket min/max, dates, progress).
+- `GET /api/launchpad/presales/:id`: presale detail.
+- `POST /api/launchpad/buy` (auth, **`Idempotency-Key` required**): body `{ presaleId, amountUsdt }`. Debits USDT
+  from `funding:disponible` into a suspense (escrow) account via the ledger; enforces per-user min/max, hard cap, and
+  active dates. `400` on validation/insufficient funds.
+- Resolution is server-side (job): at/above soft cap → tokens credited to buyers' `funding:disponible` instantly;
+  below soft cap → 100% USDT refunded from suspense to buyers (no fees). Clients should reflect presale status.
+
+---
+
+### 13. KYC (Persona) (Hito 7) — LIVE (2026-09-23)
+
+- `GET /api/kyc/status` (auth): returns the caller's current KYC tier/verification status. Use it to drive tier-gated UI.
+- `POST /api/kyc/persona-webhook` is **server-to-server only** (HMAC-signed, not called by the client). On approval the
+  user is upgraded to Tier 1 server-side; the client should re-read `/kyc/status` (or the user profile) after the
+  provider flow completes. The withdrawal KYC requirement is gated by business config `kyc_required_for_withdrawals`
+  (default false); enforcement in the withdrawal path is a pending server-side follow-up.
+
+### 14. Maker-Checker / dual control (Hito 11) — LIVE engine (2026-09-23)
+
+Operator-only governance for privileged actions (4-eyes). All routes require an operator with MFA enabled.
+- `GET /api/governance/pending` — inbox of pending actions.
+- `POST /api/governance/propose` — a maker proposes `{ actionType, payload, amountUsd? }`; returns a pending action with a TTL.
+- `POST /api/governance/:id/approve` — a **distinct** checker authorizes with a fresh 2FA `{ codigo }`. The checker can NEVER be the maker (`MAKER_CHECKER_SAME_USER`). Execution of the effect is atomic with authorization.
+- `POST /api/governance/:id/reject` — reject with an optional reason.
+- Hard rule: no monetary action above **$20,000 USD** can auto-execute — always dual control (inviolable ceiling; a
+  higher configured threshold cannot bypass it). Error codes: `MAKER_CHECKER_SAME_USER/INVALID_STATE/EXPIRED/MFA_INVALID/NOT_FOUND`.
+- Note: the engine is live with a pluggable executor registry; wiring specific privileged effects (e.g. large-withdrawal
+  release, fee changes) into it is per-action follow-up work.
+
+---
+
 ## Expected upcoming contract changes (heads-up, not yet done)
 
 These are tracked in `ROADMAP.md`; listed here so the rebuild anticipates them and

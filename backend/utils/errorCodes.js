@@ -4,10 +4,19 @@
 const errorCodes = Object.freeze({
   INTERNAL_ERROR: 'INTERNAL_ERROR',
   NOT_FOUND: 'NOT_FOUND',
+  // Generic request/business-rule validation failure (referrals, launchpad, ...)
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
 
   // Operator access controls (Fase 4.9 — NYDFS Part 500 §500.7/§500.12)
   OPERATOR_REQUIRED: 'OPERATOR_REQUIRED',
   OPERATOR_MFA_REQUIRED: 'OPERATOR_MFA_REQUIRED',
+
+  // Maker-Checker / dual control (Hito 11 — 4-eyes governance)
+  MAKER_CHECKER_SAME_USER: 'MAKER_CHECKER_SAME_USER',
+  MAKER_CHECKER_INVALID_STATE: 'MAKER_CHECKER_INVALID_STATE',
+  MAKER_CHECKER_EXPIRED: 'MAKER_CHECKER_EXPIRED',
+  MAKER_CHECKER_MFA_INVALID: 'MAKER_CHECKER_MFA_INVALID',
+  MAKER_CHECKER_NOT_FOUND: 'MAKER_CHECKER_NOT_FOUND',
 
   // Configuración de negocio (Radar #13)
   CONFIG_NOT_FOUND: 'CONFIG_NOT_FOUND',

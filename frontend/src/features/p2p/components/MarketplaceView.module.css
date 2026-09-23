@@ -1,0 +1,47 @@
+.container {
+  padding: 16px;
+}
+.tabs {
+  margin-bottom: 16px;
+  display: flex;
+  gap: 8px;
+}
+.filters {
+  margin-bottom: 24px;
+  display: flex;
+  gap: 16px;
+}
+.offersList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.offerCard {
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.merchantInfo {
+  font-weight: bold;
+}
+.priceInfo {
+  font-size: 1.2rem;
+  color: green;
+}
+.limitsInfo {
+  font-size: 0.9rem;
+  color: #666;
+}
+.paymentMethods {
+  display: flex;
+  gap: 8px;
+}
+.tag {
+  background: #eee;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
