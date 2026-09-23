@@ -114,12 +114,16 @@ Ordered by priority (breakage-fixes before new features). dev is green (494 unit
    `listPending` payload exposure. `requiresDualControl` is correct but still uncalled until this wiring.
 4. Then rest of §7: Tron testnet adapter, AWS KMS (code-only), on-ramp Transak, Google GIS, i18n 5 locales.
 
-## dev→main merge readiness (2026-09-23)
+## ✅ dev→main MERGED (2026-09-23) — per Abner's direct instruction
 High-effort /code-review DONE (4 finder agents over the money/security delta); all 9 real findings
-FIXED + green. **Recommendation: land TOTP (item 1) BEFORE merging** so the governance approve flow
-actually works, then auto-merge per Abner's §5. If Abner wants to merge sooner, it is defensible now
-(governance is operator-gated and NOT yet wired to any money path), but shipping a known-unusable
-approve is not audit-grade — prefer to fix it first.
+FIXED + green FIRST. Then merged **`dev`→`main`** (explicit merge commit `1f178d1`, `--no-ff`):
+- aligned local main to origin/main, merged dev, re-ran full suite on the merged tree (**494 green,
+  0 fail**), pushed `main` (`34f3ed6..1f178d1`), then fast-forwarded `dev` to main.
+- Final state: `dev == main == origin/main == origin/dev` (all `0 0`).
+- **KNOWN LIMITATION shipped (documented, accepted by Abner):** the Maker-Checker `approve` checker
+  second factor still uses the login-only `User.twoFactorCode` (null for logged-in operators) → approve
+  is effectively unusable until **TOTP-for-all** lands (▶️ NEXT BURST item 1). Governance is
+  operator-gated and NOT wired to any money path yet, so this is latent, not dangerous. Fix it next.
 
 ## Status board
 | Item | Owner | State |
