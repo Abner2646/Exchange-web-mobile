@@ -22,6 +22,7 @@ const valoracionRoutes = require('../modules/p2p/rating.routes.js')
 const walletMaestraRoutes = require('../modules/wallets/masterWallet.routes.js')
 const businessConfigRoutes = require('../modules/config/businessConfig.routes.js')
 const amlRoutes = require('../modules/aml/aml.routes.js')
+const referralsRoutes = require('../modules/referrals/referrals.routes.js')
 
 // Derive routes
 router.use('/auth', authRoutes)
@@ -41,6 +42,7 @@ router.use('/transaccionBlockchain', transaccionBlockchainRoutes)
 router.use('/transaccionP2P', transaccionP2PRoutes)
 router.use('/transfer', transferRoutes)
 router.use('/trading', tradingRoutes);
+router.use('/referrals', referralsRoutes)
 router.use('/user', userRoutes)
 // Fix 2026-08-19 (AUDITORIA_BACKEND.md Altos #11): estaba comentada pese a
 // que el modelo/controller ya estaban completos y activos en

@@ -375,6 +375,24 @@ profile edit.
 
 ---
 
+### 11. Referral program (Hito 8) — LIVE (2026-09-23)
+
+One-level referral program. Money-path; all amounts are canonical decimal strings.
+
+- `GET /api/referrals/summary` (auth): returns
+  `{ pendingUsdt: "0.00000000", invitedCount: <n>, invited: [{ email, createdAt }] }`.
+  Invited emails are **anonymized** server-side (e.g. `"jo***@domain.com"`) — never raw.
+- `POST /api/referrals/claim` (auth, **`Idempotency-Key` header required**): atomically
+  moves the accrued referral balance into the user's `funding:disponible` via the ledger and
+  zeroes the pending balance in the same transaction. Returns
+  `{ amountClaimed: "<string>", asset: "USDT" }`. Reusing the same key is idempotent (no double
+  credit). `400 VALIDATION_ERROR` if there is nothing to claim or the key is missing.
+- Commission rate is admin-configurable via business config `referral_commission_pct`
+  (default `0.1`). Accrual from invitee trading fees is a server-side concern (not client-facing);
+  the automatic accrual hook into the trade-fee flow is a pending server-side follow-up.
+
+---
+
 ## Expected upcoming contract changes (heads-up, not yet done)
 
 These are tracked in `ROADMAP.md`; listed here so the rebuild anticipates them and
