@@ -1,0 +1,131 @@
+const { accrueCommission, claim } = require('./referrals.service');
+const { ReferralLink, ReferralBalance } = require('./referrals.model');
+const { postTransaction } = require('../balances/ledger/postingService');
+const businessConfig = require('../config/businessConfig');
+const { PURPOSES } = require('../balances/ledger/ledgerAccounts');
+const money = require('../../utils/money');
+
+jest.mock('../../models', () => {
+  const transactionMock = jest.fn((cb) => cb({ LOCK: { UPDATE: 'UPDATE' } }));
+  return {
+    sequelize: {
+      transaction: transactionMock,
+    },
+    Crypto: { getBySymbol: jest.fn() },
+  };
+});
+
+const { Crypto } = require('../../models');
+
+jest.mock('./referrals.model', () => ({
+  ReferralLink: { findOne: jest.fn() },
+  ReferralBalance: { findOne: jest.fn(), findOrCreate: jest.fn() },
+}));
+
+jest.mock('../balances/ledger/postingService', () => ({
+  postTransaction: jest.fn()
+}));
+
+jest.mock('../config/businessConfig', () => ({
+  getNumber: jest.fn()
+}));
+
+describe('Referrals Service', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('accrueCommission', () => {
+    it('calculates commission correctly and accrues to sponsor', async () => {
+      businessConfig.getNumber.mockResolvedValue(0.1); // 10%
+      ReferralLink.findOne.mockResolvedValue({ sponsorId: 'sponsor-uuid' });
+      
+      const fakeBalance = {
+        userId: 'sponsor-uuid',
+        saldoReferidosPendienteUsdt: '50',
+        update: jest.fn()
+      };
+      ReferralBalance.findOrCreate.mockResolvedValue([fakeBalance]);
+
+      const commission = await accrueCommission({
+        inviteeUserId: 'invitee-uuid',
+        feeAmount: '200',
+        feeAsset: 'USDT'
+      });
+
+      // 200 * 0.1 = 20
+      expect(commission).toBe('20');
+      
+      // Update with exact math 50 + 20 = 70
+      expect(fakeBalance.update).toHaveBeenCalledWith(
+        { saldoReferidosPendienteUsdt: '70' },
+        expect.any(Object)
+      );
+    });
+
+    it('returns null if commission is zero', async () => {
+      businessConfig.getNumber.mockResolvedValue(0.1);
+      const commission = await accrueCommission({
+        inviteeUserId: 'invitee-uuid',
+        feeAmount: '0',
+        feeAsset: 'USDT'
+      });
+      expect(commission).toBeNull();
+      expect(ReferralLink.findOne).not.toHaveBeenCalled();
+    });
+
+    it('returns null if user is not referred', async () => {
+      businessConfig.getNumber.mockResolvedValue(0.1);
+      ReferralLink.findOne.mockResolvedValue(null);
+      const commission = await accrueCommission({
+        inviteeUserId: 'invitee-uuid',
+        feeAmount: '20',
+        feeAsset: 'USDT'
+      });
+      expect(commission).toBeNull();
+    });
+  });
+
+  describe('claim', () => {
+    it('throws if there is no pending balance', async () => {
+      ReferralBalance.findOne.mockResolvedValue(null);
+      
+      await expect(claim({ userId: 'sponsor-1', reference: 'ref-1' }))
+        .rejects.toThrow('No hay balance de referidos pendiente');
+    });
+
+    it('atomically zeroes balance and calls postTransaction', async () => {
+      const fakeBalance = {
+        userId: 'sponsor-1',
+        saldoReferidosPendienteUsdt: '25.5',
+        update: jest.fn()
+      };
+      ReferralBalance.findOne.mockResolvedValue(fakeBalance);
+      Crypto.getBySymbol.mockResolvedValue({ id: 'usdt-uuid' });
+
+      const result = await claim({ userId: 'sponsor-1', reference: 'ref-1' });
+
+      expect(result.amountClaimed).toBe('25.5');
+      
+      // 1. Zero out balance
+      expect(fakeBalance.update).toHaveBeenCalledWith(
+        { saldoReferidosPendienteUsdt: '0' },
+        expect.any(Object)
+      );
+
+      // 2. Ledger movement from FEE_REVENUE to FUNDING_AVAILABLE
+      expect(postTransaction).toHaveBeenCalledWith(
+        {
+          type: 'referral_claim',
+          reference: 'ref-1',
+          description: 'Reclamo de comisiones de referidos',
+          lines: [
+            { ownerId: null, purpose: PURPOSES.FEE_REVENUE, cryptoId: 'usdt-uuid', amount: money.negate('25.5') },
+            { ownerId: 'sponsor-1', purpose: PURPOSES.FUNDING_AVAILABLE, cryptoId: 'usdt-uuid', amount: '25.5' }
+          ]
+        },
+        expect.any(Object)
+      );
+    });
+  });
+});
