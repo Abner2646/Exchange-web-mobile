@@ -1,0 +1,22 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4, 16px);
+}
+
+.tabs {
+  display: flex;
+  gap: var(--spacing-2, 8px);
+}
+
+.balancesList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3, 12px);
+}
+
+.balanceItem {
+  border: 1px solid var(--color-border, #ccc);
+  padding: var(--spacing-3, 12px);
+  border-radius: var(--radius-2, 4px);
+}
