@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const launchpadController = require('./launchpad.controller');
-const authenticateToken = require('../../middleware/authMiddleware');
+const { authenticateToken } = require('../../middleware/authMiddleware');
 const idempotency = require('../../middleware/idempotency.middleware');
+const asyncHandler = require('../../utils/asyncHandler');
 
 /**
  * @openapi
@@ -14,7 +15,7 @@ const idempotency = require('../../middleware/idempotency.middleware');
  *       200:
  *         description: Lista de preventas
  */
-router.get('/presales', launchpadController.getPresales);
+router.get('/presales', asyncHandler(launchpadController.getPresales));
 
 /**
  * @openapi
@@ -34,7 +35,7 @@ router.get('/presales', launchpadController.getPresales);
  *       404:
  *         description: Preventa no encontrada
  */
-router.get('/presales/:id', launchpadController.getPresale);
+router.get('/presales/:id', asyncHandler(launchpadController.getPresale));
 
 /**
  * @openapi
@@ -70,6 +71,6 @@ router.get('/presales/:id', launchpadController.getPresale);
  *       400:
  *         description: Error de validación o fondos insuficientes
  */
-router.post('/buy', authenticateToken, idempotency, launchpadController.buy);
+router.post('/buy', authenticateToken, idempotency, asyncHandler(launchpadController.buy));
 
 module.exports = router;

@@ -393,6 +393,20 @@ One-level referral program. Money-path; all amounts are canonical decimal string
 
 ---
 
+### 12. Launchpad / token presales (Hito 10) — LIVE (2026-09-23)
+
+Exchange-administered token presales. Money as canonical strings.
+
+- `GET /api/launchpad/presales`: list presales (token, price in USDT, hard/soft cap, ticket min/max, dates, progress).
+- `GET /api/launchpad/presales/:id`: presale detail.
+- `POST /api/launchpad/buy` (auth, **`Idempotency-Key` required**): body `{ presaleId, amountUsdt }`. Debits USDT
+  from `funding:disponible` into a suspense (escrow) account via the ledger; enforces per-user min/max, hard cap, and
+  active dates. `400` on validation/insufficient funds.
+- Resolution is server-side (job): at/above soft cap → tokens credited to buyers' `funding:disponible` instantly;
+  below soft cap → 100% USDT refunded from suspense to buyers (no fees). Clients should reflect presale status.
+
+---
+
 ## Expected upcoming contract changes (heads-up, not yet done)
 
 These are tracked in `ROADMAP.md`; listed here so the rebuild anticipates them and
