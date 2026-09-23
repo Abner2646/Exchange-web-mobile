@@ -388,8 +388,10 @@ One-level referral program. Money-path; all amounts are canonical decimal string
   `{ amountClaimed: "<string>", asset: "USDT" }`. Reusing the same key is idempotent (no double
   credit). `400 VALIDATION_ERROR` if there is nothing to claim or the key is missing.
 - Commission rate is admin-configurable via business config `referral_commission_pct`
-  (default `0.1`). Accrual from invitee trading fees is a server-side concern (not client-facing);
-  the automatic accrual hook into the trade-fee flow is a pending server-side follow-up.
+  (default `0.1`). Accrual books the commission to a dedicated house `referral_liability` ledger
+  account at earn time (funded from `fee_revenue`); a claim drains that liability into the user's
+  funding balance. Accrual from invitee trading fees is server-side; the automatic hook into the
+  trade-fee settlement flow is a pending server-side follow-up.
 
 ---
 

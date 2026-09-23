@@ -15,6 +15,10 @@ const PURPOSES = {
   TREASURY: 'treasury',
   SUSPENSE: 'suspense',
   APERTURA: 'apertura',
+  // House liability owed to referrers. Funded at ACCRUAL time (fee_revenue -> this
+  // liability) so the obligation exists on the books the moment it is earned; a
+  // referral claim then moves it from here into the user's funding:disponible.
+  REFERRAL_LIABILITY: 'referral_liability',
 };
 
 // Registro ÚNICO compartimento→propósito por estado. Fuente de verdad para leer

@@ -36,10 +36,11 @@ describe('Referrals Service', () => {
   });
 
   describe('accrueCommission', () => {
-    it('calculates commission correctly and accrues to sponsor', async () => {
+    it('calculates commission, accrues to sponsor, and funds the referral liability', async () => {
       businessConfig.getNumber.mockResolvedValue(0.1); // 10%
       ReferralLink.findOne.mockResolvedValue({ sponsorId: 'sponsor-uuid' });
-      
+      Crypto.getBySymbol.mockResolvedValue({ id: 'usdt-uuid' });
+
       const fakeBalance = {
         userId: 'sponsor-uuid',
         saldoReferidosPendienteUsdt: '50',
@@ -50,15 +51,30 @@ describe('Referrals Service', () => {
       const commission = await accrueCommission({
         inviteeUserId: 'invitee-uuid',
         feeAmount: '200',
-        feeAsset: 'USDT'
+        feeAsset: 'USDT',
+        sourceRef: 'trade-42'
       });
 
       // 200 * 0.1 = 20
       expect(commission).toBe('20');
-      
+
       // Update with exact math 50 + 20 = 70
       expect(fakeBalance.update).toHaveBeenCalledWith(
         { saldoReferidosPendienteUsdt: '70' },
+        expect.any(Object)
+      );
+
+      // Liability funded at accrual: FEE_REVENUE -> REFERRAL_LIABILITY (balanced, USDT)
+      expect(postTransaction).toHaveBeenCalledWith(
+        {
+          type: 'referral_accrual',
+          reference: 'referral_accrual:trade-42',
+          description: 'Devengo de comisión de referidos',
+          lines: [
+            { ownerId: null, purpose: PURPOSES.FEE_REVENUE, cryptoId: 'usdt-uuid', amount: money.negate('20') },
+            { ownerId: null, purpose: PURPOSES.REFERRAL_LIABILITY, cryptoId: 'usdt-uuid', amount: '20' }
+          ]
+        },
         expect.any(Object)
       );
     });
@@ -113,14 +129,14 @@ describe('Referrals Service', () => {
         expect.any(Object)
       );
 
-      // 2. Ledger movement from FEE_REVENUE to FUNDING_AVAILABLE
+      // 2. Ledger movement from REFERRAL_LIABILITY to FUNDING_AVAILABLE
       expect(postTransaction).toHaveBeenCalledWith(
         {
           type: 'referral_claim',
           reference: 'ref-1',
           description: 'Reclamo de comisiones de referidos',
           lines: [
-            { ownerId: null, purpose: PURPOSES.FEE_REVENUE, cryptoId: 'usdt-uuid', amount: money.negate('25.5') },
+            { ownerId: null, purpose: PURPOSES.REFERRAL_LIABILITY, cryptoId: 'usdt-uuid', amount: money.negate('25.5') },
             { ownerId: 'sponsor-1', purpose: PURPOSES.FUNDING_AVAILABLE, cryptoId: 'usdt-uuid', amount: '25.5' }
           ]
         },
