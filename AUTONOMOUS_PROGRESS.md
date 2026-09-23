@@ -84,6 +84,43 @@ DEFER to Maker-Checker→withdrawal wiring task (§7 #3):
   (current design) vs hard-blocked.
 - listPending exposes full payloads + no UUID-format validation on `:id` (500 vs 404). Minor; handle in wiring.
 
+## ▶️ NEXT BURST — start here (spec, 2026-09-23 checkpoint)
+Ordered by priority (breakage-fixes before new features). dev is green (494 unit) + pushed
+(`origin/dev == dev`), frontend `tsc` + `npm run build` clean. main untouched.
+
+1. **TOTP-for-all (§7 #2, MINE, TDD) — top priority, also FIXES the governance checker-2FA bug.**
+   Today the Maker-Checker `approve` calls `User.verify2FACode`, but `twoFactorCode` is a
+   login-only field that is `null` for a fully logged-in operator → approve is effectively
+   unusable / not an approval-bound step-up. Plan (slice it, commit+push each):
+   a. `npm i otplib qrcode` (otplib pre-authorized by Abner §5).
+   b. Backend TOTP service: generate secret + `otpauth://` provisioning URI, `verify(token, secret)`
+      with a ±1 step window. Unit test with fixed secret/time.
+   c. Migration + User model: `totp_secret` (nullable, encrypted-at-rest ideally), `totp_enabled` bool.
+   d. Enrollment endpoints (auth, self): `POST /auth/2fa/totp/enroll` (returns secret + otpauth URI/QR),
+      `POST /auth/2fa/totp/verify` (confirm first code → enable). Idempotent, rate-limited.
+   e. Migrate the login second factor AND the governance checker factor to TOTP verify. Keep a
+      clean seam so old email-code path is removed, not left dead.
+   f. Contract doc + OpenAPI in the SAME commits. Frontend enrollment UI = delegable slice after.
+2. **Launchpad admin lifecycle (delegable feature, my review) — launchpad is dead-on-arrival.**
+   No HTTP surface exists to create/activate/resolve a presale (presales default `PENDING`; `buy`
+   requires `ACTIVE`; `resolvePresale` exists in the service but has NO route). Add operator-gated
+   (`requireOperatorMFA`, as governance does) routes: `POST /api/launchpad/presales` (create),
+   `POST /api/launchpad/presales/:id/activate` (PENDING→ACTIVE with validation), `POST /:id/resolve`
+   (calls existing `resolvePresale`). TDD + OpenAPI + contract doc. Money logic already exists/tested.
+3. **DEFERRED (from review, do with the withdrawal wiring, §7 #3, MINE):** Maker-Checker `amountUsd`
+   is self-declared metadata — when wiring executors to the withdrawal path, compute the USD amount
+   SERVER-SIDE from the real withdrawal and enforce the ceiling there (don't trust maker input).
+   Also add UUID-format validation on governance `:id` params (500→clean 404) + consider narrowing
+   `listPending` payload exposure. `requiresDualControl` is correct but still uncalled until this wiring.
+4. Then rest of §7: Tron testnet adapter, AWS KMS (code-only), on-ramp Transak, Google GIS, i18n 5 locales.
+
+## dev→main merge readiness (2026-09-23)
+High-effort /code-review DONE (4 finder agents over the money/security delta); all 9 real findings
+FIXED + green. **Recommendation: land TOTP (item 1) BEFORE merging** so the governance approve flow
+actually works, then auto-merge per Abner's §5. If Abner wants to merge sooner, it is defensible now
+(governance is operator-gated and NOT yet wired to any money path), but shipping a known-unusable
+approve is not audit-grade — prefer to fix it first.
+
 ## Status board
 | Item | Owner | State |
 |---|---|---|
