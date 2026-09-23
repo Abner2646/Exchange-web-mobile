@@ -2,6 +2,8 @@
 // In-process domain-event registry. Handlers subscribe by type via on(); onAny()
 // subscribes to every event (used by the audit trail). The outbox publisher calls
 // dispatch(). Durability lives in the outbox table, not here.
+'use strict';
+
 const handlers = new Map(); // type -> [{ name, fn }]
 const anyHandlers = [];      // [{ name, fn }] — run for every event
 
