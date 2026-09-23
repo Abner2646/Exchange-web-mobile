@@ -22,6 +22,13 @@ async function buy({ userId, presaleId, amountUsdt, idempotencyKey, finalizeInTr
       throw new AppError(400, errorCodes.VALIDATION_ERROR, 'Presale is not active');
     }
 
+    // Reject non-positive amounts outright — independent of min-ticket config. A negative
+    // amount would flip the ledger legs (credit the buyer, debit house SUSPENSE) and mint
+    // funds; a zero amount is a no-op that should not create a contribution.
+    if (money.compare(amountUsdt, '0') <= 0) {
+      throw new AppError(400, errorCodes.VALIDATION_ERROR, 'Amount must be positive');
+    }
+
     if (money.compare(amountUsdt, presale.minTicketUsdt) < 0) {
       throw new AppError(400, errorCodes.VALIDATION_ERROR, 'Amount is below min ticket');
     }

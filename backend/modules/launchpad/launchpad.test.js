@@ -31,6 +31,31 @@ describe('Launchpad Service', () => {
   });
 
   describe('buy', () => {
+    const activePresaleWith = (overrides = {}) => {
+      const now = new Date();
+      return {
+        id: 'presale-1', tokenCryptoId: 'token-uuid', priceUsdt: '2',
+        hardCapUsdt: '1000', softCapUsdt: '500', minTicketUsdt: '0', maxTicketUsdt: '100',
+        startDate: new Date(now.getTime() - 10000), endDate: new Date(now.getTime() + 10000),
+        status: 'ACTIVE', totalRaisedUsdt: '100', update: jest.fn(), ...overrides,
+      };
+    };
+
+    it('rejects a negative amount even if min ticket is misconfigured to 0 (prevents minting)', async () => {
+      Presale.findByPk.mockResolvedValue(activePresaleWith());
+      await expect(buy({ userId: 'u', presaleId: 'presale-1', amountUsdt: '-100', idempotencyKey: 'k' }))
+        .rejects.toThrow(/positive/i);
+      expect(Contribution.create).not.toHaveBeenCalled();
+      expect(postTransaction).not.toHaveBeenCalled();
+    });
+
+    it('rejects a zero amount', async () => {
+      Presale.findByPk.mockResolvedValue(activePresaleWith());
+      await expect(buy({ userId: 'u', presaleId: 'presale-1', amountUsdt: '0', idempotencyKey: 'k' }))
+        .rejects.toThrow(/positive/i);
+      expect(postTransaction).not.toHaveBeenCalled();
+    });
+
     it('debits USDT from user funding available and enforces limits', async () => {
       const now = new Date();
       const fakePresale = {
