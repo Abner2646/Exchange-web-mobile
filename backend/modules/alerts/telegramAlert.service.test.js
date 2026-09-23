@@ -124,5 +124,23 @@ describe('Telegram Alert Service', () => {
       expect(result.secret).toBe('[REDACTED]');
       expect(result.cvv).toBe('[REDACTED]');
     });
+
+    it('redacts custody secrets under any casing, even when the key also matches a softer rule', () => {
+      const result = sanitize({
+        privateKey: 'L1aW4aubDFB7yfras2S1mN3bqg9nw',
+        seed: 'witch collapse practice feed shame open despair creek road ice least',
+        mnemonic: 'abandon abandon abandon',
+        Authorization: 'Bearer eyJhbGciOi',
+        apiKey: 'sk_live_12345',
+        nested: { walletPrivateKey: '0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef' },
+      });
+      expect(result.privateKey).toBe('[REDACTED]');
+      expect(result.seed).toBe('[REDACTED]');
+      expect(result.mnemonic).toBe('[REDACTED]');
+      expect(result.Authorization).toBe('[REDACTED]');
+      expect(result.apiKey).toBe('[REDACTED]');
+      // 'walletPrivateKey' must not slip through the wallet/address branch.
+      expect(result.nested.walletPrivateKey).toBe('[REDACTED]');
+    });
   });
 });

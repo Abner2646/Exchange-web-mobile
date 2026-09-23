@@ -69,6 +69,20 @@ describe('makerChecker.approve — 4-eyes + second factor + atomic execution', (
     expect(executor).not.toHaveBeenCalled();
   });
 
+  test('rejects when checker equals maker under different id casing (normalized 4-eyes)', async () => {
+    PendingAdminAction.findByPk.mockResolvedValue(fakeAction({ makerUserId: 'ABC-123' }));
+    const executor = jest.fn();
+    svc.registerExecutor('test_action', executor);
+
+    await expect(svc.approve({
+      actionId: 'action-1',
+      checkerUserId: 'abc-123',
+      verifyCheckerSecondFactor: jest.fn().mockResolvedValue(true)
+    })).rejects.toMatchObject({ code: 'MAKER_CHECKER_SAME_USER' });
+
+    expect(executor).not.toHaveBeenCalled();
+  });
+
   test('rejects on invalid checker second factor, executor never runs', async () => {
     PendingAdminAction.findByPk.mockResolvedValue(fakeAction());
     const executor = jest.fn();

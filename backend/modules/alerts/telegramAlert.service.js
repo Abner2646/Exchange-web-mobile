@@ -8,7 +8,14 @@ const businessConfig = require('../config/businessConfig');
 // 3. Redact raw amounts (e.g. keys containing 'amount' or 'balance') with '[REDACTED_AMOUNT]'
 // 4. Hash user ids (e.g. 'userId', 'uid') to omit PII but retain traceabilty
 // 5. Redact keys on a predefined denylist (password, token, secret, cvv, etc)
-const PII_DENYLIST = ['password', 'token', 'secret', 'cvv', 'card', 'pin'];
+// Key-name substrings that force redaction. Includes custody-critical secrets: a leaked
+// private key / seed / mnemonic to the alert channel would be catastrophic for a custodial
+// exchange, so err heavily toward over-redaction here.
+const PII_DENYLIST = [
+  'password', 'token', 'secret', 'cvv', 'card', 'pin',
+  'private', 'privkey', 'seed', 'mnemonic', 'passphrase',
+  'apikey', 'api_key', 'auth', 'credential', 'signature',
+];
 
 function sanitizeString(str) {
   if (typeof str !== 'string') return str;
@@ -46,6 +53,13 @@ function sanitize(data) {
     for (const [key, value] of Object.entries(data)) {
       const keyLower = key.toLowerCase();
 
+      // Secret denylist FIRST (fail-closed): a key naming a secret is redacted before any
+      // other rule, so e.g. 'walletPrivateKey' cannot slip through the address/wallet branch.
+      if (PII_DENYLIST.some(denied => keyLower.includes(denied))) {
+        sanitizedObj[key] = '[REDACTED]';
+        continue;
+      }
+
       // Hash User IDs
       if (keyLower === 'userid' || keyLower === 'uid' || keyLower === 'user_id') {
         sanitizedObj[key] = value ? crypto.createHash('sha256').update(String(value)).digest('hex').substring(0, 8) : '[OMITTED]';
@@ -68,13 +82,6 @@ function sanitize(data) {
       if (keyLower.includes('address') || keyLower.includes('wallet')) {
          sanitizedObj[key] = typeof value === 'string' ? sanitizeString(value) : '[REDACTED_ADDRESS]';
          continue;
-      }
-
-      // Denylist Keys
-      const isDenylisted = PII_DENYLIST.some(denied => keyLower.includes(denied));
-      if (isDenylisted) {
-        sanitizedObj[key] = '[REDACTED]';
-        continue;
       }
 
       // Recurse for nested objects

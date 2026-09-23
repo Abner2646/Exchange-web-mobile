@@ -81,8 +81,10 @@ async function approve({ actionId, checkerUserId, verifyCheckerSecondFactor }) {
       await action.update({ status: 'expired', resolvedAt: new Date() }, { transaction });
       throw new AppError(409, errorCodes.MAKER_CHECKER_EXPIRED, 'La acción expiró y no puede autorizarse');
     }
-    // Hard 4-eyes rule: the checker can NEVER be the maker.
-    if (action.makerUserId === checkerUserId) {
+    // Hard 4-eyes rule: the checker can NEVER be the maker. Normalize both ids (they come
+    // from different sources — DB row vs JWT claim) so a representation/case mismatch can
+    // never let the same human approve their own proposal.
+    if (String(action.makerUserId).toLowerCase() === String(checkerUserId).toLowerCase()) {
       throw new AppError(403, errorCodes.MAKER_CHECKER_SAME_USER, 'El checker no puede ser el mismo que el maker');
     }
 
