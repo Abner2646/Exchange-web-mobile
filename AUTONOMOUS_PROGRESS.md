@@ -52,6 +52,38 @@ The HANDOFF premise "main intacto" was **WRONG**. Reality found on resume:
   locale-aware `parseInput` (deterministic per-locale separator resolution), strict validation, `formatDisplay`.
   39/39 tests + `tsc --noEmit` clean. Added TypeScript devDeps + `frontend/tsconfig.json`. Replaced legacy money.js.
 
+## 🔬 dev→main gate — high-effort /code-review findings (2026-09-23) — MONEY-PATH, MINE, TDD
+Ran 4 parallel finder agents on the money/security backend surface (governance, launchpad+referrals,
+kyc+oracle, migrations+wiring). Verified against source myself. **dev is NOT mergeable until these are
+fixed.** Triaged fix queue (fix with TDD, commit+push each):
+
+REAL — ✅ ALL FIXED (TDD, committed+pushed 2026-09-23):
+- [x] **referrals** (`4b7768d`): require `sourceRef` (drop random-UUID fallback); idempotency guard
+  (check existing ledger entry before touching `ReferralBalance` → no balance/ledger divergence);
+  self-referral guard (`sponsor===invitee` → no commission); + define `errorCodes.VALIDATION_ERROR`
+  (was undefined → `code:undefined` in every launchpad/referrals validation response).
+- [x] **oracle** (`8121731`): gate each source price to finite & >0 (invalid → source unavailable);
+  treat non-finite divergence as divergent → `"NaN"`/`"0"` can no longer be reported reliable.
+- [x] **kyc** (`a7699f3`): controller drops `JSON.stringify` fallback; service fails closed if rawBody
+  absent; event-record + tier-upgrade in ONE tx (failed upgrade rolls back the event row); unique
+  event_id race → idempotent 200 not 500.
+- [x] **launchpad** (`0fc22e9`): reject `amountUsdt <= 0` outright (prevents mint via negated legs).
+- [x] **alerts** (`912364e`): expanded custody-secret denylist, evaluated FIRST (walletPrivateKey etc.
+  can't leak through the wallet/address branch).
+- [x] **governance** (`912364e`): normalize maker vs checker ids (case/representation) — 4-eyes control.
+
+FOLD INTO TOTP carve-out (next big task — resolves these too):
+- **governance checker 2FA** reuses login-only `User.twoFactorCode` (null for logged-in operators) → approve
+  unusable / no approval-bound step-up. TOTP-for-all gives a proper time-based step-up. + fix the 2FA-consume
+  vs governance-tx atomicity (finding #5) as part of that.
+
+DEFER to Maker-Checker→withdrawal wiring task (§7 #3):
+- **amountUsd is self-declared metadata**, decoupled from payload; the ceiling/threshold decision must be
+  computed SERVER-SIDE from the real withdrawal in the wiring, not trusted from maker input. `requiresDualControl`
+  is correct but currently uncalled (wiring pending). Decide there whether >$20k is dual-control-mandatory
+  (current design) vs hard-blocked.
+- listPending exposes full payloads + no UUID-format validation on `:id` (500 vs 404). Minor; handle in wiring.
+
 ## Status board
 | Item | Owner | State |
 |---|---|---|
