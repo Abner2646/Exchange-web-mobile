@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useQuery } from 'react-query';
-import { calculateSwap, CalculateSwapRequest } from './api';
+import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { calculateSwap, CalculateSwapRequest, executeSwap, ExecuteSwapRequest } from './api';
 
 export function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
@@ -25,6 +25,18 @@ export function useSwapPreview(params: CalculateSwapRequest | null) {
     {
       enabled: !!debouncedParams && !!debouncedParams.amount && !!debouncedParams.from && !!debouncedParams.to,
       retry: false,
+    }
+  );
+}
+
+export function useExecuteSwap() {
+  const queryClient = useQueryClient();
+  return useMutation(
+    (params: ExecuteSwapRequest) => executeSwap(params),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['wallet', 'balances']);
+      },
     }
   );
 }

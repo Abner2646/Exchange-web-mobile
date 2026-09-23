@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { parseInput, formatDisplay, CanonicalAmount } from '../../../shared/money';
 import { useTranslation } from '../../../shared/i18n';
-import { Field } from '../../../shared/ui';
+import { Field, Button } from '../../../shared/ui';
 import { useSwapPreview } from '../queries';
 import { CalculateSwapRequest } from '../api';
+import { SwapConfirmModal } from './SwapConfirmModal';
 
 export function SwapWidget() {
   const { t, locale } = useTranslation();
@@ -11,6 +12,7 @@ export function SwapWidget() {
   const [to, setTo] = useState('USDT');
   const [rawAmount, setRawAmount] = useState('');
   const [source, setSource] = useState<'funding' | 'spot'>('funding');
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const parseResult = useMemo(() => {
     if (!rawAmount) return { ok: false as const, error: 'EMPTY' };
@@ -86,9 +88,21 @@ export function SwapWidget() {
             <p>Rate: {formatDisplay(preview.rate, { locale })}</p>
             <p>Fee: {formatDisplay(preview.fee, { locale })}</p>
             <p>Net Amount: {formatDisplay(preview.netAmount, { locale })}</p>
+            <Button onClick={() => setIsModalOpen(true)} data-testid="convert-btn">
+              {t('Convert')}
+            </Button>
           </div>
         )}
       </div>
+
+      {previewParams && preview && (
+        <SwapConfirmModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          previewParams={previewParams}
+          previewData={preview}
+        />
+      )}
     </div>
   );
 }

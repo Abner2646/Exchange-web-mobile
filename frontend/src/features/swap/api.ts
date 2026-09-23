@@ -18,3 +18,19 @@ export async function calculateSwap(params: CalculateSwapRequest): Promise<Calcu
   return apiClient.post<CalculateSwapResponse>('/intercambioExchange/calculate', params);
 }
 
+export interface ExecuteSwapRequest {
+  from: string;
+  to: string;
+  amount: CanonicalAmount;
+  source: 'funding' | 'spot';
+}
+
+export interface ExecuteSwapResponse {
+  message?: string;
+  // Other fields depend on exact contract, but we mostly just care about success
+}
+
+export async function executeSwap(params: ExecuteSwapRequest): Promise<ExecuteSwapResponse> {
+  return apiClient.post<ExecuteSwapResponse>('/intercambioExchange/execute', params);
+}
+

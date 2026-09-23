@@ -2,16 +2,22 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import { SwapWidget } from './SwapWidget';
-import { calculateSwap } from '../api';
-import { useTranslation } from '../../../shared/i18n';
+import { calculateSwap, executeSwap } from '../api';
+import { useTranslation, useErrorTranslation } from '../../../shared/i18n';
 
 jest.mock('../api');
 jest.mock('../../../shared/i18n', () => ({
   useTranslation: jest.fn(),
-  locale: 'en-US'
+  useErrorTranslation: jest.fn(),
+}));
+
+jest.mock('../../../shared/api', () => ({
+  isApiError: (e: any) => e && e.code === 'EXECUTE_ERROR',
+  apiClient: { post: jest.fn() }
 }));
 
 const mockCalculateSwap = calculateSwap as jest.MockedFunction<typeof calculateSwap>;
+const mockExecuteSwap = executeSwap as jest.MockedFunction<typeof executeSwap>;
 
 describe('SwapWidget', () => {
   let queryClient: QueryClient;
@@ -23,12 +29,16 @@ describe('SwapWidget', () => {
       },
     });
     mockCalculateSwap.mockReset();
+    mockExecuteSwap.mockReset();
   });
 
   const renderComponent = (locale = 'en-US') => {
     (useTranslation as jest.Mock).mockReturnValue({
       t: (key: string) => key === 'EXCHANGE_ERROR' ? 'Translated Error Message' : key,
       locale,
+    });
+    (useErrorTranslation as jest.Mock).mockReturnValue({
+      tError: (key: string) => key === 'EXECUTE_ERROR' ? 'Translated Execute Error' : key,
     });
     
     return render(
@@ -86,5 +96,70 @@ describe('SwapWidget', () => {
     expect(await screen.findByText('Translated Error Message')).toBeInTheDocument();
     expect(screen.queryByText('Raw backend error')).not.toBeInTheDocument();
   });
+
+  test('confirm modal opens only with valid preview, and confirm triggers executeSwap', async () => {
+    mockCalculateSwap.mockResolvedValueOnce({
+      rate: '10.50' as any,
+      fee: '1.00' as any,
+      netAmount: '9.50' as any,
+    });
+    mockExecuteSwap.mockImplementationOnce(() => new Promise(resolve => setTimeout(() => resolve({}), 100)));
+
+    renderComponent('en-US');
+    
+    const input = screen.getByLabelText(/Amount/i);
+    fireEvent.change(input, { target: { value: '1.5' } });
+
+    const convertBtn = await screen.findByTestId('convert-btn');
+    fireEvent.click(convertBtn);
+
+    expect(screen.getByText('Confirm Swap')).toBeInTheDocument();
+    expect(screen.getAllByText(/INDICATIVE PREVIEW/).length).toBeGreaterThan(0);
+
+    const confirmBtn = screen.getByTestId('confirm-swap-btn');
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(mockExecuteSwap).toHaveBeenCalledWith({
+        from: 'BTC',
+        to: 'USDT',
+        amount: '1.5',
+        source: 'funding'
+      });
+    });
+
+    // Check disable while pending
+    expect(confirmBtn).toBeDisabled();
+    expect(screen.getByText('Processing...')).toBeInTheDocument();
+    
+    // Wait for success
+    await waitFor(() => {
+      expect(screen.getByTestId('swap-success')).toBeInTheDocument();
+    });
+  });
+
+  test('execute error renders a mapped message in modal', async () => {
+    mockCalculateSwap.mockResolvedValueOnce({
+      rate: '10.50' as any,
+      fee: '1.00' as any,
+      netAmount: '9.50' as any,
+    });
+    // Create an object that satisfies the mocked isApiError
+    mockExecuteSwap.mockRejectedValueOnce({ code: 'EXECUTE_ERROR' });
+    
+    renderComponent('en-US');
+    
+    const input = screen.getByLabelText(/Amount/i);
+    fireEvent.change(input, { target: { value: '1.5' } });
+
+    const convertBtn = await screen.findByTestId('convert-btn');
+    fireEvent.click(convertBtn);
+
+    const confirmBtn = screen.getByTestId('confirm-swap-btn');
+    fireEvent.click(confirmBtn);
+
+    expect(await screen.findByText('Translated Execute Error')).toBeInTheDocument();
+  });
 });
+
 
