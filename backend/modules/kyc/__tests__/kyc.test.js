@@ -8,6 +8,9 @@ jest.mock('../../../models', () => {
   return {
     User: {
       findByPk: jest.fn()
+    },
+    sequelize: {
+      transaction: jest.fn((cb) => cb({ LOCK: { UPDATE: 'UPDATE' } }))
     }
   };
 });
@@ -87,13 +90,47 @@ describe('KYC Webhook Service', () => {
     
     expect(result.success).toBe(true);
     expect(crypto.timingSafeEqual).toHaveBeenCalled();
-    expect(User.findByPk).toHaveBeenCalledWith('user-1');
-    expect(mockUpdate).toHaveBeenCalledWith({ kycVerified: true, kycLevel: 'full' });
-    expect(KycWebhookEvent.create).toHaveBeenCalledWith({
-      eventId: 'event-123',
-      eventType: 'inquiry.approved',
-      referenceId: 'user-1'
-    });
+    expect(User.findByPk).toHaveBeenCalledWith('user-1', expect.objectContaining({ transaction: expect.anything() }));
+    expect(mockUpdate).toHaveBeenCalledWith(
+      { kycVerified: true, kycLevel: 'full' },
+      expect.objectContaining({ transaction: expect.anything() })
+    );
+    expect(KycWebhookEvent.create).toHaveBeenCalledWith(
+      {
+        eventId: 'event-123',
+        eventType: 'inquiry.approved',
+        referenceId: 'user-1'
+      },
+      expect.objectContaining({ transaction: expect.anything() })
+    );
+  });
+
+  it('fails closed if rawBody is missing (no JSON.stringify fallback)', async () => {
+    const sig = `v1=${generateSignature(rawBody, secret)}`;
+    await expect(kycService.handlePersonaEvent(JSON.parse(rawBody), sig, undefined))
+      .rejects.toMatchObject({ statusCode: 500, code: 'INTERNAL_ERROR' });
+    expect(User.findByPk).not.toHaveBeenCalled();
+  });
+
+  it('propagates an upgrade failure so the event is not left marked processed (retryable)', async () => {
+    const sig = `v1=${generateSignature(rawBody, secret)}`;
+    KycWebhookEvent.findOne.mockResolvedValue(null);
+    const mockUpdate = jest.fn().mockRejectedValue(new Error('DB down'));
+    User.findByPk.mockResolvedValue({ id: 'user-1', update: mockUpdate });
+
+    await expect(kycService.handlePersonaEvent(JSON.parse(rawBody), sig, rawBody))
+      .rejects.toThrow('DB down');
+  });
+
+  it('treats a concurrent duplicate (unique event_id violation) as idempotent success, not a 500', async () => {
+    const sig = `v1=${generateSignature(rawBody, secret)}`;
+    KycWebhookEvent.findOne.mockResolvedValue(null); // lost the race: winner not visible yet
+    const uniqueErr = new Error('duplicate key'); uniqueErr.name = 'SequelizeUniqueConstraintError';
+    KycWebhookEvent.create.mockRejectedValue(uniqueErr);
+
+    const result = await kycService.handlePersonaEvent(JSON.parse(rawBody), sig, rawBody);
+    expect(result.success).toBe(true);
+    expect(result.message).toMatch(/idempotent/i);
   });
 
   it('handles duplicate event -> no-op', async () => {

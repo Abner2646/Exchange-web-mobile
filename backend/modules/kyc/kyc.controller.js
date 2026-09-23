@@ -3,9 +3,10 @@ const kycService = require('./kyc.service');
 class KycController {
   async handlePersonaWebhook(req, res) {
     const signatureHeader = req.headers['persona-signature'] || req.headers['x-persona-signature'];
-    const rawBody = req.rawBody || JSON.stringify(req.body); // Fallback if rawBody middleware is absent
-
-    const result = await kycService.handlePersonaEvent(req.body, signatureHeader, rawBody);
+    // Pass the captured raw bytes as-is. Do NOT fall back to JSON.stringify(req.body):
+    // the service fails closed if rawBody is absent so the HMAC is never checked against
+    // a re-serialized body whose byte layout differs from what Persona signed.
+    const result = await kycService.handlePersonaEvent(req.body, signatureHeader, req.rawBody);
     res.status(200).json(result);
   }
 

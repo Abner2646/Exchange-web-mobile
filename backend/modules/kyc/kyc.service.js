@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { User } = require('../../models');
+const { sequelize, User } = require('../../models');
 const KycWebhookEvent = require('./kyc.model');
 const AppError = require('../../utils/AppError');
 
@@ -13,6 +13,13 @@ class KycService {
 
     if (!signatureHeader || typeof signatureHeader !== 'string') {
       throw new AppError(401, 'UNAUTHORIZED', 'Missing or invalid signature header.');
+    }
+
+    // The HMAC MUST be computed over the exact raw bytes Persona signed. If the raw-body
+    // capture middleware did not populate req.rawBody, fail closed — NEVER fall back to a
+    // re-serialized JSON.stringify(req.body), whose byte layout differs from the original.
+    if (rawBody === undefined || rawBody === null || rawBody.length === 0) {
+      throw new AppError(500, 'INTERNAL_ERROR', 'Raw request body unavailable for signature verification.');
     }
 
     // Parse the header defensively. It might be a direct hash or a key=value pairs like t=...,v1=...
@@ -65,45 +72,55 @@ class KycService {
       throw new AppError(400, 'BAD_REQUEST', 'Missing event ID in payload.');
     }
 
-    // Check idempotency
-    const existingEvent = await KycWebhookEvent.findOne({ where: { eventId } });
-    if (existingEvent) {
-      console.log(`Event ${eventId} already processed, skipping.`);
-      return { success: true, message: 'Event already processed (idempotent)' };
-    }
+    // Record-event and tier-upgrade run in ONE transaction so they are all-or-nothing:
+    // if the upgrade fails, the event row is rolled back too and the webhook retry can
+    // re-process it (previously a failed upgrade left the event marked "processed",
+    // stranding the user un-upgraded forever). A concurrent duplicate delivery loses the
+    // race on the unique event_id and is caught below as an idempotent success (not a 500).
+    try {
+      return await sequelize.transaction(async (transaction) => {
+        const existingEvent = await KycWebhookEvent.findOne({ where: { eventId }, transaction });
+        if (existingEvent) {
+          console.log(`Event ${eventId} already processed, skipping.`);
+          return { success: true, message: 'Event already processed (idempotent)' };
+        }
 
-    // Register event to avoid duplicates
-    await KycWebhookEvent.create({
-      eventId,
-      eventType: eventName || 'unknown',
-      referenceId: referenceId || null
-    });
+        await KycWebhookEvent.create({
+          eventId,
+          eventType: eventName || 'unknown',
+          referenceId: referenceId || null
+        }, { transaction });
 
-    if (eventName === 'inquiry.approved' || eventName === 'inquiry.completed') {
-      if (!referenceId) {
-        throw new AppError(400, 'BAD_REQUEST', 'Missing referenceId for user mapping.');
-      }
+        if (eventName === 'inquiry.approved' || eventName === 'inquiry.completed') {
+          if (!referenceId) {
+            throw new AppError(400, 'BAD_REQUEST', 'Missing referenceId for user mapping.');
+          }
 
-      // Upgrade user
-      const user = await User.findByPk(referenceId);
-      if (!user) {
-        // If user is not found, we still return 200 so the webhook isn't redelivered, but we log the error.
-        console.error(`User not found for referenceId: ${referenceId}`);
-        return { success: true, message: 'User not found, ignoring event.' };
-      }
+          const user = await User.findByPk(referenceId, { transaction });
+          if (!user) {
+            // Nothing to upgrade; still record the event (commit) so it is not redelivered.
+            console.error(`User not found for referenceId: ${referenceId}`);
+            return { success: true, message: 'User not found, ignoring event.' };
+          }
 
-      await user.update({
-        kycVerified: true,
-        kycLevel: 'full'
+          await user.update({ kycVerified: true, kycLevel: 'full' }, { transaction });
+          // REVIEW: kyc_required_for_withdrawals controls the withdrawal-enforcement toggle.
+          // Do not implement withdrawal enforcement here, it is a separate money-path step.
+          console.log(`User ${referenceId} upgraded to KYC Tier 1.`);
+        } else {
+          console.log(`Event ${eventName} ignored.`);
+        }
+
+        return { success: true };
       });
-      // REVIEW: kyc_required_for_withdrawals controls the withdrawal-enforcement toggle.
-      // Do not implement withdrawal enforcement here, it is a separate money-path step.
-      console.log(`User ${referenceId} upgraded to KYC Tier 1.`);
-    } else {
-      console.log(`Event ${eventName} ignored.`);
+    } catch (err) {
+      // Concurrent duplicate delivery: the unique event_id insert lost the race. That
+      // means the event is (being) processed by the winner — respond idempotently.
+      if (err.name === 'SequelizeUniqueConstraintError') {
+        return { success: true, message: 'Event already processed (idempotent)' };
+      }
+      throw err;
     }
-
-    return { success: true };
   }
 
   async getStatus(userId) {
