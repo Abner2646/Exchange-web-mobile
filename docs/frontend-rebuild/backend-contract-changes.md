@@ -417,6 +417,18 @@ Exchange-administered token presales. Money as canonical strings.
   provider flow completes. The withdrawal KYC requirement is gated by business config `kyc_required_for_withdrawals`
   (default false); enforcement in the withdrawal path is a pending server-side follow-up.
 
+### 14. Maker-Checker / dual control (Hito 11) — LIVE engine (2026-09-23)
+
+Operator-only governance for privileged actions (4-eyes). All routes require an operator with MFA enabled.
+- `GET /api/governance/pending` — inbox of pending actions.
+- `POST /api/governance/propose` — a maker proposes `{ actionType, payload, amountUsd? }`; returns a pending action with a TTL.
+- `POST /api/governance/:id/approve` — a **distinct** checker authorizes with a fresh 2FA `{ codigo }`. The checker can NEVER be the maker (`MAKER_CHECKER_SAME_USER`). Execution of the effect is atomic with authorization.
+- `POST /api/governance/:id/reject` — reject with an optional reason.
+- Hard rule: no monetary action above **$20,000 USD** can auto-execute — always dual control (inviolable ceiling; a
+  higher configured threshold cannot bypass it). Error codes: `MAKER_CHECKER_SAME_USER/INVALID_STATE/EXPIRED/MFA_INVALID/NOT_FOUND`.
+- Note: the engine is live with a pluggable executor registry; wiring specific privileged effects (e.g. large-withdrawal
+  release, fee changes) into it is per-action follow-up work.
+
 ---
 
 ## Expected upcoming contract changes (heads-up, not yet done)
