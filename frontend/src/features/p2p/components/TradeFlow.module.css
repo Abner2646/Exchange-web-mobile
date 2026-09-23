@@ -1,0 +1,20 @@
+.container {
+  padding: 1rem;
+}
+.details {
+  margin-bottom: 2rem;
+}
+.actions {
+  display: flex;
+  gap: 1rem;
+}
+.error {
+  color: red;
+  margin-bottom: 1rem;
+}
+.dialogActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2rem;
+}

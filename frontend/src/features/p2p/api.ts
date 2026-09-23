@@ -52,3 +52,42 @@ export async function fetchOffers(filters?: P2POfferFilters): Promise<P2PRespons
   
   return apiClient.get<P2PResponse>(url);
 }
+
+export interface P2PTransaction {
+  id: string;
+  offerId: string;
+  buyerId: string;
+  sellerId: string;
+  cryptoId: string;
+  amount: CanonicalAmount;
+  unitPrice: CanonicalAmount;
+  status: 'iniciada' | 'pago_enviado' | 'completada' | 'cancelada' | 'en_disputa' | 'initiated' | 'payment_confirmed' | 'completed' | 'cancelled';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function startTrade(offerId: string, amount: CanonicalAmount, paymentMethodId?: string): Promise<P2PTransaction> {
+  return apiClient.post<P2PTransaction>('/transaccionP2P/', { offerId, amount, paymentMethodId }, {
+    headers: { 'Idempotency-Key': crypto.randomUUID() }
+  });
+}
+
+export async function getTransaction(id: string): Promise<P2PTransaction> {
+  return apiClient.get<P2PTransaction>(`/transaccionP2P/${id}`);
+}
+
+export async function markPaymentSent(id: string): Promise<P2PTransaction> {
+  return apiClient.patch<P2PTransaction>(`/transaccionP2P/${id}/confirm-payment`);
+}
+
+export async function confirmReceipt(id: string): Promise<P2PTransaction> {
+  return apiClient.patch<P2PTransaction>(`/transaccionP2P/${id}/complete`);
+}
+
+export async function openDispute(id: string): Promise<P2PTransaction> {
+  return apiClient.patch<P2PTransaction>(`/transaccionP2P/${id}/dispute`);
+}
+
+export async function cancelTrade(id: string): Promise<P2PTransaction> {
+  return apiClient.patch<P2PTransaction>(`/transaccionP2P/${id}/cancel`);
+}

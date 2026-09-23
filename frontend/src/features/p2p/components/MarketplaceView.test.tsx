@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import { MarketplaceView } from './MarketplaceView';
+import { MemoryRouter } from 'react-router-dom';
 import * as api from '../api';
 import { LocaleProvider } from '../../../shared/i18n/LocaleContext';
 import { ApiError } from '../../../shared/api';
@@ -36,7 +37,7 @@ describe('MarketplaceView', () => {
 
   it('renders loading state initially', () => {
     mockFetchOffers.mockImplementation(() => new Promise(() => {}));
-    renderWithProviders(<MarketplaceView />);
+    renderWithProviders(<MemoryRouter><MarketplaceView /></MemoryRouter>);
     expect(screen.getByTestId('loading-state')).toBeInTheDocument();
   });
 
@@ -46,7 +47,7 @@ describe('MarketplaceView', () => {
       pagination: { total: 0, page: 1, limit: 20, totalPages: 0 }
     });
     
-    renderWithProviders(<MarketplaceView />);
+    renderWithProviders(<MemoryRouter><MarketplaceView /></MemoryRouter>);
     
     expect(await screen.findByTestId('empty-state')).toBeInTheDocument();
   });
@@ -72,7 +73,7 @@ describe('MarketplaceView', () => {
       pagination: { total: 1, page: 1, limit: 20, totalPages: 1 }
     });
 
-    renderWithProviders(<MarketplaceView />);
+    renderWithProviders(<MemoryRouter><MarketplaceView /></MemoryRouter>);
 
     const successState = await screen.findByTestId('success-state');
     expect(successState).toBeInTheDocument();
@@ -88,7 +89,7 @@ describe('MarketplaceView', () => {
       message: 'Raw backend message'
     }));
 
-    renderWithProviders(<MarketplaceView />);
+    renderWithProviders(<MemoryRouter><MarketplaceView /></MemoryRouter>);
 
     const errorEl = await screen.findByTestId('error-state');
     expect(errorEl).toBeInTheDocument();
@@ -104,7 +105,7 @@ describe('MarketplaceView', () => {
       pagination: { total: 0, page: 1, limit: 20, totalPages: 0 }
     });
 
-    renderWithProviders(<MarketplaceView />);
+    renderWithProviders(<MemoryRouter><MarketplaceView /></MemoryRouter>);
 
     await screen.findByTestId('empty-state');
     expect(mockFetchOffers).toHaveBeenCalledTimes(1);
