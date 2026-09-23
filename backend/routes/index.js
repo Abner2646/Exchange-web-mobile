@@ -25,6 +25,7 @@ const amlRoutes = require('../modules/aml/aml.routes.js')
 const referralsRoutes = require('../modules/referrals/referrals.routes.js')
 const launchpadRoutes = require('../modules/launchpad/launchpad.routes.js')
 const kycRoutes = require('../modules/kyc/kyc.routes.js')
+const governanceRoutes = require('../modules/governance/governance.routes.js')
 
 // Derive routes
 router.use('/auth', authRoutes)
@@ -47,6 +48,7 @@ router.use('/trading', tradingRoutes);
 router.use('/referrals', referralsRoutes)
 router.use('/launchpad', launchpadRoutes)
 router.use('/kyc', kycRoutes)
+router.use('/governance', governanceRoutes)
 router.use('/user', userRoutes)
 // Fix 2026-08-19 (AUDITORIA_BACKEND.md Altos #11): estaba comentada pese a
 // que el modelo/controller ya estaban completos y activos en
