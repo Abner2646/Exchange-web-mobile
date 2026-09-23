@@ -4,6 +4,7 @@ import { useTranslation, useErrorTranslation } from '../../../shared/i18n';
 import { formatDisplay } from '../../../shared/money';
 import { Button } from '../../../shared/ui';
 import { isApiError } from '../../../shared/api';
+import { TransferModal } from './TransferModal';
 
 import styles from './BalancesView.module.css';
 
@@ -12,6 +13,7 @@ export function BalancesView() {
   const { t, locale } = useTranslation();
   const { tError } = useErrorTranslation();
   const [tab, setTab] = useState<'funding' | 'spot'>('funding');
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
 
   if (isLoading) {
     return <div data-testid="loading-state">{t('Loading')}...</div>;
@@ -33,20 +35,28 @@ export function BalancesView() {
 
   return (
     <div data-testid="success-state" className={styles.container}>
-      <div className={styles.tabs}>
+      <div className={styles.header}>
+        <div className={styles.tabs}>
+          <Button 
+            data-testid="tab-funding"
+            onClick={() => setTab('funding')} 
+            disabled={tab === 'funding'}
+          >
+            Funding
+          </Button>
+          <Button 
+            data-testid="tab-spot"
+            onClick={() => setTab('spot')} 
+            disabled={tab === 'spot'}
+          >
+            Spot
+          </Button>
+        </div>
         <Button 
-          data-testid="tab-funding"
-          onClick={() => setTab('funding')} 
-          disabled={tab === 'funding'}
+          data-testid="open-transfer-btn" 
+          onClick={() => setIsTransferModalOpen(true)}
         >
-          Funding
-        </Button>
-        <Button 
-          data-testid="tab-spot"
-          onClick={() => setTab('spot')} 
-          disabled={tab === 'spot'}
-        >
-          Spot
+          {t('Transfer')}
         </Button>
       </div>
 
@@ -70,6 +80,11 @@ export function BalancesView() {
           </div>
         ))}
       </div>
+
+      <TransferModal 
+        isOpen={isTransferModalOpen} 
+        onClose={() => setIsTransferModalOpen(false)} 
+      />
     </div>
   );
 }

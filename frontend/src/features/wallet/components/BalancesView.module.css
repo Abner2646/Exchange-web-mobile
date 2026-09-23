@@ -4,6 +4,12 @@
   gap: var(--spacing-4, 16px);
 }
 
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 .tabs {
   display: flex;
   gap: var(--spacing-2, 8px);

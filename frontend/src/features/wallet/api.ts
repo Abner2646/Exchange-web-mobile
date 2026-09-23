@@ -71,3 +71,14 @@ export async function fetchMyBalances(): Promise<BalanceViewModel[]> {
     },
   }));
 }
+
+export interface TransferInternalPayload {
+  criptomonedaId: string;
+  cantidad: string;
+  origen: 'funding' | 'spot';
+  destino: 'funding' | 'spot';
+}
+
+export async function transferInternal(payload: TransferInternalPayload): Promise<void> {
+  await apiClient.post('/balances/my/transfer', payload);
+}
