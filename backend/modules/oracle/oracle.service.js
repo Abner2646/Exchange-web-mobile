@@ -2,6 +2,17 @@ const defaultSources = require('./oracle.sources');
 const money = require('../../utils/money');
 const AppError = require('../../utils/AppError');
 
+// A usable oracle price must be a finite, strictly-positive decimal. A source that
+// returns "0", "NaN", a negative, or a non-numeric string is treated as unavailable —
+// otherwise the bad value corrupts the median, divides-by-zero in the divergence
+// ratio, or (as NaN) silently bypasses the circuit breaker and is reported reliable.
+function isValidPrice(p) {
+  if (p === null || p === undefined) return false;
+  const n = Number(p);
+  if (!Number.isFinite(n)) return false;
+  return money.compare(String(p), '0') > 0;
+}
+
 class OracleService {
   constructor(sources = defaultSources, divergenceThreshold = '1.5') {
     this.sources = [
@@ -16,6 +27,9 @@ class OracleService {
     const promises = this.sources.map(async (source) => {
       try {
         const price = await source.fetcher(symbol);
+        if (!isValidPrice(price)) {
+          return { name: source.name, price: null, ok: false, error: `invalid price: ${price}` };
+        }
         return { name: source.name, price, ok: true };
       } catch (error) {
         return { name: source.name, price: null, ok: false, error: error.message };
@@ -44,7 +58,10 @@ class OracleService {
     const divergenceRatio = money.divide(money.subtract(max, min), min);
     const divergencePct = money.multiply(divergenceRatio, '100');
 
-    const isDivergent = money.compare(divergencePct, this.divergenceThreshold) > 0;
+    // Fail-safe: a non-finite divergence (should be impossible now that all prices are
+    // validated positive) is treated as divergent rather than silently reliable.
+    const isDivergent = !Number.isFinite(Number(divergencePct))
+      || money.compare(divergencePct, this.divergenceThreshold) > 0;
 
     let reliable = true;
     let reason = null;

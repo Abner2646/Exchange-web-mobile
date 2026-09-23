@@ -75,6 +75,42 @@ describe('OracleService', () => {
     ]));
   });
 
+  it('rejects a NaN price from a source: excluded, median from the two valid, still reliable', async () => {
+    mockSources.fetchBinance.mockResolvedValue('60000');
+    mockSources.fetchCoinbase.mockResolvedValue('NaN');
+    mockSources.fetchCoinGecko.mockResolvedValue('60600');
+
+    const service = new OracleService(mockSources, '2');
+    const result = await service.getPrice('BTCUSDT');
+
+    expect(result.reliable).toBe(true);
+    expect(result.median).toBe('60300');
+    expect(result.sources).toEqual(expect.arrayContaining([
+      expect.objectContaining({ name: 'Coinbase', ok: false })
+    ]));
+  });
+
+  it('rejects a zero price from a source (would corrupt median / divide-by-zero)', async () => {
+    mockSources.fetchBinance.mockResolvedValue('60000');
+    mockSources.fetchCoinbase.mockResolvedValue('0');
+    mockSources.fetchCoinGecko.mockResolvedValue('60600');
+
+    const service = new OracleService(mockSources, '2');
+    const result = await service.getPrice('BTCUSDT');
+
+    expect(result.reliable).toBe(true);
+    expect(result.median).toBe('60300');
+  });
+
+  it('a bad price that drops valid sources below 2 -> throws ORACLE_UNAVAILABLE (never a garbage reliable price)', async () => {
+    mockSources.fetchBinance.mockResolvedValue('60000');
+    mockSources.fetchCoinbase.mockResolvedValue('NaN');
+    mockSources.fetchCoinGecko.mockResolvedValue('0');
+
+    const service = new OracleService(mockSources, '2');
+    await expect(service.getPrice('BTCUSDT')).rejects.toMatchObject({ code: 'ORACLE_UNAVAILABLE' });
+  });
+
   it('two sources fail -> throws typed error', async () => {
     mockSources.fetchBinance.mockResolvedValue('60000');
     mockSources.fetchCoinbase.mockRejectedValue(new Error('Network error'));
