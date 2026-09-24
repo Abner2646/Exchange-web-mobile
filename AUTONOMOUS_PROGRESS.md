@@ -84,24 +84,28 @@ DEFER to Maker-Checker→withdrawal wiring task (§7 #3):
   (current design) vs hard-blocked.
 - listPending exposes full payloads + no UUID-format validation on `:id` (500 vs 404). Minor; handle in wiring.
 
-## ▶️ NEXT BURST — start here (spec, 2026-09-23 checkpoint)
-Ordered by priority (breakage-fixes before new features). dev is green (494 unit) + pushed
-(`origin/dev == dev`), frontend `tsc` + `npm run build` clean. main untouched.
+## ✅ TOTP-for-all backend epic — DONE (2026-09-23), merged path on `dev`
+Completed in 5 pushed slices (unit 506 green; login logic verified end-to-end against a real DB):
+- `9b21f14` TOTP service (otplib v12 + qrcode): secret + otpauth URI + verify (±1 window, fails closed). 12 unit tests.
+- `42454b9` migration + `totp_secret`/`totp_enabled` columns + user-instance orchestration
+  (beginEnrollment/enable/verifyForUser/disable); `toJSON` strips `totpSecret`; TOTP error codes.
+- `94fb874` **governance checker second factor → TOTP** (FIXES the unusable-approve bug).
+- `7d49c22` self-service enrollment endpoints `POST /user/me/totp/{setup,enable,disable}` + OpenAPI + contract §15.
+- `b75b2c3` **login second factor → TOTP** (dual-path: prefers TOTP if enrolled, falls back to email code
+  otherwise → no user lockout). Integration tests added for TOTP login + enrollment endpoints.
+- **Local jest integration harness quirk:** ALL integration suites fail in beforeEach `truncate` with an
+  empty-message pg error (pre-existing; direct DB sync+truncate works fine; unit suite unaffected). Verified
+  slice-5 login logic via a standalone script on an alternate Postgres (port 15432) → all checks passed.
+- TOTP FOLLOW-UPS: (a) frontend enrollment UI (delegable); (b) optional hardening — remove the legacy
+  email-code login path once TOTP enrollment is universal (currently dual-path by design); (c) encrypt
+  `totp_secret` at rest when AWS KMS lands.
 
-1. **TOTP-for-all (§7 #2, MINE, TDD) — top priority, also FIXES the governance checker-2FA bug.**
-   Today the Maker-Checker `approve` calls `User.verify2FACode`, but `twoFactorCode` is a
-   login-only field that is `null` for a fully logged-in operator → approve is effectively
-   unusable / not an approval-bound step-up. Plan (slice it, commit+push each):
-   a. `npm i otplib qrcode` (otplib pre-authorized by Abner §5).
-   b. Backend TOTP service: generate secret + `otpauth://` provisioning URI, `verify(token, secret)`
-      with a ±1 step window. Unit test with fixed secret/time.
-   c. Migration + User model: `totp_secret` (nullable, encrypted-at-rest ideally), `totp_enabled` bool.
-   d. Enrollment endpoints (auth, self): `POST /auth/2fa/totp/enroll` (returns secret + otpauth URI/QR),
-      `POST /auth/2fa/totp/verify` (confirm first code → enable). Idempotent, rate-limited.
-   e. Migrate the login second factor AND the governance checker factor to TOTP verify. Keep a
-      clean seam so old email-code path is removed, not left dead.
-   f. Contract doc + OpenAPI in the SAME commits. Frontend enrollment UI = delegable slice after.
-2. **Launchpad admin lifecycle (delegable feature, my review) — launchpad is dead-on-arrival.**
+## ▶️ NEXT BURST — start here (spec)
+Ordered by priority. dev green (506 unit) + pushed (`origin/dev == dev`); dev==main was merged earlier (`1f178d1`)
+but dev has since advanced with the review fixes + TOTP epic (a fresh dev→main merge is due — run /code-review
+high-effort on the new delta first).
+
+1. **Launchpad admin lifecycle (delegable feature, my review) — launchpad is dead-on-arrival.**
    No HTTP surface exists to create/activate/resolve a presale (presales default `PENDING`; `buy`
    requires `ACTIVE`; `resolvePresale` exists in the service but has NO route). Add operator-gated
    (`requireOperatorMFA`, as governance does) routes: `POST /api/launchpad/presales` (create),
