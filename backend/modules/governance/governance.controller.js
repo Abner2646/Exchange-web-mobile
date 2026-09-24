@@ -1,6 +1,7 @@
 const { PendingAdminAction } = require('./governance.model');
 const makerChecker = require('./makerChecker.service');
 const { User } = require('../../models');
+const totp = require('../users/totp.service');
 const AppError = require('../../utils/AppError');
 const errorCodes = require('../../utils/errorCodes');
 
@@ -16,8 +17,10 @@ async function propose(req, res) {
   res.status(201).json(action);
 }
 
-// A DISTINCT checker authorizes and executes. The checker proves a second factor by
-// submitting a fresh 2FA code, verified authoritatively against the DB for THIS user.
+// A DISTINCT checker authorizes and executes. The checker proves a second factor with a
+// TOTP code from their authenticator app, verified against their enrolled secret. Unlike
+// the old email-code path, TOTP works for an already-logged-in operator (it is time-based,
+// not a per-login stored code), so the approval step-up actually functions.
 async function approve(req, res) {
   const { codigo } = req.body;
   const checkerUserId = req.user.id;
@@ -25,7 +28,10 @@ async function approve(req, res) {
   const action = await makerChecker.approve({
     actionId: req.params.id,
     checkerUserId,
-    verifyCheckerSecondFactor: () => User.verify2FACode(checkerUserId, codigo),
+    verifyCheckerSecondFactor: async () => {
+      const checker = await User.findByPk(checkerUserId);
+      totp.verifyForUser(checker, codigo); // throws on invalid / not enrolled
+    },
   });
   res.status(200).json(action);
 }
