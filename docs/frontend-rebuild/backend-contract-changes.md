@@ -407,6 +407,18 @@ Exchange-administered token presales. Money as canonical strings.
 - Resolution is server-side (job): at/above soft cap → tokens credited to buyers' `funding:disponible` instantly;
   below soft cap → 100% USDT refunded from suspense to buyers (no fees). Clients should reflect presale status.
 
+**Operator Admin Lifecycle (LIVE 2026-09-23)**
+Three new endpoints govern the presale lifecycle. These are strictly operator-gated and require Operator MFA.
+
+- `POST /api/launchpad/presales` (auth: operator + MFA): create a new presale.
+  - Body: `{ tokenCryptoId, priceUsdt, hardCapUsdt, softCapUsdt, minTicketUsdt, maxTicketUsdt, startDate, endDate }`
+  - All money limits must be positive (minTicket can be zero), and valid combinations are enforced (e.g. softCap <= hardCap).
+  - Returns `201` with the created presale. The status will be `PENDING`.
+- `POST /api/launchpad/presales/:id/activate` (auth: operator + MFA): marks a `PENDING` presale as `ACTIVE`.
+  - Only active presales accept contributions. Returns `200` with the updated presale.
+- `POST /api/launchpad/presales/:id/resolve` (auth: operator + MFA): manually resolves an `ACTIVE` presale.
+  - Returns `200` with the resolved presale (`RESOLVED_SUCCESS` or `RESOLVED_FAILED`).
+
 ---
 
 ### 13. KYC (Persona) (Hito 7) — LIVE (2026-09-23)

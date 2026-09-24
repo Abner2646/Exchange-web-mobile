@@ -39,8 +39,35 @@ const buy = asyncHandler(async (req, res) => {
   res.status(200).json(result);
 });
 
+const validateUUID = (id) => {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(id)) {
+    throw new AppError(404, errorCodes.NOT_FOUND, 'Presale not found');
+  }
+};
+
+const createPresale = asyncHandler(async (req, res) => {
+  const result = await launchpadService.createPresale(req.body);
+  res.status(201).json(result);
+});
+
+const activatePresale = asyncHandler(async (req, res) => {
+  validateUUID(req.params.id);
+  const result = await launchpadService.activatePresale({ presaleId: req.params.id });
+  res.status(200).json(result);
+});
+
+const resolvePresale = asyncHandler(async (req, res) => {
+  validateUUID(req.params.id);
+  const result = await launchpadService.resolvePresale({ presaleId: req.params.id });
+  res.status(200).json(result);
+});
+
 module.exports = {
   getPresales,
   getPresale,
-  buy
+  buy,
+  createPresale,
+  activatePresale,
+  resolvePresale
 };
