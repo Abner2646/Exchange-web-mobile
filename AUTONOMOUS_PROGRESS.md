@@ -56,7 +56,14 @@ operator TOTP first.** Follow-up idea: a seed/onboarding step that provisions op
 - TOTP `setup` endpoint has no rate limiter; `twoFactorMethod` in loginStep1 enables 2FA-method enumeration; UUID
   `:id` guard duplicated across launchpad/governance/swap controllers (extract a shared helper). All minor hardening.
 
-- **NEXT:** dev→main merge per §5 authorization (review green).
+- **✅ dev→main MERGED (`efa99ee`, `--no-ff`).** Aligned local main to origin/main (`1f178d1`), merged dev,
+  re-ran full unit suite on the merged tree (**533 green**), pushed main, fast-forwarded dev. Final state:
+  `dev == main == origin/main == origin/dev == efa99ee` (all `0 0`). Delta shipped: TOTP-for-all epic + launchpad
+  admin lifecycle + Maker-Checker large-withdrawal dual control + the 6 high-effort review fixes.
+- **NEXT BURST candidates:** (1) enroll/seed operator TOTP (unblocks the deploy precondition above); (2) route
+  large launchpad `resolve` settlements through Maker-Checker (control parity with withdrawals); (3) rest of §7 —
+  Tron testnet adapter, AWS KMS (code-only), on-ramp Transak, Google GIS, i18n 5 locales; (4) minor hardening
+  (extract shared UUID guard, TOTP setup rate limit).
 
 
 ## ⚠️ 2026-09-23 (session resume) — BRANCH RECONCILIATION (important, read first)
