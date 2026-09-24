@@ -422,12 +422,29 @@ Exchange-administered token presales. Money as canonical strings.
 Operator-only governance for privileged actions (4-eyes). All routes require an operator with MFA enabled.
 - `GET /api/governance/pending` — inbox of pending actions.
 - `POST /api/governance/propose` — a maker proposes `{ actionType, payload, amountUsd? }`; returns a pending action with a TTL.
-- `POST /api/governance/:id/approve` — a **distinct** checker authorizes with a fresh 2FA `{ codigo }`. The checker can NEVER be the maker (`MAKER_CHECKER_SAME_USER`). Execution of the effect is atomic with authorization.
+- `POST /api/governance/:id/approve` — a **distinct** checker authorizes with a **TOTP** code `{ codigo }` from
+  their authenticator app (see §15). The checker can NEVER be the maker (`MAKER_CHECKER_SAME_USER`). Execution of the
+  effect is atomic with authorization.
 - `POST /api/governance/:id/reject` — reject with an optional reason.
 - Hard rule: no monetary action above **$20,000 USD** can auto-execute — always dual control (inviolable ceiling; a
   higher configured threshold cannot bypass it). Error codes: `MAKER_CHECKER_SAME_USER/INVALID_STATE/EXPIRED/MFA_INVALID/NOT_FOUND`.
 - Note: the engine is live with a pluggable executor registry; wiring specific privileged effects (e.g. large-withdrawal
   release, fee changes) into it is per-action follow-up work.
+
+### 15. TOTP authenticator-app 2FA (replaces email-code 2FA) — LIVE enrollment (2026-09-23)
+
+Second factor is migrating to **TOTP** (RFC 6238, e.g. Google Authenticator/Authy). Self-service enrollment
+(all require the user's JWT):
+- `POST /api/usuario/me/totp/setup` — begins enrollment; returns `{ otpauthUri, secret, qr }` where `qr` is a
+  PNG data URL and `secret` is shown **once** for manual entry. Render the QR for the user to scan. 2FA is NOT yet active.
+- `POST /api/usuario/me/totp/enable` — body `{ codigo }`; verifies the first code and activates TOTP (also flips the
+  account's 2FA-enabled flag). `401 TOTP_INVALID` on a wrong code.
+- `POST /api/usuario/me/totp/disable` — body `{ codigo }`; requires a valid current code. `401 TOTP_INVALID`.
+- Error codes: `TOTP_INVALID / TOTP_NOT_ENABLED / TOTP_ALREADY_ENABLED / TOTP_ENROLLMENT_REQUIRED`.
+- The TOTP `secret` is never returned again after setup and never appears in any user serialization.
+- Used today by the Maker-Checker checker step-up (§14). **Migrating the login second factor** (`/login` →
+  `/verify-2fa`) from the email code to TOTP is the next server slice; until then, login may still use the email code
+  while governance uses TOTP.
 
 ---
 

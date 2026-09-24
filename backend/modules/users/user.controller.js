@@ -4,6 +4,7 @@ const { Op } = require('sequelize');
 const { sequelize } = require('../../models/index.js');
 const emailService = require('../../services/email.service.js');
 const userService = require('./user.service');
+const totp = require('./totp.service');
 const authz = require('../../utils/authz');
 const AppError = require('../../utils/AppError');
 const errorCodes = require('../../utils/errorCodes');
@@ -1056,6 +1057,36 @@ const completeUserInitialization = async (req, res) => {
   }
 };
 
+// ============ TOTP (authenticator-app 2FA) — self-service enrollment ============
+// Plain async controllers; the routes wrap them with asyncHandler and the service throws
+// AppError (mapped by the global error handler to the canonical envelope).
+
+// Begin enrollment: returns the otpauth URI + QR + secret (once) for the authenticator app.
+const setupTotp = async (req, res) => {
+  const user = await User.findByPk(req.user.id);
+  if (!user) throw new AppError(404, errorCodes.NOT_FOUND, 'Usuario no encontrado');
+  const { otpauthUri, secret, qr } = await totp.beginEnrollment(user);
+  res.status(200).json({ otpauthUri, secret, qr });
+};
+
+// Complete enrollment: verify the first token, then enable TOTP (and 2FA).
+const enableTotp = async (req, res) => {
+  const { codigo } = req.body;
+  const user = await User.findByPk(req.user.id);
+  if (!user) throw new AppError(404, errorCodes.NOT_FOUND, 'Usuario no encontrado');
+  await totp.enable(user, codigo);
+  res.status(200).json({ success: true, message: 'TOTP activado' });
+};
+
+// Disable TOTP — requires a valid current token (so a hijacked session can't turn it off).
+const disableTotp = async (req, res) => {
+  const { codigo } = req.body;
+  const user = await User.findByPk(req.user.id);
+  if (!user) throw new AppError(404, errorCodes.NOT_FOUND, 'Usuario no encontrado');
+  await totp.disable(user, codigo);
+  res.status(200).json({ success: true, message: 'TOTP desactivado' });
+};
+
 module.exports = {
   // Métodos de gestión básica de usuarios
   getUsuarios,
@@ -1081,6 +1112,9 @@ module.exports = {
   loginStep1,
   verify2FA,
   resend2FACode,
+  setupTotp,
+  enableTotp,
+  disableTotp,
   
   // Métodos de verificación de email (NUEVOS)
   verifyEmail,
