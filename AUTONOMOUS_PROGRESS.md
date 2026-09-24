@@ -27,8 +27,36 @@ Sync check first (clean): dev 7 ahead of origin/main (TOTP epic), origin/dev==de
   - **DECISION for Abner (documented, reversible via config):** unvaluable-asset withdrawals fail CLOSED
     (route to dual control) by default. Rationale: can't prove it's under the ceiling. Toggle:
     `withdrawal_dual_control_on_unvaluable`.
-- **PENDING this session:** `/code-review` high-effort on the dev↔main delta (TOTP epic + these two) → then
-  dev→main merge per §5 authorization.
+- **[GATE] `/code-review` high-effort on the dev↔main delta (8 finder angles) — DONE.** Real findings FIXED
+  (TDD, `11a5c91`), re-verified green:
+  - **TOTP single-use (regression):** old email code was deleted on use; TOTP had NO replay guard. Added
+    `totp_last_used_step` (migration `20260923110000`); verify/enable/disable consume the matched 30s step and
+    reject replay; callers (login `verify2FA`, governance `approve`) now `await` (a dropped await would slip a code).
+  - **2FA-toggle bypass:** `PATCH /me/2fa-toggle` could disable 2FA with NO code while TOTP enrolled (stripping the
+    login gate, bypassing code-guarded `totp.disable`). `toggle2FA` now refuses to disable while `totpEnabled`.
+  - **Dual-control stale-price bypass (MINE):** a frozen/stale pair price could undervalue a large withdrawal below
+    the threshold/ceiling and skip 4-eyes. `evaluate()` now trusts only a stable valuation or a fresh (<1h) pair
+    price; stale/untrusted → fail closed.
+  - **Transmit-query parity (MINE):** eth/bsc/bitcoin `processPendingWithdrawals` now also filter
+    `dualControlPending=false` (defense-in-depth alongside `claimForProcessing`).
+  - **Dead code:** removed `User.verify2FACode`. **Doc:** fixed TOTP paths `/api/usuario`→`/api/user`.
+  - Verified: unit 533 green, coverage gate OK; full money-path/auth re-verified 8/8 against the real DB.
+
+### ⚠️ DEPLOY PRECONDITION for Abner (from the review — NOT a code bug, do NOT skip)
+The Maker-Checker **checker second factor is TOTP** (Abner's §5 decision), and large withdrawals now REQUIRE a
+checker approval to be released. **After the TOTP migration every operator has `totpEnabled=false`** → until at least
+one operator (distinct from the withdrawing maker) enrolls TOTP (`/api/user/me/totp/{setup,enable}`), a held large
+withdrawal cannot be released and its funds stay blocked. **Before relying on dual control in any deployed env, enroll
+operator TOTP first.** Follow-up idea: a seed/onboarding step that provisions operator TOTP.
+
+### Deferred review findings (documented follow-ups, not blockers)
+- Launchpad `resolve` (money movement) is single-operator + MFA-flag, NOT dual-controlled like large withdrawals
+  (asymmetric control). Consider routing large presale settlements through Maker-Checker.
+- Operator MFA is flag-only (no fresh per-action step-up) — ROADMAP §4.9 (operator realm / Cognito).
+- TOTP `setup` endpoint has no rate limiter; `twoFactorMethod` in loginStep1 enables 2FA-method enumeration; UUID
+  `:id` guard duplicated across launchpad/governance/swap controllers (extract a shared helper). All minor hardening.
+
+- **NEXT:** dev→main merge per §5 authorization (review green).
 
 
 ## ⚠️ 2026-09-23 (session resume) — BRANCH RECONCILIATION (important, read first)
