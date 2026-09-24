@@ -3,6 +3,7 @@ const request = require('supertest');
 const { app, installAuthHarness } = require('../helpers/authHarness');
 const { User } = require('../../models');
 const bcrypt = require('bcrypt');
+const { authenticator } = require('otplib');
 const f = require('../helpers/factories');
 
 const h = installAuthHarness();
@@ -100,6 +101,110 @@ describe('POST /api/usuario/resend-2fa', () => {
       .send({ temporalToken, codigo: newCode });
     expect(verify.status).toBe(200);
     expect(typeof verify.body.token).toBe('string');
+  });
+});
+
+describe('POST /api/usuario/login (TOTP enrolled) + /verify-2fa', () => {
+  const totpSecret = authenticator.generateSecret();
+
+  async function seedTotpUser({ email, username }) {
+    const passwordHash = await bcrypt.hash('password123', 12);
+    return f.seedUser({ email, username, passwordHash, twoFactorEnabled: true, totpEnabled: true, totpSecret });
+  }
+
+  test('login requires 2FA without emailing a code; a valid TOTP token completes login', async () => {
+    await seedTotpUser({ email: 'totp@test.local', username: 'totpuser' });
+
+    const login = await request(app)
+      .post('/api/user/login')
+      .send({ emailOrUsername: 'totp@test.local', password: 'password123' });
+
+    expect(login.status).toBe(200);
+    expect(login.body.requires2FA).toBe(true);
+    expect(login.body.twoFactorMethod).toBe('totp');
+    expect(typeof login.body.temporalToken).toBe('string');
+    expect(login.body.token).toBeUndefined();
+
+    // A TOTP user gets NO emailed code.
+    const emailed = h.fake.sent.filter((s) => s.type === '2fa' && s.email === 'totp@test.local');
+    expect(emailed).toHaveLength(0);
+
+    const verify = await request(app)
+      .post('/api/user/verify-2fa')
+      .send({ temporalToken: login.body.temporalToken, codigo: authenticator.generate(totpSecret) });
+
+    expect(verify.status).toBe(200);
+    expect(typeof verify.body.token).toBe('string');
+
+    const me = await request(app)
+      .get('/api/user/me')
+      .set('Authorization', `Bearer ${verify.body.token}`);
+    expect(me.status).toBe(200);
+    expect(me.body.email).toBe('totp@test.local');
+  });
+
+  test('verify-2fa rejects a wrong TOTP code with 400', async () => {
+    await seedTotpUser({ email: 'totpbad@test.local', username: 'totpbaduser' });
+    const login = await request(app)
+      .post('/api/user/login')
+      .send({ emailOrUsername: 'totpbad@test.local', password: 'password123' });
+
+    const verify = await request(app)
+      .post('/api/user/verify-2fa')
+      .send({ temporalToken: login.body.temporalToken, codigo: '000000' });
+
+    expect(verify.status).toBe(400);
+    expect(verify.body.error).toMatch(/inv[aá]lido/i);
+  });
+
+  test('resend-2fa is refused for a TOTP user', async () => {
+    await seedTotpUser({ email: 'totpresend@test.local', username: 'totpresenduser' });
+    const login = await request(app)
+      .post('/api/user/login')
+      .send({ emailOrUsername: 'totpresend@test.local', password: 'password123' });
+
+    const resend = await request(app)
+      .post('/api/user/resend-2fa')
+      .send({ temporalToken: login.body.temporalToken });
+
+    expect(resend.status).toBe(400);
+    expect(resend.body.error).toMatch(/TOTP|reenv[ií]o/i);
+  });
+});
+
+describe('TOTP enrollment endpoints (/api/usuario/me/totp/*)', () => {
+  test('setup then enable with the first token activates TOTP + 2FA', async () => {
+    const user = await f.seedUser({ email: 'enroll@test.local', username: 'enrolluser' });
+
+    const setup = await request(app).post('/api/user/me/totp/setup').set(f.authHeader(user));
+    expect(setup.status).toBe(200);
+    expect(setup.body.otpauthUri).toMatch(/^otpauth:\/\/totp\//);
+    expect(typeof setup.body.secret).toBe('string');
+    expect(setup.body.qr).toMatch(/^data:image\/png;base64,/);
+
+    const enable = await request(app)
+      .post('/api/user/me/totp/enable')
+      .set(f.authHeader(user))
+      .send({ codigo: authenticator.generate(setup.body.secret) });
+    expect(enable.status).toBe(200);
+
+    const reloaded = await User.findByPk(user.id);
+    expect(reloaded.totpEnabled).toBe(true);
+    expect(reloaded.twoFactorEnabled).toBe(true);
+  });
+
+  test('enable with a wrong first token is rejected (401) and does not activate', async () => {
+    const user = await f.seedUser({ email: 'enrollbad@test.local', username: 'enrollbaduser' });
+    await request(app).post('/api/user/me/totp/setup').set(f.authHeader(user));
+
+    const enable = await request(app)
+      .post('/api/user/me/totp/enable')
+      .set(f.authHeader(user))
+      .send({ codigo: '000000' });
+    expect(enable.status).toBe(401);
+
+    const reloaded = await User.findByPk(user.id);
+    expect(reloaded.totpEnabled).toBe(false);
   });
 });
 

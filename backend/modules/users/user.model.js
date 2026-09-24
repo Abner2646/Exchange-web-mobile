@@ -4,6 +4,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const dotenv = require('dotenv');
 const { Op } = require('sequelize');
+const totp = require('./totp.service');
 
 dotenv.config();
 const secretWord = process.env.JWT_SECRET;
@@ -436,36 +437,40 @@ User.toggle2FA = async (id, nuevoEstado) => {
         };
       }
 
-      // ============ NUEVO: Si tiene 2FA activado ============
-      // Generar código 2FA de 6 dígitos
+      // ============ 2FA activado ============
+      // El token temporal (10 min) autoriza el paso 2 (verify-2fa).
+      const temporalToken = jwt.sign(
+        { userId: user.id, purpose: '2fa', email: user.email },
+        secretWord,
+        { expiresIn: '10m' }
+      );
+
+      // Preferir TOTP si el usuario lo tiene enrolado: el código lo genera SU app, el
+      // servidor no emite nada. Si no lo tiene, cae al código por email (legacy) hasta
+      // que enrole TOTP — así ningún usuario con 2FA queda bloqueado por la migración.
+      if (user.totpEnabled && user.totpSecret) {
+        return {
+          user: { id: user.id, username: user.username, email: user.email },
+          temporalToken,
+          twoFactorMethod: 'totp',
+          requires2FA: true,
+          loginComplete: false
+        };
+      }
+
+      // Legacy: código de 6 dígitos enviado por email.
       const twoFactorCode = Math.floor(100000 + Math.random() * 900000).toString();
       const expiracion = new Date(Date.now() + 5 * 60 * 1000); // 5 minutos
-
-      // Guardar código en la base de datos
       await user.update({
         twoFactorCode: twoFactorCode,
         twoFactorCodeExpiresAt: expiracion
       });
 
-      // Generar token temporal (válido por 10 minutos) para verificar 2FA
-      const temporalToken = jwt.sign(
-        { 
-          userId: user.id, 
-          purpose: '2fa',
-          email: user.email 
-        },
-        secretWord,
-        { expiresIn: '10m' }
-      );
-
-      return { 
-        user: {  // ⚠️ IMPORTANTE: Devolver objeto user anidado
-          id: user.id,
-          username: user.username,
-          email: user.email
-        },
-        twoFactorCode: twoFactorCode,  // ⚠️ NUEVO: Código generado
-        temporalToken: temporalToken,  // ⚠️ NUEVO: Token temporal
+      return {
+        user: { id: user.id, username: user.username, email: user.email },
+        twoFactorCode: twoFactorCode,
+        temporalToken: temporalToken,
+        twoFactorMethod: 'email',
         requires2FA: true,
         loginComplete: false
       };
@@ -495,20 +500,24 @@ User.toggle2FA = async (id, nuevoEstado) => {
       throw new Error('Usuario no encontrado');
     }
 
-    // Verificar el código 2FA
-    if (!user.twoFactorCode || 
-        user.twoFactorCode !== codigo || 
-        !user.twoFactorCodeExpiresAt || 
-        new Date() > user.twoFactorCodeExpiresAt) {
-      throw new Error('Código 2FA inválido o expirado');
+    if (user.totpEnabled && user.totpSecret) {
+      // TOTP: verificar contra el secreto de la app (stateless — nada que limpiar).
+      totp.verifyForUser(user, codigo); // lanza si el código es inválido
+      await user.update({ lastLoginAt: new Date() });
+    } else {
+      // Legacy: código de 6 dígitos por email.
+      if (!user.twoFactorCode ||
+          user.twoFactorCode !== codigo ||
+          !user.twoFactorCodeExpiresAt ||
+          new Date() > user.twoFactorCodeExpiresAt) {
+        throw new Error('Código 2FA inválido o expirado');
+      }
+      await user.update({
+        twoFactorCode: null,
+        twoFactorCodeExpiresAt: null,
+        lastLoginAt: new Date()
+      });
     }
-
-    // Limpiar código 2FA y actualizar último login
-    await user.update({
-      twoFactorCode: null,
-      twoFactorCodeExpiresAt: null,
-      lastLoginAt: new Date()
-    });
 
     // Generar token JWT normal
     const token = user.generateUpdatedJWT();
@@ -535,6 +544,11 @@ User.toggle2FA = async (id, nuevoEstado) => {
     const user = await User.findByPk(decoded.userId);
     if (!user) {
       throw new Error('Usuario no encontrado');
+    }
+
+    // TOTP no usa códigos reenviables: el código lo genera la app del usuario.
+    if (user.totpEnabled && user.totpSecret) {
+      throw new Error('TOTP no requiere reenvío de código; usá tu app autenticadora');
     }
 
     // Generar nuevo código 2FA

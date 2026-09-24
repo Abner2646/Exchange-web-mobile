@@ -516,15 +516,26 @@ const loginStep1 = async (req, res) => {
     const result = await User.loginStep1(emailOrUsername, password);
     
     if (result.requires2FA) {
+      // Solo el path legacy (email) emite un código; TOTP lo genera la app del usuario.
+      if (result.twoFactorMethod === 'totp') {
+        return res.json({
+          message: 'Ingresá el código de tu app autenticadora',
+          requires2FA: true,
+          twoFactorMethod: 'totp',
+          temporalToken: result.temporalToken
+        });
+      }
+
       await req.app.locals.emailService.enviarCodigo2FA(
         result.user.email,
         result.twoFactorCode,
         result.user.username
       );
-      
+
       return res.json({
         message: 'Código de verificación enviado a tu email',
         requires2FA: true,
+        twoFactorMethod: 'email',
         temporalToken: result.temporalToken
       });
     }
