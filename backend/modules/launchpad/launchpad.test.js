@@ -1,4 +1,4 @@
-const { buy, resolvePresale } = require('./launchpad.service');
+const { buy, resolvePresale, createPresale, activatePresale } = require('./launchpad.service');
 const { Presale, Contribution } = require('./launchpad.model');
 const { postTransaction } = require('../balances/ledger/postingService');
 const { PURPOSES } = require('../balances/ledger/ledgerAccounts');
@@ -12,12 +12,12 @@ jest.mock('../../models', () => {
       transaction: transactionMock,
       models: {}
     },
-    Crypto: { getBySymbol: jest.fn() }
+    Crypto: { getBySymbol: jest.fn(), findByPk: jest.fn() }
   };
 });
 
 jest.mock('./launchpad.model', () => ({
-  Presale: { findByPk: jest.fn() },
+  Presale: { findByPk: jest.fn(), create: jest.fn(), update: jest.fn() },
   Contribution: { findAll: jest.fn(), create: jest.fn() }
 }));
 
@@ -220,6 +220,79 @@ describe('Launchpad Service', () => {
         }),
         expect.any(Object)
       );
+    });
+  });
+
+  describe('createPresale', () => {
+    const validInput = {
+      tokenCryptoId: 'token-uuid', priceUsdt: '2', hardCapUsdt: '1000', softCapUsdt: '500',
+      minTicketUsdt: '10', maxTicketUsdt: '100', startDate: '2026-10-01T00:00:00Z', endDate: '2026-10-10T00:00:00Z'
+    };
+
+    it('rejects unknown tokenCryptoId', async () => {
+      Crypto.findByPk.mockResolvedValue(null);
+      await expect(createPresale(validInput)).rejects.toThrow('Unknown token crypto');
+    });
+
+    it('rejects softCap > hardCap', async () => {
+      Crypto.findByPk.mockResolvedValue({ id: 'token-uuid' });
+      await expect(createPresale({ ...validInput, softCapUsdt: '2000' })).rejects.toThrow('Soft cap cannot exceed hard cap');
+    });
+
+    it('rejects minTicket > maxTicket', async () => {
+      Crypto.findByPk.mockResolvedValue({ id: 'token-uuid' });
+      await expect(createPresale({ ...validInput, minTicketUsdt: '200' })).rejects.toThrow('Min ticket cannot exceed max ticket');
+    });
+
+    it('rejects non-positive price', async () => {
+      Crypto.findByPk.mockResolvedValue({ id: 'token-uuid' });
+      await expect(createPresale({ ...validInput, priceUsdt: '0' })).rejects.toThrow('Price must be positive');
+      await expect(createPresale({ ...validInput, priceUsdt: '-1' })).rejects.toThrow('Price must be positive');
+    });
+
+    it('rejects start >= end dates', async () => {
+      Crypto.findByPk.mockResolvedValue({ id: 'token-uuid' });
+      await expect(createPresale({ ...validInput, startDate: '2026-10-10T00:00:00Z', endDate: '2026-10-01T00:00:00Z' })).rejects.toThrow('Invalid date range');
+    });
+
+    it('creates a PENDING presale on happy path', async () => {
+      Crypto.findByPk.mockResolvedValue({ id: 'token-uuid' });
+      Presale.create.mockResolvedValue({ id: 'new-presale' });
+      
+      const result = await createPresale(validInput);
+      
+      expect(Presale.create).toHaveBeenCalledWith(expect.objectContaining({
+        tokenCryptoId: 'token-uuid',
+        priceUsdt: '2',
+        hardCapUsdt: '1000',
+        softCapUsdt: '500',
+        minTicketUsdt: '10',
+        maxTicketUsdt: '100',
+        status: 'PENDING'
+      }));
+      expect(result).toEqual({ id: 'new-presale' });
+    });
+  });
+
+  describe('activatePresale', () => {
+    it('returns 404 when missing', async () => {
+      Presale.findByPk.mockResolvedValue(null);
+      await expect(activatePresale({ presaleId: 'p1' })).rejects.toThrow('Presale not found');
+    });
+
+    it('returns 400 when not PENDING', async () => {
+      Presale.findByPk.mockResolvedValue({ status: 'ACTIVE' });
+      await expect(activatePresale({ presaleId: 'p1' })).rejects.toThrow('Only a pending presale can be activated');
+    });
+
+    it('flips PENDING->ACTIVE on happy path', async () => {
+      const fakePresale = { status: 'PENDING', update: jest.fn() };
+      Presale.findByPk.mockResolvedValue(fakePresale);
+      
+      const result = await activatePresale({ presaleId: 'p1' });
+      
+      expect(fakePresale.update).toHaveBeenCalledWith({ status: 'ACTIVE' });
+      expect(result).toBe(fakePresale);
     });
   });
 });

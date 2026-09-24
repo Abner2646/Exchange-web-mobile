@@ -351,9 +351,67 @@ router.post('/resend-2fa',
  * PATCH /me/2fa-toggle
  * Activar/desactivar 2FA (requiere autenticación)
  */
-router.patch('/me/2fa-toggle', 
+router.patch('/me/2fa-toggle',
   authenticateToken,
   userController.toggle2FA
+);
+
+/**
+ * @openapi
+ * /user/me/totp/setup:
+ *   post:
+ *     tags: [Usuarios / Auth]
+ *     summary: Iniciar enrolamiento TOTP (devuelve otpauth URI + QR + secreto una vez)
+ *     responses:
+ *       200:
+ *         description: Datos de enrolamiento (escaneá el QR en la app autenticadora)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 otpauthUri: { type: string }
+ *                 secret: { type: string }
+ *                 qr: { type: string, description: PNG data URL }
+ *       409: { description: TOTP ya activado (deshabilitar primero) }
+ * /user/me/totp/enable:
+ *   post:
+ *     tags: [Usuarios / Auth]
+ *     summary: Confirmar enrolamiento TOTP con el primer código
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { type: object, required: [codigo], properties: { codigo: { type: string } } }
+ *     responses:
+ *       200: { description: TOTP activado }
+ *       401: { description: Código TOTP inválido }
+ * /user/me/totp/disable:
+ *   post:
+ *     tags: [Usuarios / Auth]
+ *     summary: Desactivar TOTP (requiere un código válido actual)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { type: object, required: [codigo], properties: { codigo: { type: string } } }
+ *     responses:
+ *       200: { description: TOTP desactivado }
+ *       401: { description: Código TOTP inválido }
+ */
+router.post('/me/totp/setup',
+  authenticateToken,
+  asyncHandler(userController.setupTotp)
+);
+router.post('/me/totp/enable',
+  authenticateToken,
+  verify2FALimiter,
+  asyncHandler(userController.enableTotp)
+);
+router.post('/me/totp/disable',
+  authenticateToken,
+  verify2FALimiter,
+  asyncHandler(userController.disableTotp)
 );
 
 // =====================================================================

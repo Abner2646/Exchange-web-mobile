@@ -432,6 +432,14 @@ function createTransaccionBlockchainModel(sequelize) {
         }
       }
 
+      // Dual control (Maker-Checker) for LARGE withdrawals. The USD magnitude that decides
+      // this is computed SERVER-SIDE from the real crypto + amount (never a client/maker
+      // declared value). A crossing withdrawal is HELD (dualControlPending) so the transmit
+      // pipeline skips it, and a pending admin action is proposed below in the SAME tx — a
+      // distinct checker must release it with their TOTP second factor before it can go out.
+      const dualControl = require('./withdrawalDualControl.service');
+      const dc = await dualControl.evaluate(data.cryptoId, data.amount, transaction);
+
       // Crear transacción de retiro
       const retiroData = {
         ...data,
@@ -439,10 +447,20 @@ function createTransaccionBlockchainModel(sequelize) {
         status: 'pending',
         confirmations: 0,
         requiresApproval: hold,
+        dualControlPending: dc.dualControl,
         blockchainFee: data.blockchainFee || 0
       };
 
       const nuevoRetiro = await BlockchainTransaction.create(retiroData, { transaction });
+
+      if (dc.dualControl) {
+        // Atomic with the held row: a held withdrawal can never exist without an approval path.
+        // makerUserId = the requesting user (the checker must be a DISTINCT operator → 4-eyes).
+        await dualControl.propose(
+          { withdrawalId: nuevoRetiro.id, makerUserId: data.userId, amountUsd: dc.amountUsd },
+          transaction
+        );
+      }
 
       if (s5Match) {
         await amlCases.openCase({
@@ -488,7 +506,9 @@ function createTransaccionBlockchainModel(sequelize) {
   BlockchainTransaction.claimForProcessing = async (id) => {
     const [affected] = await BlockchainTransaction.update(
       { status: 'processing' },
-      { where: { id, type: 'withdrawal', status: 'pending', requiresApproval: false } }
+      // A withdrawal is claimable only with NO active hold: neither the AML S5 hold
+      // (requiresApproval) nor the Maker-Checker dual-control hold (dualControlPending).
+      { where: { id, type: 'withdrawal', status: 'pending', requiresApproval: false, dualControlPending: false } }
     );
     return affected === 1;
   };
@@ -531,6 +551,13 @@ function createTransaccionBlockchainModel(sequelize) {
       // nivel modelo cierra el footgun para cualquier caller directo (rutas, etc.).
       if (retiro.requiresApproval) {
         throw new Error('No se puede enviar un retiro con hold AML activo (requiere aprobación)');
+      }
+
+      // Dual-control (Maker-Checker) hold: a large withdrawal not yet released by a distinct
+      // checker must NEVER be transmitted. Same footgun-closing guard as the AML hold above,
+      // for any caller that bypasses claimForProcessing.
+      if (retiro.dualControlPending) {
+        throw new Error('No se puede enviar un retiro con hold de doble control pendiente (requiere aprobación de un checker)');
       }
 
       await BlockchainTransaction.update(
@@ -610,6 +637,21 @@ function createTransaccionBlockchainModel(sequelize) {
       { where: { id, type: 'withdrawal', status: 'pending' } }
     );
     return affected === 1;
+  };
+
+  // A DISTINCT checker authorized a large withdrawal through Maker-Checker: clear its
+  // dual-control hold so the transmit pipeline can claim it. Runs INSIDE the governance
+  // approval transaction (passed in) so the release + the action's state change commit
+  // atomically. The conditional WHERE (dual_control_pending=true) makes a double/late
+  // release a no-op (returns 0) instead of re-touching a wrong-state row — the executor
+  // treats 0 as a failure and rolls the approval back. The authoritative checker identity
+  // lives on the PendingAdminAction row, not here.
+  BlockchainTransaction.releaseDualControlHold = async (id, transaction) => {
+    const [affected] = await BlockchainTransaction.update(
+      { dualControlPending: false },
+      { where: { id, type: 'withdrawal', status: 'pending', dualControlPending: true }, transaction }
+    );
+    return affected;
   };
 
   // =================== MÉTODOS DE CONSULTA ESPECÍFICOS ===================

@@ -407,6 +407,18 @@ Exchange-administered token presales. Money as canonical strings.
 - Resolution is server-side (job): at/above soft cap → tokens credited to buyers' `funding:disponible` instantly;
   below soft cap → 100% USDT refunded from suspense to buyers (no fees). Clients should reflect presale status.
 
+**Operator Admin Lifecycle (LIVE 2026-09-23)**
+Three new endpoints govern the presale lifecycle. These are strictly operator-gated and require Operator MFA.
+
+- `POST /api/launchpad/presales` (auth: operator + MFA): create a new presale.
+  - Body: `{ tokenCryptoId, priceUsdt, hardCapUsdt, softCapUsdt, minTicketUsdt, maxTicketUsdt, startDate, endDate }`
+  - All money limits must be positive (minTicket can be zero), and valid combinations are enforced (e.g. softCap <= hardCap).
+  - Returns `201` with the created presale. The status will be `PENDING`.
+- `POST /api/launchpad/presales/:id/activate` (auth: operator + MFA): marks a `PENDING` presale as `ACTIVE`.
+  - Only active presales accept contributions. Returns `200` with the updated presale.
+- `POST /api/launchpad/presales/:id/resolve` (auth: operator + MFA): manually resolves an `ACTIVE` presale.
+  - Returns `200` with the resolved presale (`RESOLVED_SUCCESS` or `RESOLVED_FAILED`).
+
 ---
 
 ### 13. KYC (Persona) (Hito 7) — LIVE (2026-09-23)
@@ -422,12 +434,42 @@ Exchange-administered token presales. Money as canonical strings.
 Operator-only governance for privileged actions (4-eyes). All routes require an operator with MFA enabled.
 - `GET /api/governance/pending` — inbox of pending actions.
 - `POST /api/governance/propose` — a maker proposes `{ actionType, payload, amountUsd? }`; returns a pending action with a TTL.
-- `POST /api/governance/:id/approve` — a **distinct** checker authorizes with a fresh 2FA `{ codigo }`. The checker can NEVER be the maker (`MAKER_CHECKER_SAME_USER`). Execution of the effect is atomic with authorization.
+- `POST /api/governance/:id/approve` — a **distinct** checker authorizes with a **TOTP** code `{ codigo }` from
+  their authenticator app (see §15). The checker can NEVER be the maker (`MAKER_CHECKER_SAME_USER`). Execution of the
+  effect is atomic with authorization.
 - `POST /api/governance/:id/reject` — reject with an optional reason.
 - Hard rule: no monetary action above **$20,000 USD** can auto-execute — always dual control (inviolable ceiling; a
   higher configured threshold cannot bypass it). Error codes: `MAKER_CHECKER_SAME_USER/INVALID_STATE/EXPIRED/MFA_INVALID/NOT_FOUND`.
-- Note: the engine is live with a pluggable executor registry; wiring specific privileged effects (e.g. large-withdrawal
-  release, fee changes) into it is per-action follow-up work.
+- A malformed `:id` (not a UUID) returns a clean `404 MAKER_CHECKER_NOT_FOUND` (no 500).
+
+**Wired: large-withdrawal release (LIVE 2026-09-23).** The first privileged effect is now wired into the engine.
+- On `POST /transaccionBlockchain/withdraw`, the server computes the withdrawal's USD magnitude **server-side** from
+  the real crypto + amount (never a client-declared value). If it exceeds the configured threshold (default **> $5,000**,
+  business config `withdrawal_dual_control_usd_threshold`) — or the **$20,000** hard ceiling — the withdrawal is created
+  **held** and a `large_withdrawal_release` pending action is proposed automatically. The held withdrawal is NOT
+  transmitted until a **distinct** operator approves it via `POST /api/governance/:id/approve` with their TOTP code.
+- An asset with no USD valuation (no stable pair) fails **closed** by default (routed to dual control); operators can
+  flip this via business config `withdrawal_dual_control_on_unvaluable` (default `true`).
+- The withdrawal response shape is unchanged; clients should surface that large withdrawals may enter a
+  pending-approval state before they are broadcast on-chain.
+
+### 15. TOTP authenticator-app 2FA (replaces email-code 2FA) — LIVE enrollment (2026-09-23)
+
+Second factor is migrating to **TOTP** (RFC 6238, e.g. Google Authenticator/Authy). Self-service enrollment
+(all require the user's JWT):
+- `POST /api/user/me/totp/setup` — begins enrollment; returns `{ otpauthUri, secret, qr }` where `qr` is a
+  PNG data URL and `secret` is shown **once** for manual entry. Render the QR for the user to scan. 2FA is NOT yet active.
+- `POST /api/user/me/totp/enable` — body `{ codigo }`; verifies the first code and activates TOTP (also flips the
+  account's 2FA-enabled flag). `401 TOTP_INVALID` on a wrong code.
+- `POST /api/user/me/totp/disable` — body `{ codigo }`; requires a valid current code. `401 TOTP_INVALID`.
+- Error codes: `TOTP_INVALID / TOTP_NOT_ENABLED / TOTP_ALREADY_ENABLED / TOTP_ENROLLMENT_REQUIRED`.
+- The TOTP `secret` is never returned again after setup and never appears in any user serialization.
+- **Single-use:** a TOTP code is accepted once — replaying the same code (login, step-up, or disable) within its
+  validity window returns `401 TOTP_INVALID`. The legacy `PATCH /api/user/me/2fa-toggle` can no longer turn 2FA off
+  while TOTP is enrolled (returns `400`); disable via the code-verified endpoint above.
+- Used today by the Maker-Checker checker step-up (§14). **Migrating the login second factor** (`/login` →
+  `/verify-2fa`) from the email code to TOTP is the next server slice; until then, login may still use the email code
+  while governance uses TOTP.
 
 ---
 

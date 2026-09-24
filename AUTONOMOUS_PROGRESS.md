@@ -2,6 +2,63 @@
 
 **Started:** 2026-09-23. Coordinator: Claude (Opus). Abner is away for several days; full autonomy.
 
+## ✅ SESSION 2026-09-23 (evening) — launchpad admin + Maker-Checker→withdrawals wiring
+Sync check first (clean): dev 7 ahead of origin/main (TOTP epic), origin/dev==dev, no stray tracked changes.
+- **[B] Launchpad admin lifecycle (delegated to Antigravity, my review) — `727a0d4`:** operator-gated
+  `POST /api/launchpad/presales` (create, full caps/price/date validation, tokenCryptoId resolved vs Crypto,
+  all money via utils/money), `/:id/activate` (PENDING→ACTIVE), `/:id/resolve` (wires existing resolvePresale).
+  UUID :id validation, OpenAPI, contract doc. agy wrote it; I verified files+diff+tests myself (15/15).
+- **[C] Maker-Checker → large-withdrawal release (MINE, money-path, TDD) — `90faa99`:** dual control now
+  wired to withdrawals. New `dual_control_pending` column (migration `20260923100000`) INDEPENDENT of the AML
+  `requires_approval` hold (both must be false to transmit → neither control releases the other). In
+  `createWithdrawal`: USD magnitude computed **server-side** via `amlValuation.getUsdValue` from the REAL
+  crypto+amount (never maker-declared); if > threshold (config `withdrawal_dual_control_usd_threshold`, default
+  $5k) or > $20k hard ceiling → row is HELD + `makerChecker.propose('large_withdrawal_release')` **atomically**
+  in the same tx. A DISTINCT checker approves with TOTP → registered executor `releaseDualControlHold` clears the
+  hold atomically → claimable. Unvaluable asset fails CLOSED (config `withdrawal_dual_control_on_unvaluable`,
+  default true). Also: `markWithdrawalAsSent` guard rejects held rows; `claimForProcessing` WHERE now filters
+  both holds; governance `:id` UUID validation (500→404); `makerChecker.propose` accepts a transaction.
+  Executor registered at boot in `routes/index.js`.
+  - **Verification:** unit 529 green (new: withdrawalDualControl.service 9, governance.controller 3,
+    makerChecker +2). Coverage gate OK (functions 22% > 14% floor). Integration suite added
+    (`withdrawalDualControl.integration.test.js`, runs on CI). Local jest integration harness quirk persists
+    (truncate) → verified the full money-path (hold/propose/transmit-block/distinct-checker-release/4-eyes/
+    ceiling) with a standalone script vs the real docker test DB: **18/18 checks passed**.
+  - **DECISION for Abner (documented, reversible via config):** unvaluable-asset withdrawals fail CLOSED
+    (route to dual control) by default. Rationale: can't prove it's under the ceiling. Toggle:
+    `withdrawal_dual_control_on_unvaluable`.
+- **[GATE] `/code-review` high-effort on the dev↔main delta (8 finder angles) — DONE.** Real findings FIXED
+  (TDD, `11a5c91`), re-verified green:
+  - **TOTP single-use (regression):** old email code was deleted on use; TOTP had NO replay guard. Added
+    `totp_last_used_step` (migration `20260923110000`); verify/enable/disable consume the matched 30s step and
+    reject replay; callers (login `verify2FA`, governance `approve`) now `await` (a dropped await would slip a code).
+  - **2FA-toggle bypass:** `PATCH /me/2fa-toggle` could disable 2FA with NO code while TOTP enrolled (stripping the
+    login gate, bypassing code-guarded `totp.disable`). `toggle2FA` now refuses to disable while `totpEnabled`.
+  - **Dual-control stale-price bypass (MINE):** a frozen/stale pair price could undervalue a large withdrawal below
+    the threshold/ceiling and skip 4-eyes. `evaluate()` now trusts only a stable valuation or a fresh (<1h) pair
+    price; stale/untrusted → fail closed.
+  - **Transmit-query parity (MINE):** eth/bsc/bitcoin `processPendingWithdrawals` now also filter
+    `dualControlPending=false` (defense-in-depth alongside `claimForProcessing`).
+  - **Dead code:** removed `User.verify2FACode`. **Doc:** fixed TOTP paths `/api/usuario`→`/api/user`.
+  - Verified: unit 533 green, coverage gate OK; full money-path/auth re-verified 8/8 against the real DB.
+
+### ⚠️ DEPLOY PRECONDITION for Abner (from the review — NOT a code bug, do NOT skip)
+The Maker-Checker **checker second factor is TOTP** (Abner's §5 decision), and large withdrawals now REQUIRE a
+checker approval to be released. **After the TOTP migration every operator has `totpEnabled=false`** → until at least
+one operator (distinct from the withdrawing maker) enrolls TOTP (`/api/user/me/totp/{setup,enable}`), a held large
+withdrawal cannot be released and its funds stay blocked. **Before relying on dual control in any deployed env, enroll
+operator TOTP first.** Follow-up idea: a seed/onboarding step that provisions operator TOTP.
+
+### Deferred review findings (documented follow-ups, not blockers)
+- Launchpad `resolve` (money movement) is single-operator + MFA-flag, NOT dual-controlled like large withdrawals
+  (asymmetric control). Consider routing large presale settlements through Maker-Checker.
+- Operator MFA is flag-only (no fresh per-action step-up) — ROADMAP §4.9 (operator realm / Cognito).
+- TOTP `setup` endpoint has no rate limiter; `twoFactorMethod` in loginStep1 enables 2FA-method enumeration; UUID
+  `:id` guard duplicated across launchpad/governance/swap controllers (extract a shared helper). All minor hardening.
+
+- **NEXT:** dev→main merge per §5 authorization (review green).
+
+
 ## ⚠️ 2026-09-23 (session resume) — BRANCH RECONCILIATION (important, read first)
 The HANDOFF premise "main intacto" was **WRONG**. Reality found on resume:
 - `dev` was built on a **stale base** (`f4d2e5a`, pre-PR #31). Meanwhile `origin/main`
@@ -84,24 +141,28 @@ DEFER to Maker-Checker→withdrawal wiring task (§7 #3):
   (current design) vs hard-blocked.
 - listPending exposes full payloads + no UUID-format validation on `:id` (500 vs 404). Minor; handle in wiring.
 
-## ▶️ NEXT BURST — start here (spec, 2026-09-23 checkpoint)
-Ordered by priority (breakage-fixes before new features). dev is green (494 unit) + pushed
-(`origin/dev == dev`), frontend `tsc` + `npm run build` clean. main untouched.
+## ✅ TOTP-for-all backend epic — DONE (2026-09-23), merged path on `dev`
+Completed in 5 pushed slices (unit 506 green; login logic verified end-to-end against a real DB):
+- `9b21f14` TOTP service (otplib v12 + qrcode): secret + otpauth URI + verify (±1 window, fails closed). 12 unit tests.
+- `42454b9` migration + `totp_secret`/`totp_enabled` columns + user-instance orchestration
+  (beginEnrollment/enable/verifyForUser/disable); `toJSON` strips `totpSecret`; TOTP error codes.
+- `94fb874` **governance checker second factor → TOTP** (FIXES the unusable-approve bug).
+- `7d49c22` self-service enrollment endpoints `POST /user/me/totp/{setup,enable,disable}` + OpenAPI + contract §15.
+- `b75b2c3` **login second factor → TOTP** (dual-path: prefers TOTP if enrolled, falls back to email code
+  otherwise → no user lockout). Integration tests added for TOTP login + enrollment endpoints.
+- **Local jest integration harness quirk:** ALL integration suites fail in beforeEach `truncate` with an
+  empty-message pg error (pre-existing; direct DB sync+truncate works fine; unit suite unaffected). Verified
+  slice-5 login logic via a standalone script on an alternate Postgres (port 15432) → all checks passed.
+- TOTP FOLLOW-UPS: (a) frontend enrollment UI (delegable); (b) optional hardening — remove the legacy
+  email-code login path once TOTP enrollment is universal (currently dual-path by design); (c) encrypt
+  `totp_secret` at rest when AWS KMS lands.
 
-1. **TOTP-for-all (§7 #2, MINE, TDD) — top priority, also FIXES the governance checker-2FA bug.**
-   Today the Maker-Checker `approve` calls `User.verify2FACode`, but `twoFactorCode` is a
-   login-only field that is `null` for a fully logged-in operator → approve is effectively
-   unusable / not an approval-bound step-up. Plan (slice it, commit+push each):
-   a. `npm i otplib qrcode` (otplib pre-authorized by Abner §5).
-   b. Backend TOTP service: generate secret + `otpauth://` provisioning URI, `verify(token, secret)`
-      with a ±1 step window. Unit test with fixed secret/time.
-   c. Migration + User model: `totp_secret` (nullable, encrypted-at-rest ideally), `totp_enabled` bool.
-   d. Enrollment endpoints (auth, self): `POST /auth/2fa/totp/enroll` (returns secret + otpauth URI/QR),
-      `POST /auth/2fa/totp/verify` (confirm first code → enable). Idempotent, rate-limited.
-   e. Migrate the login second factor AND the governance checker factor to TOTP verify. Keep a
-      clean seam so old email-code path is removed, not left dead.
-   f. Contract doc + OpenAPI in the SAME commits. Frontend enrollment UI = delegable slice after.
-2. **Launchpad admin lifecycle (delegable feature, my review) — launchpad is dead-on-arrival.**
+## ▶️ NEXT BURST — start here (spec)
+Ordered by priority. dev green (506 unit) + pushed (`origin/dev == dev`); dev==main was merged earlier (`1f178d1`)
+but dev has since advanced with the review fixes + TOTP epic (a fresh dev→main merge is due — run /code-review
+high-effort on the new delta first).
+
+1. **Launchpad admin lifecycle (delegable feature, my review) — launchpad is dead-on-arrival.**
    No HTTP surface exists to create/activate/resolve a presale (presales default `PENDING`; `buy`
    requires `ACTIVE`; `resolvePresale` exists in the service but has NO route). Add operator-gated
    (`requireOperatorMFA`, as governance does) routes: `POST /api/launchpad/presales` (create),
@@ -114,12 +175,16 @@ Ordered by priority (breakage-fixes before new features). dev is green (494 unit
    `listPending` payload exposure. `requiresDualControl` is correct but still uncalled until this wiring.
 4. Then rest of §7: Tron testnet adapter, AWS KMS (code-only), on-ramp Transak, Google GIS, i18n 5 locales.
 
-## dev→main merge readiness (2026-09-23)
+## ✅ dev→main MERGED (2026-09-23) — per Abner's direct instruction
 High-effort /code-review DONE (4 finder agents over the money/security delta); all 9 real findings
-FIXED + green. **Recommendation: land TOTP (item 1) BEFORE merging** so the governance approve flow
-actually works, then auto-merge per Abner's §5. If Abner wants to merge sooner, it is defensible now
-(governance is operator-gated and NOT yet wired to any money path), but shipping a known-unusable
-approve is not audit-grade — prefer to fix it first.
+FIXED + green FIRST. Then merged **`dev`→`main`** (explicit merge commit `1f178d1`, `--no-ff`):
+- aligned local main to origin/main, merged dev, re-ran full suite on the merged tree (**494 green,
+  0 fail**), pushed `main` (`34f3ed6..1f178d1`), then fast-forwarded `dev` to main.
+- Final state: `dev == main == origin/main == origin/dev` (all `0 0`).
+- **KNOWN LIMITATION shipped (documented, accepted by Abner):** the Maker-Checker `approve` checker
+  second factor still uses the login-only `User.twoFactorCode` (null for logged-in operators) → approve
+  is effectively unusable until **TOTP-for-all** lands (▶️ NEXT BURST item 1). Governance is
+  operator-gated and NOT wired to any money path yet, so this is latent, not dangerous. Fix it next.
 
 ## Status board
 | Item | Owner | State |

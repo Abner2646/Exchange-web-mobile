@@ -183,4 +183,63 @@ async function resolvePresale({ presaleId }) {
   });
 }
 
-module.exports = { buy, resolvePresale };
+async function createPresale(input) {
+  const {
+    tokenCryptoId, priceUsdt, hardCapUsdt, softCapUsdt,
+    minTicketUsdt, maxTicketUsdt, startDate, endDate
+  } = input;
+
+  if (!tokenCryptoId) {
+    throw new AppError(400, errorCodes.VALIDATION_ERROR, 'Unknown token crypto');
+  }
+
+  const tokenCrypto = await Crypto.findByPk(tokenCryptoId);
+  if (!tokenCrypto) {
+    throw new AppError(400, errorCodes.VALIDATION_ERROR, 'Unknown token crypto');
+  }
+
+  try {
+    if (money.compare(priceUsdt, '0') <= 0) throw new AppError(400, errorCodes.VALIDATION_ERROR, 'Price must be positive');
+    if (money.compare(hardCapUsdt, '0') <= 0) throw new AppError(400, errorCodes.VALIDATION_ERROR, 'Hard cap must be positive');
+    if (money.compare(softCapUsdt, '0') <= 0) throw new AppError(400, errorCodes.VALIDATION_ERROR, 'Soft cap must be positive');
+    if (money.compare(maxTicketUsdt, '0') <= 0) throw new AppError(400, errorCodes.VALIDATION_ERROR, 'Max ticket must be positive');
+    if (money.compare(minTicketUsdt, '0') < 0) throw new AppError(400, errorCodes.VALIDATION_ERROR, 'Min ticket cannot be negative');
+
+    if (money.compare(softCapUsdt, hardCapUsdt) > 0) throw new AppError(400, errorCodes.VALIDATION_ERROR, 'Soft cap cannot exceed hard cap');
+    if (money.compare(minTicketUsdt, maxTicketUsdt) > 0) throw new AppError(400, errorCodes.VALIDATION_ERROR, 'Min ticket cannot exceed max ticket');
+    if (money.compare(maxTicketUsdt, hardCapUsdt) > 0) throw new AppError(400, errorCodes.VALIDATION_ERROR, 'Max ticket cannot exceed hard cap');
+  } catch (err) {
+    if (err instanceof AppError) throw err;
+    throw new AppError(400, errorCodes.VALIDATION_ERROR, 'Invalid monetary value');
+  }
+
+  const sDate = new Date(startDate);
+  const eDate = new Date(endDate);
+  if (isNaN(sDate.getTime()) || isNaN(eDate.getTime()) || sDate >= eDate) {
+    throw new AppError(400, errorCodes.VALIDATION_ERROR, 'Invalid date range');
+  }
+
+  const presale = await Presale.create({
+    tokenCryptoId, priceUsdt, hardCapUsdt, softCapUsdt,
+    minTicketUsdt, maxTicketUsdt, startDate: sDate, endDate: eDate,
+    status: 'PENDING'
+  });
+
+  return presale;
+}
+
+async function activatePresale({ presaleId }) {
+  const presale = await Presale.findByPk(presaleId);
+  if (!presale) {
+    throw new AppError(404, errorCodes.NOT_FOUND, 'Presale not found');
+  }
+
+  if (presale.status !== 'PENDING') {
+    throw new AppError(400, errorCodes.VALIDATION_ERROR, 'Only a pending presale can be activated');
+  }
+
+  await presale.update({ status: 'ACTIVE' });
+  return presale;
+}
+
+module.exports = { buy, resolvePresale, createPresale, activatePresale };

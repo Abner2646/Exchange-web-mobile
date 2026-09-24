@@ -72,6 +72,17 @@ function initBlockchainTransaction(sequelize) {
       defaultValue: false, // con igualdad estricta SQL (= false), que excluye filas NULL y las
       field: 'requires_approval' // dejaría trabadas. Sin NULL posible, esos filtros son correctos.
     },
+    // Dual-control (Maker-Checker / 4-eyes) hold for LARGE withdrawals — independent of the
+    // AML S5 hold (`requiresApproval`). A withdrawal is transmittable only when BOTH are
+    // false (claimForProcessing filters on both), so neither control can release the other.
+    // Set at creation when the server-computed USD magnitude crosses the threshold/ceiling;
+    // cleared only by a DISTINCT checker's approval via the governance engine.
+    dualControlPending: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      field: 'dual_control_pending'
+    },
     approvedBy: {
       type: DataTypes.UUID,
       allowNull: true,

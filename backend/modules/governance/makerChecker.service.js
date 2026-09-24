@@ -40,13 +40,16 @@ function requiresDualControl(amountUsd, configuredThresholdUsd) {
 
 // Maker proposes a privileged action. Returns the pending record. The maker's operator
 // status/MFA is enforced by route middleware; here we only record the proposal + TTL.
-async function propose({ makerUserId, actionType, payload = {}, amountUsd = null }) {
+async function propose({ makerUserId, actionType, payload = {}, amountUsd = null }, { transaction } = {}) {
   if (!makerUserId || !actionType) {
     throw new AppError(400, errorCodes.MAKER_CHECKER_INVALID_STATE, 'makerUserId y actionType son requeridos');
   }
   const ttlHours = await businessConfig.getNumber('maker_checker_ttl_horas', DEFAULT_TTL_HOURS);
   const expiresAt = new Date(Date.now() + ttlHours * 60 * 60 * 1000);
 
+  // The optional transaction lets a caller (e.g. the large-withdrawal path) record the proposal
+  // atomically with the state change that holds the underlying resource — so a held withdrawal
+  // can never exist without its approval path, and vice versa.
   return PendingAdminAction.create({
     actionType,
     payload,
@@ -54,7 +57,7 @@ async function propose({ makerUserId, actionType, payload = {}, amountUsd = null
     status: 'pending',
     makerUserId,
     expiresAt
-  });
+  }, transaction ? { transaction } : undefined);
 }
 
 // A DISTINCT checker authorizes and executes the action. Enforces, in order:
