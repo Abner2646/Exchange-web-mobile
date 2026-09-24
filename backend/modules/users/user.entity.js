@@ -10,6 +10,9 @@ class User extends Model {
     const values = { ...this.get() };
     delete values.amlRiskLevel;
     delete values.amlReviewPending;
+    // The TOTP shared secret is a credential — it must never appear in any serialized
+    // response (it is only ever handed to the user once, as a QR/URI, at enrollment).
+    delete values.totpSecret;
     return values;
   }
 
@@ -188,6 +191,20 @@ function initUser(sequelize) {
       type: DataTypes.DATE,
       allowNull: true,
       field: 'two_factor_code_expires_at'
+    },
+    // TOTP (authenticator-app) 2FA. `totpSecret` is the base32 shared secret, stored at
+    // enrollment (pending) and cleared on disable; `totpEnabled` flips true once a first
+    // token is verified. Excluded from the safe serializer (see toSafeJSON / getById).
+    totpSecret: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'totp_secret'
+    },
+    totpEnabled: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      allowNull: false,
+      field: 'totp_enabled'
     },
     country: {
       type: DataTypes.STRING(2),

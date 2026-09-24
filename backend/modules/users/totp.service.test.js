@@ -33,4 +33,68 @@ describe('TOTP service', () => {
     const dataUrl = await totp.generateQrDataUrl(otpauthUri);
     expect(dataUrl).toMatch(/^data:image\/png;base64,/);
   });
+
+  describe('user orchestration', () => {
+    const fakeUser = (overrides = {}) => ({
+      id: 'u1', email: 'u@x.com', username: 'u', totpSecret: null, totpEnabled: false,
+      update: jest.fn().mockImplementation(function (patch) { Object.assign(this, patch); return this; }),
+      ...overrides,
+    });
+
+    it('beginEnrollment persists a pending secret and returns a URI + QR, without enabling', async () => {
+      const user = fakeUser();
+      const { otpauthUri, secret, qr } = await totp.beginEnrollment(user);
+      expect(user.update).toHaveBeenCalledWith({ totpSecret: secret });
+      expect(user.totpEnabled).toBe(false); // still pending
+      expect(otpauthUri).toMatch(/^otpauth:\/\/totp\//);
+      expect(qr).toMatch(/^data:image\/png;base64,/);
+    });
+
+    it('beginEnrollment refuses to clobber an already-enabled secret', async () => {
+      const user = fakeUser({ totpEnabled: true, totpSecret: 'EXISTING' });
+      await expect(totp.beginEnrollment(user)).rejects.toMatchObject({ code: 'TOTP_ALREADY_ENABLED' });
+      expect(user.update).not.toHaveBeenCalled();
+    });
+
+    it('enable verifies the first token then flips totpEnabled and twoFactorEnabled', async () => {
+      const secret = authenticator.generateSecret();
+      const user = fakeUser({ totpSecret: secret });
+      await totp.enable(user, authenticator.generate(secret));
+      expect(user.update).toHaveBeenCalledWith({ totpEnabled: true, twoFactorEnabled: true });
+    });
+
+    it('enable rejects an invalid first token and does not enable', async () => {
+      const secret = authenticator.generateSecret();
+      const user = fakeUser({ totpSecret: secret });
+      await expect(totp.enable(user, '000000')).rejects.toMatchObject({ code: 'TOTP_INVALID' });
+      expect(user.update).not.toHaveBeenCalled();
+    });
+
+    it('enable rejects when there is no pending enrollment', async () => {
+      const user = fakeUser({ totpSecret: null });
+      await expect(totp.enable(user, '123456')).rejects.toMatchObject({ code: 'TOTP_ENROLLMENT_REQUIRED' });
+    });
+
+    it('verifyForUser returns true for an enabled user with a valid token', () => {
+      const secret = authenticator.generateSecret();
+      const user = fakeUser({ totpSecret: secret, totpEnabled: true });
+      expect(totp.verifyForUser(user, authenticator.generate(secret))).toBe(true);
+    });
+
+    it('verifyForUser throws TOTP_INVALID on a bad token and TOTP_NOT_ENABLED when not enabled', () => {
+      const secret = authenticator.generateSecret();
+      expect(() => totp.verifyForUser(fakeUser({ totpSecret: secret, totpEnabled: true }), '000000'))
+        .toThrow(expect.objectContaining({ code: 'TOTP_INVALID' }));
+      expect(() => totp.verifyForUser(fakeUser({ totpEnabled: false }), '123456'))
+        .toThrow(expect.objectContaining({ code: 'TOTP_NOT_ENABLED' }));
+    });
+
+    it('disable clears the secret only with a valid token', async () => {
+      const secret = authenticator.generateSecret();
+      const user = fakeUser({ totpSecret: secret, totpEnabled: true });
+      await expect(totp.disable(user, '000000')).rejects.toMatchObject({ code: 'TOTP_INVALID' });
+      await totp.disable(user, authenticator.generate(secret));
+      expect(user.update).toHaveBeenCalledWith({ totpSecret: null, totpEnabled: false, twoFactorEnabled: false });
+    });
+  });
 });
