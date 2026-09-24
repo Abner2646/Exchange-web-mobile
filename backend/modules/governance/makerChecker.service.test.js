@@ -159,4 +159,17 @@ describe('makerChecker.propose', () => {
     expect(created.amountUsd).toBe('30000');
     expect(new Date(created.expiresAt).getTime()).toBeGreaterThan(before);
   });
+
+  test('passes a transaction through to the create so the proposal is atomic with its caller', async () => {
+    PendingAdminAction.create.mockResolvedValue({});
+    const tx = { LOCK: { UPDATE: 'UPDATE' } };
+    await svc.propose({ makerUserId: 'maker-1', actionType: 'test_action' }, { transaction: tx });
+    expect(PendingAdminAction.create).toHaveBeenCalledWith(expect.any(Object), { transaction: tx });
+  });
+
+  test('still works with no options object (backward compatible, no transaction)', async () => {
+    PendingAdminAction.create.mockResolvedValue({});
+    await svc.propose({ makerUserId: 'maker-1', actionType: 'test_action' });
+    expect(PendingAdminAction.create).toHaveBeenCalledWith(expect.any(Object), undefined);
+  });
 });

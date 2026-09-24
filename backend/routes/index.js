@@ -27,6 +27,10 @@ const launchpadRoutes = require('../modules/launchpad/launchpad.routes.js')
 const kycRoutes = require('../modules/kyc/kyc.routes.js')
 const governanceRoutes = require('../modules/governance/governance.routes.js')
 
+// Wire the large-withdrawal dual-control executor into the Maker-Checker engine at boot, so a
+// checker's approval of a `large_withdrawal_release` action actually releases the held withdrawal.
+require('../modules/wallets/withdrawalDualControl.service').register()
+
 // Derive routes
 router.use('/auth', authRoutes)
 router.use('/balances', balanceUsuarioRoutes)

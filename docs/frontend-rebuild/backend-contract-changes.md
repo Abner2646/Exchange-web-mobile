@@ -440,8 +440,18 @@ Operator-only governance for privileged actions (4-eyes). All routes require an 
 - `POST /api/governance/:id/reject` — reject with an optional reason.
 - Hard rule: no monetary action above **$20,000 USD** can auto-execute — always dual control (inviolable ceiling; a
   higher configured threshold cannot bypass it). Error codes: `MAKER_CHECKER_SAME_USER/INVALID_STATE/EXPIRED/MFA_INVALID/NOT_FOUND`.
-- Note: the engine is live with a pluggable executor registry; wiring specific privileged effects (e.g. large-withdrawal
-  release, fee changes) into it is per-action follow-up work.
+- A malformed `:id` (not a UUID) returns a clean `404 MAKER_CHECKER_NOT_FOUND` (no 500).
+
+**Wired: large-withdrawal release (LIVE 2026-09-23).** The first privileged effect is now wired into the engine.
+- On `POST /transaccionBlockchain/withdraw`, the server computes the withdrawal's USD magnitude **server-side** from
+  the real crypto + amount (never a client-declared value). If it exceeds the configured threshold (default **> $5,000**,
+  business config `withdrawal_dual_control_usd_threshold`) — or the **$20,000** hard ceiling — the withdrawal is created
+  **held** and a `large_withdrawal_release` pending action is proposed automatically. The held withdrawal is NOT
+  transmitted until a **distinct** operator approves it via `POST /api/governance/:id/approve` with their TOTP code.
+- An asset with no USD valuation (no stable pair) fails **closed** by default (routed to dual control); operators can
+  flip this via business config `withdrawal_dual_control_on_unvaluable` (default `true`).
+- The withdrawal response shape is unchanged; clients should surface that large withdrawals may enter a
+  pending-approval state before they are broadcast on-chain.
 
 ### 15. TOTP authenticator-app 2FA (replaces email-code 2FA) — LIVE enrollment (2026-09-23)
 
