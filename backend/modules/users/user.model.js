@@ -353,7 +353,18 @@ User.toggle2FA = async (id, nuevoEstado) => {
     throw new Error('Usuario no encontrado');
   }
 
-  await user.update({ 
+  // Security: once TOTP is enrolled it IS the account's second factor, and login gates on
+  // twoFactorEnabled. Turning 2FA off through this legacy flag toggle (which takes NO code) would
+  // strip that gate without proving possession of the authenticator — a bypass of the
+  // code-guarded /me/totp/disable. Refuse; disabling must go through the TOTP endpoint.
+  if (nuevoEstado === false && user.totpEnabled) {
+    const AppError = require('../../utils/AppError');
+    const errorCodes = require('../../utils/errorCodes');
+    throw new AppError(400, errorCodes.TOTP_ALREADY_ENABLED,
+      'TOTP está activo: desactivá el segundo factor desde el endpoint TOTP (requiere código)');
+  }
+
+  await user.update({
     twoFactorEnabled: nuevoEstado,
     twoFactorCode: null,
     twoFactorCodeExpiresAt: null
@@ -380,28 +391,9 @@ User.toggle2FA = async (id, nuevoEstado) => {
     return { codigo, user };
   };
 
-  User.verify2FACode = async (id, codigo) => {
-    const user = await User.findByPk(id);
-    if (!user) {
-      throw new Error('Usuario no encontrado');
-    }
-
-    if (!user.twoFactorCode || 
-        user.twoFactorCode !== codigo || 
-        !user.twoFactorCodeExpiresAt || 
-        new Date() > user.twoFactorCodeExpiresAt) {
-      throw new Error('Código 2FA inválido o expirado');
-    }
-
-    await user.update({
-      twoFactorCode: null,
-      twoFactorCodeExpiresAt: null,
-      lastLoginAt: new Date()
-    });
-
-    const token = user.generateUpdatedJWT();
-    return { user, token };
-  };
+  // (User.verify2FACode removed — dead since the Maker-Checker checker second factor migrated to
+  // TOTP. It verified a login-time email code, which never works as a step-up for an already
+  // logged-in operator; leaving it exported invited re-introducing that broken path.)
 
   // ============ MÉTODO CORREGIDO: loginStep1 ============
   User.loginStep1 = async (emailOrUsername, password) => {
@@ -501,8 +493,9 @@ User.toggle2FA = async (id, nuevoEstado) => {
     }
 
     if (user.totpEnabled && user.totpSecret) {
-      // TOTP: verificar contra el secreto de la app (stateless — nada que limpiar).
-      totp.verifyForUser(user, codigo); // lanza si el código es inválido
+      // TOTP: verificar contra el secreto de la app. Single-use (async): un await caído dejaría
+      // pasar un código inválido o repetido, así que SÍ o SÍ se espera.
+      await totp.verifyForUser(user, codigo); // lanza si el código es inválido o ya fue usado
       await user.update({ lastLoginAt: new Date() });
     } else {
       // Legacy: código de 6 dígitos por email.

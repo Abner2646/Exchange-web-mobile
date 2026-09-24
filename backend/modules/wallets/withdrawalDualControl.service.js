@@ -22,16 +22,28 @@ const ACTION_TYPE = 'large_withdrawal_release';
 // withdrawal requires dual control; the $20k hard ceiling in makerChecker can never be raised past.
 const DEFAULT_THRESHOLD_USD = 5000;
 
+// A pair-derived price older than this (or with no timestamp) is NOT trusted to decide dual
+// control: a frozen/manipulated feed could undervalue a truly-large withdrawal below the
+// threshold and skip 4-eyes. Such a price is treated as unvaluable → fail closed. Stable-quote
+// valuations (USDT/USDC/…) are 1:1 and always fresh, so they are exempt.
+const MAX_PRICE_AGE_MS = 3600 * 1000; // 1 hour
+
 // Decide, from the REAL withdrawal, whether it needs dual control. Returns the decision plus the
 // server-computed USD magnitude (stored on the pending action for the audit trail).
 async function evaluate(cryptoId, amount, transaction = null) {
   const valuation = await amlValuation.getUsdValue(cryptoId, amount, transaction);
 
-  if (valuation.usd === null || valuation.usd === undefined) {
-    // We cannot value the asset (no stable pair) → we cannot prove it is under the ceiling.
-    // Fail closed by default (route to human dual control); operator-overridable via config.
+  // Trust the figure only if we actually have a USD value AND (it is a stable 1:1 valuation, or a
+  // pair price with a fresh timestamp). Anything else → we cannot prove the amount is under the
+  // ceiling, so fail closed by default (operator-overridable via config).
+  const priceMs = valuation.priceAsOf ? new Date(valuation.priceAsOf).getTime() : null;
+  const fresh = valuation.source === 'stable'
+    || (priceMs !== null && Date.now() - priceMs <= MAX_PRICE_AGE_MS);
+  const trusted = (valuation.usd !== null && valuation.usd !== undefined) && fresh;
+
+  if (!trusted) {
     const holdUnvaluable = await businessConfig.getBoolean('withdrawal_dual_control_on_unvaluable', true);
-    return { dualControl: holdUnvaluable, amountUsd: null };
+    return { dualControl: holdUnvaluable, amountUsd: valuation.usd ?? null };
   }
 
   const threshold = await businessConfig.getNumber('withdrawal_dual_control_usd_threshold', DEFAULT_THRESHOLD_USD);

@@ -34,6 +34,36 @@ function verifyToken(token, secret) {
   }
 }
 
+// The absolute 30s step a token matches (within the ±1 window), or null if it does not match.
+// Used to enforce single-use: a token is bound to its step, so a consumed step can be rejected.
+function matchedStep(token, secret) {
+  if (!token || !secret) return null;
+  let delta;
+  try {
+    delta = authenticator.checkDelta(String(token), secret);
+  } catch (err) {
+    return null;
+  }
+  if (delta === null || delta === undefined) return null;
+  return Math.floor(Date.now() / 1000 / 30) + delta;
+}
+
+// Validate a token for an enrolled user AND enforce single-use: the old email code was deleted
+// on use (single-use); TOTP must not regress that. A code is bound to its 30s step; once a step
+// (or an earlier one) has been consumed it can never be replayed — closing the ~90s replay window
+// on login, Maker-Checker step-up, and disable. Returns the step to persist, or throws.
+function consumeStep(user, token) {
+  const step = matchedStep(token, user.totpSecret);
+  if (step === null) {
+    throw new AppError(401, errorCodes.TOTP_INVALID, 'Código TOTP inválido');
+  }
+  if (user.totpLastUsedStep !== null && user.totpLastUsedStep !== undefined
+      && step <= Number(user.totpLastUsedStep)) {
+    throw new AppError(401, errorCodes.TOTP_INVALID, 'Código TOTP ya utilizado');
+  }
+  return step;
+}
+
 // Render the provisioning URI as a PNG data URL for the enrollment UI (the client may also
 // just show the otpauth URI / secret for manual entry).
 async function generateQrDataUrl(otpauthUri) {
@@ -55,42 +85,42 @@ async function beginEnrollment(user) {
   return { otpauthUri, secret, qr };
 }
 
-// Complete enrollment: verify the first token against the pending secret, then enable.
+// Complete enrollment: verify the first token against the pending secret, then enable. The
+// enrollment code is consumed (its step recorded) so it cannot be replayed as a login/step-up.
 async function enable(user, token) {
   if (!user.totpSecret) {
     throw new AppError(400, errorCodes.TOTP_ENROLLMENT_REQUIRED, 'No hay enrolamiento TOTP pendiente');
   }
-  if (!verifyToken(token, user.totpSecret)) {
-    throw new AppError(401, errorCodes.TOTP_INVALID, 'Código TOTP inválido');
-  }
-  await user.update({ totpEnabled: true, twoFactorEnabled: true });
+  const step = consumeStep(user, token);
+  await user.update({ totpEnabled: true, twoFactorEnabled: true, totpLastUsedStep: step });
 }
 
-// Verify a token for an enabled user (login 2nd factor / Maker-Checker step-up). Throws on
-// invalid so callers can treat a resolved call as success.
-function verifyForUser(user, token) {
+// Verify a token for an enabled user (login 2nd factor / Maker-Checker step-up). Single-use:
+// records the consumed step and rejects replay. Throws on invalid so callers can treat a
+// resolved call as success. ASYNC — callers MUST await (a dropped await would let a replayed
+// or invalid code slip through the step-up).
+async function verifyForUser(user, token) {
   if (!user || !user.totpEnabled || !user.totpSecret) {
     throw new AppError(400, errorCodes.TOTP_NOT_ENABLED, 'El usuario no tiene TOTP activado');
   }
-  if (!verifyToken(token, user.totpSecret)) {
-    throw new AppError(401, errorCodes.TOTP_INVALID, 'Código TOTP inválido');
-  }
+  const step = consumeStep(user, token);
+  await user.update({ totpLastUsedStep: step });
   return true;
 }
 
 // Disable TOTP — requires a valid current token so a hijacked session cannot silently turn
-// off 2FA without the enrolled device.
+// off 2FA without the enrolled device. Resets the single-use marker for a future re-enrollment.
 async function disable(user, token) {
   if (!user.totpEnabled || !user.totpSecret) {
     throw new AppError(400, errorCodes.TOTP_NOT_ENABLED, 'El usuario no tiene TOTP activado');
   }
-  if (!verifyToken(token, user.totpSecret)) {
-    throw new AppError(401, errorCodes.TOTP_INVALID, 'Código TOTP inválido');
-  }
-  await user.update({ totpSecret: null, totpEnabled: false, twoFactorEnabled: false });
+  const step = consumeStep(user, token);
+  // (step validated for single-use before we clear state, so a replayed code can't disable)
+  void step;
+  await user.update({ totpSecret: null, totpEnabled: false, twoFactorEnabled: false, totpLastUsedStep: null });
 }
 
 module.exports = {
-  generateEnrollmentSecret, verifyToken, generateQrDataUrl, ISSUER,
+  generateEnrollmentSecret, verifyToken, matchedStep, generateQrDataUrl, ISSUER,
   beginEnrollment, enable, verifyForUser, disable,
 };

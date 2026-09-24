@@ -457,13 +457,16 @@ Operator-only governance for privileged actions (4-eyes). All routes require an 
 
 Second factor is migrating to **TOTP** (RFC 6238, e.g. Google Authenticator/Authy). Self-service enrollment
 (all require the user's JWT):
-- `POST /api/usuario/me/totp/setup` — begins enrollment; returns `{ otpauthUri, secret, qr }` where `qr` is a
+- `POST /api/user/me/totp/setup` — begins enrollment; returns `{ otpauthUri, secret, qr }` where `qr` is a
   PNG data URL and `secret` is shown **once** for manual entry. Render the QR for the user to scan. 2FA is NOT yet active.
-- `POST /api/usuario/me/totp/enable` — body `{ codigo }`; verifies the first code and activates TOTP (also flips the
+- `POST /api/user/me/totp/enable` — body `{ codigo }`; verifies the first code and activates TOTP (also flips the
   account's 2FA-enabled flag). `401 TOTP_INVALID` on a wrong code.
-- `POST /api/usuario/me/totp/disable` — body `{ codigo }`; requires a valid current code. `401 TOTP_INVALID`.
+- `POST /api/user/me/totp/disable` — body `{ codigo }`; requires a valid current code. `401 TOTP_INVALID`.
 - Error codes: `TOTP_INVALID / TOTP_NOT_ENABLED / TOTP_ALREADY_ENABLED / TOTP_ENROLLMENT_REQUIRED`.
 - The TOTP `secret` is never returned again after setup and never appears in any user serialization.
+- **Single-use:** a TOTP code is accepted once — replaying the same code (login, step-up, or disable) within its
+  validity window returns `401 TOTP_INVALID`. The legacy `PATCH /api/user/me/2fa-toggle` can no longer turn 2FA off
+  while TOTP is enrolled (returns `400`); disable via the code-verified endpoint above.
 - Used today by the Maker-Checker checker step-up (§14). **Migrating the login second factor** (`/login` →
   `/verify-2fa`) from the email code to TOTP is the next server slice; until then, login may still use the email code
   while governance uses TOTP.

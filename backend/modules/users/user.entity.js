@@ -206,6 +206,13 @@ function initUser(sequelize) {
       allowNull: false,
       field: 'totp_enabled'
     },
+    // Highest 30s TOTP step already consumed by this user. Enforces single-use: a code (bound to
+    // its step) that is <= this value is a replay and is rejected. Null until the first verify.
+    totpLastUsedStep: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      field: 'totp_last_used_step'
+    },
     country: {
       type: DataTypes.STRING(2),
       allowNull: true,

@@ -60,7 +60,9 @@ describe('TOTP service', () => {
       const secret = authenticator.generateSecret();
       const user = fakeUser({ totpSecret: secret });
       await totp.enable(user, authenticator.generate(secret));
-      expect(user.update).toHaveBeenCalledWith({ totpEnabled: true, twoFactorEnabled: true });
+      expect(user.update).toHaveBeenCalledWith(
+        expect.objectContaining({ totpEnabled: true, twoFactorEnabled: true, totpLastUsedStep: expect.any(Number) })
+      );
     });
 
     it('enable rejects an invalid first token and does not enable', async () => {
@@ -75,26 +77,38 @@ describe('TOTP service', () => {
       await expect(totp.enable(user, '123456')).rejects.toMatchObject({ code: 'TOTP_ENROLLMENT_REQUIRED' });
     });
 
-    it('verifyForUser returns true for an enabled user with a valid token', () => {
+    it('verifyForUser resolves true for an enabled user with a valid token', async () => {
       const secret = authenticator.generateSecret();
       const user = fakeUser({ totpSecret: secret, totpEnabled: true });
-      expect(totp.verifyForUser(user, authenticator.generate(secret))).toBe(true);
+      await expect(totp.verifyForUser(user, authenticator.generate(secret))).resolves.toBe(true);
     });
 
-    it('verifyForUser throws TOTP_INVALID on a bad token and TOTP_NOT_ENABLED when not enabled', () => {
+    it('verifyForUser rejects TOTP_INVALID on a bad token and TOTP_NOT_ENABLED when not enabled', async () => {
       const secret = authenticator.generateSecret();
-      expect(() => totp.verifyForUser(fakeUser({ totpSecret: secret, totpEnabled: true }), '000000'))
-        .toThrow(expect.objectContaining({ code: 'TOTP_INVALID' }));
-      expect(() => totp.verifyForUser(fakeUser({ totpEnabled: false }), '123456'))
-        .toThrow(expect.objectContaining({ code: 'TOTP_NOT_ENABLED' }));
+      await expect(totp.verifyForUser(fakeUser({ totpSecret: secret, totpEnabled: true }), '000000'))
+        .rejects.toMatchObject({ code: 'TOTP_INVALID' });
+      await expect(totp.verifyForUser(fakeUser({ totpEnabled: false }), '123456'))
+        .rejects.toMatchObject({ code: 'TOTP_NOT_ENABLED' });
     });
 
-    it('disable clears the secret only with a valid token', async () => {
+    it('verifyForUser is single-use: it records the step and rejects a replay of the same code', async () => {
+      const secret = authenticator.generateSecret();
+      const user = fakeUser({ totpSecret: secret, totpEnabled: true });
+      const token = authenticator.generate(secret);
+      await expect(totp.verifyForUser(user, token)).resolves.toBe(true);
+      expect(user.totpLastUsedStep).toEqual(expect.any(Number)); // step persisted
+      // Same code again within its window → replay rejected (the old email code was single-use too).
+      await expect(totp.verifyForUser(user, token)).rejects.toMatchObject({ code: 'TOTP_INVALID' });
+    });
+
+    it('disable clears the secret only with a valid token and resets the single-use marker', async () => {
       const secret = authenticator.generateSecret();
       const user = fakeUser({ totpSecret: secret, totpEnabled: true });
       await expect(totp.disable(user, '000000')).rejects.toMatchObject({ code: 'TOTP_INVALID' });
       await totp.disable(user, authenticator.generate(secret));
-      expect(user.update).toHaveBeenCalledWith({ totpSecret: null, totpEnabled: false, twoFactorEnabled: false });
+      expect(user.update).toHaveBeenCalledWith(
+        expect.objectContaining({ totpSecret: null, totpEnabled: false, twoFactorEnabled: false, totpLastUsedStep: null })
+      );
     });
   });
 });

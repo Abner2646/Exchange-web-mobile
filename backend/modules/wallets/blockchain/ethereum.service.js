@@ -501,7 +501,8 @@ class EthereumService {
         where: {
           type: 'withdrawal',
           status: 'pending',
-          requiresApproval: false // AML S5: no cargar retiros en hold al pipeline de transmisión
+          requiresApproval: false, // AML S5: no cargar retiros en hold al pipeline de transmisión
+          dualControlPending: false // Maker-Checker: tampoco los retiros grandes sin aprobar (parity + defensa en profundidad; el guard real es claimForProcessing)
         },
         include: [
           {

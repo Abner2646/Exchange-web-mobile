@@ -227,4 +227,40 @@ describe('PATCH /api/usuario/me/2fa-toggle', () => {
     expect(changes).toHaveLength(1);
     expect(changes[0].activado).toBe(true);
   });
+
+  test('cannot disable 2FA via the legacy toggle while TOTP is enrolled (no code-less bypass)', async () => {
+    const secret = authenticator.generateSecret();
+    const user = await f.seedUser({
+      email: '2fatoggletotp@test.local', username: '2fatoggletotpuser',
+      twoFactorEnabled: true, totpEnabled: true, totpSecret: secret,
+    });
+
+    const res = await request(app).patch('/api/user/me/2fa-toggle').set(f.authHeader(user));
+
+    expect(res.status).toBe(400); // refused — must use the code-verified TOTP disable endpoint
+    const reloaded = await User.findByPk(user.id);
+    expect(reloaded.twoFactorEnabled).toBe(true); // 2FA stays ON — the login gate is not stripped
+    expect(reloaded.totpEnabled).toBe(true);
+  });
+});
+
+describe('TOTP single-use (replay) on login', () => {
+  test('a TOTP code that completed a login cannot be replayed on a second login', async () => {
+    const secret = authenticator.generateSecret();
+    const passwordHash = await bcrypt.hash('password123', 12);
+    await f.seedUser({
+      email: 'totpreplay@test.local', username: 'totpreplayuser', passwordHash,
+      twoFactorEnabled: true, totpEnabled: true, totpSecret: secret,
+    });
+
+    const code = authenticator.generate(secret);
+    const login1 = await request(app).post('/api/user/login').send({ emailOrUsername: 'totpreplay@test.local', password: 'password123' });
+    const verify1 = await request(app).post('/api/user/verify-2fa').send({ temporalToken: login1.body.temporalToken, codigo: code });
+    expect(verify1.status).toBe(200);
+
+    // Reuse the SAME code on a fresh login attempt → rejected (single-use).
+    const login2 = await request(app).post('/api/user/login').send({ emailOrUsername: 'totpreplay@test.local', password: 'password123' });
+    const verify2 = await request(app).post('/api/user/verify-2fa').send({ temporalToken: login2.body.temporalToken, codigo: code });
+    expect(verify2.status).toBe(400);
+  });
 });

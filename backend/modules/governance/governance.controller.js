@@ -41,7 +41,7 @@ async function approve(req, res) {
     checkerUserId,
     verifyCheckerSecondFactor: async () => {
       const checker = await User.findByPk(checkerUserId);
-      totp.verifyForUser(checker, codigo); // throws on invalid / not enrolled
+      await totp.verifyForUser(checker, codigo); // throws on invalid / replayed / not enrolled
     },
   });
   res.status(200).json(action);

@@ -33,8 +33,10 @@ describe('withdrawalDualControl.evaluate — server-side USD decision', () => {
     businessConfig.getBoolean.mockResolvedValue(true);
   });
 
-  test('valuable withdrawal below the threshold → no dual control', async () => {
-    amlValuation.getUsdValue.mockResolvedValue({ usd: '4000', source: 'pair' });
+  const freshPair = (usd) => ({ usd, source: 'pair', priceAsOf: new Date() });
+
+  test('valuable withdrawal below the threshold (fresh price) → no dual control', async () => {
+    amlValuation.getUsdValue.mockResolvedValue(freshPair('4000'));
     const res = await svc.evaluate('crypto-1', '1', TX);
     expect(res.dualControl).toBe(false);
     expect(res.amountUsd).toBe('4000');
@@ -42,7 +44,7 @@ describe('withdrawalDualControl.evaluate — server-side USD decision', () => {
   });
 
   test('valuable withdrawal above the threshold → dual control required', async () => {
-    amlValuation.getUsdValue.mockResolvedValue({ usd: '6000', source: 'pair' });
+    amlValuation.getUsdValue.mockResolvedValue(freshPair('6000'));
     const res = await svc.evaluate('crypto-1', '2', TX);
     expect(res.dualControl).toBe(true);
     expect(res.amountUsd).toBe('6000');
@@ -50,9 +52,29 @@ describe('withdrawalDualControl.evaluate — server-side USD decision', () => {
 
   test('the $20k hard ceiling cannot be bypassed by a threshold misconfigured higher', async () => {
     businessConfig.getNumber.mockResolvedValue(50000); // threshold above the hard ceiling
-    amlValuation.getUsdValue.mockResolvedValue({ usd: '30000', source: 'pair' });
+    amlValuation.getUsdValue.mockResolvedValue(freshPair('30000'));
     const res = await svc.evaluate('crypto-1', '3', TX);
     expect(res.dualControl).toBe(true); // 30k > 20k ceiling → dual control regardless
+  });
+
+  test('a STALE pair price fails CLOSED even if it values below the threshold (anti feed-freeze bypass)', async () => {
+    // A frozen/manipulated feed could undervalue a truly-large withdrawal below $5k and skip 4-eyes.
+    const twoHoursAgo = new Date(Date.now() - 2 * 3600 * 1000);
+    amlValuation.getUsdValue.mockResolvedValue({ usd: '4000', source: 'pair', priceAsOf: twoHoursAgo });
+    const res = await svc.evaluate('crypto-1', '1', TX);
+    expect(res.dualControl).toBe(true);
+  });
+
+  test('a pair price with no timestamp is untrusted → fails closed', async () => {
+    amlValuation.getUsdValue.mockResolvedValue({ usd: '10', source: 'pair', priceAsOf: null });
+    const res = await svc.evaluate('crypto-1', '1', TX);
+    expect(res.dualControl).toBe(true);
+  });
+
+  test('a stable-source valuation (USDT etc.) is always fresh and trusted', async () => {
+    amlValuation.getUsdValue.mockResolvedValue({ usd: '100', source: 'stable', priceAsOf: new Date() });
+    const res = await svc.evaluate('crypto-1', '1', TX);
+    expect(res.dualControl).toBe(false);
   });
 
   test('unvaluable asset fails CLOSED by default (cannot prove it is under the ceiling)', async () => {
