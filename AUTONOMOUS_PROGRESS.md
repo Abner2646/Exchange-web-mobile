@@ -2,6 +2,35 @@
 
 **Started:** 2026-09-23. Coordinator: Claude (Opus). Abner is away for several days; full autonomy.
 
+## ✅ SESSION 2026-09-23 (evening) — launchpad admin + Maker-Checker→withdrawals wiring
+Sync check first (clean): dev 7 ahead of origin/main (TOTP epic), origin/dev==dev, no stray tracked changes.
+- **[B] Launchpad admin lifecycle (delegated to Antigravity, my review) — `727a0d4`:** operator-gated
+  `POST /api/launchpad/presales` (create, full caps/price/date validation, tokenCryptoId resolved vs Crypto,
+  all money via utils/money), `/:id/activate` (PENDING→ACTIVE), `/:id/resolve` (wires existing resolvePresale).
+  UUID :id validation, OpenAPI, contract doc. agy wrote it; I verified files+diff+tests myself (15/15).
+- **[C] Maker-Checker → large-withdrawal release (MINE, money-path, TDD) — `90faa99`:** dual control now
+  wired to withdrawals. New `dual_control_pending` column (migration `20260923100000`) INDEPENDENT of the AML
+  `requires_approval` hold (both must be false to transmit → neither control releases the other). In
+  `createWithdrawal`: USD magnitude computed **server-side** via `amlValuation.getUsdValue` from the REAL
+  crypto+amount (never maker-declared); if > threshold (config `withdrawal_dual_control_usd_threshold`, default
+  $5k) or > $20k hard ceiling → row is HELD + `makerChecker.propose('large_withdrawal_release')` **atomically**
+  in the same tx. A DISTINCT checker approves with TOTP → registered executor `releaseDualControlHold` clears the
+  hold atomically → claimable. Unvaluable asset fails CLOSED (config `withdrawal_dual_control_on_unvaluable`,
+  default true). Also: `markWithdrawalAsSent` guard rejects held rows; `claimForProcessing` WHERE now filters
+  both holds; governance `:id` UUID validation (500→404); `makerChecker.propose` accepts a transaction.
+  Executor registered at boot in `routes/index.js`.
+  - **Verification:** unit 529 green (new: withdrawalDualControl.service 9, governance.controller 3,
+    makerChecker +2). Coverage gate OK (functions 22% > 14% floor). Integration suite added
+    (`withdrawalDualControl.integration.test.js`, runs on CI). Local jest integration harness quirk persists
+    (truncate) → verified the full money-path (hold/propose/transmit-block/distinct-checker-release/4-eyes/
+    ceiling) with a standalone script vs the real docker test DB: **18/18 checks passed**.
+  - **DECISION for Abner (documented, reversible via config):** unvaluable-asset withdrawals fail CLOSED
+    (route to dual control) by default. Rationale: can't prove it's under the ceiling. Toggle:
+    `withdrawal_dual_control_on_unvaluable`.
+- **PENDING this session:** `/code-review` high-effort on the dev↔main delta (TOTP epic + these two) → then
+  dev→main merge per §5 authorization.
+
+
 ## ⚠️ 2026-09-23 (session resume) — BRANCH RECONCILIATION (important, read first)
 The HANDOFF premise "main intacto" was **WRONG**. Reality found on resume:
 - `dev` was built on a **stale base** (`f4d2e5a`, pre-PR #31). Meanwhile `origin/main`
