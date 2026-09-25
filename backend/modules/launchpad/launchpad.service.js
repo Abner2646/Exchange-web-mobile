@@ -251,9 +251,24 @@ async function settlePresaleExecutor(payload, transaction) {
   return { settled: true, presaleId: presale.id, status: presale.status };
 }
 
-// Wire the executor into the governance engine. Called once at app boot.
+// Compensator: the dual-control action was REJECTED by a checker or EXPIRED past its TTL without
+// executing. Return the held presale to ACTIVE so it can be resolved again — otherwise it would be
+// stranded in RESOLUTION_PENDING forever, locking buyers' USDT in escrow with no path to refund or
+// re-resolve. Idempotent: only reverts if still held. No money moves here (settlement never ran).
+async function revertHeldPresale(payload, transaction) {
+  const presale = await Presale.findByPk(payload.presaleId, {
+    lock: transaction.LOCK.UPDATE,
+    transaction
+  });
+  if (presale && presale.status === HELD_STATUS) {
+    await presale.update({ status: 'ACTIVE' }, { transaction });
+  }
+}
+
+// Wire the executor + compensator into the governance engine. Called once at app boot.
 function register() {
   makerChecker.registerExecutor(DUAL_CONTROL_ACTION, settlePresaleExecutor);
+  makerChecker.registerCompensator(DUAL_CONTROL_ACTION, revertHeldPresale);
 }
 
 async function createPresale(input) {
@@ -320,6 +335,7 @@ module.exports = {
   resolvePresale,
   settlePresale,
   settlePresaleExecutor,
+  revertHeldPresale,
   register,
   createPresale,
   activatePresale,

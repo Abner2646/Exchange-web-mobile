@@ -8,6 +8,7 @@ function op(overrides = {}) {
     id: overrides.id || 'op-1',
     email: overrides.email || 'op@exchange.test',
     role: overrides.role || 'admin',
+    active: true,
     totpEnabled: true,
     twoFactorEnabled: true,
     ...overrides,
@@ -62,6 +63,24 @@ describe('operatorReadiness.assessMfaReadiness — dual-control deploy gate', ()
     const r = svc.assessMfaReadiness([op({ id: 'a' }), op({ id: 'b' })], { minEnrolled: 3 });
     expect(r.minEnrolled).toBe(3);
     expect(r.ready).toBe(false);
+  });
+
+  test('a DEACTIVATED enrolled operator does NOT count (cannot authenticate to approve)', () => {
+    // authenticateToken 401s inactive users, so an inactive operator can never be a checker.
+    const r = svc.assessMfaReadiness([op({ id: 'a' }), op({ id: 'b', active: false })]);
+    expect(r.enrolledCount).toBe(1);
+    expect(r.ready).toBe(false);
+    expect(r.pending.map((o) => o.id)).toContain('b');
+  });
+
+  test('a nonsensical minEnrolled (< 1 or non-integer) fails closed to the default, not fail-open', () => {
+    // A negative env-derived value must NOT make `enrolledCount < min` never true.
+    const none = svc.assessMfaReadiness([], { minEnrolled: -1 });
+    expect(none.minEnrolled).toBe(svc.DEFAULT_MIN_ENROLLED);
+    expect(none.ready).toBe(false);
+    const one = svc.assessMfaReadiness([op({ id: 'a' })], { minEnrolled: 0 });
+    expect(one.minEnrolled).toBe(svc.DEFAULT_MIN_ENROLLED);
+    expect(one.ready).toBe(false);
   });
 
   test('enrolled/pending summaries never leak secret material', () => {

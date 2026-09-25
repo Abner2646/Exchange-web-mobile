@@ -327,12 +327,36 @@ describe('Launchpad Service', () => {
       expect(PendingAdminAction.create).not.toHaveBeenCalled();
     });
 
-    it('register() wires the executor into the Maker-Checker engine', () => {
+    it('register() wires BOTH the executor and the compensator into the Maker-Checker engine', () => {
       const makerChecker = require('../governance/makerChecker.service');
-      const spy = jest.spyOn(makerChecker, 'registerExecutor');
+      const execSpy = jest.spyOn(makerChecker, 'registerExecutor');
+      const compSpy = jest.spyOn(makerChecker, 'registerCompensator');
       register();
-      expect(spy).toHaveBeenCalledWith(DUAL_CONTROL_ACTION, expect.any(Function));
-      spy.mockRestore();
+      expect(execSpy).toHaveBeenCalledWith(DUAL_CONTROL_ACTION, expect.any(Function));
+      expect(compSpy).toHaveBeenCalledWith(DUAL_CONTROL_ACTION, expect.any(Function));
+      execSpy.mockRestore();
+      compSpy.mockRestore();
+    });
+
+    it('compensator reverts a HELD presale back to ACTIVE (reject/expiry — no stranded funds)', async () => {
+      const { revertHeldPresale } = require('./launchpad.service');
+      const presale = heldPresale({ status: HELD_STATUS });
+      Presale.findByPk.mockResolvedValue(presale);
+
+      await revertHeldPresale({ presaleId: 'p-big' }, { LOCK: { UPDATE: 'UPDATE' } });
+
+      expect(presale.update).toHaveBeenCalledWith({ status: 'ACTIVE' }, expect.any(Object));
+      expect(postTransaction).not.toHaveBeenCalled(); // no money moves on revert
+    });
+
+    it('compensator is idempotent: does nothing if the presale is no longer held', async () => {
+      const { revertHeldPresale } = require('./launchpad.service');
+      const presale = heldPresale({ status: 'RESOLVED_SUCCESS' });
+      Presale.findByPk.mockResolvedValue(presale);
+
+      await revertHeldPresale({ presaleId: 'p-big' }, { LOCK: { UPDATE: 'UPDATE' } });
+
+      expect(presale.update).not.toHaveBeenCalled();
     });
   });
 

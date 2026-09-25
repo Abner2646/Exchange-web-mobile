@@ -26,7 +26,10 @@ function line(op) {
 }
 
 async function main() {
-  const minEnrolled = Number(process.env.OPERATOR_MFA_MIN_ENROLLED) || readiness.DEFAULT_MIN_ENROLLED;
+  // Fail closed on a bad override (negative / zero / non-integer) → use the default, never a value
+  // that would make the gate fail-open. assessMfaReadiness clamps too (defense in depth).
+  const raw = Number(process.env.OPERATOR_MFA_MIN_ENROLLED);
+  const minEnrolled = (Number.isInteger(raw) && raw >= 1) ? raw : readiness.DEFAULT_MIN_ENROLLED;
   await sequelize.authenticate();
 
   const operators = await readiness.loadOperators();

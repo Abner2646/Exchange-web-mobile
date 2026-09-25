@@ -21,9 +21,12 @@
 // Two enrolled operators is the minimum for a satisfiable maker≠checker release.
 const DEFAULT_MIN_ENROLLED = 2;
 
-// An operator is release-capable only when BOTH flags are set (see (a)/(b) above).
+// An operator is release-capable only when it can BOTH authenticate AND satisfy the second
+// factor: it must be ACTIVE (authenticateToken rejects `!active` with 401, so an inactive
+// operator can never reach the approve route — counting it would green-light a state where no
+// distinct checker can actually act) AND have BOTH MFA flags set (see (a)/(b) above).
 function isEnrolled(op) {
-  return !!(op && op.totpEnabled && op.twoFactorEnabled);
+  return !!(op && op.active && op.totpEnabled && op.twoFactorEnabled);
 }
 
 // Project only non-sensitive fields — never echo totpSecret/password into a report.
@@ -32,6 +35,7 @@ function summarize(op) {
     id: op.id,
     email: op.email,
     role: op.role,
+    active: !!op.active,
     totpEnabled: !!op.totpEnabled,
     twoFactorEnabled: !!op.twoFactorEnabled,
   };
@@ -41,6 +45,9 @@ function summarize(op) {
 // Returns { ready, operatorCount, enrolledCount, minEnrolled, enrolled[], pending[], reasons[] }.
 function assessMfaReadiness(operators, { minEnrolled = DEFAULT_MIN_ENROLLED } = {}) {
   const list = Array.isArray(operators) ? operators : [];
+  // Fail closed on a nonsensical minimum (< 1 or non-integer): fall back to the default rather
+  // than let, e.g., a negative env-derived value make `enrolledCount < min` never true (fail-open).
+  const min = (Number.isInteger(minEnrolled) && minEnrolled >= 1) ? minEnrolled : DEFAULT_MIN_ENROLLED;
   const enrolled = list.filter(isEnrolled);
   const pending = list.filter((o) => !isEnrolled(o));
   const reasons = [];
@@ -48,9 +55,9 @@ function assessMfaReadiness(operators, { minEnrolled = DEFAULT_MIN_ENROLLED } = 
   if (list.length === 0) {
     reasons.push('No hay operadores (role admin/super_admin) en el sistema.');
   }
-  if (enrolled.length < minEnrolled) {
+  if (enrolled.length < min) {
     reasons.push(
-      `Se requieren al menos ${minEnrolled} operadores con TOTP habilitado para que el ` +
+      `Se requieren al menos ${min} operadores ACTIVOS con TOTP habilitado para que el ` +
       `control dual (maker≠checker) sea liberable; hay ${enrolled.length}.`
     );
   }
@@ -59,7 +66,7 @@ function assessMfaReadiness(operators, { minEnrolled = DEFAULT_MIN_ENROLLED } = 
     ready: reasons.length === 0,
     operatorCount: list.length,
     enrolledCount: enrolled.length,
-    minEnrolled,
+    minEnrolled: min,
     enrolled: enrolled.map(summarize),
     pending: pending.map(summarize),
     reasons,
@@ -76,9 +83,12 @@ const OPERATOR_ROLES = ['admin', 'super_admin'];
 async function loadOperators() {
   const { User } = require('../../models');
   const { Op } = require('sequelize');
+  // Only ACTIVE operators can authenticate to act as a checker (authenticateToken 401s inactive
+  // users), so an inactive operator must not count toward readiness. Filter in the query and also
+  // project `active` so the pure assessor's `isEnrolled` re-checks it (defense in depth).
   return User.findAll({
-    where: { role: { [Op.in]: OPERATOR_ROLES } },
-    attributes: ['id', 'email', 'role', 'totpEnabled', 'twoFactorEnabled'],
+    where: { role: { [Op.in]: OPERATOR_ROLES }, active: true },
+    attributes: ['id', 'email', 'role', 'active', 'totpEnabled', 'twoFactorEnabled'],
     order: [['role', 'DESC'], ['email', 'ASC']],
   });
 }

@@ -424,6 +424,8 @@ Three new endpoints govern the presale lifecycle. These are strictly operator-ga
     `RESOLUTION_PENDING` and is **not** settled until a **distinct** operator (checker) approves the action via
     `POST /api/governance/:actionId/approve` (with a TOTP code). Clients should surface the pending state and the
     maker≠checker requirement. A second `resolve` on a `RESOLUTION_PENDING` presale returns `400`.
+    If the checker **rejects** the action, or it **expires** past its TTL, the presale is reverted to
+    `ACTIVE` (no money moved) so it can be resolved again — funds are never stranded in escrow.
 
 ---
 
