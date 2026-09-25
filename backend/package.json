@@ -8,6 +8,7 @@
     "dev": "nodemon --inspect=0.0.0.0:9229 server.js",
     "migrate": "npx sequelize-cli db:migrate",
     "seed": "npx sequelize-cli db:seed:all",
+    "check:operator-mfa": "node scripts/checkOperatorMfaReadiness.js",
     "test": "jest --config jest.config.js",
     "test:coverage": "jest --config jest.config.js --coverage",
     "test:integration": "jest --config jest.integration.config.js",
