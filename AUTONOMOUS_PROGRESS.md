@@ -7,7 +7,7 @@ Sync check first (clean): dev 1 ahead of origin/main (docs-only `cc044dc`), orig
 tracked changes. Branches healthy, no stale base. All work below is MINE (money-path/auth), TDD, pushed
 after each commit.
 
-- **[A] Operator MFA readiness gate — `<pending merge>`:** resolves the deploy precondition (after the TOTP
+- **[A] Operator MFA readiness gate — `merged to main 0b4c7e4`:** resolves the deploy precondition (after the TOTP
   migration every operator is un-enrolled → a held large withdrawal can never be released). Audit-grade choice:
   do NOT generate operator secrets in a script (that would leak secret material to logs) — enrollment stays
   self-service via `/api/user/me/totp/{setup,enable}`. Added instead:
@@ -19,7 +19,7 @@ after each commit.
     (exit 1) until ready, prints NO secret material.
   - Runbook `docs/runbooks/operator-totp-enrollment.md`.
   - Verified: unit +8 green, coverage OK.
-- **[B] Control parity — large presale resolution now dual-controlled — `<pending merge>`:** launchpad `resolve`
+- **[B] Control parity — large presale resolution now dual-controlled — `merged to main 0b4c7e4`:** launchpad `resolve`
   is a privileged BULK money movement (raised USDT → house TREASURY on success; refunds on failure) that a single
   operator could settle at any size — asymmetric vs large withdrawals. Fixed:
   - `resolvePresale` HOLDS a large resolution (`status='RESOLUTION_PENDING'`, STRING field, no migration) and
@@ -32,11 +32,32 @@ after each commit.
   - Fixed a latent bug: launchpad `validateUUID` referenced `errorCodes` without importing it (ReferenceError on a
     malformed id). OpenAPI + frontend contract doc updated for the 202 path.
   - Verified: unit +8 green, coverage OK.
-- **[C] Hardening — `<pending merge>`:** `utils/uuid.isUuid` shared helper replaces the identical UUID regex
+- **[C] Hardening — `merged to main 0b4c7e4`:** `utils/uuid.isUuid` shared helper replaces the identical UUID regex
   copy-pasted in governance/launchpad/swap (callers keep their own throw semantics). `totpSetupLimiter`
   (5/15min per user) on POST /me/totp/setup (was unlimited secret+QR churn). Evaluated closing the legacy
   email-2FA path (`twoFactorMethod`): KEPT — only revealed post-password (not pre-auth enumeration) and it's the
   intentional no-lockout fallback during TOTP migration; removal belongs to migration completion. Unit +4 green.
+
+### [GATE] /code-review high-effort on the dev↔main delta — DONE, all real findings FIXED
+Ran 3 parallel finder agents (money-path launchpad, operator-readiness/rate-limiter, UUID refactor) +
+my own state-machine/lifecycle angle. UUID refactor: clean (behavior-preserving, verified byte-equivalent).
+The gate itself is sound (no dual-control bypass, atomic hold+propose, no double-settle). Three REAL findings,
+all fixed with TDD (`<review-fix commit>`, re-verified 562 green):
+- **[F1, stranded funds — the material one]** a rejected/expired `large_presale_resolve` left the presale in
+  RESOLUTION_PENDING forever, locking buyers' USDT in escrow (worse than a held withdrawal — a shared singleton
+  with no retry). Fixed at altitude: general **compensator** hook in the Maker-Checker engine
+  (`registerCompensator`), run atomically inside reject() + expireStale() (refactored to per-row, re-locked).
+  Launchpad registers a compensator that reverts a held presale to ACTIVE. Also fixes the class systemically.
+- **[F2, false-positive READY]** operator readiness counted deactivated (un-authenticatable) operators →
+  `active` now required in `isEnrolled` + query filter/projection.
+- **[F3, fail-open]** `OPERATOR_MFA_MIN_ENROLLED` negative bypassed the gate → clamped in both script + pure fn.
+- Low-severity note (not fixed, correct as-is): dual-control keys on gross `totalRaisedUsdt` (auditor-trail only;
+  $0/null settlement moves no money).
+
+- **✅ dev→main MERGED (`0b4c7e4`, `--no-ff`).** Re-ran full unit suite on the merged tree (**562 green**, coverage
+  gate OK), pushed main, fast-forwarded dev. Final: `dev == main == origin/main == origin/dev == 0b4c7e4` (all 0 0).
+  Delta shipped: operator MFA readiness gate + runbook, launchpad large-resolution dual control, shared UUID helper,
+  TOTP-setup rate limiter, + Maker-Checker compensator lifecycle (reject/expiry releases held resources).
 
 ### Deferred follow-ups (documented, NOT silent gaps) — next control-parity targets
 - **Admin balance-mutation endpoints are still single-operator** (bigger asymmetry than launchpad was):
@@ -45,6 +66,10 @@ after each commit.
   no 4-eyes. Route the large-magnitude ones through Maker-Checker next (each needs a held/deferred posting +
   executor + TDD — its own careful money-path burst; not rushed here).
 - Operator MFA is still flag-only (no fresh per-action step-up) — ROADMAP §4.9 (operator realm / Cognito).
+- **Withdrawal dual-control compensator:** the Maker-Checker compensator mechanism now exists, but the
+  `large_withdrawal_release` action registers NONE — a rejected/expired large withdrawal stays `dualControlPending`
+  (held) as before. Its compensation (cancel the withdrawal + refund the user's held funds to available) needs its
+  own state-machine design + TDD; wire it once designed (now cheap: just `registerCompensator('large_withdrawal_release', ...)`).
 
 ## ✅ SESSION 2026-09-23 (evening) — launchpad admin + Maker-Checker→withdrawals wiring
 Sync check first (clean): dev 7 ahead of origin/main (TOTP epic), origin/dev==dev, no stray tracked changes.
