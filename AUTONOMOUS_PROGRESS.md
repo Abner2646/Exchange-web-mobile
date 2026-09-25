@@ -2,6 +2,50 @@
 
 **Started:** 2026-09-23. Coordinator: Claude (Opus). Abner is away for several days; full autonomy.
 
+## ✅ SESSION 2026-09-25 — close the governance/dual-control/TOTP thread (§7 A/B/C)
+Sync check first (clean): dev 1 ahead of origin/main (docs-only `cc044dc`), origin/dev==dev, no stray
+tracked changes. Branches healthy, no stale base. All work below is MINE (money-path/auth), TDD, pushed
+after each commit.
+
+- **[A] Operator MFA readiness gate — `<pending merge>`:** resolves the deploy precondition (after the TOTP
+  migration every operator is un-enrolled → a held large withdrawal can never be released). Audit-grade choice:
+  do NOT generate operator secrets in a script (that would leak secret material to logs) — enrollment stays
+  self-service via `/api/user/me/totp/{setup,enable}`. Added instead:
+  - `modules/governance/operatorReadiness.service.js`: pure `assessMfaReadiness(operators, {minEnrolled=2})` —
+    dual control is usable only when ≥2 distinct operators are fully enrolled (`totpEnabled && twoFactorEnabled`),
+    matching what releasing a held withdrawal actually requires (requireOperatorMFA + totp.verifyForUser + 4-eyes).
+    Thin `loadOperators` DB wrapper kept separate so the invariant is unit-tested without a DB.
+  - `scripts/checkOperatorMfaReadiness.js` (`npm run check:operator-mfa`): read-only deploy gate, fails closed
+    (exit 1) until ready, prints NO secret material.
+  - Runbook `docs/runbooks/operator-totp-enrollment.md`.
+  - Verified: unit +8 green, coverage OK.
+- **[B] Control parity — large presale resolution now dual-controlled — `<pending merge>`:** launchpad `resolve`
+  is a privileged BULK money movement (raised USDT → house TREASURY on success; refunds on failure) that a single
+  operator could settle at any size — asymmetric vs large withdrawals. Fixed:
+  - `resolvePresale` HOLDS a large resolution (`status='RESOLUTION_PENDING'`, STRING field, no migration) and
+    proposes a `large_presale_resolve` Maker-Checker action ATOMICALLY instead of settling. Contributions are USDT
+    (~USD 1:1) so `totalRaisedUsdt` is the USD magnitude directly — no oracle. `makerChecker.requiresDualControl`
+    enforces `launchpad_dual_control_usd_threshold` + the inviolable $20k hard ceiling. A distinct checker approves
+    with TOTP → registered executor `settlePresaleExecutor` settles atomically; it re-asserts RESOLUTION_PENDING so
+    a replayed/concurrent approval can never double-settle. Settlement extracted to shared `settlePresale(presale,tx)`.
+  - Executor registered at boot in `routes/index.js`. Controller returns 202 `{pending,actionId,presale}` when held.
+  - Fixed a latent bug: launchpad `validateUUID` referenced `errorCodes` without importing it (ReferenceError on a
+    malformed id). OpenAPI + frontend contract doc updated for the 202 path.
+  - Verified: unit +8 green, coverage OK.
+- **[C] Hardening — `<pending merge>`:** `utils/uuid.isUuid` shared helper replaces the identical UUID regex
+  copy-pasted in governance/launchpad/swap (callers keep their own throw semantics). `totpSetupLimiter`
+  (5/15min per user) on POST /me/totp/setup (was unlimited secret+QR churn). Evaluated closing the legacy
+  email-2FA path (`twoFactorMethod`): KEPT — only revealed post-password (not pre-auth enumeration) and it's the
+  intentional no-lockout fallback during TOTP migration; removal belongs to migration completion. Unit +4 green.
+
+### Deferred follow-ups (documented, NOT silent gaps) — next control-parity targets
+- **Admin balance-mutation endpoints are still single-operator** (bigger asymmetry than launchpad was):
+  `PUT /balances/user/:userId/crypto/:cryptoId` (updateBalance — directly sets a balance), `POST .../block`,
+  `POST .../unblock`, `POST /balances/user/transfer` (admin transfer between users). Each is operator+MFA but
+  no 4-eyes. Route the large-magnitude ones through Maker-Checker next (each needs a held/deferred posting +
+  executor + TDD — its own careful money-path burst; not rushed here).
+- Operator MFA is still flag-only (no fresh per-action step-up) — ROADMAP §4.9 (operator realm / Cognito).
+
 ## ✅ SESSION 2026-09-23 (evening) — launchpad admin + Maker-Checker→withdrawals wiring
 Sync check first (clean): dev 7 ahead of origin/main (TOTP epic), origin/dev==dev, no stray tracked changes.
 - **[B] Launchpad admin lifecycle (delegated to Antigravity, my review) — `727a0d4`:** operator-gated
