@@ -31,6 +31,10 @@ const governanceRoutes = require('../modules/governance/governance.routes.js')
 // checker's approval of a `large_withdrawal_release` action actually releases the held withdrawal.
 require('../modules/wallets/withdrawalDualControl.service').register()
 
+// Same for large presale resolutions: a checker's approval of `large_presale_resolve` settles the
+// held presale (control parity with large withdrawals — no single-operator bulk settlement).
+require('../modules/launchpad/launchpad.service').register()
+
 // Derive routes
 router.use('/auth', authRoutes)
 router.use('/balances', balanceUsuarioRoutes)

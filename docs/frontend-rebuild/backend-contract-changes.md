@@ -417,7 +417,13 @@ Three new endpoints govern the presale lifecycle. These are strictly operator-ga
 - `POST /api/launchpad/presales/:id/activate` (auth: operator + MFA): marks a `PENDING` presale as `ACTIVE`.
   - Only active presales accept contributions. Returns `200` with the updated presale.
 - `POST /api/launchpad/presales/:id/resolve` (auth: operator + MFA): manually resolves an `ACTIVE` presale.
-  - Returns `200` with the resolved presale (`RESOLVED_SUCCESS` or `RESOLVED_FAILED`).
+  - **Small resolution** (settled USD ≤ `launchpad_dual_control_usd_threshold`): returns `200` with the
+    resolved presale (`RESOLVED_SUCCESS` or `RESOLVED_FAILED`).
+  - **Large resolution** (settled USD > threshold, hard ceiling $20k): now **DUAL-CONTROLLED** for parity with
+    large withdrawals. Returns `202` with `{ pending: true, actionId, presale }`; the presale moves to
+    `RESOLUTION_PENDING` and is **not** settled until a **distinct** operator (checker) approves the action via
+    `POST /api/governance/:actionId/approve` (with a TOTP code). Clients should surface the pending state and the
+    maker≠checker requirement. A second `resolve` on a `RESOLUTION_PENDING` presale returns `400`.
 
 ---
 

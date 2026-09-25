@@ -1,6 +1,7 @@
 const { Presale, Contribution } = require('./launchpad.model');
 const launchpadService = require('./launchpad.service');
 const AppError = require('../../utils/AppError');
+const errorCodes = require('../../utils/errorCodes');
 const asyncHandler = require('../../utils/asyncHandler');
 const idempotency = require('../../middleware/idempotency.middleware');
 
@@ -59,8 +60,16 @@ const activatePresale = asyncHandler(async (req, res) => {
 
 const resolvePresale = asyncHandler(async (req, res) => {
   validateUUID(req.params.id);
-  const result = await launchpadService.resolvePresale({ presaleId: req.params.id });
-  res.status(200).json(result);
+  const result = await launchpadService.resolvePresale({
+    presaleId: req.params.id,
+    makerUserId: req.user.id,
+  });
+  // A large resolution is HELD pending a distinct checker's approval (control parity with large
+  // withdrawals) → 202 Accepted with the pending action id; a small one settles immediately → 200.
+  if (result.pending) {
+    return res.status(202).json({ pending: true, actionId: result.action.id, presale: result.presale });
+  }
+  res.status(200).json(result.presale);
 });
 
 module.exports = {

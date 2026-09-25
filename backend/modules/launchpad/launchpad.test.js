@@ -1,4 +1,7 @@
-const { buy, resolvePresale, createPresale, activatePresale } = require('./launchpad.service');
+const {
+  buy, resolvePresale, createPresale, activatePresale,
+  settlePresaleExecutor, register, HELD_STATUS, DUAL_CONTROL_ACTION,
+} = require('./launchpad.service');
 const { Presale, Contribution } = require('./launchpad.model');
 const { postTransaction } = require('../balances/ledger/postingService');
 const { PURPOSES } = require('../balances/ledger/ledgerAccounts');
@@ -24,6 +27,20 @@ jest.mock('./launchpad.model', () => ({
 jest.mock('../balances/ledger/postingService', () => ({
   postTransaction: jest.fn()
 }));
+
+// Mock the pending-action model so the REAL makerChecker.service loads (we exercise its real
+// requiresDualControl + propose) without touching a database.
+jest.mock('../governance/governance.model', () => ({
+  PendingAdminAction: { create: jest.fn(), findByPk: jest.fn(), update: jest.fn() }
+}));
+
+// businessConfig is DB-backed; return the provided default for every key (threshold=20000, ttl=24).
+jest.mock('../config/businessConfig', () => ({
+  getNumber: jest.fn((key, def) => Promise.resolve(def)),
+  getBoolean: jest.fn((key, def) => Promise.resolve(def)),
+}));
+
+const { PendingAdminAction } = require('../governance/governance.model');
 
 describe('Launchpad Service', () => {
   beforeEach(() => {
@@ -220,6 +237,102 @@ describe('Launchpad Service', () => {
         }),
         expect.any(Object)
       );
+    });
+  });
+
+  describe('resolvePresale — dual control parity with large withdrawals', () => {
+    const heldPresale = (overrides = {}) => ({
+      id: 'p-big',
+      tokenCryptoId: 'token-uuid',
+      totalRaisedUsdt: '25000', // above the $20k default threshold / hard ceiling
+      softCapUsdt: '500',
+      status: 'ACTIVE',
+      update: jest.fn(),
+      ...overrides,
+    });
+
+    it('HOLDS a large resolution and proposes a Maker-Checker action instead of settling', async () => {
+      const presale = heldPresale();
+      Presale.findByPk.mockResolvedValue(presale);
+      PendingAdminAction.create.mockResolvedValue({ id: 'action-99' });
+
+      const result = await resolvePresale({ presaleId: 'p-big', makerUserId: 'op-1' });
+
+      expect(result.pending).toBe(true);
+      // Presale is held, NOT settled.
+      expect(presale.update).toHaveBeenCalledWith({ status: HELD_STATUS }, expect.any(Object));
+      expect(postTransaction).not.toHaveBeenCalled();
+      // A pending action was proposed with the server-computed USD magnitude and the maker.
+      expect(PendingAdminAction.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actionType: DUAL_CONTROL_ACTION,
+          amountUsd: '25000',
+          makerUserId: 'op-1',
+          payload: { presaleId: 'p-big' },
+        }),
+        expect.any(Object)
+      );
+    });
+
+    it('refuses a large resolution with no maker (cannot propose without an operator)', async () => {
+      Presale.findByPk.mockResolvedValue(heldPresale());
+      await expect(resolvePresale({ presaleId: 'p-big' })).rejects.toThrow(/maker|operador/i);
+      expect(postTransaction).not.toHaveBeenCalled();
+    });
+
+    it('settles a SMALL resolution immediately (below threshold, no 4-eyes)', async () => {
+      const presale = heldPresale({ totalRaisedUsdt: '600' });
+      Presale.findByPk.mockResolvedValue(presale);
+      Contribution.findAll.mockResolvedValue([{ userId: 'u1', amountUsdt: '600', tokenAmount: '300' }]);
+      Crypto.getBySymbol.mockResolvedValue({ id: 'usdt-uuid' });
+
+      const result = await resolvePresale({ presaleId: 'p-small', makerUserId: 'op-1' });
+
+      expect(result.pending).toBe(false);
+      expect(PendingAdminAction.create).not.toHaveBeenCalled();
+      expect(presale.update).toHaveBeenCalledWith({ status: 'RESOLVED_SUCCESS' }, expect.any(Object));
+    });
+
+    it('executor settles a HELD presale on checker approval', async () => {
+      const presale = heldPresale({ status: HELD_STATUS });
+      Presale.findByPk.mockResolvedValue(presale);
+      Contribution.findAll.mockResolvedValue([{ userId: 'u1', amountUsdt: '25000', tokenAmount: '12500' }]);
+      Crypto.getBySymbol.mockResolvedValue({ id: 'usdt-uuid' });
+      const tx = { LOCK: { UPDATE: 'UPDATE' } };
+
+      const out = await settlePresaleExecutor({ presaleId: 'p-big' }, tx);
+
+      expect(out.settled).toBe(true);
+      expect(presale.update).toHaveBeenCalledWith({ status: 'RESOLVED_SUCCESS' }, expect.any(Object));
+      expect(postTransaction).toHaveBeenCalled();
+    });
+
+    it('executor THROWS if the presale is not held (anti double-settle / replay)', async () => {
+      Presale.findByPk.mockResolvedValue(heldPresale({ status: 'RESOLVED_SUCCESS' }));
+      await expect(settlePresaleExecutor({ presaleId: 'p-big' }, { LOCK: { UPDATE: 'UPDATE' } }))
+        .rejects.toThrow(/not held/i);
+      expect(postTransaction).not.toHaveBeenCalled();
+    });
+
+    it('executor THROWS if the presale is gone', async () => {
+      Presale.findByPk.mockResolvedValue(null);
+      await expect(settlePresaleExecutor({ presaleId: 'missing' }, { LOCK: { UPDATE: 'UPDATE' } }))
+        .rejects.toThrow(/no presale/i);
+    });
+
+    it('rejects resolving a presale that is already held/resolved (no duplicate proposal)', async () => {
+      Presale.findByPk.mockResolvedValue(heldPresale({ status: HELD_STATUS }));
+      await expect(resolvePresale({ presaleId: 'p-big', makerUserId: 'op-1' }))
+        .rejects.toThrow(/already resolved or pending/i);
+      expect(PendingAdminAction.create).not.toHaveBeenCalled();
+    });
+
+    it('register() wires the executor into the Maker-Checker engine', () => {
+      const makerChecker = require('../governance/makerChecker.service');
+      const spy = jest.spyOn(makerChecker, 'registerExecutor');
+      register();
+      expect(spy).toHaveBeenCalledWith(DUAL_CONTROL_ACTION, expect.any(Function));
+      spy.mockRestore();
     });
   });
 
