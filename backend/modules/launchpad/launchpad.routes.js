@@ -130,6 +130,11 @@ router.post('/presales/:id/activate', authenticateToken, requireOperatorMFA, asy
  * /api/launchpad/presales/{id}/resolve:
  *   post:
  *     summary: Resolver una preventa (completar o reembolsar)
+ *     description: >
+ *       Una resolución pequeña se liquida al instante (200). Una resolución grande
+ *       (monto liquidado > umbral `launchpad_dual_control_usd_threshold`, techo duro $20k)
+ *       queda RETENIDA bajo control dual (Maker-Checker) y devuelve 202 con el `actionId`;
+ *       un checker distinto debe aprobarla con TOTP para que se liquide.
  *     tags: [Launchpad]
  *     security:
  *       - bearerAuth: []
@@ -142,7 +147,12 @@ router.post('/presales/:id/activate', authenticateToken, requireOperatorMFA, asy
  *           format: uuid
  *     responses:
  *       200:
- *         description: Preventa resuelta
+ *         description: Preventa resuelta (liquidación inmediata)
+ *       202:
+ *         description: >
+ *           Resolución grande retenida para control dual. Body:
+ *           `{ pending: true, actionId, presale }`. Aprobar vía
+ *           POST /api/governance/{actionId}/approve con TOTP (checker distinto).
  *       400:
  *         description: Error de validación
  *       403:

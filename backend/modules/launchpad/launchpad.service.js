@@ -2,9 +2,24 @@ const { sequelize, Crypto } = require('../../models');
 const { Presale, Contribution } = require('./launchpad.model');
 const { postTransaction } = require('../balances/ledger/postingService');
 const { PURPOSES } = require('../balances/ledger/ledgerAccounts');
+const makerChecker = require('../governance/makerChecker.service');
+const businessConfig = require('../config/businessConfig');
 const money = require('../../utils/money');
 const AppError = require('../../utils/AppError');
 const errorCodes = require('../../utils/errorCodes');
+
+// Resolving a presale is a privileged BULK money movement: on success the raised USDT moves
+// from escrow (SUSPENSE) to house TREASURY and tokens are distributed; on failure everything
+// is refunded. Contributions are denominated in USDT (≈ USD 1:1), so `totalRaisedUsdt` is the
+// settlement's USD magnitude directly — no oracle needed. To keep control PARITY with large
+// withdrawals (which require 4-eyes above a threshold), a large resolution is not settled by a
+// single operator: it is HELD (`RESOLUTION_PENDING`) and a Maker-Checker action is proposed;
+// a DISTINCT checker must approve with TOTP before the registered executor settles it.
+const DUAL_CONTROL_ACTION = 'large_presale_resolve';
+// Seed default (editable via businessConfig). makerChecker.requiresDualControl additionally
+// enforces the inviolable $20k hard ceiling, so this can never be raised to bypass 4-eyes.
+const DEFAULT_DUAL_CONTROL_THRESHOLD_USD = 20000;
+const HELD_STATUS = 'RESOLUTION_PENDING';
 
 async function buy({ userId, presaleId, amountUsdt, idempotencyKey, finalizeInTransaction, req }) {
   return await sequelize.transaction(async (transaction) => {
@@ -94,7 +109,11 @@ async function buy({ userId, presaleId, amountUsdt, idempotencyKey, finalizeInTr
   });
 }
 
-async function resolvePresale({ presaleId }) {
+// Operator entry point. Loads + locks the presale, and either settles it immediately (small)
+// or HOLDS it and proposes a Maker-Checker action (large) — mirroring the large-withdrawal path.
+// `makerUserId` is the operator initiating the resolution (the maker); a distinct checker must
+// approve a held resolution. Returns { pending, presale, action? }.
+async function resolvePresale({ presaleId, makerUserId }) {
   return await sequelize.transaction(async (transaction) => {
     const presale = await Presale.findByPk(presaleId, {
       lock: transaction.LOCK.UPDATE,
@@ -105,12 +124,43 @@ async function resolvePresale({ presaleId }) {
       throw new AppError(404, errorCodes.NOT_FOUND, 'Presale not found');
     }
 
+    // Only an ACTIVE presale can be resolved. This also rejects a second resolve while one is
+    // already HELD (RESOLUTION_PENDING) — no duplicate proposal, no double settlement.
     if (presale.status !== 'ACTIVE') {
       throw new AppError(400, errorCodes.VALIDATION_ERROR, 'Presale already resolved or pending');
     }
 
+    const settlementUsd = presale.totalRaisedUsdt;
+    const threshold = await businessConfig.getNumber(
+      'launchpad_dual_control_usd_threshold', DEFAULT_DUAL_CONTROL_THRESHOLD_USD
+    );
+
+    if (makerChecker.requiresDualControl(settlementUsd, threshold)) {
+      // A large resolution must not be executed by a single operator. Hold it and propose the
+      // dual-control action ATOMICALLY (same tx) so a held presale can never exist without its
+      // approval path, and vice versa.
+      if (!makerUserId) {
+        throw new AppError(400, errorCodes.VALIDATION_ERROR, 'Se requiere el operador (maker) para resolver una presale grande');
+      }
+      await presale.update({ status: HELD_STATUS }, { transaction });
+      const action = await makerChecker.propose(
+        { makerUserId, actionType: DUAL_CONTROL_ACTION, payload: { presaleId: presale.id }, amountUsd: settlementUsd },
+        { transaction }
+      );
+      return { pending: true, presale, action };
+    }
+
+    await settlePresale(presale, transaction);
+    return { pending: false, presale };
+  });
+}
+
+// Perform the actual settlement on an already-loaded, locked presale within `transaction`.
+// Shared by the immediate (small) path and the dual-control executor (large). Determines
+// success/failure from stored state (frozen once no longer ACTIVE) and posts the ledger legs.
+async function settlePresale(presale, transaction) {
     const contributions = await Contribution.findAll({
-      where: { presaleId },
+      where: { presaleId: presale.id },
       transaction
     });
 
@@ -180,7 +230,45 @@ async function resolvePresale({ presaleId }) {
     }
 
     return presale;
+}
+
+// Dual-control executor: a DISTINCT checker approved a held large resolution. Load + lock the
+// presale inside the checker's approval transaction, assert it is still HELD (so a replayed or
+// concurrent approval can never double-settle), then settle. Throwing rolls the whole approval
+// back and leaves the action pending — never a silent no-op approval.
+async function settlePresaleExecutor(payload, transaction) {
+  const presale = await Presale.findByPk(payload.presaleId, {
+    lock: transaction.LOCK.UPDATE,
+    transaction
   });
+  if (!presale) {
+    throw new Error(`No presale ${payload.presaleId} to settle`);
+  }
+  if (presale.status !== HELD_STATUS) {
+    throw new Error(`Presale ${payload.presaleId} is not held for resolution (status ${presale.status})`);
+  }
+  await settlePresale(presale, transaction);
+  return { settled: true, presaleId: presale.id, status: presale.status };
+}
+
+// Compensator: the dual-control action was REJECTED by a checker or EXPIRED past its TTL without
+// executing. Return the held presale to ACTIVE so it can be resolved again — otherwise it would be
+// stranded in RESOLUTION_PENDING forever, locking buyers' USDT in escrow with no path to refund or
+// re-resolve. Idempotent: only reverts if still held. No money moves here (settlement never ran).
+async function revertHeldPresale(payload, transaction) {
+  const presale = await Presale.findByPk(payload.presaleId, {
+    lock: transaction.LOCK.UPDATE,
+    transaction
+  });
+  if (presale && presale.status === HELD_STATUS) {
+    await presale.update({ status: 'ACTIVE' }, { transaction });
+  }
+}
+
+// Wire the executor + compensator into the governance engine. Called once at app boot.
+function register() {
+  makerChecker.registerExecutor(DUAL_CONTROL_ACTION, settlePresaleExecutor);
+  makerChecker.registerCompensator(DUAL_CONTROL_ACTION, revertHeldPresale);
 }
 
 async function createPresale(input) {
@@ -242,4 +330,16 @@ async function activatePresale({ presaleId }) {
   return presale;
 }
 
-module.exports = { buy, resolvePresale, createPresale, activatePresale };
+module.exports = {
+  buy,
+  resolvePresale,
+  settlePresale,
+  settlePresaleExecutor,
+  revertHeldPresale,
+  register,
+  createPresale,
+  activatePresale,
+  DUAL_CONTROL_ACTION,
+  DEFAULT_DUAL_CONTROL_THRESHOLD_USD,
+  HELD_STATUS,
+};

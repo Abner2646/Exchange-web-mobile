@@ -6,7 +6,7 @@ jest.mock('../../models', () => {
 });
 
 jest.mock('./governance.model', () => ({
-  PendingAdminAction: { create: jest.fn(), findByPk: jest.fn(), update: jest.fn() }
+  PendingAdminAction: { create: jest.fn(), findByPk: jest.fn(), update: jest.fn(), findAll: jest.fn() }
 }));
 
 jest.mock('../config/businessConfig', () => ({ getNumber: jest.fn().mockResolvedValue(24) }));
@@ -171,5 +171,68 @@ describe('makerChecker.propose', () => {
     PendingAdminAction.create.mockResolvedValue({});
     await svc.propose({ makerUserId: 'maker-1', actionType: 'test_action' });
     expect(PendingAdminAction.create).toHaveBeenCalledWith(expect.any(Object), undefined);
+  });
+});
+
+describe('makerChecker compensator — releases the held resource on reject/expiry', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    svc._compensators.clear();
+  });
+
+  test('reject runs the registered compensator inside the same transaction', async () => {
+    const action = fakeAction({ actionType: 'held_action', payload: { presaleId: 'p1' } });
+    PendingAdminAction.findByPk.mockResolvedValue(action);
+    const compensator = jest.fn().mockResolvedValue();
+    svc.registerCompensator('held_action', compensator);
+
+    await svc.reject({ actionId: 'action-1', checkerUserId: 'checker-1', reason: 'nope' });
+
+    expect(action.status).toBe('rejected');
+    expect(compensator).toHaveBeenCalledWith({ presaleId: 'p1' }, expect.any(Object));
+  });
+
+  test('a compensator throw rolls the rejection back (hold released atomically or not at all)', async () => {
+    const action = fakeAction({ actionType: 'held_action' });
+    PendingAdminAction.findByPk.mockResolvedValue(action);
+    svc.registerCompensator('held_action', jest.fn().mockRejectedValue(new Error('release failed')));
+
+    await expect(svc.reject({ actionId: 'action-1', checkerUserId: 'checker-1' }))
+      .rejects.toThrow(/release failed/);
+  });
+
+  test('reject with no compensator registered still works (non-holding actions)', async () => {
+    const action = fakeAction({ actionType: 'plain_action' });
+    PendingAdminAction.findByPk.mockResolvedValue(action);
+    await svc.reject({ actionId: 'action-1', checkerUserId: 'checker-1' });
+    expect(action.status).toBe('rejected');
+  });
+
+  test('expireStale marks each stale pending action expired and runs its compensator', async () => {
+    const past = new Date(Date.now() - 1000);
+    const action = fakeAction({ actionType: 'held_action', expiresAt: past, payload: { presaleId: 'p9' } });
+    PendingAdminAction.findAll.mockResolvedValue([{ id: 'action-1' }]);
+    PendingAdminAction.findByPk.mockResolvedValue(action);
+    const compensator = jest.fn().mockResolvedValue();
+    svc.registerCompensator('held_action', compensator);
+
+    const count = await svc.expireStale(new Date());
+
+    expect(count).toBe(1);
+    expect(action.status).toBe('expired');
+    expect(compensator).toHaveBeenCalledWith({ presaleId: 'p9' }, expect.any(Object));
+  });
+
+  test('expireStale skips a row that is no longer pending (raced an approve/reject)', async () => {
+    const action = fakeAction({ actionType: 'held_action', status: 'executed', expiresAt: new Date(Date.now() - 1000) });
+    PendingAdminAction.findAll.mockResolvedValue([{ id: 'action-1' }]);
+    PendingAdminAction.findByPk.mockResolvedValue(action);
+    const compensator = jest.fn().mockResolvedValue();
+    svc.registerCompensator('held_action', compensator);
+
+    const count = await svc.expireStale(new Date());
+
+    expect(count).toBe(0);
+    expect(compensator).not.toHaveBeenCalled();
   });
 });

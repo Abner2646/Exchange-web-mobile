@@ -309,6 +309,36 @@ const resend2FALimiter = rateLimit({
   }
 });
 
+/**
+ * Rate Limiter para iniciar enrolamiento TOTP (POST /me/totp/setup)
+ * Cada llamada genera un secreto + QR nuevos. Sin límite, una sesión robada o un
+ * atacante autenticado podría rotar secretos sin fin (churn de recursos / abuso).
+ * Autenticado → identifica por user id. Límite: 5 cada 15 minutos.
+ */
+const totpSetupLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 5,
+  skip: () => process.env.DISABLE_RATE_LIMIT === 'true',
+  message: {
+    error: 'Demasiados intentos de enrolamiento TOTP.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    if (req.user?.id) {
+      return `totp_setup_${req.user.id}`;
+    }
+    return `totp_setup_${req.ip}`;
+  },
+  handler: (req, res) => {
+    res.status(429).json({
+      error: 'Demasiados intentos de enrolamiento TOTP',
+      message: 'Espera 15 minutos antes de volver a iniciar el enrolamiento',
+      retryAfter: Math.ceil((req.rateLimit.resetTime - Date.now()) / 1000 / 60)
+    });
+  }
+});
+
 // ==================== RATE LIMITERS PARA PERFIL ==================== //
 
 /**
@@ -380,6 +410,7 @@ module.exports = {
   // 2FA
   verify2FALimiter,
   resend2FALimiter,
+  totpSetupLimiter,
   
   // Perfil
   changePasswordLimiter,

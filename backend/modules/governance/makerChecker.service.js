@@ -26,6 +26,31 @@ function registerExecutor(actionType, fn) {
   executors.set(actionType, fn);
 }
 
+// action_type -> async (payload, transaction) => void. A COMPENSATOR undoes the resource HOLD
+// that `propose` created, when the action ends WITHOUT executing (rejected by a checker, or
+// expired past its TTL). Without it a held resource (a presale stuck in RESOLUTION_PENDING, a
+// held withdrawal) would be stranded forever with no path back. Optional per action type:
+// modules that hold a resource at propose time register one; the engine runs it inside the same
+// transaction as the reject/expire transition, so the hold is released atomically or not at all.
+const compensators = new Map();
+
+function registerCompensator(actionType, fn) {
+  if (typeof fn !== 'function') {
+    throw new TypeError(`Compensator for ${actionType} must be a function`);
+  }
+  compensators.set(actionType, fn);
+}
+
+// Run the compensator for an action inside `transaction`, if one is registered. A throw
+// propagates so the reject/expire transaction rolls back — an action is never marked
+// rejected/expired unless its hold was released too.
+async function runCompensator(action, transaction) {
+  const compensator = compensators.get(action.actionType);
+  if (compensator) {
+    await compensator(action.payload, transaction);
+  }
+}
+
 // Whether an action of this USD magnitude requires dual control. Dual control is
 // required when the amount exceeds the configured threshold OR the hard ceiling —
 // i.e. above the LOWER of the two. This makes the $20k ceiling impossible to bypass
@@ -136,28 +161,50 @@ async function reject({ actionId, checkerUserId, reason = null }) {
       rejectionReason: reason,
       resolvedAt: new Date()
     }, { transaction });
+    // Release the held resource (if any) atomically with the rejection.
+    await runCompensator(action, transaction);
     return action;
   });
 }
 
-// Mark all pending actions past their TTL as expired. Intended for a periodic job.
+// Mark all pending actions past their TTL as expired, releasing each one's held resource via its
+// compensator. Intended for a periodic job. Processed PER ROW inside its own transaction (re-locked
+// and re-checked under the row lock) so an expiry can never race a concurrent approve/reject, and
+// so a compensator failure only rolls back that one action instead of the whole sweep.
 async function expireStale(now = new Date()) {
   const { Op } = require('sequelize');
-  const [count] = await PendingAdminAction.update(
-    { status: 'expired', resolvedAt: now },
-    { where: { status: 'pending', expiresAt: { [Op.lt]: now } } }
-  );
+  const stale = await PendingAdminAction.findAll({
+    where: { status: 'pending', expiresAt: { [Op.lt]: now } }
+  });
+  let count = 0;
+  for (const row of stale) {
+    // eslint-disable-next-line no-await-in-loop
+    await sequelize.transaction(async (transaction) => {
+      const action = await PendingAdminAction.findByPk(row.id, {
+        lock: transaction.LOCK.UPDATE,
+        transaction
+      });
+      if (!action || action.status !== 'pending' || new Date(action.expiresAt) >= now) {
+        return; // already resolved, or no longer stale — skip
+      }
+      await action.update({ status: 'expired', resolvedAt: now }, { transaction });
+      await runCompensator(action, transaction);
+      count += 1;
+    });
+  }
   return count;
 }
 
 module.exports = {
   HARD_CEILING_USD,
   registerExecutor,
+  registerCompensator,
   requiresDualControl,
   propose,
   approve,
   reject,
   expireStale,
   // exposed for tests
-  _executors: executors
+  _executors: executors,
+  _compensators: compensators
 };

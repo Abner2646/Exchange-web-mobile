@@ -19,6 +19,7 @@ const {
   resetPasswordLimiter,
   verify2FALimiter,
   resend2FALimiter,
+  totpSetupLimiter,
   changePasswordLimiter
 } = require('../../middleware/rateLimiters');
 
@@ -401,6 +402,7 @@ router.patch('/me/2fa-toggle',
  */
 router.post('/me/totp/setup',
   authenticateToken,
+  totpSetupLimiter,
   asyncHandler(userController.setupTotp)
 );
 router.post('/me/totp/enable',

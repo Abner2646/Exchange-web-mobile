@@ -4,6 +4,7 @@ const { Swap, User, SwapPair, UserBalance, Crypto, sequelize } = require('../../
 const AppError = require('../../utils/AppError');
 const errorCodes = require('../../utils/errorCodes');
 const money = require('../../utils/money');
+const { isUuid } = require('../../utils/uuid');
 const { calculateSettlement } = require('./swapSettlement.service');
 const { settleSwap } = require('../balances/ledger/operations');
 const idempotency = require('../../middleware/idempotency.middleware');
@@ -19,11 +20,8 @@ const isValidDate = (dateString) => {
   }
 };
 
-// Función auxiliar para validar UUID
-const isValidUUID = (uuid) => {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(uuid);
-};
+// Función auxiliar para validar UUID (delega en el helper compartido utils/uuid).
+const isValidUUID = (uuid) => isUuid(uuid);
 
 // Crear nueva orden.
 //
