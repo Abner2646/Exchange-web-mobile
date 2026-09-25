@@ -4,13 +4,12 @@ const { User } = require('../../models');
 const totp = require('../users/totp.service');
 const AppError = require('../../utils/AppError');
 const errorCodes = require('../../utils/errorCodes');
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const { isUuid } = require('../../utils/uuid');
 
 // A malformed :id would otherwise reach Sequelize and blow up as a 500 on the UUID cast.
 // Reject it early as a clean 404 — an id that can't name a real action is "not found".
 function requireUuid(id) {
-  if (!UUID_RE.test(String(id || ''))) {
+  if (!isUuid(id)) {
     throw new AppError(404, errorCodes.MAKER_CHECKER_NOT_FOUND, 'Acción pendiente no encontrada');
   }
 }

@@ -2,6 +2,7 @@ const { Presale, Contribution } = require('./launchpad.model');
 const launchpadService = require('./launchpad.service');
 const AppError = require('../../utils/AppError');
 const errorCodes = require('../../utils/errorCodes');
+const { isUuid } = require('../../utils/uuid');
 const asyncHandler = require('../../utils/asyncHandler');
 const idempotency = require('../../middleware/idempotency.middleware');
 
@@ -41,8 +42,7 @@ const buy = asyncHandler(async (req, res) => {
 });
 
 const validateUUID = (id) => {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if (!uuidRegex.test(id)) {
+  if (!isUuid(id)) {
     throw new AppError(404, errorCodes.NOT_FOUND, 'Presale not found');
   }
 };
