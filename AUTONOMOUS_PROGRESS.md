@@ -24,13 +24,28 @@ control-parity thread (money-path, mine).
   - NOTE: local jest FULL integration suite still hits the pre-existing `truncate` harness quirk
     (23 suites fail at resetDb, identical on clean HEAD baseline — NOT my change; my file passes 8/8 alone).
 
-- **[A2] Admin single-operator balance-mutation endpoints → Maker-Checker — IN PROGRESS (this burst).**
-  Bigger asymmetry than launchpad was. Targets in `modules/balances/userBalance.controller.js`:
-  `updateBalance` (manual credit/debit — money creation, highest risk), `transferBalance` (cross-user),
-  `blockBalance`/`unblockBalance` (within-user available↔blocked). Design: DEFER the whole ledger posting
-  to the executor (propose records the intended mutation; nothing moves until a distinct checker approves) —
-  no held intermediate state → simpler than withdrawals, no compensator needed (reject/expire = money never
-  moved). USD magnitude computed SERVER-SIDE (amlValuation) → threshold/$20k ceiling. Abner §5 authorizes.
+- **[A2] Admin single-operator balance-mutation endpoints → Maker-Checker — DONE, pushed `b7452ec` (dev).**
+  Bigger asymmetry than launchpad was. `updateBalance` (manual credit/debit — money creation), `transferBalance`
+  (cross-user), `blockBalance`/`unblockBalance` (within-user available↔blocked) now dual-controlled above a
+  server-computed USD magnitude.
+  - New `modules/balances/adminBalanceDualControl.service.js`: `evaluate` (USD of |amount| via amlValuation,
+    threshold `admin_balance_dual_control_usd_threshold` default $5k + shared $20k ceiling, fail-closed on
+    stale/unvaluable), per-action executors (update/block/unblock/transfer), `register()` (boot wiring in
+    routes/index.js).
+  - **Design: DEFER the whole ledger posting.** propose records the exact mutation in the payload; NOTHING moves;
+    the executor posts inside the checker's approval tx. No held state → NO compensator needed (reject/expire =
+    money never moved). Ledger FOR UPDATE overdraft guard still protects execution. Transfer reference fixed at
+    propose + carried in payload → idempotency-by-reference (double approval can't double-post).
+  - Controllers return 202 `{pending, actionId}` above threshold, else 200 immediate. adminDualControl required
+    LAZILY in handlers (keeps governance.model out of the controller's unit-test load graph — same dodge as
+    createWithdrawal). OpenAPI added for the 4 endpoints (200/202); contract doc §14 updated.
+  - **Verified:** service unit 14 (RED→GREEN); integration 6/6 vs docker DB (propose moves nothing, distinct
+    checker approval posts adjustment/transfer/block, reject moves no money, 4-eyes blocks self-approval).
+    Full unit **579 green**, coverage gate OK.
+
+### [GATE] dev↔main delta (A1+A2) — /code-review high-effort → merge (per CLAUDE.local.md money-path default)
+Delta from origin/main `0b4c7e4`: `f10a5a3` (withdrawal compensator) + `b7452ec` (admin balance dual control).
+Running high-effort review before the autonomous dev→main merge.
 
 ## ✅ SESSION 2026-09-25 — close the governance/dual-control/TOTP thread (§7 A/B/C)
 Sync check first (clean): dev 1 ahead of origin/main (docs-only `cc044dc`), origin/dev==dev, no stray
