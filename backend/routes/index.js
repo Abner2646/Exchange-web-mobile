@@ -27,8 +27,9 @@ const launchpadRoutes = require('../modules/launchpad/launchpad.routes.js')
 const kycRoutes = require('../modules/kyc/kyc.routes.js')
 const governanceRoutes = require('../modules/governance/governance.routes.js')
 
-// Wire the large-withdrawal dual-control executor into the Maker-Checker engine at boot, so a
-// checker's approval of a `large_withdrawal_release` action actually releases the held withdrawal.
+// Wire the large-withdrawal dual-control executor + compensator into the Maker-Checker engine at
+// boot: a checker's approval of a `large_withdrawal_release` action releases the held withdrawal,
+// and a rejection/expiry cancels it and refunds the user's blocked funds (no stranded hold).
 require('../modules/wallets/withdrawalDualControl.service').register()
 
 // Same for large presale resolutions: a checker's approval of `large_presale_resolve` settles the

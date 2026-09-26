@@ -460,6 +460,10 @@ Operator-only governance for privileged actions (4-eyes). All routes require an 
   flip this via business config `withdrawal_dual_control_on_unvaluable` (default `true`).
 - The withdrawal response shape is unchanged; clients should surface that large withdrawals may enter a
   pending-approval state before they are broadcast on-chain.
+- If the checker **rejects** the `large_withdrawal_release` action (`POST /api/governance/:id/reject`), or it
+  **expires** past its TTL, the held withdrawal is now **cancelled** (`status: "failed"`) and the user's blocked
+  funds are returned to their available balance — atomically. It is never stranded in the hold. Clients polling a
+  large withdrawal should reflect that a rejected/expired approval terminates it as `failed` (with the balance refunded).
 
 ### 15. TOTP authenticator-app 2FA (replaces email-code 2FA) — LIVE enrollment (2026-09-23)
 

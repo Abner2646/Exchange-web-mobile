@@ -6,7 +6,7 @@ const money = require('../../utils/money');
 
 jest.mock('../../models', () => ({
   sequelize: { transaction: jest.fn((cb) => cb({ LOCK: { UPDATE: 'UPDATE' } })) },
-  BlockchainTransaction: { releaseDualControlHold: jest.fn() },
+  BlockchainTransaction: { releaseDualControlHold: jest.fn(), cancelDualControlHold: jest.fn() },
 }));
 
 // makerChecker loads governance.model at require-time; stub it so requiresDualControl (pure)
@@ -110,6 +110,25 @@ describe('withdrawalDualControl.releaseExecutor — atomic release on approval',
   });
 });
 
+describe('withdrawalDualControl.cancelCompensator — atomic cancel+refund on reject/expiry', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  test('cancels the held withdrawal (refunding the user) via the model, inside the passed tx', async () => {
+    // A rejected/expired large_withdrawal_release must return the held funds to the user and
+    // terminate the withdrawal — otherwise the row is stranded in the dual-control hold forever.
+    BlockchainTransaction.cancelDualControlHold.mockResolvedValue(1);
+    await svc.cancelCompensator({ withdrawalId: 'w-1' }, TX);
+    expect(BlockchainTransaction.cancelDualControlHold).toHaveBeenCalledWith('w-1', TX);
+  });
+
+  test('is a safe no-op when nothing was held (idempotent) — does not throw', async () => {
+    // Unlike the release executor, the compensator never throws on a 0-match: the hold is already
+    // resolved, so there is nothing to refund. Matches the launchpad compensator contract.
+    BlockchainTransaction.cancelDualControlHold.mockResolvedValue(0);
+    await expect(svc.cancelCompensator({ withdrawalId: 'w-gone' }, TX)).resolves.toBeUndefined();
+  });
+});
+
 describe('withdrawalDualControl.propose — records the pending action', () => {
   beforeEach(() => jest.clearAllMocks());
 
@@ -124,9 +143,14 @@ describe('withdrawalDualControl.propose — records the pending action', () => {
   });
 });
 
-describe('withdrawalDualControl.register — wires the executor into the engine', () => {
+describe('withdrawalDualControl.register — wires the executor + compensator into the engine', () => {
   test('registers the release executor under its action type', () => {
     svc.register();
     expect(makerChecker._executors.get(svc.ACTION_TYPE)).toBe(svc.releaseExecutor);
+  });
+
+  test('registers the cancel+refund compensator under its action type', () => {
+    svc.register();
+    expect(makerChecker._compensators.get(svc.ACTION_TYPE)).toBe(svc.cancelCompensator);
   });
 });

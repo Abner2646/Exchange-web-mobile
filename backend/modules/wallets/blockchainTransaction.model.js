@@ -654,6 +654,34 @@ function createTransaccionBlockchainModel(sequelize) {
     return affected;
   };
 
+  // The dual-control action for a large withdrawal was REJECTED by a checker or EXPIRED past its TTL
+  // WITHOUT executing (the release-only executor never ran). Cancel the held withdrawal and return the
+  // user's blocked funds to available, atomically INSIDE the governance reject/expire transaction
+  // (passed in) — so a held withdrawal is never stranded with the funds locked and no path back.
+  // The conditional guard (status='pending' AND dual_control_pending=true) is what makes this SAFE and
+  // idempotent: only a still-held row is refunded, so a double/late run — or a row already released,
+  // transmitted, or failed — is a no-op (returns 0) and can NEVER unblock funds twice (which would
+  // consume another reserve's blocked balance = money creation, the same footgun failWithdrawal guards).
+  // The row lock serializes it against a concurrent release. Returns the count of rows cancelled (0 or 1).
+  BlockchainTransaction.cancelDualControlHold = async (id, transaction) => {
+    // Ver el comentario de _creditDeposit (Altos #10) sobre por qué este require es lazy.
+    const { UserBalance } = require('../../models/index');
+    const retiro = await BlockchainTransaction.findByPk(id, {
+      lock: transaction.LOCK.UPDATE,
+      transaction
+    });
+    if (!retiro || retiro.type !== 'withdrawal' || retiro.status !== 'pending' || !retiro.dualControlPending) {
+      return 0; // not in a cancellable held state → no-op, never touch balances
+    }
+    // Write-flip (Paso B): retiro cancelado por doble control → devolver bloqueado a disponible.
+    await UserBalance.unblockBalance(retiro.userId, retiro.cryptoId, String(retiro.amount), transaction);
+    await BlockchainTransaction.update(
+      { status: 'failed', dualControlPending: false },
+      { where: { id, type: 'withdrawal', status: 'pending', dualControlPending: true }, transaction }
+    );
+    return 1;
+  };
+
   // =================== MÉTODOS DE CONSULTA ESPECÍFICOS ===================
 
   BlockchainTransaction.getPendingDeposits = async () => {
