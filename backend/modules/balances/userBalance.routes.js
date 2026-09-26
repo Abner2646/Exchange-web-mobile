@@ -72,6 +72,43 @@ router.get('/my/balances', authenticateToken, asyncHandler(balanceUserController
 // idempotency NO se envuelve en asyncHandler (maneja sus propios errores vía next).
 router.post('/my/transfer', authenticateToken, idempotency, asyncHandler(balanceUserController.transferMyCompartments));
 
+/**
+ * @openapi
+ * /balances/user/{userId}/crypto/{cryptoId}:
+ *   put:
+ *     tags: [Balances]
+ *     summary: Ajuste manual de balance (admin, operador + MFA)
+ *     description: >
+ *       Ajusta el balance de un usuario. Si la magnitud USD (calculada server-side) supera el umbral
+ *       (`admin_balance_dual_control_usd_threshold`, default $5k) o el techo $20k, NO se aplica: se
+ *       propone una acción Maker-Checker y se devuelve 202 (un checker distinto debe aprobarla con TOTP).
+ *     parameters:
+ *       - { in: path, name: userId, required: true, schema: { type: string, format: uuid } }
+ *       - { in: path, name: cryptoId, required: true, schema: { type: string, format: uuid } }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [amount]
+ *             properties:
+ *               amount: { $ref: '#/components/schemas/MoneyString' }
+ *               type: { type: string, enum: [available, blocked], default: available }
+ *     responses:
+ *       200: { description: Balance ajustado inmediatamente (bajo umbral) }
+ *       202:
+ *         description: Ajuste grande → propuesto para doble control (pendiente de aprobación)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 pending: { type: boolean, example: true }
+ *                 actionId: { type: string, format: uuid }
+ *       400: { $ref: '#/components/responses/BadRequest' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ */
 // PUT /api/balances/user/:userId/crypto/:cryptoId - Actualizar balance
 router.put('/user/:userId/crypto/:cryptoId', authenticateToken, isAdmin, requireOperatorMFA, asyncHandler(balanceUserController.updateBalance));
 // {"amount": 100}
@@ -135,12 +172,81 @@ router.get('/user/:userId/crypto/:cryptoId/check', authenticateToken, isAdmin, a
 
 // =============== RUTAS DE MODIFICACIÓN (admin) ===============
 
+/**
+ * @openapi
+ * /balances/user/{userId}/crypto/{cryptoId}/block:
+ *   post:
+ *     tags: [Balances]
+ *     summary: Bloquear balance (admin, operador + MFA)
+ *     description: Gran magnitud (USD server-side > umbral / techo $20k) → 202 doble control (Maker-Checker).
+ *     parameters:
+ *       - { in: path, name: userId, required: true, schema: { type: string, format: uuid } }
+ *       - { in: path, name: cryptoId, required: true, schema: { type: string, format: uuid } }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { type: object, required: [amount], properties: { amount: { $ref: '#/components/schemas/MoneyString' } } }
+ *     responses:
+ *       200: { description: Balance bloqueado inmediatamente (bajo umbral) }
+ *       202: { description: Bloqueo grande → propuesto para doble control (pendiente de aprobación) }
+ *       400: { $ref: '#/components/responses/BadRequest' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ */
 // POST /api/balances/user/:userId/crypto/:cryptoId/block - Bloquear balance
 router.post('/user/:userId/crypto/:cryptoId/block', authenticateToken, isAdmin, requireOperatorMFA, asyncHandler(balanceUserController.blockBalance));
 
+/**
+ * @openapi
+ * /balances/user/{userId}/crypto/{cryptoId}/unblock:
+ *   post:
+ *     tags: [Balances]
+ *     summary: Desbloquear balance (admin, operador + MFA)
+ *     description: Gran magnitud (USD server-side > umbral / techo $20k) → 202 doble control (Maker-Checker).
+ *     parameters:
+ *       - { in: path, name: userId, required: true, schema: { type: string, format: uuid } }
+ *       - { in: path, name: cryptoId, required: true, schema: { type: string, format: uuid } }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { type: object, required: [amount], properties: { amount: { $ref: '#/components/schemas/MoneyString' } } }
+ *     responses:
+ *       200: { description: Balance desbloqueado inmediatamente (bajo umbral) }
+ *       202: { description: Desbloqueo grande → propuesto para doble control (pendiente de aprobación) }
+ *       400: { $ref: '#/components/responses/BadRequest' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ */
 // POST /api/balances/user/:userId/crypto/:cryptoId/unblock - Desbloquear balance
 router.post('/user/:userId/crypto/:cryptoId/unblock', authenticateToken, isAdmin, requireOperatorMFA, asyncHandler(balanceUserController.unblockBalance));
 
+/**
+ * @openapi
+ * /balances/transfer:
+ *   post:
+ *     tags: [Balances]
+ *     summary: Transferir balance entre usuarios (admin, operador + MFA)
+ *     description: >
+ *       Mueve fondos disponibles de un usuario a otro. Gran magnitud (USD server-side > umbral / techo
+ *       $20k) → NO se mueve nada: se devuelve 202 y un checker distinto debe aprobar con TOTP.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [fromUserId, toUserId, cryptoId, amount]
+ *             properties:
+ *               fromUserId: { type: string, format: uuid }
+ *               toUserId: { type: string, format: uuid }
+ *               cryptoId: { type: string, format: uuid }
+ *               amount: { $ref: '#/components/schemas/MoneyString' }
+ *     responses:
+ *       200: { description: Transferencia completada inmediatamente (bajo umbral) }
+ *       202: { description: Transferencia grande → propuesta para doble control (pendiente de aprobación) }
+ *       400: { $ref: '#/components/responses/BadRequest' }
+ *       401: { $ref: '#/components/responses/Unauthorized' }
+ */
 // POST /api/balances/transfer - Transferir balance entre usuarios
 router.post('/transfer', authenticateToken, isAdmin, requireOperatorMFA, asyncHandler(balanceUserController.transferBalance));
 

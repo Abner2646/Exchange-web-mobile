@@ -36,6 +36,11 @@ require('../modules/wallets/withdrawalDualControl.service').register()
 // held presale (control parity with large withdrawals — no single-operator bulk settlement).
 require('../modules/launchpad/launchpad.service').register()
 
+// Same for privileged single-operator balance mutations (manual adjustment, cross-user transfer,
+// block/unblock): above a server-computed USD magnitude they are proposed as Maker-Checker actions and
+// only posted to the ledger when a distinct checker approves — no single-operator balance movement.
+require('../modules/balances/adminBalanceDualControl.service').register()
+
 // Derive routes
 router.use('/auth', authRoutes)
 router.use('/balances', balanceUsuarioRoutes)

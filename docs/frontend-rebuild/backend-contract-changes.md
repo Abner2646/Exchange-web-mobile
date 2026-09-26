@@ -465,6 +465,22 @@ Operator-only governance for privileged actions (4-eyes). All routes require an 
   funds are returned to their available balance — atomically. It is never stranded in the hold. Clients polling a
   large withdrawal should reflect that a rejected/expired approval terminates it as `failed` (with the balance refunded).
 
+**Wired: admin balance-mutation dual control (LIVE 2026-09-26).** Privileged single-operator balance
+mutations are now routed through Maker-Checker above a server-computed USD magnitude (control parity —
+these were a bigger asymmetry than large withdrawals). Affected admin endpoints:
+- `PUT /api/balances/user/:userId/crypto/:cryptoId` (manual adjustment), `POST .../block`, `POST .../unblock`,
+  `POST /api/balances/transfer` (cross-user).
+- The server computes the mutation's USD magnitude from the real crypto + `|amount|` (never client-declared).
+  If it exceeds the threshold (default **> $5,000**, business config `admin_balance_dual_control_usd_threshold`)
+  or the **$20,000** hard ceiling, the endpoint does **not** apply the mutation. Instead it returns
+  **`202 Accepted`** with `{ pending: true, actionId }` and proposes a Maker-Checker action; **nothing moves**
+  until a **distinct** operator approves it via `POST /api/governance/:id/approve` with their TOTP code, at which
+  point the ledger posting is applied. A small mutation (≤ threshold) still applies immediately (`200`).
+- Because nothing is held at propose time, a **rejected/expired** admin mutation simply never posts — no funds
+  are moved and there is nothing to reverse (unlike a held withdrawal). An asset with no USD valuation fails
+  **closed** by default (routed to dual control); config `admin_balance_dual_control_on_unvaluable` (default `true`).
+- Clients calling these admin endpoints must handle the `202` (pending-approval) outcome in addition to `200`.
+
 ### 15. TOTP authenticator-app 2FA (replaces email-code 2FA) — LIVE enrollment (2026-09-23)
 
 Second factor is migrating to **TOTP** (RFC 6238, e.g. Google Authenticator/Authy). Self-service enrollment
