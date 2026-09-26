@@ -2,6 +2,36 @@
 
 **Started:** 2026-09-23. Coordinator: Claude (Opus). Abner is away for several days; full autonomy.
 
+## ▶️ SESSION 2026-09-26 — control-parity burst (§7A), MINE, TDD
+Sync check first (clean): dev 1 ahead of origin/main (docs-only `16d4672`), origin/dev==dev, no stray
+tracked changes. Branches healthy, no stale base. Task ordering: (1) finish what's open → the §7A
+control-parity thread (money-path, mine).
+
+- **[A1] Large-withdrawal cancel+refund compensator — DONE, pushed `f10a5a3` (dev):** closes the
+  stranded-funds gap flagged last session. A rejected/expired `large_withdrawal_release` had NO
+  compensator → the held withdrawal stayed `pending`+`dualControlPending` forever with the user's funds
+  blocked (same class as the launchpad F1 fix; the mechanism existed but withdrawal registered none).
+  - `BlockchainTransaction.cancelDualControlHold(id, tx)`: cancels a still-held withdrawal
+    (`status='failed'`, `dualControlPending=false`) + returns blocked→available in the ledger, atomically
+    inside the passed reject/expire tx. Conditional guard (`status='pending' AND dual_control_pending=true`)
+    under a row lock → idempotent + money-safe (double/late/already-released run = no-op, returns 0, never
+    double-unblocks). Mirrors `failWithdrawal`'s refund semantics but tx-aware (no nested tx).
+  - `withdrawalDualControl.cancelCompensator` + `register()` now registers it under `large_withdrawal_release`
+    (boot wiring in routes/index.js unchanged — register does both executor + compensator).
+  - **Verified:** service unit RED→GREEN; integration 8/8 vs docker test DB (reject→cancel+refund,
+    expiry→cancel+refund, released row never double-refunded). Full unit **565 green**, coverage gate OK.
+    Contract doc §"large-withdrawal release" updated (rejected/expired → `failed` + refund).
+  - NOTE: local jest FULL integration suite still hits the pre-existing `truncate` harness quirk
+    (23 suites fail at resetDb, identical on clean HEAD baseline — NOT my change; my file passes 8/8 alone).
+
+- **[A2] Admin single-operator balance-mutation endpoints → Maker-Checker — IN PROGRESS (this burst).**
+  Bigger asymmetry than launchpad was. Targets in `modules/balances/userBalance.controller.js`:
+  `updateBalance` (manual credit/debit — money creation, highest risk), `transferBalance` (cross-user),
+  `blockBalance`/`unblockBalance` (within-user available↔blocked). Design: DEFER the whole ledger posting
+  to the executor (propose records the intended mutation; nothing moves until a distinct checker approves) —
+  no held intermediate state → simpler than withdrawals, no compensator needed (reject/expire = money never
+  moved). USD magnitude computed SERVER-SIDE (amlValuation) → threshold/$20k ceiling. Abner §5 authorizes.
+
 ## ✅ SESSION 2026-09-25 — close the governance/dual-control/TOTP thread (§7 A/B/C)
 Sync check first (clean): dev 1 ahead of origin/main (docs-only `cc044dc`), origin/dev==dev, no stray
 tracked changes. Branches healthy, no stale base. All work below is MINE (money-path/auth), TDD, pushed
