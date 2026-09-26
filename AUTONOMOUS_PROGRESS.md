@@ -43,9 +43,21 @@ control-parity thread (money-path, mine).
     checker approval posts adjustment/transfer/block, reject moves no money, 4-eyes blocks self-approval).
     Full unit **579 green**, coverage gate OK.
 
-### [GATE] dev↔main delta (A1+A2) — /code-review high-effort → merge (per CLAUDE.local.md money-path default)
+### [GATE] dev↔main delta (A1+A2) — /code-review high-effort DONE, one fix applied
 Delta from origin/main `0b4c7e4`: `f10a5a3` (withdrawal compensator) + `b7452ec` (admin balance dual control).
-Running high-effort review before the autonomous dev→main merge.
+Ran high-effort review inline (warm context on the just-written delta, 8 angles). Verdict: no money-path
+correctness blockers. One fix applied + documented follow-ups:
+- **[FIXED, review]** `cancelDualControlHold` unblocked funds BEFORE the conditional status UPDATE. Safe
+  under the row lock, but reordered to fail-closed (flip guarded status first, refund only if it transitioned)
+  so a lost race can never unblock without cancelling — no double-spend. `e-see-git`, 8/8 integ green.
+- **[follow-up, altitude]** valuation-trust (stale-price fail-closed) logic is duplicated between
+  `withdrawalDualControl.evaluate` and `adminBalanceDualControl.evaluate`. Deliberately did NOT refactor the
+  freshly-shipped withdrawal path mid-burst; behavior parity is guaranteed by the shared `requiresDualControl`.
+  Extract a shared USD-magnitude gate next to prevent security-logic drift.
+- **[follow-up, minor UX]** an admin mutation that becomes unfundable between propose and approve surfaces as a
+  500 at approval (executor OVERDRAFT not mapped to a clean error). No money moves; map it when convenient.
+- **[follow-up, pre-existing]** no UUID-format validation on admin balance `:userId/:cryptoId` params (malformed
+  → 500 not 404); same gap the governance controller already closed for its `:id`.
 
 ## ✅ SESSION 2026-09-25 — close the governance/dual-control/TOTP thread (§7 A/B/C)
 Sync check first (clean): dev 1 ahead of origin/main (docs-only `cc044dc`), origin/dev==dev, no stray
