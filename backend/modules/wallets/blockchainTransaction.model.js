@@ -673,12 +673,18 @@ function createTransaccionBlockchainModel(sequelize) {
     if (!retiro || retiro.type !== 'withdrawal' || retiro.status !== 'pending' || !retiro.dualControlPending) {
       return 0; // not in a cancellable held state → no-op, never touch balances
     }
-    // Write-flip (Paso B): retiro cancelado por doble control → devolver bloqueado a disponible.
-    await UserBalance.unblockBalance(retiro.userId, retiro.cryptoId, String(retiro.amount), transaction);
-    await BlockchainTransaction.update(
+    // Flip the terminal state FIRST, guarded by the same conditional WHERE (re-asserted atomically under
+    // the row lock). We refund ONLY if this row actually transitioned — so even if the lock reasoning were
+    // wrong, a lost race can never unblock funds without also cancelling the withdrawal (no double-spend).
+    const [affected] = await BlockchainTransaction.update(
       { status: 'failed', dualControlPending: false },
       { where: { id, type: 'withdrawal', status: 'pending', dualControlPending: true }, transaction }
     );
+    if (affected !== 1) {
+      return 0;
+    }
+    // Write-flip (Paso B): retiro cancelado por doble control → devolver bloqueado a disponible.
+    await UserBalance.unblockBalance(retiro.userId, retiro.cryptoId, String(retiro.amount), transaction);
     return 1;
   };
 
