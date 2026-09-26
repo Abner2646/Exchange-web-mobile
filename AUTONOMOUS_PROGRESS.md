@@ -59,6 +59,17 @@ correctness blockers. One fix applied + documented follow-ups:
 - **[follow-up, pre-existing]** no UUID-format validation on admin balance `:userId/:cryptoId` params (malformed
   → 500 not 404); same gap the governance controller already closed for its `:id`.
 
+- **✅ dev→main MERGED (`bab68ae`, `--no-ff`).** Aligned local main to origin/main (`0b4c7e4`), merged dev,
+  re-ran full unit suite on the merged tree (**579 green**, coverage gate OK), pushed main, fast-forwarded dev.
+  Final: `dev == main == origin/main == origin/dev == bab68ae` (all `0 0`). Delta shipped: §7A control-parity
+  complete — large-withdrawal cancel+refund compensator + admin balance-mutation dual control (update/transfer/
+  block/unblock) + the fail-closed-ordering review fix.
+- **§7A control-parity thread CLOSED.** Every privileged single-operator money movement now routes through
+  Maker-Checker (large withdrawals + their compensator, large presale resolutions + compensator, admin balance
+  adjustment/transfer/block/unblock). **NEXT BURST** = §7B roadmap (order: app-router cutover, or the deferred
+  follow-ups above — extract shared USD-magnitude gate is the cheapest control-parity polish). Pick per the
+  task-ordering rule from a fresh context.
+
 ## ✅ SESSION 2026-09-25 — close the governance/dual-control/TOTP thread (§7 A/B/C)
 Sync check first (clean): dev 1 ahead of origin/main (docs-only `cc044dc`), origin/dev==dev, no stray
 tracked changes. Branches healthy, no stale base. All work below is MINE (money-path/auth), TDD, pushed
