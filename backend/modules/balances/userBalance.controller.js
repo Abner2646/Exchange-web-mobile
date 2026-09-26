@@ -5,6 +5,10 @@ const money = require('../../utils/money');
 const AppError = require('../../utils/AppError');
 const errorCodes = require('../../utils/errorCodes');
 const idempotency = require('../../middleware/idempotency.middleware');
+// adminBalanceDualControl is required LAZILY inside each handler (not at module top) on purpose:
+// it pulls in makerChecker → governance.model, which initializes against the real sequelize. A
+// top-level require would break the controller's unit tests that mock sequelize (no `.models`), the
+// same load-cycle dodge createWithdrawal uses for withdrawalDualControl. require() is cached → no cost.
 
 // Este controller usa el envelope canónico { error: { code, message } } vía
 // AppError + el errorHandler central (las rutas envuelven cada handler en
@@ -55,12 +59,25 @@ const getTotalBalance = async (req, res) => {
   res.json(result);
 };
 
-// Actualizar balance (admin, ajuste manual)
+// Actualizar balance (admin, ajuste manual). Un ajuste de gran magnitud (USD server-side > umbral,
+// techo $20k) NO lo aplica un solo operador: se propone una acción Maker-Checker (nada se mueve) y
+// un checker distinto debe aprobarla con su TOTP → el executor postea el ajuste. Ver adminDualControl.
 const updateBalance = async (req, res) => {
   const { userId, cryptoId } = req.params;
   const { amount, type } = req.body;
   if (!amount) {
     throw new AppError(400, errorCodes.BALANCE_INVALID_INPUT, 'Monto requerido');
+  }
+  const adminDualControl = require('./adminBalanceDualControl.service');
+  const dc = await adminDualControl.evaluate(cryptoId, amount);
+  if (dc.dualControl) {
+    const action = await adminDualControl.propose({
+      makerUserId: req.user.id,
+      actionType: adminDualControl.ACTIONS.UPDATE,
+      payload: { userId, cryptoId, amount: String(amount), type: type || 'available' },
+      amountUsd: dc.amountUsd,
+    });
+    return res.status(202).json({ pending: true, actionId: action.id });
   }
   try {
     const updated = await UserBalance.updateBalance(userId, cryptoId, amount, type);
@@ -157,12 +174,23 @@ const claimTestnetFaucet = async (req, res) => {
   });
 };
 
-// Bloquear balance (admin)
+// Bloquear balance (admin). Gran magnitud → Maker-Checker (ver adminDualControl).
 const blockBalance = async (req, res) => {
   const { userId, cryptoId } = req.params;
   const { amount } = req.body;
   if (!amount || amount <= 0) {
     throw new AppError(400, errorCodes.BALANCE_INVALID_INPUT, 'Monto válido requerido');
+  }
+  const adminDualControl = require('./adminBalanceDualControl.service');
+  const dc = await adminDualControl.evaluate(cryptoId, amount);
+  if (dc.dualControl) {
+    const action = await adminDualControl.propose({
+      makerUserId: req.user.id,
+      actionType: adminDualControl.ACTIONS.BLOCK,
+      payload: { userId, cryptoId, amount: String(amount) },
+      amountUsd: dc.amountUsd,
+    });
+    return res.status(202).json({ pending: true, actionId: action.id });
   }
   try {
     const updated = await UserBalance.blockBalance(userId, cryptoId, amount);
@@ -172,12 +200,23 @@ const blockBalance = async (req, res) => {
   }
 };
 
-// Desbloquear balance (admin)
+// Desbloquear balance (admin). Gran magnitud → Maker-Checker (ver adminDualControl).
 const unblockBalance = async (req, res) => {
   const { userId, cryptoId } = req.params;
   const { amount } = req.body;
   if (!amount || amount <= 0) {
     throw new AppError(400, errorCodes.BALANCE_INVALID_INPUT, 'Monto válido requerido');
+  }
+  const adminDualControl = require('./adminBalanceDualControl.service');
+  const dc = await adminDualControl.evaluate(cryptoId, amount);
+  if (dc.dualControl) {
+    const action = await adminDualControl.propose({
+      makerUserId: req.user.id,
+      actionType: adminDualControl.ACTIONS.UNBLOCK,
+      payload: { userId, cryptoId, amount: String(amount) },
+      amountUsd: dc.amountUsd,
+    });
+    return res.status(202).json({ pending: true, actionId: action.id });
   }
   try {
     const updated = await UserBalance.unblockBalance(userId, cryptoId, amount);
@@ -221,6 +260,24 @@ const transferBalance = async (req, res) => {
   const hasBalance = await UserBalance.hasAvailableBalance(fromUserId, cryptoId, amount);
   if (!hasBalance) {
     throw new AppError(400, errorCodes.BALANCE_INSUFFICIENT, 'Balance insuficiente para la transferencia');
+  }
+
+  // Gran magnitud (USD server-side > umbral, techo $20k) → Maker-Checker: un solo operador no mueve
+  // fondos entre usuarios. La referencia del ledger se fija AL PROPONER y viaja en el payload → el
+  // executor postea con la MISMA referencia (idempotencia por referencia). Ver adminDualControl.
+  const adminDualControl = require('./adminBalanceDualControl.service');
+  const dc = await adminDualControl.evaluate(cryptoId, amount);
+  if (dc.dualControl) {
+    const action = await adminDualControl.propose({
+      makerUserId: req.user.id,
+      actionType: adminDualControl.ACTIONS.TRANSFER,
+      payload: {
+        fromUserId, toUserId, cryptoId, amount: String(amount),
+        reference: `admin-transfer:${crypto.randomUUID()}`,
+      },
+      amountUsd: dc.amountUsd,
+    });
+    return res.status(202).json({ pending: true, actionId: action.id });
   }
 
   try {

@@ -74,9 +74,22 @@ async function releaseExecutor(payload, transaction) {
   return { released: true, withdrawalId: payload.withdrawalId };
 }
 
-// Wire the executor into the governance engine. Called once at app boot.
-function register() {
-  makerChecker.registerExecutor(ACTION_TYPE, releaseExecutor);
+// Compensator: the dual-control action was REJECTED by a checker or EXPIRED past its TTL WITHOUT
+// executing. Cancel the held withdrawal and return the user's blocked funds to available — atomically
+// inside the reject/expire transaction — otherwise the withdrawal is stranded in the dual-control hold
+// forever with the funds blocked and no path back (the release-only executor never runs). Idempotent:
+// the model method only refunds a still-held row (status='pending' + dualControlPending), so a re-run
+// or a race can never double-refund; a 0-match is a safe no-op (the hold is already resolved) — unlike
+// the release executor, we do not throw, matching the launchpad compensator contract.
+async function cancelCompensator(payload, transaction) {
+  const { BlockchainTransaction } = require('../../models');
+  await BlockchainTransaction.cancelDualControlHold(payload.withdrawalId, transaction);
 }
 
-module.exports = { ACTION_TYPE, DEFAULT_THRESHOLD_USD, evaluate, propose, releaseExecutor, register };
+// Wire the executor + compensator into the governance engine. Called once at app boot.
+function register() {
+  makerChecker.registerExecutor(ACTION_TYPE, releaseExecutor);
+  makerChecker.registerCompensator(ACTION_TYPE, cancelCompensator);
+}
+
+module.exports = { ACTION_TYPE, DEFAULT_THRESHOLD_USD, evaluate, propose, releaseExecutor, cancelCompensator, register };

@@ -2,12 +2,69 @@
 
 **Started:** 2026-09-23. Coordinator: Claude (Opus). Abner is away for several days; full autonomy.
 
+## ▶️ SESSION 2026-09-26 — control-parity burst (§7A), MINE, TDD
+Sync check first (clean): dev 1 ahead of origin/main (docs-only `16d4672`), origin/dev==dev, no stray
+tracked changes. Branches healthy, no stale base. Task ordering: (1) finish what's open → the §7A
+control-parity thread (money-path, mine).
+
+- **[A1] Large-withdrawal cancel+refund compensator — DONE, pushed `f10a5a3` (dev):** closes the
+  stranded-funds gap flagged last session. A rejected/expired `large_withdrawal_release` had NO
+  compensator → the held withdrawal stayed `pending`+`dualControlPending` forever with the user's funds
+  blocked (same class as the launchpad F1 fix; the mechanism existed but withdrawal registered none).
+  - `BlockchainTransaction.cancelDualControlHold(id, tx)`: cancels a still-held withdrawal
+    (`status='failed'`, `dualControlPending=false`) + returns blocked→available in the ledger, atomically
+    inside the passed reject/expire tx. Conditional guard (`status='pending' AND dual_control_pending=true`)
+    under a row lock → idempotent + money-safe (double/late/already-released run = no-op, returns 0, never
+    double-unblocks). Mirrors `failWithdrawal`'s refund semantics but tx-aware (no nested tx).
+  - `withdrawalDualControl.cancelCompensator` + `register()` now registers it under `large_withdrawal_release`
+    (boot wiring in routes/index.js unchanged — register does both executor + compensator).
+  - **Verified:** service unit RED→GREEN; integration 8/8 vs docker test DB (reject→cancel+refund,
+    expiry→cancel+refund, released row never double-refunded). Full unit **565 green**, coverage gate OK.
+    Contract doc §"large-withdrawal release" updated (rejected/expired → `failed` + refund).
+  - NOTE: local jest FULL integration suite still hits the pre-existing `truncate` harness quirk
+    (23 suites fail at resetDb, identical on clean HEAD baseline — NOT my change; my file passes 8/8 alone).
+
+- **[A2] Admin single-operator balance-mutation endpoints → Maker-Checker — DONE, pushed `b7452ec` (dev).**
+  Bigger asymmetry than launchpad was. `updateBalance` (manual credit/debit — money creation), `transferBalance`
+  (cross-user), `blockBalance`/`unblockBalance` (within-user available↔blocked) now dual-controlled above a
+  server-computed USD magnitude.
+  - New `modules/balances/adminBalanceDualControl.service.js`: `evaluate` (USD of |amount| via amlValuation,
+    threshold `admin_balance_dual_control_usd_threshold` default $5k + shared $20k ceiling, fail-closed on
+    stale/unvaluable), per-action executors (update/block/unblock/transfer), `register()` (boot wiring in
+    routes/index.js).
+  - **Design: DEFER the whole ledger posting.** propose records the exact mutation in the payload; NOTHING moves;
+    the executor posts inside the checker's approval tx. No held state → NO compensator needed (reject/expire =
+    money never moved). Ledger FOR UPDATE overdraft guard still protects execution. Transfer reference fixed at
+    propose + carried in payload → idempotency-by-reference (double approval can't double-post).
+  - Controllers return 202 `{pending, actionId}` above threshold, else 200 immediate. adminDualControl required
+    LAZILY in handlers (keeps governance.model out of the controller's unit-test load graph — same dodge as
+    createWithdrawal). OpenAPI added for the 4 endpoints (200/202); contract doc §14 updated.
+  - **Verified:** service unit 14 (RED→GREEN); integration 6/6 vs docker DB (propose moves nothing, distinct
+    checker approval posts adjustment/transfer/block, reject moves no money, 4-eyes blocks self-approval).
+    Full unit **579 green**, coverage gate OK.
+
+### [GATE] dev↔main delta (A1+A2) — /code-review high-effort DONE, one fix applied
+Delta from origin/main `0b4c7e4`: `f10a5a3` (withdrawal compensator) + `b7452ec` (admin balance dual control).
+Ran high-effort review inline (warm context on the just-written delta, 8 angles). Verdict: no money-path
+correctness blockers. One fix applied + documented follow-ups:
+- **[FIXED, review]** `cancelDualControlHold` unblocked funds BEFORE the conditional status UPDATE. Safe
+  under the row lock, but reordered to fail-closed (flip guarded status first, refund only if it transitioned)
+  so a lost race can never unblock without cancelling — no double-spend. `e-see-git`, 8/8 integ green.
+- **[follow-up, altitude]** valuation-trust (stale-price fail-closed) logic is duplicated between
+  `withdrawalDualControl.evaluate` and `adminBalanceDualControl.evaluate`. Deliberately did NOT refactor the
+  freshly-shipped withdrawal path mid-burst; behavior parity is guaranteed by the shared `requiresDualControl`.
+  Extract a shared USD-magnitude gate next to prevent security-logic drift.
+- **[follow-up, minor UX]** an admin mutation that becomes unfundable between propose and approve surfaces as a
+  500 at approval (executor OVERDRAFT not mapped to a clean error). No money moves; map it when convenient.
+- **[follow-up, pre-existing]** no UUID-format validation on admin balance `:userId/:cryptoId` params (malformed
+  → 500 not 404); same gap the governance controller already closed for its `:id`.
+
 ## ✅ SESSION 2026-09-25 — close the governance/dual-control/TOTP thread (§7 A/B/C)
 Sync check first (clean): dev 1 ahead of origin/main (docs-only `cc044dc`), origin/dev==dev, no stray
 tracked changes. Branches healthy, no stale base. All work below is MINE (money-path/auth), TDD, pushed
 after each commit.
 
-- **[A] Operator MFA readiness gate — `<pending merge>`:** resolves the deploy precondition (after the TOTP
+- **[A] Operator MFA readiness gate — `merged to main 0b4c7e4`:** resolves the deploy precondition (after the TOTP
   migration every operator is un-enrolled → a held large withdrawal can never be released). Audit-grade choice:
   do NOT generate operator secrets in a script (that would leak secret material to logs) — enrollment stays
   self-service via `/api/user/me/totp/{setup,enable}`. Added instead:
@@ -19,7 +76,7 @@ after each commit.
     (exit 1) until ready, prints NO secret material.
   - Runbook `docs/runbooks/operator-totp-enrollment.md`.
   - Verified: unit +8 green, coverage OK.
-- **[B] Control parity — large presale resolution now dual-controlled — `<pending merge>`:** launchpad `resolve`
+- **[B] Control parity — large presale resolution now dual-controlled — `merged to main 0b4c7e4`:** launchpad `resolve`
   is a privileged BULK money movement (raised USDT → house TREASURY on success; refunds on failure) that a single
   operator could settle at any size — asymmetric vs large withdrawals. Fixed:
   - `resolvePresale` HOLDS a large resolution (`status='RESOLUTION_PENDING'`, STRING field, no migration) and
@@ -32,11 +89,32 @@ after each commit.
   - Fixed a latent bug: launchpad `validateUUID` referenced `errorCodes` without importing it (ReferenceError on a
     malformed id). OpenAPI + frontend contract doc updated for the 202 path.
   - Verified: unit +8 green, coverage OK.
-- **[C] Hardening — `<pending merge>`:** `utils/uuid.isUuid` shared helper replaces the identical UUID regex
+- **[C] Hardening — `merged to main 0b4c7e4`:** `utils/uuid.isUuid` shared helper replaces the identical UUID regex
   copy-pasted in governance/launchpad/swap (callers keep their own throw semantics). `totpSetupLimiter`
   (5/15min per user) on POST /me/totp/setup (was unlimited secret+QR churn). Evaluated closing the legacy
   email-2FA path (`twoFactorMethod`): KEPT — only revealed post-password (not pre-auth enumeration) and it's the
   intentional no-lockout fallback during TOTP migration; removal belongs to migration completion. Unit +4 green.
+
+### [GATE] /code-review high-effort on the dev↔main delta — DONE, all real findings FIXED
+Ran 3 parallel finder agents (money-path launchpad, operator-readiness/rate-limiter, UUID refactor) +
+my own state-machine/lifecycle angle. UUID refactor: clean (behavior-preserving, verified byte-equivalent).
+The gate itself is sound (no dual-control bypass, atomic hold+propose, no double-settle). Three REAL findings,
+all fixed with TDD (`<review-fix commit>`, re-verified 562 green):
+- **[F1, stranded funds — the material one]** a rejected/expired `large_presale_resolve` left the presale in
+  RESOLUTION_PENDING forever, locking buyers' USDT in escrow (worse than a held withdrawal — a shared singleton
+  with no retry). Fixed at altitude: general **compensator** hook in the Maker-Checker engine
+  (`registerCompensator`), run atomically inside reject() + expireStale() (refactored to per-row, re-locked).
+  Launchpad registers a compensator that reverts a held presale to ACTIVE. Also fixes the class systemically.
+- **[F2, false-positive READY]** operator readiness counted deactivated (un-authenticatable) operators →
+  `active` now required in `isEnrolled` + query filter/projection.
+- **[F3, fail-open]** `OPERATOR_MFA_MIN_ENROLLED` negative bypassed the gate → clamped in both script + pure fn.
+- Low-severity note (not fixed, correct as-is): dual-control keys on gross `totalRaisedUsdt` (auditor-trail only;
+  $0/null settlement moves no money).
+
+- **✅ dev→main MERGED (`0b4c7e4`, `--no-ff`).** Re-ran full unit suite on the merged tree (**562 green**, coverage
+  gate OK), pushed main, fast-forwarded dev. Final: `dev == main == origin/main == origin/dev == 0b4c7e4` (all 0 0).
+  Delta shipped: operator MFA readiness gate + runbook, launchpad large-resolution dual control, shared UUID helper,
+  TOTP-setup rate limiter, + Maker-Checker compensator lifecycle (reject/expiry releases held resources).
 
 ### Deferred follow-ups (documented, NOT silent gaps) — next control-parity targets
 - **Admin balance-mutation endpoints are still single-operator** (bigger asymmetry than launchpad was):
@@ -45,6 +123,10 @@ after each commit.
   no 4-eyes. Route the large-magnitude ones through Maker-Checker next (each needs a held/deferred posting +
   executor + TDD — its own careful money-path burst; not rushed here).
 - Operator MFA is still flag-only (no fresh per-action step-up) — ROADMAP §4.9 (operator realm / Cognito).
+- **Withdrawal dual-control compensator:** the Maker-Checker compensator mechanism now exists, but the
+  `large_withdrawal_release` action registers NONE — a rejected/expired large withdrawal stays `dualControlPending`
+  (held) as before. Its compensation (cancel the withdrawal + refund the user's held funds to available) needs its
+  own state-machine design + TDD; wire it once designed (now cheap: just `registerCompensator('large_withdrawal_release', ...)`).
 
 ## ✅ SESSION 2026-09-23 (evening) — launchpad admin + Maker-Checker→withdrawals wiring
 Sync check first (clean): dev 7 ahead of origin/main (TOTP epic), origin/dev==dev, no stray tracked changes.
