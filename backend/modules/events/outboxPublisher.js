@@ -1,6 +1,7 @@
 // modules/events/outboxPublisher.js
 // Pure retry/backoff decision + batch orchestration. No DB/bus deps — everything
 // is injected, so it unit-tests without a database.
+'use strict';
 
 function computeRetry(event, error, { maxAttempts, baseBackoffMs, maxBackoffMs, now }) {
   const attempts = event.attempts + 1;
