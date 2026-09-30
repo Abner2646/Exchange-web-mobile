@@ -2,6 +2,20 @@
 
 **Started:** 2026-09-23. Coordinator: Claude (Opus). Abner is away for several days; full autonomy.
 
+## ▶️ SESSION 2026-09-30 — cost/consumption tuning for low-traffic deploy (user-directed, en `dev`)
+Pedido de Abner (primer deploy = 5 usuarios). Cambios NO money-path, TDD, quedan en `dev` (sin merge a main
+por pedido explícito). `perf(ops)` `fd39be5`:
+- `ORDER_MATCH_INTERVAL_MS` (default 100ms) + `PRICE_UPDATE_INTERVAL_MS` (default 10000ms) → env-configurables
+  (el matching disparaba ~864k SELECT/día sobre book vacío a 10x/s; un deploy chico setea 3000ms).
+- `DB_POOL_MAX`/`DB_POOL_MIN` env para el pool de producción (defaults 10/2).
+- OpenAPI `/api-docs` NO se monta en producción (ahorra escaneo swagger-jsdoc al boot + memoria UI + oculta
+  superficie). Gate extraído a `config/apiDocs.js` (`mountApiDocs`), testeable aislado.
+- Defaults preservan el comportamiento actual. 11 unit tests nuevos; suite **590 green**. `.env.template` documentado.
+- Nota sync: al retomar, `dev` tenía 3 commits ajenos sin pushear (`chore: add use strict...`, author Abner2646,
+  27–29/09 — probablemente el cron de respaldo §8); verificados triviales y pusheados (PASO 0).
+- Contexto: análisis de costo AWS de este deploy → ~$5/mes año 1 (free tier) / ~$12/mes (Lightsail 1 caja) /
+  ~$35–48/mes EC2 lean. Lista completa de reducción de consumo entregada en chat (infra + env + código + externos).
+
 ## ▶️ SESSION 2026-09-26 — control-parity burst (§7A), MINE, TDD
 Sync check first (clean): dev 1 ahead of origin/main (docs-only `16d4672`), origin/dev==dev, no stray
 tracked changes. Branches healthy, no stale base. Task ordering: (1) finish what's open → the §7A
