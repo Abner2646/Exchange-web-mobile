@@ -1,5 +1,10 @@
 require('dotenv').config();
 
+// Pool sizing configurable por env para deploys de bajo tráfico (p.ej. 5 usuarios en una
+// db.*.micro con pocas conexiones). Un max no-positivo/ inválido cae al default; min honra 0.
+const poolMax = (v, def) => (Number(v) > 0 ? Number(v) : def);
+const poolMin = (v, def) => (Number.isFinite(Number(v)) && Number(v) >= 0 && v !== undefined && v !== '' ? Number(v) : def);
+
 module.exports = {
   development: {
     username: process.env.DB_USER || 'app_user',
@@ -34,8 +39,8 @@ module.exports = {
     dialect: 'postgres',
     logging: false,
     pool: {
-      max: 10,
-      min: 2,
+      max: poolMax(process.env.DB_POOL_MAX, 10),
+      min: poolMin(process.env.DB_POOL_MIN, 2),
       acquire: 30000,
       idle: 10000
     },

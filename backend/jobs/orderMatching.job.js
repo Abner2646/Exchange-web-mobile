@@ -12,7 +12,11 @@ class OrderMatchingJob {
     // coincidía con lo que decía el propio comentario — 10000ms son 10
     // segundos, no 100ms. El matching corría 100 veces más lento que lo
     // documentado/intencionado.
-    this.matchFrequency = 100; // 100ms = 10 veces por segundo
+    // Cadencia configurable por env (ORDER_MATCH_INTERVAL_MS) — un deploy de bajo tráfico puede
+    // subirla (p.ej. 3000ms) para no barrer el order book 10x/s sobre vacío. Un valor no-positivo
+    // cae al default (nunca setInterval(0) → tight loop). Mismo patrón que los jobs de blockchain/outbox.
+    const parsedMatchInterval = Number(process.env.ORDER_MATCH_INTERVAL_MS);
+    this.matchFrequency = parsedMatchInterval > 0 ? parsedMatchInterval : 100; // default 100ms = 10x/s
     this.errorCount = 0;
     this.maxErrors = 50;
     this.stats = {
