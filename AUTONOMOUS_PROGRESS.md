@@ -2,6 +2,19 @@
 
 **Started:** 2026-09-23. Coordinator: Claude (Opus). Abner is away for several days; full autonomy.
 
+## ▶️ SESSION 2026-10-01 — MVP deploy en AWS t3.micro (54.146.193.5), driven por Claude
+Deploy real a un t3.micro (1GB, Ubuntu 24.04). INFRA TERMINADA: swap 2GB, Node20/PG16/nginx, DB
+`bitflow_prod` localhost (secretos generados en el box), esquema vía `sequelize.sync()` (35 tablas),
+backend bajo pm2 (1 instancia fork, reboot-persistente `pm2-ubuntu.service`, estable 109MB), nginx
+reverse proxy + TLS self-signed (sin dominio aún), **solo 80/443 públicos** (3001/5432 filtrados, verificado
+desde afuera). NODE_ENV=production (decisión de Abner: producción estricta, sin faucet, fondos vía admin).
+- **Bug encontrado+arreglado (`e62c93b`):** el runtime usa `config/database.js` (no `config/config.js`);
+  forzaba SSL → DEPTH_ZERO_SELF_SIGNED_CERT contra el PG local. `DB_SSL=false` ahora honrado ahí. +2 tests, 594 green.
+- **BLOQUEO (decisión de Abner):** catálogo vacío — `seedInitialData.js` PASO 1 (`setupWallets`) exige claves
+  de custodia reales (`BTC_MNEMONIC/PRIVATE_KEY/BTC_MASTER_XPUB/BITCOIN_WALLET_ADDRESS` + ETH/BSC). NO se inventan.
+- **Pendiente:** catálogo (custodia vs walletless), build del frontend (placeholder por ahora), dominio→Let's Encrypt.
+- Artefactos del deploy en `deploy/` (+ `bitflow-selfsigned.conf`). Clave SSH del box: `Clave privada.pem` (de Abner).
+
 ## ▶️ SESSION 2026-09-30 — cost/consumption tuning for low-traffic deploy (user-directed, en `dev`)
 Pedido de Abner (primer deploy = 5 usuarios). Cambios NO money-path, TDD, quedan en `dev` (sin merge a main
 por pedido explícito). `perf(ops)` `fd39be5`:
