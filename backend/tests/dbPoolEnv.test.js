@@ -30,7 +30,7 @@ describe('production DB pool — DB_POOL_MAX / DB_POOL_MIN', () => {
   });
 });
 
-describe('production DB SSL — DB_SSL', () => {
+describe('production DB SSL — DB_SSL (config/config.js, used by sequelize-cli)', () => {
   const OLD = process.env;
   beforeEach(() => { jest.resetModules(); process.env = { ...OLD }; });
   afterAll(() => { process.env = OLD; });
@@ -44,6 +44,27 @@ describe('production DB SSL — DB_SSL', () => {
   test('DB_SSL=false disables SSL (for a localhost Postgres without SSL)', () => {
     process.env.DB_SSL = 'false';
     const cfg = require('../config/config').production;
+    expect(cfg.dialectOptions.ssl).toBeUndefined();
+  });
+});
+
+// config/database.js is the RUNTIME connection config (required by models/index.js); config/config.js
+// is only for sequelize-cli. The DB_SSL toggle must work HERE too, or a localhost Postgres (co-located,
+// with only a self-signed cert) rejects the connection at boot (DEPTH_ZERO_SELF_SIGNED_CERT).
+describe('production DB SSL — DB_SSL (config/database.js, used by the app at runtime)', () => {
+  const OLD = process.env;
+  beforeEach(() => { jest.resetModules(); process.env = { ...OLD }; });
+  afterAll(() => { process.env = OLD; });
+
+  test('SSL is ON by default (managed DB / RDS)', () => {
+    delete process.env.DB_SSL;
+    const cfg = require('../config/database').production;
+    expect(cfg.dialectOptions.ssl).toMatchObject({ require: true });
+  });
+
+  test('DB_SSL=false disables SSL entirely (plain TCP to a localhost Postgres)', () => {
+    process.env.DB_SSL = 'false';
+    const cfg = require('../config/database').production;
     expect(cfg.dialectOptions.ssl).toBeUndefined();
   });
 });
