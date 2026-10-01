@@ -21,6 +21,7 @@ desde afuera). NODE_ENV=production (decisión de Abner: producción estricta, si
     Fix build-breaking `6909c2a`: `refetch` no destructurado en `Activos.jsx`.
   - Verificado desde afuera: `https://54.146.193.5/` sirve la SPA; `/api/parExchange` devuelve los 380 swap pairs;
     `/health` OK; 3001/5432 filtrados. Backend estable (~133MB), RAM 498/909MB, swap casi sin usar.
+- **✅ HTTPS VÁLIDO (2026-10-01):** dominio `bitflow.community` (comprado en Vercel, A→54.146.193.5) + `certbot --nginx` → cert Let's Encrypt (exp 2026-12-30, auto-renew). HTTP→301→HTTPS. La app está LIVE en https://bitflow.community. (`www` apunta a Vercel, no al server — solo apex por ahora.)
 - **PENDIENTE (requiere a Abner):** (1) **dominio** → `A → 54.146.193.5` + `certbot --nginx` (hoy cert self-signed,
   el browser avisa); (2) **custodia/KMS** para habilitar depósitos/retiros on-chain reales; (3) price feed
   (API key) para precios de swap reales — hoy los pares tienen precio sembrado placeholder; (4) acreditar saldo
