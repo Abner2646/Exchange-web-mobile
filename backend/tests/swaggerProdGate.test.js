@@ -4,6 +4,12 @@
 //
 // Tested against the isolated mountApiDocs helper (not the full app) on purpose: booting the whole app
 // under NODE_ENV=production drags in the blockchain mainnet init, which is unrelated to this gate.
+// Mock the generated OpenAPI spec: this test is about the GATE (mounts or not by NODE_ENV), not the
+// real swagger-jsdoc build — building the real spec scans route files (~700ms) and flaked under parallel
+// suite load. A tiny stub keeps it fast + deterministic. mountApiDocs does require('./swagger') internally
+// → same resolved module, so this mock intercepts it.
+jest.mock('../config/swagger', () => ({ openapi: '3.0.3', info: { title: 'test', version: '1.0.0' }, paths: {} }));
+
 const express = require('express');
 const request = require('supertest');
 const { mountApiDocs } = require('../config/apiDocs');
