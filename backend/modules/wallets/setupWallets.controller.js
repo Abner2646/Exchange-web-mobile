@@ -852,6 +852,9 @@ module.exports = {
   executeCompleteSetup,
   checkSetupStatus,
   resetCompleteSetup,
+  // Catálogo base de criptos (símbolo/red/decimals/contrato). Exportado para poder sembrar el
+  // catálogo SIN custodia (crear las Crypto sin wallets maestras) — ver scripts/seedCatalogNoCustody.js.
+  CRIPTOMONEDAS_BASICAS,
   // Exportado para poder testear la derivación HD (xpub/paths/address) de
   // forma aislada, sin pasar por todo el flujo de setup.
   // Ver tests/btcDerivationPath.test.js y tests/hdAddressGeneration.test.js.

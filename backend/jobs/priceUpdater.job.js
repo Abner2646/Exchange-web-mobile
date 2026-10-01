@@ -6,7 +6,10 @@ class PriceUpdaterJob {
   constructor() {
     this.interval = null;
     this.isRunning = false;
-    this.updateFrequency = 10000; // 10 segundos | Antes s
+    // Cadencia configurable por env (PRICE_UPDATE_INTERVAL_MS) — un deploy de bajo tráfico puede
+    // subirla (p.ej. 60000ms) para reducir llamadas a la API de precios. No-positivo → default.
+    const parsedPriceInterval = Number(process.env.PRICE_UPDATE_INTERVAL_MS);
+    this.updateFrequency = parsedPriceInterval > 0 ? parsedPriceInterval : 10000; // default 10s
     this.errorCount = 0;
     this.maxErrors = 10;
   }

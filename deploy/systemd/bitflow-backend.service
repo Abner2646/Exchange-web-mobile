@@ -1,0 +1,26 @@
+# Alternativa a pm2 (más liviana: ~40MB menos en un box de 1GB, sin daemon extra).
+# Instalar en /etc/systemd/system/bitflow-backend.service, ajustar rutas/usuario, y:
+#   sudo systemctl daemon-reload && sudo systemctl enable --now bitflow-backend
+# Reinicia solo si se cae y al reboot (Restart=always + enable).
+[Unit]
+Description=BitFlow backend (Node + in-process jobs)
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/Exchange-web-mobile/backend
+# Carga las variables de producción (ver backend/.env.production.example).
+EnvironmentFile=/home/ubuntu/Exchange-web-mobile/backend/.env
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=5
+# Protege el box de 1GB (sin cluster: una sola instancia, los jobs son singleton).
+MemoryMax=700M
+# Logs van al journal: journalctl -u bitflow-backend -f
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

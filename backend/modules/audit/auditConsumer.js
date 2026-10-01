@@ -1,6 +1,8 @@
 // modules/audit/auditConsumer.js
 // Records every domain event as an immutable, hash-chained audit_log row.
 // Subscribed to ALL events via eventBus.onAny. Idempotent by event id.
+'use strict';
+
 const { GENESIS, computeHash } = require('./auditHash');
 
 async function auditConsumer(event) {

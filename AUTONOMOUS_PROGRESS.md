@@ -2,6 +2,45 @@
 
 **Started:** 2026-09-23. Coordinator: Claude (Opus). Abner is away for several days; full autonomy.
 
+## ▶️ SESSION 2026-10-01 — MVP deploy en AWS t3.micro (54.146.193.5), driven por Claude
+Deploy real a un t3.micro (1GB, Ubuntu 24.04). INFRA TERMINADA: swap 2GB, Node20/PG16/nginx, DB
+`bitflow_prod` localhost (secretos generados en el box), esquema vía `sequelize.sync()` (35 tablas),
+backend bajo pm2 (1 instancia fork, reboot-persistente `pm2-ubuntu.service`, estable 109MB), nginx
+reverse proxy + TLS self-signed (sin dominio aún), **solo 80/443 públicos** (3001/5432 filtrados, verificado
+desde afuera). NODE_ENV=production (decisión de Abner: producción estricta, sin faucet, fondos vía admin).
+- **Bug encontrado+arreglado (`e62c93b`):** el runtime usa `config/database.js` (no `config/config.js`);
+  forzaba SSL → DEPTH_ZERO_SELF_SIGNED_CERT contra el PG local. `DB_SSL=false` ahora honrado ahí. +2 tests, 594 green.
+- **BLOQUEO (decisión de Abner):** catálogo vacío — `seedInitialData.js` PASO 1 (`setupWallets`) exige claves
+  de custodia reales (`BTC_MNEMONIC/PRIVATE_KEY/BTC_MASTER_XPUB/BITCOIN_WALLET_ADDRESS` + ETH/BSC). NO se inventan.
+- Artefactos del deploy en `deploy/` (+ `bitflow-selfsigned.conf`). Clave SSH del box: `Clave privada.pem` (de Abner).
+- **✅ DEPLOY FUNCIONAL COMPLETO:**
+  - Catálogo sin custodia sembrado (`2b64df0`): **20 cryptos, 380 swap pairs, 85 trading pairs** vía
+    `scripts/seedCatalogNoCustody.js` (exporté `CRIPTOMONEDAS_BASICAS`). Sin wallets maestras → depósitos/retiros
+    on-chain OFF hasta KMS; fondos para la beta vía panel admin.
+  - Frontend legacy (CRA) buildeado local + servido en `/var/www/bitflow` (`<title>BitFlow</title>`, bundle real).
+    Fix build-breaking `6909c2a`: `refetch` no destructurado en `Activos.jsx`.
+  - Verificado desde afuera: `https://54.146.193.5/` sirve la SPA; `/api/parExchange` devuelve los 380 swap pairs;
+    `/health` OK; 3001/5432 filtrados. Backend estable (~133MB), RAM 498/909MB, swap casi sin usar.
+- **✅ HTTPS VÁLIDO (2026-10-01):** dominio `bitflow.community` (comprado en Vercel, A→54.146.193.5) + `certbot --nginx` → cert Let's Encrypt (exp 2026-12-30, auto-renew). HTTP→301→HTTPS. La app está LIVE en https://bitflow.community. (`www` apunta a Vercel, no al server — solo apex por ahora.)
+- **PENDIENTE (requiere a Abner):** (1) **dominio** → `A → 54.146.193.5` + `certbot --nginx` (hoy cert self-signed,
+  el browser avisa); (2) **custodia/KMS** para habilitar depósitos/retiros on-chain reales; (3) price feed
+  (API key) para precios de swap reales — hoy los pares tienen precio sembrado placeholder; (4) acreditar saldo
+  a los usuarios beta vía panel admin. El frontend legacy puede tener más bugs (el rebuild TS sigue pendiente).
+
+## ▶️ SESSION 2026-09-30 — cost/consumption tuning for low-traffic deploy (user-directed, en `dev`)
+Pedido de Abner (primer deploy = 5 usuarios). Cambios NO money-path, TDD, quedan en `dev` (sin merge a main
+por pedido explícito). `perf(ops)` `fd39be5`:
+- `ORDER_MATCH_INTERVAL_MS` (default 100ms) + `PRICE_UPDATE_INTERVAL_MS` (default 10000ms) → env-configurables
+  (el matching disparaba ~864k SELECT/día sobre book vacío a 10x/s; un deploy chico setea 3000ms).
+- `DB_POOL_MAX`/`DB_POOL_MIN` env para el pool de producción (defaults 10/2).
+- OpenAPI `/api-docs` NO se monta en producción (ahorra escaneo swagger-jsdoc al boot + memoria UI + oculta
+  superficie). Gate extraído a `config/apiDocs.js` (`mountApiDocs`), testeable aislado.
+- Defaults preservan el comportamiento actual. 11 unit tests nuevos; suite **590 green**. `.env.template` documentado.
+- Nota sync: al retomar, `dev` tenía 3 commits ajenos sin pushear (`chore: add use strict...`, author Abner2646,
+  27–29/09 — probablemente el cron de respaldo §8); verificados triviales y pusheados (PASO 0).
+- Contexto: análisis de costo AWS de este deploy → ~$5/mes año 1 (free tier) / ~$12/mes (Lightsail 1 caja) /
+  ~$35–48/mes EC2 lean. Lista completa de reducción de consumo entregada en chat (infra + env + código + externos).
+
 ## ▶️ SESSION 2026-09-26 — control-parity burst (§7A), MINE, TDD
 Sync check first (clean): dev 1 ahead of origin/main (docs-only `16d4672`), origin/dev==dev, no stray
 tracked changes. Branches healthy, no stale base. Task ordering: (1) finish what's open → the §7A
@@ -58,6 +97,17 @@ correctness blockers. One fix applied + documented follow-ups:
   500 at approval (executor OVERDRAFT not mapped to a clean error). No money moves; map it when convenient.
 - **[follow-up, pre-existing]** no UUID-format validation on admin balance `:userId/:cryptoId` params (malformed
   → 500 not 404); same gap the governance controller already closed for its `:id`.
+
+- **✅ dev→main MERGED (`bab68ae`, `--no-ff`).** Aligned local main to origin/main (`0b4c7e4`), merged dev,
+  re-ran full unit suite on the merged tree (**579 green**, coverage gate OK), pushed main, fast-forwarded dev.
+  Final: `dev == main == origin/main == origin/dev == bab68ae` (all `0 0`). Delta shipped: §7A control-parity
+  complete — large-withdrawal cancel+refund compensator + admin balance-mutation dual control (update/transfer/
+  block/unblock) + the fail-closed-ordering review fix.
+- **§7A control-parity thread CLOSED.** Every privileged single-operator money movement now routes through
+  Maker-Checker (large withdrawals + their compensator, large presale resolutions + compensator, admin balance
+  adjustment/transfer/block/unblock). **NEXT BURST** = §7B roadmap (order: app-router cutover, or the deferred
+  follow-ups above — extract shared USD-magnitude gate is the cheapest control-parity polish). Pick per the
+  task-ordering rule from a fresh context.
 
 ## ✅ SESSION 2026-09-25 — close the governance/dual-control/TOTP thread (§7 A/B/C)
 Sync check first (clean): dev 1 ahead of origin/main (docs-only `cc044dc`), origin/dev==dev, no stray

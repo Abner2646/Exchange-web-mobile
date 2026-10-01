@@ -39,7 +39,10 @@ module.exports = {
       acquire: 30000,
       idle: 10000
     },
-    dialectOptions: {
+    // DB_SSL=false deshabilita TLS por completo: para un Postgres co-locado en localhost (sin cert
+    // de una CA, solo el snakeoil de Ubuntu) el TLS no aporta nada y rompería el boot
+    // (DEPTH_ZERO_SELF_SIGNED_CERT). Default: SSL ON con validación de cert (DB gestionada / RDS).
+    dialectOptions: process.env.DB_SSL === 'false' ? {} : {
       ssl: {
         require: true,
         // Validate the DB server's TLS certificate by default — prevents a
