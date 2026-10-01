@@ -2,6 +2,20 @@
 
 **Started:** 2026-09-23. Coordinator: Claude (Opus). Abner is away for several days; full autonomy.
 
+## ▶️ SESSION 2026-10-01 (cont.) — dev→main consolidado + verificación prod==main
+Pedido de Abner: pushear todo lo no-mergeado a `main` y "deployar main". Estado:
+- 17 commits de `dev` sin mergear (deploy/frontend/config/docs — NADA money-path nuevo; A1/A2 ya en main).
+- `/code-review` del delta: inline (no money-path), limpio. Riesgo verificado: nada lee `data.error` como
+  objeto (el flatten del interceptor es seguro).
+- **Merge dev→main (`839a029`→`93547ff`), suite 594 green.** De-flakeado `swaggerProdGate` (mock del spec
+  swagger; bajó de 739ms a 16ms). `dev == main == origin == 93547ff`.
+- **Verificado prod == main:** checksums de 9 archivos runtime clave del server vs main → 8 byte-idénticos,
+  1 (`apiDocs.js`) idéntico en contenido (solo CRLF vs LF). Producción YA corría el tip de dev = main → sin
+  re-deploy necesario.
+- **Bono de bienvenida (faucet) CONFIRMADO off en prod:** `claimBtc`/`claimTestnetFaucet` tienen
+  `if (NODE_ENV==='production') return 404`; el server corre NODE_ENV=production. (Test en vivo dio 401 por
+  el `authenticateToken` que corre antes del gate, pero un user autenticado recibe 404 = no reclamable.)
+
 ## ▶️ SESSION 2026-10-01 — MVP deploy en AWS t3.micro (54.146.193.5), driven por Claude
 Deploy real a un t3.micro (1GB, Ubuntu 24.04). INFRA TERMINADA: swap 2GB, Node20/PG16/nginx, DB
 `bitflow_prod` localhost (secretos generados en el box), esquema vía `sequelize.sync()` (35 tablas),
