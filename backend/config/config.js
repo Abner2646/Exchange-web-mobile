@@ -32,7 +32,7 @@ module.exports = {
   },
   production: {
     username: process.env.DB_USER,
-    //password: process.env.DB_PASSWORD,
+    password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
@@ -44,11 +44,10 @@ module.exports = {
       acquire: 30000,
       idle: 10000
     },
-    dialectOptions: {
-      ssl: {
-        require: true,
-        rejectUnauthorized: false
-      }
-    }
+    // SSL on por default (DB gestionada / RDS). Para un Postgres en localhost SIN SSL (co-locado en
+    // el mismo server), seteá DB_SSL=false o el driver falla con "server does not support SSL".
+    dialectOptions: process.env.DB_SSL === 'false'
+      ? {}
+      : { ssl: { require: true, rejectUnauthorized: false } }
   }
 };

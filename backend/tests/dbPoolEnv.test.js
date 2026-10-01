@@ -29,3 +29,21 @@ describe('production DB pool — DB_POOL_MAX / DB_POOL_MIN', () => {
     expect(cfg.pool.max).toBe(10);
   });
 });
+
+describe('production DB SSL — DB_SSL', () => {
+  const OLD = process.env;
+  beforeEach(() => { jest.resetModules(); process.env = { ...OLD }; });
+  afterAll(() => { process.env = OLD; });
+
+  test('SSL is ON by default (managed DB / RDS)', () => {
+    delete process.env.DB_SSL;
+    const cfg = require('../config/config').production;
+    expect(cfg.dialectOptions.ssl).toMatchObject({ require: true });
+  });
+
+  test('DB_SSL=false disables SSL (for a localhost Postgres without SSL)', () => {
+    process.env.DB_SSL = 'false';
+    const cfg = require('../config/config').production;
+    expect(cfg.dialectOptions.ssl).toBeUndefined();
+  });
+});
