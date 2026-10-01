@@ -12,8 +12,19 @@ desde afuera). NODE_ENV=production (decisión de Abner: producción estricta, si
   forzaba SSL → DEPTH_ZERO_SELF_SIGNED_CERT contra el PG local. `DB_SSL=false` ahora honrado ahí. +2 tests, 594 green.
 - **BLOQUEO (decisión de Abner):** catálogo vacío — `seedInitialData.js` PASO 1 (`setupWallets`) exige claves
   de custodia reales (`BTC_MNEMONIC/PRIVATE_KEY/BTC_MASTER_XPUB/BITCOIN_WALLET_ADDRESS` + ETH/BSC). NO se inventan.
-- **Pendiente:** catálogo (custodia vs walletless), build del frontend (placeholder por ahora), dominio→Let's Encrypt.
 - Artefactos del deploy en `deploy/` (+ `bitflow-selfsigned.conf`). Clave SSH del box: `Clave privada.pem` (de Abner).
+- **✅ DEPLOY FUNCIONAL COMPLETO:**
+  - Catálogo sin custodia sembrado (`2b64df0`): **20 cryptos, 380 swap pairs, 85 trading pairs** vía
+    `scripts/seedCatalogNoCustody.js` (exporté `CRIPTOMONEDAS_BASICAS`). Sin wallets maestras → depósitos/retiros
+    on-chain OFF hasta KMS; fondos para la beta vía panel admin.
+  - Frontend legacy (CRA) buildeado local + servido en `/var/www/bitflow` (`<title>BitFlow</title>`, bundle real).
+    Fix build-breaking `6909c2a`: `refetch` no destructurado en `Activos.jsx`.
+  - Verificado desde afuera: `https://54.146.193.5/` sirve la SPA; `/api/parExchange` devuelve los 380 swap pairs;
+    `/health` OK; 3001/5432 filtrados. Backend estable (~133MB), RAM 498/909MB, swap casi sin usar.
+- **PENDIENTE (requiere a Abner):** (1) **dominio** → `A → 54.146.193.5` + `certbot --nginx` (hoy cert self-signed,
+  el browser avisa); (2) **custodia/KMS** para habilitar depósitos/retiros on-chain reales; (3) price feed
+  (API key) para precios de swap reales — hoy los pares tienen precio sembrado placeholder; (4) acreditar saldo
+  a los usuarios beta vía panel admin. El frontend legacy puede tener más bugs (el rebuild TS sigue pendiente).
 
 ## ▶️ SESSION 2026-09-30 — cost/consumption tuning for low-traffic deploy (user-directed, en `dev`)
 Pedido de Abner (primer deploy = 5 usuarios). Cambios NO money-path, TDD, quedan en `dev` (sin merge a main
