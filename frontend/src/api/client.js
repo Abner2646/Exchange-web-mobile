@@ -38,8 +38,13 @@ apiClient.interceptors.response.use(
       if (typeof data.error === 'string') {
         normalizedMsg = data.error;
       } else if (data.error && typeof data.error === 'object') {
+        // Envelope canónico { error: { code, message, requestId } }. El código legacy lee
+        // `error.response.data.error` esperando un STRING (shape vieja) y lo pasa a toast/JSX;
+        // renderizar el objeto crashea React (#31 "objects are not valid as a React child").
+        // Aplastamos data.error a su mensaje string → seguro en toda la app. El code queda en errorCode.
         normalizedMsg = data.error.message || 'Error en la solicitud';
         code = data.error.code || null;
+        data.error = normalizedMsg;
       } else if (typeof data.message === 'string') {
         normalizedMsg = data.message;
       }
