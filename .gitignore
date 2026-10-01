@@ -206,3 +206,6 @@ public/uploads/
 
 # Local autonomous-run handoff (kept out of history by request)
 HANDOFF.md
+
+# Notas locales de deploy/infra (contexto del server) — nunca commitear
+*.local.md
