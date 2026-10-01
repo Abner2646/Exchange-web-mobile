@@ -26,6 +26,7 @@ const BalancePage = () => {
     setActiveTab,
     hideSmallBalances,
     setHideSmallBalances,
+    refetch,
   } = useBalances();
 
   const handleNavigation = (path) => {
