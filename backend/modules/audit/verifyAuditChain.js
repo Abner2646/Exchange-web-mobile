@@ -1,5 +1,7 @@
 // modules/audit/verifyAuditChain.js
 // Recomputes the audit hash-chain to detect tampering (edited/deleted rows).
+'use strict';
+
 const { GENESIS, computeHash } = require('./auditHash');
 
 // Pure: rows are audit_log rows ordered by id ASC.
