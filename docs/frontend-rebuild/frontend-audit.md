@@ -134,11 +134,41 @@ src/
   support arrives. Trade explains that it consumes Spot; withdrawal explains
   that it consumes Funding and may be unavailable during email-change cooldown.
 
+### SEO and rendering (REQUIRED — the current CRA build cannot do this)
+
+The legacy CRA app is **client-side rendered**: the served HTML is an empty
+`<div id="root">` shell, so search engines and link-preview crawlers that do not
+execute JavaScript see no content (only a "JavaScript required" `<noscript>`).
+As a 2026-10-03 stopgap, production has a real `robots.txt`, a `sitemap.xml`, a
+canonical URL, and indexable `<meta>`/Open Graph tags baked into the static
+`index.html` (commit `4d99b06`) — enough for Googlebot (which does run JS) to
+index the home, but not for reliable, fast, or broad crawler coverage.
+
+The TS rebuild **must be SEO-capable from the start**:
+
+- **Server-render the public, indexable surface** (home/marketing, and any
+  content pages) with SSR or SSG so crawlers receive complete HTML without
+  executing JS. The authenticated app (wallet, trading, swap, admin, …) can stay
+  client-rendered — it is not indexable content.
+- **Per-route metadata**: each public route owns its `<title>`, meta description,
+  canonical, and Open Graph/Twitter tags, rendered server-side (not injected only
+  after hydration). A shared head/metadata layer (framework-native, e.g. a
+  metadata API, or a head manager) is mandatory — no hand-maintained global tags.
+- **Ship `robots.txt` and a generated `sitemap.xml`** as first-class build
+  outputs (keep the production URLs already live), and keep HTTPS + canonical
+  host (`bitflow.community`) — never let a preview/staging host get indexed
+  (`noindex` on non-production hosts).
+- **Framework implication**: this effectively requires an SSR/SSG-capable stack
+  (e.g. Next.js/Remix) rather than plain CRA. Treat the renderer choice as an
+  SEO requirement, decided in Slice 0, not a later optimization. A prerendering
+  shim (react-snap/prerender.io) is an acceptable interim only if a full SSR
+  framework is deferred.
+
 ## Page-by-page replacement order
 
 | Slice | Pages/journey | Exit criteria |
 | --- | --- | --- |
-| 0 | Shared API, exact money, i18n, accessible UI primitives, session seam | Contract tests for route/path/header/body mapping; no legacy imports. |
+| 0 | Shared API, exact money, i18n, accessible UI primitives, session seam, **SSR/SSG renderer choice** | Contract tests for route/path/header/body mapping; no legacy imports; **SEO-capable renderer selected (SSR/SSG) per "SEO and rendering"**. |
 | 1 | Account: register, verify email, login/2FA, password recovery, Google | All server auth states are actionable; no missing routes; errors by code. |
 | 2 | Wallet: balances, Funding↔Spot transfer, deposit address/history, withdrawal | Correct compartments and pending balances; money mutation/idempotency tests; withdrawal guard states. |
 | 3 | Swap | Indicative quote disclosure, daily-limit feedback, canonical amounts, idempotent execution. |
