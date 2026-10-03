@@ -1,0 +1,7 @@
+# robots.txt — BitFlow (https://bitflow.community)
+# Permite el rastreo de todo el sitio público. Las rutas privadas de la app son CSR
+# y no exponen contenido sin auth, así que no hace falta bloquearlas explícitamente.
+User-agent: *
+Allow: /
+
+Sitemap: https://bitflow.community/sitemap.xml
