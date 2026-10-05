@@ -2,6 +2,33 @@
 
 **Started:** 2026-09-23. Coordinator: Claude (Opus). Abner is away for several days; full autonomy.
 
+## ▶️ SESSION 2026-10-02→05 — prod live (bitflow.community): Doppler + email + catálogo + SEO
+MVP **DESPLEGADO Y FUNCIONAL** en https://bitflow.community (t3.micro, infra en DEPLOY_CONTEXT.local.md).
+Cierre de esta tanda (todo en `main`, `5232bc2`; prod==main):
+- **Doppler fuente única de secretos** (proyecto `bitflow/prd`): pm2 arranca `deploy/start-backend.sh` →
+  `doppler run`, nada en disco. Token read-only, sesión amplia deslogueada (mínimo privilegio). 25 vars app.
+- **Email funciona** (Gmail SMTP del .env dev, verificado). `JWT_SECRET`+`SESSION_SECRET` rotados (un valor se
+  coló en output de `doppler secrets upload`). `TOTP_ISSUER=BitFlow`. `COINGECKO_API_KEY` cargada.
+- **Catálogo completo**: 20 cryptos + 20/20 logos (spothq SVG / coincap PNG para SHIB/PEPE/ARB/OP) + 380 swap
+  pairs (precio>0) + 85 trading pairs (lastPrice=0 = esperado sin trades) + 9 formas de pago. Seeders:
+  `scripts/seedCatalogNoCustody.js`, `scripts/seedLogosAndPaymentMethods.js`.
+- **Cuenta owner:** grgurichabner@gmail.com (`abner`) = super_admin, email_verified=true.
+- **SEO (paso 1)**: robots.txt + sitemap.xml reales (3 URLs: home/register/login — resto es app privada,
+  no indexable), meta/OG/canonical reales, `<meta robots index,follow>`. Enviado a Search Console. Front es
+  CSR (CRA) → documentado en frontend-audit.md que el rebuild TS DEBE ser SSR/SSG (Slice 0).
+- **Fixes de frontend legacy** en el camino: `.env.production` (REACT_APP_API_URL, git-bash manglaba /api→C:),
+  ErrorBoundary, flatten del error-envelope (React #31), `refetch` en Activos, CORS `ALLOWED_ORIGINS`.
+- **Bugs reales arreglados** (money/infra): `config/database.js` DB_SSL=false (runtime), de-flake swaggerProdGate.
+
+### Pendientes al cerrar (NO bloqueantes; para la próxima)
+- **Custodia/KMS**: depósitos/retiros on-chain OFF hasta AWS KMS (decisión Abner). Claves reales NO en prod.
+- **email.service.js loguea el código de verificación en texto plano** antes del send → bajar a debug (follow-up seguridad).
+- **Google login**: credenciales en Doppler-pendiente; necesita whitelistear redirect URI en Google Console.
+- **businessConfig** vacío (usa defaults del código; el panel admin lo muestra vacío hasta setearlo).
+- **SEO**: solo home indexable sin SSR; páginas de contenido (fees/FAQ/por-activo) = trabajo del rebuild TS.
+- **Gmail SMTP** sirve para beta (~500/día, riesgo spam) → SES para escala.
+- Higiene: en la máquina local hay copia de la SSH key en `/tmp/bitflow_key.pem` (usada para operar el server).
+
 ## ▶️ SESSION 2026-10-01 (cont.) — dev→main consolidado + verificación prod==main
 Pedido de Abner: pushear todo lo no-mergeado a `main` y "deployar main". Estado:
 - 17 commits de `dev` sin mergear (deploy/frontend/config/docs — NADA money-path nuevo; A1/A2 ya en main).
