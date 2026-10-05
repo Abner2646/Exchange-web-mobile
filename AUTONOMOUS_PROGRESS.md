@@ -2,6 +2,30 @@
 
 **Started:** 2026-09-23. Coordinator: Claude (Opus). Abner is away for several days; full autonomy.
 
+## ▶️ SESSION 2026-10-05 — Fase 1 "barrido" (MERGED a main, PR #39, `3735bcd`) + fix CI integración
+Sesión interactiva con Abner (no autónoma). Tres cierres money-path/seguridad, TDD, `dev→main` vía PR con
+`/code-review` alto esfuerzo (corrido por Claude). Estado final: `dev == main == origin == 3735bcd`.
+- **[#1 seguridad] `0208c1b`:** los códigos verificación/2FA/recuperación/transferencia se logueaban en texto
+  plano en CADA envío (en prod → logs de pm2, vector account-takeover). Helper `logDevCode` gateado por
+  `NODE_ENV !== 'production'`. +3 unit.
+- **[#2 oracle circuit breaker, Hito 2] `5741668`:** job en background (`oracleBreaker.job`, `ORACLE_SWEEP_INTERVAL_MS`
+  60s) que valúa cada par de swap con `externalSymbol` vía la mediana multi-fuente, FUERA del hot-path.
+  Divergente (>1.5%, config `oracle_divergence_threshold_pct`) o indisponible → **pausa** el par (precio
+  congelado) + evento `PRICE_ORACLE_DIVERGENCE` (outbox atómico) + alerta Telegram; swap execute/preview → 503.
+  Migración aditiva (`oracle_paused/reason/checked_at`, default false). CoinGecko symbol-map extendido a majors.
+  Review fixes (`51119ba`): guard de quote-no-stable (la mediana es USD → corromper precio en cross) + alerta de
+  recuperación. +9 unit.
+- **[#3 referidos] `7d38452`:** `accrueCommission` cableado event-driven sobre `SwapExecuted` (era código muerto);
+  valúa el fee (quote asset) en USD≈USDT; idempotente por sourceRef. Order-book `TradeExecuted` = follow-up (sin
+  trades aún). +5 unit.
+- **⚠️ PASO DE DEPLOY (en DEPLOY_CONTEXT §6 + comment de PR #39):** las 3 columnas de `swap_pairs` NO las aplica
+  el `sequelize.sync()` plano de prod → ALTER manual obligatorio antes de reiniciar el backend, o rompe swaps.
+- **[CI] `091addf`:** el `globalSetup` de integración hacía `sync({force:true})` sin cargar los modelos lazy
+  (governance/referrals/launchpad/kyc) → faltaban tablas (`pending_admin_actions`…) → **143 fallos** de integración
+  (CI rojo en main hacía commits, docs incluidos). Fix: `require('../../routes')` antes del sync → **143→18 fallos**.
+- **Deuda CI pendiente → issue #40:** los 18 fallos restantes (retiros/TOTP/AML, pre-existentes, ajenos a Fase 1)
+  + dependency audit (subir axios, 19 advisories). NO bloquean Fase 1 (gate = /code-review + unit verde).
+
 ## ▶️ SESSION 2026-10-02→05 — prod live (bitflow.community): Doppler + email + catálogo + SEO
 MVP **DESPLEGADO Y FUNCIONAL** en https://bitflow.community (t3.micro, infra en DEPLOY_CONTEXT.local.md).
 Cierre de esta tanda (todo en `main`, `5232bc2`; prod==main):
