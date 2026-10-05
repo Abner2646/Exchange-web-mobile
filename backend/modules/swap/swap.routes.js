@@ -93,6 +93,7 @@ router.use(authenticateToken, requireEmailVerified);
  *       400: { $ref: '#/components/responses/BadRequest' }
  *       401: { $ref: '#/components/responses/Unauthorized' }
  *       404: { $ref: '#/components/responses/BadRequest' }
+ *       503: { description: "Par pausado por el circuit breaker del oráculo (code PRICE_ORACLE_DIVERGENCE): la divergencia de precio entre fuentes superó el umbral. Reintentar más tarde." }
  */
 router.post('/', idempotency, asyncHandler(intercambioController.createOrder));
 
@@ -116,6 +117,7 @@ router.post('/', idempotency, asyncHandler(intercambioController.createOrder));
  *     responses:
  *       200: { description: Cálculo del swap (montos como strings) }
  *       400: { $ref: '#/components/responses/BadRequest' }
+ *       503: { description: "Par pausado por el circuit breaker del oráculo (code PRICE_ORACLE_DIVERGENCE)." }
  */
 router.post('/calculate', asyncHandler(intercambioController.calculateExchange));
 

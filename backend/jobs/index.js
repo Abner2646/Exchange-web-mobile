@@ -7,6 +7,7 @@ const idempotencyCleanupJob = require('./idempotencyCleanup.job');
 const reconciliationJob = require('./reconciliation.job');
 const outboxPublisherJob = require('./outboxPublisher.job');
 const amlSweepJob = require('./amlSweep.job');
+const oracleBreakerJob = require('./oracleBreaker.job');
 
 class JobManager {
 
@@ -20,6 +21,7 @@ class JobManager {
       reconciliation: reconciliationJob,
       outboxPublisher: outboxPublisherJob,
       amlSweep: amlSweepJob,
+      oracleBreaker: oracleBreakerJob,
     };
   }
 
@@ -79,6 +81,12 @@ class JobManager {
       this.jobs.amlSweep.start();
     } catch (error) {
       console.error('❌ Error iniciando AML Sweep:', error.message);
+    }
+
+    try {
+      this.jobs.oracleBreaker.start();
+    } catch (error) {
+      console.error('❌ Error iniciando Oracle Breaker:', error.message);
     }
 
     console.log('\n✅ ===== TODOS LOS JOBS INICIADOS ===== ✅\n');

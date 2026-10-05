@@ -86,6 +86,26 @@ function initSwapPair(sequelize) {
       allowNull: true,
       field: 'external_symbol',
       comment: 'ID del par en la fuente externa (pair id in the external source)'
+    },
+    // Oracle circuit breaker (Hito 2). When the multi-source oracle finds the price
+    // feed divergent/unavailable for this pair, the sweep sets oraclePaused=true and
+    // the swap hot-path rejects with 503 until a later sweep clears it. Additive +
+    // default false → existing pairs keep transacting.
+    oraclePaused: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      field: 'oracle_paused'
+    },
+    oraclePauseReason: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      field: 'oracle_pause_reason'
+    },
+    oracleCheckedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'oracle_checked_at'
     }
   }, {
     sequelize,
