@@ -390,8 +390,13 @@ One-level referral program. Money-path; all amounts are canonical decimal string
 - Commission rate is admin-configurable via business config `referral_commission_pct`
   (default `0.1`). Accrual books the commission to a dedicated house `referral_liability` ledger
   account at earn time (funded from `fee_revenue`); a claim drains that liability into the user's
-  funding balance. Accrual from invitee trading fees is server-side; the automatic hook into the
-  trade-fee settlement flow is a pending server-side follow-up.
+  funding balance.
+- **Accrual is now wired (2026-10-05):** a referral consumer reacts to the `SwapExecuted` money
+  event (event-driven, out of the swap hot-path) and accrues the invitee's sponsor commission,
+  valuing the swap fee (charged in the quote asset) in USD≈USDT. Idempotent by source ref (a
+  redelivered event never double-accrues). No client-facing shape change — the accrued balance just
+  starts growing from swaps. (Order-book `TradeExecuted` accrual is a pending follow-up; the order
+  book has no live trades yet.)
 
 ---
 
