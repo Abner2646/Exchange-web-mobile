@@ -89,6 +89,14 @@ const createOrder = async (req, res) => {
       throw new AppError(404, errorCodes.EXCHANGE_PAIR_NOT_FOUND, 'Par de intercambio no encontrado o inactivo');
     }
 
+    // Oracle circuit breaker (Hito 2): the background sweep pauses a pair whose price
+    // feed diverged across sources. Reject fast (no network here) rather than execute
+    // against a price we can't trust — the whole point of the breaker.
+    if (par.oraclePaused) {
+      await transaction.rollback();
+      throw new AppError(503, errorCodes.PRICE_ORACLE_DIVERGENCE, 'Cotizaciones pausadas por discrepancia de mercado. Reintentá en unos instantes.');
+    }
+
     // price canónico (string): par.currentPrice es DECIMAL — pasarlo por
     // parseFloat perdería dígitos en precios de alta precisión antes de operar.
     const price = String(par.currentPrice);
@@ -263,6 +271,12 @@ const calculateExchange = async (req, res) => {
 
   if (!par || !par.active) {
     throw new AppError(404, errorCodes.EXCHANGE_PAIR_NOT_FOUND, 'Par de intercambio no encontrado o inactivo');
+  }
+
+  // Oracle circuit breaker (Hito 2): don't even quote a preview for a paused pair —
+  // the UI shows "cotizaciones pausadas" instead of a price the user can't trade on.
+  if (par.oraclePaused) {
+    throw new AppError(503, errorCodes.PRICE_ORACLE_DIVERGENCE, 'Cotizaciones pausadas por discrepancia de mercado. Reintentá en unos instantes.');
   }
 
   const price = String(par.currentPrice);

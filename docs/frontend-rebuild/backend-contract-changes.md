@@ -390,8 +390,13 @@ One-level referral program. Money-path; all amounts are canonical decimal string
 - Commission rate is admin-configurable via business config `referral_commission_pct`
   (default `0.1`). Accrual books the commission to a dedicated house `referral_liability` ledger
   account at earn time (funded from `fee_revenue`); a claim drains that liability into the user's
-  funding balance. Accrual from invitee trading fees is server-side; the automatic hook into the
-  trade-fee settlement flow is a pending server-side follow-up.
+  funding balance.
+- **Accrual is now wired (2026-10-05):** a referral consumer reacts to the `SwapExecuted` money
+  event (event-driven, out of the swap hot-path) and accrues the invitee's sponsor commission,
+  valuing the swap fee (charged in the quote asset) in USD≈USDT. Idempotent by source ref (a
+  redelivered event never double-accrues). No client-facing shape change — the accrued balance just
+  starts growing from swaps. (Order-book `TradeExecuted` accrual is a pending follow-up; the order
+  book has no live trades yet.)
 
 ---
 
@@ -498,6 +503,25 @@ Second factor is migrating to **TOTP** (RFC 6238, e.g. Google Authenticator/Auth
 - Used today by the Maker-Checker checker step-up (§14). **Migrating the login second factor** (`/login` →
   `/verify-2fa`) from the email code to TOTP is the next server slice; until then, login may still use the email code
   while governance uses TOTP.
+
+### 16. Swap oracle circuit breaker — new 503 `PRICE_ORACLE_DIVERGENCE` (Hito 2, 2026-10-05)
+
+A background sweep prices each swap pair (that has an `externalSymbol`) from a
+multi-source median oracle (Binance + Coinbase + CoinGecko). When the spread
+between sources exceeds the divergence threshold (default **1.5%**, config
+`oracle_divergence_threshold_pct`), or the oracle is unavailable (<2 sources
+respond), the pair is **paused** — its price is frozen and trading is blocked
+until a later sweep clears it.
+
+While a pair is paused, both swap endpoints reject with **HTTP 503** and the
+canonical error envelope `code: "PRICE_ORACLE_DIVERGENCE"`:
+- `POST /api/intercambioExchange` (execute) — no funds move.
+- `POST /api/intercambioExchange/calculate` (preview) — no quote is returned.
+
+**Frontend handling:** on a `503 PRICE_ORACLE_DIVERGENCE`, show the roadmap's
+"Cotizaciones pausadas por discrepancia de mercado. Reintentando…" state (disable
+the confirm button, offer retry) rather than a generic error. Pairs without an
+`externalSymbol` are manually priced and never paused by this mechanism.
 
 ---
 

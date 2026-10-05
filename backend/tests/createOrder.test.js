@@ -191,6 +191,34 @@ describe('createOrder', () => {
     );
   });
 
+  test('rechaza con 503 PRICE_ORACLE_DIVERGENCE cuando el par está pausado por el oráculo', async () => {
+    const transaction = setupCommonMocks();
+    // El circuit breaker marcó el par como pausado (divergencia de precio).
+    SwapPair.findByPk.mockResolvedValue({
+      active: true,
+      oraclePaused: true,
+      currentPrice: '100',
+      feePercent: 1,
+      baseCryptoId: CRIPTO_BASE_ID,
+      quoteCryptoId: CRIPTO_QUOTE_ID,
+      baseCrypto: { symbol: 'BTC' },
+      quoteCrypto: { symbol: 'USDT' },
+    });
+    UserBalance.getCompartmentBalance.mockResolvedValue({ available: '200', blocked: '0', pending: '0' });
+
+    const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const res = await request(buildCreateOrderApp())
+      .post('/')
+      .send({ pairId: PAR_ID, type: 'buy', baseAmount: 1 });
+    spy.mockRestore();
+
+    expect(res.status).toBe(503);
+    expect(res.body.error.code).toBe('PRICE_ORACLE_DIVERGENCE');
+    // Nada de dinero se mueve mientras el par está pausado.
+    expect(settleSwap).not.toHaveBeenCalled();
+    expect(transaction.rollback).toHaveBeenCalled();
+  });
+
   test('rechaza la orden si supera el límite diario (chequeo ya no está deshabilitado)', async () => {
     // Migrated to HTTP layer: createOrder now throws AppError for business
     // failures so the assertion must go through asyncHandler + errorHandler.
