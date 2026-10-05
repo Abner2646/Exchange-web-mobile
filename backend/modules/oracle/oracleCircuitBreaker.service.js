@@ -18,6 +18,7 @@ const OracleService = require('./oracle.service');
 const defaultSources = require('./oracle.sources');
 const { emitEvent: defaultEmitEvent } = require('../events/emitEvent');
 const { sendAlert: defaultSendAlert } = require('../alerts/telegramAlert.service');
+const { STABLE_SYMBOLS } = require('../aml/amlValuation');
 const businessConfig = require('../config/businessConfig');
 
 const PRICE_ORACLE_DIVERGENCE = 'PRICE_ORACLE_DIVERGENCE';
@@ -35,6 +36,15 @@ async function refreshPairFromOracle(pair, deps) {
   // Manual-priced pairs (no external symbol) are intentionally out of scope.
   if (!pair.externalSymbol) {
     return { action: 'skipped', pairId: pair.id };
+  }
+
+  // The oracle prices the BASE asset in USD (Binance BTCUSDT / Coinbase BTC-USD /
+  // CoinGecko usd). That median is only a valid pair price when the quote is a
+  // USD-stable. On a non-stable quote (e.g. a BASE/BTC cross) writing the USD median
+  // into currentPrice would corrupt it — so the breaker leaves such pairs untouched.
+  const quoteSymbol = pair.quoteCrypto && pair.quoteCrypto.symbol;
+  if (!STABLE_SYMBOLS.includes(quoteSymbol)) {
+    return { action: 'skipped', pairId: pair.id, reason: 'non-stable-quote' };
   }
 
   let result;
@@ -66,6 +76,17 @@ async function refreshPairFromOracle(pair, deps) {
     priceSource: 'oracle',
     lastUpdated: new Date(),
   });
+
+  // Close the loop for operators: whoever got the critical pause alert needs to know
+  // the pair came back (best-effort, out-of-band).
+  if (wasPaused) {
+    await sendAlert({
+      severity: 'info',
+      code: PRICE_ORACLE_DIVERGENCE,
+      message: `Swap resumed for ${pair.externalSymbol} (oracle reliable again)`,
+      context: { pairId: pair.id, externalSymbol: pair.externalSymbol, price: String(result.median) },
+    });
+  }
 
   return { action: 'updated', pairId: pair.id, price: String(result.median), recovered: !!wasPaused };
 }
@@ -110,15 +131,18 @@ async function pausePair(pair, { reason, divergencePct }, { emitEvent, sendAlert
 // Sweep all active, externally-priced swap pairs. Per-pair errors are isolated so a
 // single bad pair can never abort the whole pass.
 async function sweep(deps = {}) {
-  const { SwapPair, sequelize } = require('../../models');
+  const { SwapPair, Crypto, sequelize } = require('../../models');
   const { Op } = require('sequelize');
 
   const threshold = await businessConfig.getNumber('oracle_divergence_threshold_pct', 1.5);
   const oracleService = deps.oracleService
     || new OracleService(deps.sources || defaultSources, threshold);
 
+  // Include the quote crypto so refreshPairFromOracle can enforce the USD-stable-quote
+  // guard without an extra query per pair.
   const pairs = await SwapPair.findAll({
     where: { active: true, externalSymbol: { [Op.ne]: null } },
+    include: [{ model: Crypto, as: 'quoteCrypto', attributes: ['symbol'] }],
   });
 
   const summary = { total: pairs.length, updated: 0, paused: 0, alreadyPaused: 0, skipped: 0, errors: 0 };

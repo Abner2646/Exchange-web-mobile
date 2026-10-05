@@ -16,6 +16,9 @@ function makePair(overrides = {}) {
     currentPrice: '100',
     previousPrice: '90',
     oraclePaused: false,
+    // The oracle prices the base in USD, so the breaker only overwrites the price of
+    // USD(T)-quoted pairs. Default the fixture to a stable quote.
+    quoteCrypto: { symbol: 'USDT' },
     _updates: [],
     async update(fields) {
       this._updates.push(fields);
@@ -69,7 +72,7 @@ describe('oracleCircuitBreaker.refreshPairFromOracle', () => {
   });
 
   it('updates currentPrice to the median and unpauses when the oracle is reliable', async () => {
-    const pair = makePair({ currentPrice: '100', oraclePaused: true });
+    const pair = makePair({ currentPrice: '100', oraclePaused: false });
     const { deps, emitted, alerts } = makeDeps();
     const oracleService = {
       getPrice: async () => ({
@@ -115,6 +118,36 @@ describe('oracleCircuitBreaker.refreshPairFromOracle', () => {
     expect(oracleService.getPrice).not.toHaveBeenCalled();
     expect(pair._updates).toHaveLength(0);
     expect(emitted).toHaveLength(0);
+  });
+
+  it('skips a pair whose quote is NOT a USD-stable (oracle median is USD, would corrupt the price)', async () => {
+    const pair = makePair({ quoteCrypto: { symbol: 'BTC' } });
+    const { deps, emitted, alerts } = makeDeps();
+    const oracleService = { getPrice: jest.fn() };
+
+    const outcome = await refreshPairFromOracle(pair, { ...deps, oracleService });
+
+    expect(outcome.action).toBe('skipped');
+    expect(oracleService.getPrice).not.toHaveBeenCalled();
+    expect(pair._updates).toHaveLength(0);
+  });
+
+  it('alerts (info) when a previously-paused pair recovers', async () => {
+    const pair = makePair({ oraclePaused: true, currentPrice: '100' });
+    const { deps, emitted, alerts } = makeDeps();
+    const oracleService = {
+      getPrice: async () => ({
+        symbol: 'BTCUSDT', price: '105', median: '105',
+        divergencePct: '0.2', reliable: true, reason: null,
+      }),
+    };
+
+    const outcome = await refreshPairFromOracle(pair, { ...deps, oracleService });
+
+    expect(outcome.action).toBe('updated');
+    expect(outcome.recovered).toBe(true);
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0].severity).toBe('info');
   });
 
   it('does not re-emit/re-alert when an already-paused pair stays divergent (no alert storm)', async () => {
