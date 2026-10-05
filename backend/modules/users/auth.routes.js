@@ -28,7 +28,10 @@ const router = express.Router();
  *     responses: { 200: { description: Sesión cerrada } }
  */
 router.get('/google',
-  passport.authenticate('google', { scope: ['profile', 'email'] })
+  // prompt:'select_account' fuerza a Google a mostrar SIEMPRE el selector de cuenta en vez de
+  // reusar silenciosamente la sesión activa de Google (si no, tras un logout el usuario vuelve
+  // directo a su cuenta anterior sin poder elegir).
+  passport.authenticate('google', { scope: ['profile', 'email'], prompt: 'select_account' })
 );
 
 router.get('/google/callback',

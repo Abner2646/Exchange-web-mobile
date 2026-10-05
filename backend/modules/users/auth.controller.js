@@ -29,11 +29,26 @@ class AuthController {
   }
 
   logout(req, res) {
+    // req.logout() solo saca req.user de la sesión; NO destruye la sesión ni borra la cookie.
+    // Para un logout completo: req.logout → destroy de la sesión del server → clearCookie (con los
+    // mismos atributos que la seteó express-session, si no el browser no la borra).
+    const finish = () => {
+      res.clearCookie('connect.sid', {
+        path: '/',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      });
+      res.json({ message: 'Session closed successfully' });
+    };
     req.logout((err) => {
       if (err) {
         return res.status(500).json({ error: 'Error logging out' });
       }
-      res.json({ message: 'Session closed successfully' });
+      if (req.session) {
+        return req.session.destroy(() => finish());
+      }
+      return finish();
     });
   }
 }
