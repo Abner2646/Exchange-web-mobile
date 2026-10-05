@@ -28,10 +28,26 @@ class AuthController {
     res.redirect(redirectUrl);
   }
 
-  logout(req, res) {
-    // req.logout() solo saca req.user de la sesión; NO destruye la sesión ni borra la cookie.
-    // Para un logout completo: req.logout → destroy de la sesión del server → clearCookie (con los
-    // mismos atributos que la seteó express-session, si no el browser no la borra).
+  async logout(req, res) {
+    // 1) Invalidación SERVER-SIDE del JWT: estampar User.lastLogoutAt. El authMiddleware ya rechaza
+    //    todo token cuyo `iat` sea anterior a lastLogoutAt → tras el logout, el token (y cualquier otro
+    //    emitido antes) deja de ser válido aunque alguien lo haya copiado. El front llama a ESTE endpoint
+    //    con su Bearer token, así que sacamos el usuario de ahí. Logout idempotente: sin token válido,
+    //    igual cerramos sesión (no exponemos el motivo del fallo de verificación).
+    try {
+      let token = req.header('Authorization') || '';
+      if (token.startsWith('Bearer ')) token = token.slice(7);
+      if (token) {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const { User } = require('../../models');
+        await User.logout(decoded.id);
+      }
+    } catch (e) {
+      // token ausente/inválido/expirado → el logout procede igual
+    }
+
+    // 2) Logout de passport + destruir la sesión del server + borrar la cookie (mismos atributos que
+    //    la seteó express-session, si no el browser no la elimina).
     const finish = () => {
       res.clearCookie('connect.sid', {
         path: '/',
