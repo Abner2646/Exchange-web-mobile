@@ -77,6 +77,15 @@ class EmailService {
     };
   }
 
+  // Log de conveniencia SOLO en entornos no productivos (DEV/test suelen correr sin
+  // SMTP real, así se lee el código por consola). NUNCA en producción: imprimir el
+  // código de verificación/2FA/recuperación en texto plano lo filtra a los logs de pm2
+  // (riesgo de account-takeover). Gate: NODE_ENV === 'production' → no-op.
+  logDevCode(label, destino, codigo) {
+    if (process.env.NODE_ENV === 'production') return;
+    console.log(`\n========================================\n🔑 [DEV EMAIL] ${label} para ${destino}: ${codigo}\n========================================\n`);
+  }
+
   // Verificar conexión del transportador
   async verifyConnection() {
     try {
@@ -303,7 +312,7 @@ class EmailService {
 
   // Enviar código de recuperación de contraseña
   async enviarCodigoRecuperacion(email, codigo, username) {
-    console.log(`\n========================================\n🔑 [DEV EMAIL] Código recuperación para ${email}: ${codigo}\n========================================\n`);
+    this.logDevCode('Código recuperación', email, codigo);
     const content = `
       <h2 class="content-title">Recuperación de Contraseña</h2>
       <p class="content-text">Hola <strong>${username}</strong>,</p>
@@ -343,7 +352,7 @@ class EmailService {
   // Radar #14 — código para confirmar un cambio de email; se envía AL email NUEVO
   // (prueba de control de la nueva dirección).
   async enviarCodigoCambioEmail(nuevoEmail, codigo) {
-    console.log(`\n========================================\n🔑 [DEV EMAIL] Código cambio email para ${nuevoEmail}: ${codigo}\n========================================\n`);
+    this.logDevCode('Código cambio email', nuevoEmail, codigo);
     const content = `
       <h2 class="content-title">Confirmá tu nuevo email</h2>
       <p class="content-text">Recibimos una solicitud para cambiar el email de tu cuenta de BitFlow a esta dirección. Usá este código para confirmarlo:</p>
@@ -402,7 +411,7 @@ class EmailService {
 
   // Enviar código de verificación de email
   async enviarCodigoVerificacionEmail(email, codigo, username) {
-    console.log(`\n========================================\n🔑 [DEV EMAIL] Código verificación email para ${email}: ${codigo}\n========================================\n`);
+    this.logDevCode('Código verificación email', email, codigo);
     const content = `
       <h2 class="content-title">¡Bienvenido a BitFlow!</h2>
       <p class="content-text">Hola <strong>${username}</strong>,</p>
@@ -441,7 +450,7 @@ class EmailService {
 
   // Enviar código de autenticación de dos factores
   async enviarCodigo2FA(email, codigo, username) {
-    console.log(`\n========================================\n🔑 [DEV EMAIL] Código 2FA para ${email}: ${codigo}\n========================================\n`);
+    this.logDevCode('Código 2FA', email, codigo);
     const content = `
       <h2 class="content-title">Verificación en Dos Pasos</h2>
       <p class="content-text">Hola <strong>${username}</strong>,</p>
@@ -628,7 +637,7 @@ class EmailService {
       html: this.getBaseTemplate(content, 'Verificación de Transferencia')
     };
 
-    console.log(`\n========================================\n🔑 [DEV EMAIL] Código transferencia para ${email}: ${codigo}\n========================================\n`);
+    this.logDevCode('Código transferencia', email, codigo);
 
     try {
       const result = await this.transporter.sendMail(mailOptions);
