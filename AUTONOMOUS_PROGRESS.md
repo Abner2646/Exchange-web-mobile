@@ -2,6 +2,22 @@
 
 **Started:** 2026-09-23. Coordinator: Claude (Opus). Abner is away for several days; full autonomy.
 
+## ▶️ SESSION 2026-10-06/07 — Next.js migration kickoff + Slice 0 COMPLETO (en `dev`)
+Interactiva con Abner. Brainstorming → spec → plan → ejecución subagent-driven del **re-plataformado del
+frontend a Next.js** (el CRA legacy sigue intacto en prod; strangler).
+- **Decisiones locked:** Next App Router · React 18 / Next **14.2.35** (no React 19 en el port; eval Next16/React19
+  pre-deploy) · **self-host EC2** (Next 2º pm2 detrás de nginx, same-origin) · strangler incremental (`web/` junto a
+  `frontend/`, borrar CRA en S8) · split render público=SSG / app-autenticada=client.
+- **Spec:** `docs/superpowers/specs/2026-10-06-nextjs-migration-design.md` (slices S0–S8). **Plan S0:**
+  `docs/superpowers/plans/2026-10-06-nextjs-slice-0.md`. **Ledger:** `.superpowers/sdd/progress.md`.
+- **Slice 0 (10 tareas, subagent-driven, review por tarea + final opus "ship it"):** app `web/` Next 14.2.35
+  App Router (`output: standalone`); port `shared/{money(39/39, byte-idéntico),api(17/17),i18n(5/5),ui(9/9)}`;
+  Vitest harness; home pública SSG + Metadata API; robots/sitemap (noindex no-prod). **74 tests verdes**, build +
+  prueba SSG/SEO sin JS OK. Pusheado; `dev` 13 adelante de `main`. Nada deployado.
+- **Follow-ups (ledger, no bloquean):** dedupe interpolate(); barrel i18n 'use client' (no importar desde server
+  components); a11y Dialog; doc-drift idempotency (5 vs 6 endpoints); **pre-deploy: eval Next16/React19**.
+- **SIGUIENTE:** Slice 1 (auth journey) — writing-plans + subagent-driven. Ver `HANDOFF.md` §RESUME HERE.
+
 ## ▶️ SESSION 2026-10-05 — Fase 1 "barrido" (MERGED a main, PR #39, `3735bcd`) + fix CI integración
 Sesión interactiva con Abner (no autónoma). Tres cierres money-path/seguridad, TDD, `dev→main` vía PR con
 `/code-review` alto esfuerzo (corrido por Claude). Estado final: `dev == main == origin == 3735bcd`.
