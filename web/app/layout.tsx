@@ -1,3 +1,7 @@
+import '@/shared/styles/reset.css';
+import '@/shared/styles/tokens.css';
+import '@/shared/styles/a11y.css';
+
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
