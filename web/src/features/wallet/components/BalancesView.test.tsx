@@ -37,6 +37,9 @@ describe('BalancesView', () => {
     // Funding available 300 and Spot available 200 both shown.
     expect(screen.getByText(/300/)).toBeInTheDocument();
     expect(screen.getByText(/200/)).toBeInTheDocument();
+    // Audit guard: pending (10) is shown separately and flagged non-spendable.
+    expect(screen.getByText(/10/)).toBeInTheDocument();
+    expect(screen.getByText(/not spendable/i)).toBeInTheDocument();
   });
 
   it('shows the empty state when there are no balances', () => {
