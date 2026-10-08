@@ -217,6 +217,21 @@ zero on a price-improved partial fill.
 
 ### 9. Compartmentalized balances — additive shape + internal transfer (2026-09-02)
 
+> ⚠️ **Field names in this entry are STALE (superseded by the Fase 6.2 rename).**
+> The JSON below shows the original Spanish identifiers. The **running backend**
+> (verified in `backend/modules/balances/*`) now emits and reads **English** keys.
+> The authoritative current contract is:
+>
+> - `GET /api/balances/my/balances` item: `userId`, `criptomonedaId` (this id field
+>   kept its Spanish name), `availableBalance`, `blockedBalance`, `pendingBalance`,
+>   and `compartments.{funding:{available,blocked,pending}, spot:{available,blocked}}`,
+>   plus `crypto:{id,symbol,name,network,decimals}` (not `criptomoneda`).
+> - `POST /api/balances/my/transfer` body: `{ cryptoId, amount, from, to }` with
+>   `from`/`to` ∈ `funding`/`spot` (distinct). Response `{ message, data:{ from, to } }`.
+>
+> The Slice 2 `web/` client consumes these English shapes (see §18). Treat the
+> Spanish names below as historical only.
+
 **`GET /api/balances/my/balances` — additive per-compartment shape (non-breaking)**
 
 Each entry in the array preserves the **existing** root keys
@@ -577,6 +592,40 @@ returns `{ token, user }` (the full session token).
 
 **Google sign-in** follows §7 exactly: `POST /user/login/google` accepts
 `{ idToken }` and returns `{ message, user, token, isNew }`.
+
+---
+
+### 18. Next.js `web/` app — wallet endpoints consumed (Slice 2, 2026-10-08)
+
+The `web/` wallet vertical (`web/src/features/wallet/`) consumes these endpoints.
+Shapes are the **real** post-rename (English) contract — see the correction note
+at the top of §9.
+
+| Endpoint | Method | Request | Response | Envelope |
+|---|---|---|---|---|
+| `/balances/my/balances` | GET | — | `BalanceEntry[]` | **raw array** (no wrapper) |
+| `/balances/my/transfer` | POST | `{ cryptoId, amount, from, to }` | `{ message, data:{ from, to } }` | raw object |
+| `/transaccionBlockchain/deposit-address/:cryptoId` | GET | — | `{ address, crypto, qrCode, derivationIndex, metadata:{ network, confirmationsRequired, createdAt }, mensaje }` | `{ success, data }` |
+| `/transaccionBlockchain/withdraw` | POST | `{ cryptoId, amount, destinationAddress }` | `BlockchainTransaction` | `{ success, data }` |
+| `/transaccionBlockchain/my` | GET | query `type?,status?,cryptoId?,limit,offset` | `BlockchainTransaction[]` | `{ success, data }` |
+
+- `BalanceEntry`: `{ userId, criptomonedaId, availableBalance, blockedBalance,
+  pendingBalance, compartments:{ funding:{available,blocked,pending}, spot:{available,blocked} },
+  crypto:{id,symbol,name,network,decimals}|null }`. `pendingBalance` is Funding-only and
+  **display-only** (never spendable); spendable = compartment `available`.
+- `BlockchainTransaction`: `{ id, userId, cryptoId, type:'deposit'|'withdrawal', amount,
+  destinationAddress?, txHash?, confirmations, requiredConfirmations,
+  status:'pending'|'processing'|'confirmed'|'completed'|'failed', createdAt }`.
+- **Envelope note:** balances endpoints return raw arrays/objects; the on-chain
+  (`/transaccionBlockchain/*`) endpoints wrap payloads in `{ success, data }` — the
+  client unwraps `.data` for those. Errors use the canonical `{ error:{ code, message } }`
+  envelope (§1) and the client decodes them to `ApiError`.
+- **Idempotency** (§3) is auto-attached by the shared client for the two money POSTs
+  (`/balances/my/transfer`, `/transaccionBlockchain/withdraw`) — the feature code does
+  not set the header itself.
+- Withdrawals are **Funding-only**; the compartment transfer moves between Funding and
+  Spot. Error codes surfaced to the user include `WITHDRAWAL_COOLDOWN`,
+  `WITHDRAWAL_INVALID_ADDRESS`, `WITHDRAWAL_VALIDATION_FAILED`, `BALANCE_INSUFFICIENT`.
 
 ---
 
