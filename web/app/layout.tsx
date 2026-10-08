@@ -3,6 +3,7 @@ import '@/shared/styles/tokens.css';
 import '@/shared/styles/a11y.css';
 
 import type { Metadata } from 'next';
+import Providers from '@/app/providers';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://bitflow.community'),
@@ -16,7 +17,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }
