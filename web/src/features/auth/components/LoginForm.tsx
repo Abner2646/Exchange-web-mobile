@@ -29,7 +29,7 @@ export const LoginForm: React.FC = () => {
   const [codigo, setCodigo] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const describe = (err: unknown) =>
+  const showError = (err: unknown) =>
     setError(isApiError(err) ? tError(err.code, { requestId: err.requestId ?? '' }) : tError('FALLBACK_UNKNOWN_ERROR'));
 
   const onCredentials = async (e: React.FormEvent) => {
@@ -42,7 +42,7 @@ export const LoginForm: React.FC = () => {
         return;
       }
       router.replace('/dashboard');
-    } catch (err) { describe(err); }
+    } catch (err) { showError(err); }
   };
 
   const onTwoFactor = async (e: React.FormEvent) => {
@@ -52,14 +52,14 @@ export const LoginForm: React.FC = () => {
     try {
       await verify2fa.mutateAsync({ temporalToken: step.temporalToken, codigo });
       router.replace('/dashboard');
-    } catch (err) { describe(err); }
+    } catch (err) { showError(err); }
   };
 
   const onResend = async () => {
     if (step.kind !== 'twofa') return;
     setError(null);
     try { await resend2fa.mutateAsync({ temporalToken: step.temporalToken }); }
-    catch (err) { describe(err); }
+    catch (err) { showError(err); }
   };
 
   if (step.kind === 'twofa') {
