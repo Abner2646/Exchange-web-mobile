@@ -525,6 +525,61 @@ the confirm button, offer retry) rather than a generic error. Pairs without an
 
 ---
 
+### 17. Next.js `web/` app — auth endpoints consumed (Slice 1, 2026-10-08)
+
+The rebuilt frontend (`web/`) now consumes the following auth endpoints directly.
+This section documents the contract as the `web/` app sees it, so the rest of the
+stack knows what the new client depends on.
+
+**Endpoints consumed**
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/user/register` | POST | Create account; returns `{ token }` (temporal, for verify-email step) |
+| `/user/verify-email` | POST | Confirm email with 6-digit code |
+| `/user/resend-verification-email` | POST | Re-send the email verification code |
+| `/user/login` | POST | Step 1: password auth; see 2FA shape below |
+| `/user/verify-2fa` | POST | Step 2: second-factor challenge resolution |
+| `/user/resend-2fa` | POST | Re-send the email 2FA code (email method only) |
+| `/user/forgot-password` | POST | Request password-reset code |
+| `/user/verify-reset-code` | POST | Validate the reset code before allowing new password |
+| `/user/reset-password` | POST | Submit new password with verified code |
+| `/user/login/google` | POST | Google Identity Services sign-in (see §7) |
+| `/user/me` | GET | Authenticated user profile |
+
+**Code field is `codigo`, not `code`**
+
+All endpoints that accept a short verification code use the field name **`codigo`**:
+- `POST /user/verify-email` → `{ codigo }`
+- `POST /user/verify-2fa` → `{ temporalToken, codigo }`
+- `POST /user/verify-reset-code` → `{ email, codigo }`
+- `POST /user/reset-password` → `{ email, codigo, nuevaPassword, confirmarPassword }`
+
+The old CRA client sent `code` — that was a client-side bug. The port corrects it.
+Do not send `code`; the backend will reject it.
+
+**Login step-1 response shape — direct login vs 2FA challenge**
+
+`POST /user/login` returns one of two shapes:
+
+```json
+// Direct login (no 2FA enrolled)
+{ "token": "<jwt>", "user": { … } }
+
+// 2FA challenge
+{ "requires2FA": true, "twoFactorMethod": "totp" | "email", "temporalToken": "<short-lived-jwt>" }
+```
+
+When `requires2FA` is true, store `temporalToken` and route the user to the 2FA
+step. Do not call `/user/me` yet — the `temporalToken` is not a full session token.
+The `temporalToken` is consumed by `POST /user/verify-2fa`; on success that endpoint
+returns `{ token, user }` (the full session token).
+
+**Google sign-in** follows §7 exactly: `POST /user/login/google` accepts
+`{ idToken }` and returns `{ message, user, token, isNew }`.
+
+---
+
 ## Expected upcoming contract changes (heads-up, not yet done)
 
 These are tracked in `ROADMAP.md`; listed here so the rebuild anticipates them and
