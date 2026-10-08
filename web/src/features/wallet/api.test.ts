@@ -41,8 +41,9 @@ describe('walletApi contract', () => {
       jsonResponse({ success: true, data: { address: 'bc1xyz', qrCode: 'BTC:bc1xyz', crypto: { symbol: 'BTC' } } }),
     );
     const out = await walletApi.getDepositAddress('c1');
-    const [url] = fetchMock.mock.calls[0];
+    const [url, opts] = fetchMock.mock.calls[0];
     expect(String(url)).toContain('/transaccionBlockchain/deposit-address/c1');
+    expect(opts.method).toBe('GET');
     expect(out.address).toBe('bc1xyz');
     expect(out.qrCode).toBe('BTC:bc1xyz');
   });

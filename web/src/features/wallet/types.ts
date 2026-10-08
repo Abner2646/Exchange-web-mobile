@@ -82,5 +82,7 @@ export interface TransactionHistoryParams {
   offset?: number;
 }
 
+export type TransactionHistoryResponse = BlockchainTransaction[];
+
 // Re-export for component call sites that build amounts.
 export type { CanonicalAmount };
