@@ -211,3 +211,8 @@ HANDOFF.md
 
 # Notas locales de deploy/infra (contexto del server) — nunca commitear
 *.local.md
+
+# Local agent/skill tooling (superpowers / orca / claude plugins) — never commit
+.agents/
+.claude/
+skills-lock.json
