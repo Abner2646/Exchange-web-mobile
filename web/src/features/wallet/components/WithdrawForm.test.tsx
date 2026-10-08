@@ -50,6 +50,20 @@ describe('WithdrawForm', () => {
       isError: true, error: { code: 'WITHDRAWAL_COOLDOWN' },
     });
     setup();
+    const alert = screen.getByRole('alert');
+    expect(alert).toBeInTheDocument();
+    // The alert must render the translated coded message, not a raw code dump.
+    expect(alert.textContent).not.toContain('WITHDRAWAL_COOLDOWN');
+    expect(alert.textContent?.length).toBeGreaterThan(0);
+  });
+
+  it('disables submit when the amount exceeds the Funding available balance', () => {
+    setup();
+    fireEvent.change(screen.getByLabelText(/Asset|Activo/i), { target: { value: 'c1' } });
+    // BALANCE funding.available is '5'; 6 exceeds it.
+    fireEvent.change(screen.getByLabelText(/Amount|Monto/i), { target: { value: '6' } });
+    fireEvent.change(screen.getByLabelText(/address|Dirección/i), { target: { value: 'bc1dest' } });
+    expect(screen.getByRole('button', { name: /Withdraw|Retirar/i })).toBeDisabled();
     expect(screen.getByRole('alert')).toBeInTheDocument();
   });
 });
