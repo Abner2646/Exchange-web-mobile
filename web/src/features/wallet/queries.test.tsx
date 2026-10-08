@@ -20,6 +20,7 @@ import {
   useMyBalances,
   useCompartmentTransfer,
   useWithdraw,
+  useDepositAddress,
   WALLET_BALANCES_KEY,
   WALLET_TX_KEY,
 } from './queries';
@@ -35,6 +36,7 @@ beforeEach(() => {
   transferCompartments.mockReset();
   withdraw.mockReset();
   getTransactions.mockReset();
+  getDepositAddress.mockReset();
 });
 
 describe('wallet queries', () => {
@@ -63,5 +65,24 @@ describe('wallet queries', () => {
     await result.current.mutateAsync({ cryptoId: 'c1', amount: '0.5', destinationAddress: 'bc1dest' });
     expect(spy).toHaveBeenCalledWith({ queryKey: WALLET_BALANCES_KEY });
     expect(spy).toHaveBeenCalledWith({ queryKey: WALLET_TX_KEY });
+  });
+
+  it('useDepositAddress does not fetch while disabled or without a cryptoId', async () => {
+    getDepositAddress.mockResolvedValue({ address: 'bc1xyz' });
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    renderHook(() => useDepositAddress('', false), { wrapper: wrapper(qc) });
+    renderHook(() => useDepositAddress('c1', false), { wrapper: wrapper(qc) });
+    renderHook(() => useDepositAddress('', true), { wrapper: wrapper(qc) });
+    // No combination above is enabled → the query fn must never run.
+    await Promise.resolve();
+    expect(getDepositAddress).not.toHaveBeenCalled();
+  });
+
+  it('useDepositAddress fetches when enabled with a cryptoId', async () => {
+    getDepositAddress.mockResolvedValueOnce({ address: 'bc1xyz' });
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { result } = renderHook(() => useDepositAddress('c1', true), { wrapper: wrapper(qc) });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(getDepositAddress).toHaveBeenCalledWith('c1');
   });
 });
