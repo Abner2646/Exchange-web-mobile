@@ -58,6 +58,7 @@ export const en: Catalog = {
     'EMAIL_CHANGE_INVALID': 'Invalid email change request.',
     'FALLBACK_UNKNOWN_ERROR': 'An unknown error occurred (Code: {{code}}).',
     'INVALID_CREDENTIALS': 'Invalid email or password.',
+    'UNAUTHORIZED': 'Authentication failed. Please check your credentials and try again.',
     'EMAIL_NOT_VERIFIED': 'Please verify your email to continue.',
     'TOO_MANY_REQUESTS': 'Too many attempts. Please wait and try again.',
     'NETWORK_ERROR': 'Could not connect to the server. Check your internet connection.',

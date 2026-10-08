@@ -12,7 +12,7 @@ const REQUIRED_UI = [
   'auth.field.email', 'auth.field.username', 'auth.field.password', 'auth.field.code', 'auth.field.newPassword', 'auth.field.confirmPassword',
   'auth.google.button',
 ];
-const REQUIRED_ERRORS = ['INVALID_CREDENTIALS', 'EMAIL_NOT_VERIFIED', 'TOO_MANY_REQUESTS', 'NETWORK_ERROR'];
+const REQUIRED_ERRORS = ['INVALID_CREDENTIALS', 'UNAUTHORIZED', 'EMAIL_NOT_VERIFIED', 'TOO_MANY_REQUESTS', 'NETWORK_ERROR'];
 
 describe('auth catalogs', () => {
   it('en has all required auth ui + error keys', () => {

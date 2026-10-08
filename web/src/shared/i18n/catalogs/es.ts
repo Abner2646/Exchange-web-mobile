@@ -58,6 +58,7 @@ export const es: Catalog = {
     'EMAIL_CHANGE_INVALID': 'Solicitud de cambio de correo electrónico inválida.',
     'FALLBACK_UNKNOWN_ERROR': 'Ocurrió un error desconocido (Código: {{code}}).',
     'INVALID_CREDENTIALS': 'Email o contraseña inválidos.',
+    'UNAUTHORIZED': 'No se pudo autenticar. Revisá tus credenciales e intentá de nuevo.',
     'EMAIL_NOT_VERIFIED': 'Verificá tu email para continuar.',
     'TOO_MANY_REQUESTS': 'Demasiados intentos. Esperá un momento e intentá de nuevo.',
     'NETWORK_ERROR': 'No se pudo conectar con el servidor. Revisá tu conexión.',
