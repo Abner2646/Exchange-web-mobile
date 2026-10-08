@@ -29,8 +29,10 @@ export default function WalletTabs() {
         {tabs.map((tb) => (
           <button
             key={tb.id}
+            id={`wallet-tab-${tb.id}`}
             role="tab"
             aria-selected={tab === tb.id}
+            aria-controls={`wallet-panel-${tb.id}`}
             className={`${styles.tab} ${tab === tb.id ? styles.tabActive : ''}`}
             onClick={() => setTab(tb.id)}
             type="button"
@@ -40,15 +42,21 @@ export default function WalletTabs() {
         ))}
       </div>
 
-      {tab === 'balances' && (
-        <>
-          <BalancesView />
-          <CompartmentTransferForm />
-        </>
-      )}
-      {tab === 'deposit' && <DepositView />}
-      {tab === 'withdraw' && <WithdrawForm />}
-      {tab === 'history' && <HistoryView />}
+      <div
+        role="tabpanel"
+        id={`wallet-panel-${tab}`}
+        aria-labelledby={`wallet-tab-${tab}`}
+      >
+        {tab === 'balances' && (
+          <>
+            <BalancesView />
+            <CompartmentTransferForm />
+          </>
+        )}
+        {tab === 'deposit' && <DepositView />}
+        {tab === 'withdraw' && <WithdrawForm />}
+        {tab === 'history' && <HistoryView />}
+      </div>
     </section>
   );
 }
