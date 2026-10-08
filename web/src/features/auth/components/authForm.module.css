@@ -1,0 +1,5 @@
+.form { display: flex; flex-direction: column; gap: var(--space-4, 16px); }
+.error { color: var(--color-danger, #b00020); }
+.actions { display: flex; flex-direction: column; gap: var(--space-3, 12px); }
+.links { display: flex; flex-direction: column; gap: var(--space-2, 8px); font-size: 0.9rem; }
+.divider { text-align: center; color: var(--color-muted, #666); font-size: 0.85rem; }
