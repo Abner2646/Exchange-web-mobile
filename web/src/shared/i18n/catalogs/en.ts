@@ -36,6 +36,8 @@ export const en: Catalog = {
     'auth.field.newPassword': 'New password',
     'auth.field.confirmPassword': 'Confirm password',
     'auth.google.button': 'Continue with Google',
+    'nav.dashboard': 'Dashboard',
+    'nav.wallet': 'Wallet',
     'wallet.title': 'Wallet',
     'wallet.tab.balances': 'Balances',
     'wallet.tab.deposit': 'Deposit',
