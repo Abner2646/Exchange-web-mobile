@@ -34,6 +34,11 @@ describe('authApi', () => {
     expect(post).toHaveBeenCalledWith('/user/reset-password', { email: 'a@b.co', codigo: '1', newPassword: 'x', confirmPassword: 'x' });
   });
 
+  it('verifyResetCode posts email + codigo', async () => {
+    await authApi.verifyResetCode({ email: 'a@b.co', codigo: '999' });
+    expect(post).toHaveBeenCalledWith('/user/verify-reset-code', { email: 'a@b.co', codigo: '999' });
+  });
+
   it('loginWithGoogle posts idToken', async () => {
     await authApi.loginWithGoogle({ idToken: 'g' });
     expect(post).toHaveBeenCalledWith('/user/login/google', { idToken: 'g' });
