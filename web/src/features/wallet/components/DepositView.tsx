@@ -49,7 +49,7 @@ export default function DepositView() {
 
       {deposit.isLoading && <p>{t('common.loading')}</p>}
       {deposit.isError && deposit.error && (
-        <p role="alert">{tError((deposit.error as { code?: string }).code ?? 'FALLBACK_UNKNOWN_ERROR')}</p>
+        <p role="alert">{tError(deposit.error.code)}</p>
       )}
 
       {deposit.data && (
