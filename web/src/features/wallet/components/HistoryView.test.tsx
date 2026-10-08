@@ -24,14 +24,25 @@ describe('HistoryView', () => {
   it('renders a transaction row with its status', () => {
     setup();
     expect(screen.getByText(/pending/i)).toBeInTheDocument();
-    // "withdrawal" appears in both the filter <option> ("Withdrawals") and the row <td>;
-    // use getAllByText to handle both matches.
-    expect(screen.getAllByText(/withdrawal/i).length).toBeGreaterThan(0);
+    // "withdrawal" appears in BOTH the filter <option> ("Withdrawals") and the row <td>
+    // ("withdrawal"); require >= 2 so the assertion fails if the row cell is missing.
+    expect(screen.getAllByText(/withdrawal/i).length).toBeGreaterThanOrEqual(2);
   });
 
   it('changing the filter re-queries with a type param', () => {
     setup();
     fireEvent.change(screen.getByLabelText(/Type|Tipo/i), { target: { value: 'deposit' } });
     expect(useTransactionHistory).toHaveBeenLastCalledWith({ type: 'deposit' });
+  });
+
+  it('shows a dedicated error message (not the empty state) when the query errors', () => {
+    useTransactionHistory.mockReturnValue({ data: undefined, isLoading: false, isError: true });
+    setup();
+    const alert = screen.getByRole('alert');
+    expect(alert).toBeInTheDocument();
+    // Error copy must differ from the empty-state copy.
+    expect(alert.textContent).not.toMatch(/no transactions yet|todavía no hay transacciones/i);
+    // No data table rendered on error.
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 });

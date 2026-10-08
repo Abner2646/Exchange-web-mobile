@@ -12,7 +12,7 @@ const UI_KEYS = [
   'wallet.deposit.copied', 'wallet.deposit.confirmations', 'wallet.deposit.network',
   'wallet.withdraw.title', 'wallet.withdraw.crypto', 'wallet.withdraw.amount', 'wallet.withdraw.address',
   'wallet.withdraw.submit', 'wallet.withdraw.fundingOnly', 'wallet.withdraw.queued',
-  'wallet.history.title', 'wallet.history.empty', 'wallet.history.type', 'wallet.history.status',
+  'wallet.history.title', 'wallet.history.empty', 'wallet.history.error', 'wallet.history.type', 'wallet.history.status',
   'wallet.history.amount', 'wallet.history.date', 'wallet.history.confirmations',
   'wallet.history.filterAll', 'wallet.history.filterDeposit', 'wallet.history.filterWithdrawal',
 ];

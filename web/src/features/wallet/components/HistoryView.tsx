@@ -27,10 +27,10 @@ export default function HistoryView() {
       </select>
 
       {isLoading && <p>{t('common.loading')}</p>}
-      {isError && <p role="alert">{t('wallet.history.empty')}</p>}
+      {isError && <p role="alert">{t('wallet.history.error')}</p>}
       {!isLoading && !isError && rows.length === 0 && <p className={styles.empty}>{t('wallet.history.empty')}</p>}
 
-      {rows.length > 0 && (
+      {!isError && rows.length > 0 && (
         <table className={styles.table}>
           <thead>
             <tr>

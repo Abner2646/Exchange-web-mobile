@@ -73,6 +73,7 @@ export const en: Catalog = {
     'wallet.withdraw.queued': 'Withdrawal requested. It will be processed after review.',
     'wallet.history.title': 'Transaction history',
     'wallet.history.empty': 'No transactions yet.',
+    'wallet.history.error': 'We could not load your transactions. Please try again.',
     'wallet.history.type': 'Type',
     'wallet.history.status': 'Status',
     'wallet.history.amount': 'Amount',
