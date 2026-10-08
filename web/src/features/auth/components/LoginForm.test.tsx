@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
@@ -17,6 +17,13 @@ vi.mock('../queries', () => ({
   useLogin: () => ({ mutateAsync: loginAsync, isPending: false }),
   useVerify2FA: () => ({ mutateAsync: verify2faAsync, isPending: false }),
   useResend2FA: () => ({ mutateAsync: resend2faAsync, isPending: false }),
+  useGoogleLogin: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}));
+
+vi.mock('@react-oauth/google', () => ({
+  GoogleLogin: ({ onSuccess }: { onSuccess: (r: { credential: string }) => void }) => (
+    <button type="button" onClick={() => onSuccess({ credential: 'gcred' })}>google-widget</button>
+  ),
 }));
 
 import { LoginForm } from './LoginForm';
@@ -34,7 +41,11 @@ async function fillCreds() {
   await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
 }
 
-beforeEach(() => { replace.mockReset(); loginAsync.mockReset(); verify2faAsync.mockReset(); resend2faAsync.mockReset(); });
+beforeEach(() => {
+  replace.mockReset(); loginAsync.mockReset(); verify2faAsync.mockReset(); resend2faAsync.mockReset();
+  (process.env as Record<string, string | undefined>).NEXT_PUBLIC_GOOGLE_CLIENT_ID = 'cid';
+});
+afterEach(() => { delete (process.env as Record<string, string | undefined>).NEXT_PUBLIC_GOOGLE_CLIENT_ID; });
 
 describe('LoginForm', () => {
   it('direct login routes to /dashboard', async () => {
@@ -51,6 +62,7 @@ describe('LoginForm', () => {
     await fillCreds();
     expect(await screen.findByText('Enter your authenticator code')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Resend code' })).not.toBeInTheDocument();
+    expect(screen.queryByText('google-widget')).not.toBeInTheDocument();
   });
 
   it('email challenge shows a resend button and completes verify-2fa', async () => {
