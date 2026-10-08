@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { makeQueryClient } from '@/app/providers';
@@ -27,10 +27,10 @@ function renderGuard() {
 beforeEach(() => { replace.mockReset(); });
 
 describe('(app) guard', () => {
-  it('redirects to /login when there is no token', () => {
+  it('redirects to /login when there is no token', async () => {
     hasToken = false;
     renderGuard();
-    expect(replace).toHaveBeenCalledWith('/login');
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/login'));
     expect(screen.queryByText('secret')).not.toBeInTheDocument();
   });
 
