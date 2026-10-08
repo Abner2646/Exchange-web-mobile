@@ -109,6 +109,9 @@ export default function CompartmentTransferForm({ onSuccess }: { onSuccess?: () 
       {sameCompartment && showError(t('wallet.transfer.sameCompartment'))}
       {exceedsAvailable && showError(t('wallet.transfer.insufficient'))}
       {transfer.isError && transfer.error && showError(tError(transfer.error.code))}
+      {transfer.isSuccess && (
+        <p role="status" className={styles.label}>{t('wallet.transfer.success')}</p>
+      )}
 
       <div className={styles.actions}>
         <Button type="submit" disabled={!canSubmit} loading={transfer.isPending}>

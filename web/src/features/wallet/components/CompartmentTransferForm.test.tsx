@@ -55,4 +55,18 @@ describe('CompartmentTransferForm', () => {
     setup();
     expect(screen.getByRole('button', { name: /Transfer|Transferir/i })).toBeDisabled();
   });
+
+  it('blocks submit and warns when from and to are the same compartment', () => {
+    setup();
+    // Default is funding -> spot; force to=funding so from === to.
+    fireEvent.change(screen.getByLabelText(/^To$|^Hacia$/i), { target: { value: 'funding' } });
+    expect(screen.getByText(/different compartments|compartimentos distintos/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Transfer|Transferir/i })).toBeDisabled();
+  });
+
+  it('shows a success message after a completed transfer', () => {
+    useCompartmentTransfer.mockReturnValue({ mutateAsync, isPending: false, isError: false, error: null, isSuccess: true });
+    setup();
+    expect(screen.getByRole('status')).toBeInTheDocument();
+  });
 });
