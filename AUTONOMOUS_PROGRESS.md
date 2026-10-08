@@ -2,6 +2,31 @@
 
 **Started:** 2026-09-23. Coordinator: Claude (Opus). Abner is away for several days; full autonomy.
 
+## ▶️ SESSION 2026-10-08 — Next.js migration Slice 1 (auth journey) COMPLETO (en `dev`)
+Subagent-driven (igual que Slice 0): writing-plans → 10 tareas, implementer fresco + review por tarea
+(spec+calidad) + review final whole-branch (opus). Todo en `dev`, pusheado commit a commit. Commits
+`d080e80..754978d` (14). **Nada deployado** (el CRA legacy sigue en prod).
+- **Plan:** `docs/superpowers/plans/2026-10-08-nextjs-slice-1-auth.md`. **Ledger por tarea:** `.superpowers/sdd/progress.md`.
+- **Diseño:** login y recuperación son páginas de **PASO ÚNICO con estado interno** → el `temporalToken` (2FA)
+  y el `codigo` de reset viven SOLO en React state (nunca URL/storage; verificado en review). Guardia cliente
+  en `(app)/layout.tsx` + `/dashboard` stub como destino. Google gated por `NEXT_PUBLIC_GOOGLE_CLIENT_ID`.
+- **Bug de contrato corregido en el port:** el CRA mandaba `{code}` a verify-email; el backend lee `{codigo}`.
+  Ahora `codigo` en verify-email/verify-2fa/verify-reset-code/reset-password.
+- **Entregado:** providers (TanStack Query v5 + Locale + Google) · `authApi` tipado + types · 12 query hooks ·
+  i18n auth (en+es) · guardia `(app)` + dashboard + chrome `(auth)` · register+verify-email · login+2FA
+  (email+TOTP) · recuperación 3-pasos + botón Google · build gate + contract doc §17 · Playwright E2E.
+- **Gates verdes:** Vitest **103/103** (19 files), `next build` OK (11 páginas, 5 rutas auth), Playwright
+  **E2E 3/3** (`/api` stubbed vía page.route).
+- **Fixes de review aplicados:** verifyResetCode codigo test (T2) · `waitFor` en guard (T5) · rename
+  `describe→showError` en Login+Forgot (T7/T8) · **commit de higiene** `2a04315` que destrackeó
+  `.agents/`/`.claude/`/`skills-lock.json` (barridas por un `git add` amplio de un subagente) + reglas .gitignore.
+- **⚠️ MÁQUINA LOCAL (no es de la migración):** el disco C: estaba al 100% (**0 bytes libres de 476GB**) → la
+  instalación del navegador de Playwright fallaba en silencio (ENOSPC) y dejó un chromium-1140 corrupto. Reclamé
+  ~1.6GB (borré chromium-1228 de más + headless-shell + npm cache), reinstalé chromium-1140 limpio, corrí el E2E.
+  Sigue MUY justo (~1.6GB libres). **Flag a Abner:** afectará builds/instalaciones futuras.
+- **SIGUIENTE:** review final whole-branch (opus) → aplicar must-fix si hay. dev→main se acumula hasta tener
+  un slice usable (ya hay auth; evaluar PR en S2 wallet o antes si Abner lo pide). Después Slice 2 (wallet).
+
 ## ▶️ SESSION 2026-10-06/07 — Next.js migration kickoff + Slice 0 COMPLETO (en `dev`)
 Interactiva con Abner. Brainstorming → spec → plan → ejecución subagent-driven del **re-plataformado del
 frontend a Next.js** (el CRA legacy sigue intacto en prod; strangler).
