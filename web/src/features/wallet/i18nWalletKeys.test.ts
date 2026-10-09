@@ -5,7 +5,7 @@ import { es } from '@/shared/i18n/catalogs/es';
 const UI_KEYS = [
   'wallet.title', 'wallet.tab.balances', 'wallet.tab.deposit', 'wallet.tab.withdraw', 'wallet.tab.history',
   'wallet.balances.crypto', 'wallet.balances.available', 'wallet.balances.blocked', 'wallet.balances.pending',
-  'wallet.balances.funding', 'wallet.balances.spot', 'wallet.balances.empty', 'wallet.balances.pendingHint',
+  'wallet.balances.funding', 'wallet.balances.spot', 'wallet.balances.empty', 'wallet.balances.error', 'wallet.balances.pendingHint',
   'wallet.transfer.title', 'wallet.transfer.from', 'wallet.transfer.to', 'wallet.transfer.amount',
   'wallet.transfer.submit', 'wallet.transfer.success', 'wallet.transfer.sameCompartment', 'wallet.transfer.insufficient',
   'wallet.deposit.title', 'wallet.deposit.selectCrypto', 'wallet.deposit.address', 'wallet.deposit.copy',

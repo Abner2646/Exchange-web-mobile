@@ -50,6 +50,7 @@ export const en: Catalog = {
     'wallet.balances.funding': 'Funding',
     'wallet.balances.spot': 'Spot',
     'wallet.balances.empty': 'You have no balances yet.',
+    'wallet.balances.error': 'We could not load your balances. Please try again.',
     'wallet.balances.pendingHint': 'Pending funds are detected deposits awaiting confirmations. They are not spendable yet.',
     'wallet.transfer.title': 'Transfer between compartments',
     'wallet.transfer.from': 'From',

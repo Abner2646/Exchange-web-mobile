@@ -15,7 +15,7 @@ export default function BalancesView() {
   const { data, isLoading, isError } = useMyBalances();
 
   if (isLoading) return <p>{t('common.loading')}</p>;
-  if (isError) return <p role="alert">{t('wallet.balances.empty')}</p>;
+  if (isError) return <p role="alert">{t('wallet.balances.error')}</p>;
 
   const entries: BalanceEntry[] = data ?? [];
   if (entries.length === 0) return <p className={styles.empty}>{t('wallet.balances.empty')}</p>;
