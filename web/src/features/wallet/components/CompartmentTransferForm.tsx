@@ -36,8 +36,10 @@ export default function CompartmentTransferForm({ onSuccess }: { onSuccess?: () 
   const exceedsAvailable =
     amountOk && sourceAvailable != null && compare(parsed.value, sourceAvailable) > 0;
 
+  // Require a KNOWN source-compartment balance: if it hasn't loaded, block submit
+  // rather than let an amount-vs-unknown check silently pass (money guard).
   const canSubmit =
-    Boolean(cryptoId) && amountOk && !sameCompartment && !exceedsAvailable && !transfer.isPending;
+    Boolean(cryptoId) && amountOk && !sameCompartment && sourceAvailable != null && !exceedsAvailable && !transfer.isPending;
 
   const showError = (msg: string) => (
     <p role="alert" className={styles.label}>{msg}</p>
@@ -108,7 +110,7 @@ export default function CompartmentTransferForm({ onSuccess }: { onSuccess?: () 
 
       {sameCompartment && showError(t('wallet.transfer.sameCompartment'))}
       {exceedsAvailable && showError(t('wallet.transfer.insufficient'))}
-      {transfer.isError && transfer.error && showError(tError(transfer.error.code))}
+      {transfer.isError && transfer.error && showError(tError(transfer.error.code, { requestId: transfer.error.requestId ?? '' }))}
       {transfer.isSuccess && (
         <p role="status" className={styles.label}>{t('wallet.transfer.success')}</p>
       )}

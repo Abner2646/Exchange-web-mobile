@@ -18,7 +18,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (!authed) return null;
   return (
     <>
-      <nav aria-label={t('nav.dashboard')}>
+      <nav>
         <Link href="/dashboard">{t('nav.dashboard')}</Link>
         <Link href="/wallet">{t('nav.wallet')}</Link>
       </nav>

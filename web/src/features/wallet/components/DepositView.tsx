@@ -49,7 +49,7 @@ export default function DepositView() {
 
       {deposit.isLoading && <p>{t('common.loading')}</p>}
       {deposit.isError && deposit.error && (
-        <p role="alert">{tError(deposit.error.code)}</p>
+        <p role="alert">{tError(deposit.error.code, { requestId: deposit.error.requestId ?? '' })}</p>
       )}
 
       {deposit.data && (

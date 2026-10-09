@@ -33,8 +33,10 @@ export default function WithdrawForm({ onSuccess }: { onSuccess?: () => void }) 
   const exceeds =
     amountOk && fundingAvailable != null && compare(parsed.value, fundingAvailable) > 0;
 
+  // Require a KNOWN Funding balance: if the balance entry hasn't loaded, block
+  // submit rather than let an amount-vs-unknown check silently pass (money guard).
   const canSubmit =
-    Boolean(cryptoId) && amountOk && addressOk && !exceeds && !withdraw.isPending;
+    Boolean(cryptoId) && amountOk && addressOk && fundingAvailable != null && !exceeds && !withdraw.isPending;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -96,7 +98,7 @@ export default function WithdrawForm({ onSuccess }: { onSuccess?: () => void }) 
         <p role="alert" className={styles.label}>{t('wallet.transfer.insufficient')}</p>
       )}
       {withdraw.isError && withdraw.error && (
-        <p role="alert" className={styles.label}>{tError(withdraw.error.code)}</p>
+        <p role="alert" className={styles.label}>{tError(withdraw.error.code, { requestId: withdraw.error.requestId ?? '' })}</p>
       )}
       {withdraw.isSuccess && (
         <p role="status" className={styles.label}>{t('wallet.withdraw.queued')}</p>
