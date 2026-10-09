@@ -2,6 +2,71 @@
 
 **Started:** 2026-09-23. Coordinator: Claude (Opus). Abner is away for several days; full autonomy.
 
+## ▶️ SESSION 2026-10-08 — Next.js migration Slice 1 (auth journey) COMPLETO (en `dev`)
+Subagent-driven (igual que Slice 0): writing-plans → 10 tareas, implementer fresco + review por tarea
+(spec+calidad) + review final whole-branch (opus). Todo en `dev`, pusheado commit a commit. Commits
+`d080e80..754978d` (14). **Nada deployado** (el CRA legacy sigue en prod).
+- **Plan:** `docs/superpowers/plans/2026-10-08-nextjs-slice-1-auth.md`. **Ledger por tarea:** `.superpowers/sdd/progress.md`.
+- **Diseño:** login y recuperación son páginas de **PASO ÚNICO con estado interno** → el `temporalToken` (2FA)
+  y el `codigo` de reset viven SOLO en React state (nunca URL/storage; verificado en review). Guardia cliente
+  en `(app)/layout.tsx` + `/dashboard` stub como destino. Google gated por `NEXT_PUBLIC_GOOGLE_CLIENT_ID`.
+- **Bug de contrato corregido en el port:** el CRA mandaba `{code}` a verify-email; el backend lee `{codigo}`.
+  Ahora `codigo` en verify-email/verify-2fa/verify-reset-code/reset-password.
+- **Entregado:** providers (TanStack Query v5 + Locale + Google) · `authApi` tipado + types · 12 query hooks ·
+  i18n auth (en+es) · guardia `(app)` + dashboard + chrome `(auth)` · register+verify-email · login+2FA
+  (email+TOTP) · recuperación 3-pasos + botón Google · build gate + contract doc §17 · Playwright E2E.
+- **Gates verdes:** Vitest **103/103** (19 files), `next build` OK (11 páginas, 5 rutas auth), Playwright
+  **E2E 3/3** (`/api` stubbed vía page.route).
+- **Fixes de review aplicados:** verifyResetCode codigo test (T2) · `waitFor` en guard (T5) · rename
+  `describe→showError` en Login+Forgot (T7/T8) · **commit de higiene** `2a04315` que destrackeó
+  `.agents/`/`.claude/`/`skills-lock.json` (barridas por un `git add` amplio de un subagente) + reglas .gitignore.
+- **⚠️ MÁQUINA LOCAL (no es de la migración):** el disco C: estaba al 100% (**0 bytes libres de 476GB**) → la
+  instalación del navegador de Playwright fallaba en silencio (ENOSPC) y dejó un chromium-1140 corrupto. Reclamé
+  ~1.6GB (borré chromium-1228 de más + headless-shell + npm cache), reinstalé chromium-1140 limpio, corrí el E2E.
+  Sigue MUY justo (~1.6GB libres). **Flag a Abner:** afectará builds/instalaciones futuras.
+- **SIGUIENTE:** review final whole-branch (opus) → aplicar must-fix si hay. dev→main se acumula hasta tener
+  un slice usable (ya hay auth; evaluar PR en S2 wallet o antes si Abner lo pide). Después Slice 2 (wallet).
+
+## ▶️ SESSION 2026-10-06/07 — Next.js migration kickoff + Slice 0 COMPLETO (en `dev`)
+Interactiva con Abner. Brainstorming → spec → plan → ejecución subagent-driven del **re-plataformado del
+frontend a Next.js** (el CRA legacy sigue intacto en prod; strangler).
+- **Decisiones locked:** Next App Router · React 18 / Next **14.2.35** (no React 19 en el port; eval Next16/React19
+  pre-deploy) · **self-host EC2** (Next 2º pm2 detrás de nginx, same-origin) · strangler incremental (`web/` junto a
+  `frontend/`, borrar CRA en S8) · split render público=SSG / app-autenticada=client.
+- **Spec:** `docs/superpowers/specs/2026-10-06-nextjs-migration-design.md` (slices S0–S8). **Plan S0:**
+  `docs/superpowers/plans/2026-10-06-nextjs-slice-0.md`. **Ledger:** `.superpowers/sdd/progress.md`.
+- **Slice 0 (10 tareas, subagent-driven, review por tarea + final opus "ship it"):** app `web/` Next 14.2.35
+  App Router (`output: standalone`); port `shared/{money(39/39, byte-idéntico),api(17/17),i18n(5/5),ui(9/9)}`;
+  Vitest harness; home pública SSG + Metadata API; robots/sitemap (noindex no-prod). **74 tests verdes**, build +
+  prueba SSG/SEO sin JS OK. Pusheado; `dev` 13 adelante de `main`. Nada deployado.
+- **Follow-ups (ledger, no bloquean):** dedupe interpolate(); barrel i18n 'use client' (no importar desde server
+  components); a11y Dialog; doc-drift idempotency (5 vs 6 endpoints); **pre-deploy: eval Next16/React19**.
+- **SIGUIENTE:** Slice 1 (auth journey) — writing-plans + subagent-driven. Ver `HANDOFF.md` §RESUME HERE.
+
+## ▶️ SESSION 2026-10-05 — Fase 1 "barrido" (MERGED a main, PR #39, `3735bcd`) + fix CI integración
+Sesión interactiva con Abner (no autónoma). Tres cierres money-path/seguridad, TDD, `dev→main` vía PR con
+`/code-review` alto esfuerzo (corrido por Claude). Estado final: `dev == main == origin == 3735bcd`.
+- **[#1 seguridad] `0208c1b`:** los códigos verificación/2FA/recuperación/transferencia se logueaban en texto
+  plano en CADA envío (en prod → logs de pm2, vector account-takeover). Helper `logDevCode` gateado por
+  `NODE_ENV !== 'production'`. +3 unit.
+- **[#2 oracle circuit breaker, Hito 2] `5741668`:** job en background (`oracleBreaker.job`, `ORACLE_SWEEP_INTERVAL_MS`
+  60s) que valúa cada par de swap con `externalSymbol` vía la mediana multi-fuente, FUERA del hot-path.
+  Divergente (>1.5%, config `oracle_divergence_threshold_pct`) o indisponible → **pausa** el par (precio
+  congelado) + evento `PRICE_ORACLE_DIVERGENCE` (outbox atómico) + alerta Telegram; swap execute/preview → 503.
+  Migración aditiva (`oracle_paused/reason/checked_at`, default false). CoinGecko symbol-map extendido a majors.
+  Review fixes (`51119ba`): guard de quote-no-stable (la mediana es USD → corromper precio en cross) + alerta de
+  recuperación. +9 unit.
+- **[#3 referidos] `7d38452`:** `accrueCommission` cableado event-driven sobre `SwapExecuted` (era código muerto);
+  valúa el fee (quote asset) en USD≈USDT; idempotente por sourceRef. Order-book `TradeExecuted` = follow-up (sin
+  trades aún). +5 unit.
+- **⚠️ PASO DE DEPLOY (en DEPLOY_CONTEXT §6 + comment de PR #39):** las 3 columnas de `swap_pairs` NO las aplica
+  el `sequelize.sync()` plano de prod → ALTER manual obligatorio antes de reiniciar el backend, o rompe swaps.
+- **[CI] `091addf`:** el `globalSetup` de integración hacía `sync({force:true})` sin cargar los modelos lazy
+  (governance/referrals/launchpad/kyc) → faltaban tablas (`pending_admin_actions`…) → **143 fallos** de integración
+  (CI rojo en main hacía commits, docs incluidos). Fix: `require('../../routes')` antes del sync → **143→18 fallos**.
+- **Deuda CI pendiente → issue #40:** los 18 fallos restantes (retiros/TOTP/AML, pre-existentes, ajenos a Fase 1)
+  + dependency audit (subir axios, 19 advisories). NO bloquean Fase 1 (gate = /code-review + unit verde).
+
 ## ▶️ SESSION 2026-10-02→05 — prod live (bitflow.community): Doppler + email + catálogo + SEO
 MVP **DESPLEGADO Y FUNCIONAL** en https://bitflow.community (t3.micro, infra en DEPLOY_CONTEXT.local.md).
 Cierre de esta tanda (todo en `main`, `5232bc2`; prod==main):

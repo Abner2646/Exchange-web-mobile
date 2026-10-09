@@ -172,6 +172,8 @@ pnpm-lock.yaml
 # Exception: the backend lockfile IS tracked — reproducible builds + supply-chain
 # integrity for the audit-grade backend, and required by `npm ci` in CI.
 !backend/package-lock.json
+# Exception: the web (Next.js) lockfile is also tracked for reproducible builds.
+!web/package-lock.json
 
 # Jest
 jest_coverage/
@@ -209,3 +211,8 @@ HANDOFF.md
 
 # Notas locales de deploy/infra (contexto del server) — nunca commitear
 *.local.md
+
+# Local agent/skill tooling (superpowers / orca / claude plugins) — never commit
+.agents/
+.claude/
+skills-lock.json

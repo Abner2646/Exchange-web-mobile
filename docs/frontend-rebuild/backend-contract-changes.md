@@ -217,6 +217,21 @@ zero on a price-improved partial fill.
 
 ### 9. Compartmentalized balances — additive shape + internal transfer (2026-09-02)
 
+> ⚠️ **Field names in this entry are STALE (superseded by the Fase 6.2 rename).**
+> The JSON below shows the original Spanish identifiers. The **running backend**
+> (verified in `backend/modules/balances/*`) now emits and reads **English** keys.
+> The authoritative current contract is:
+>
+> - `GET /api/balances/my/balances` item: `userId`, `criptomonedaId` (this id field
+>   kept its Spanish name), `availableBalance`, `blockedBalance`, `pendingBalance`,
+>   and `compartments.{funding:{available,blocked,pending}, spot:{available,blocked}}`,
+>   plus `crypto:{id,symbol,name,network,decimals}` (not `criptomoneda`).
+> - `POST /api/balances/my/transfer` body: `{ cryptoId, amount, from, to }` with
+>   `from`/`to` ∈ `funding`/`spot` (distinct). Response `{ message, data:{ from, to } }`.
+>
+> The Slice 2 `web/` client consumes these English shapes (see §18). Treat the
+> Spanish names below as historical only.
+
 **`GET /api/balances/my/balances` — additive per-compartment shape (non-breaking)**
 
 Each entry in the array preserves the **existing** root keys
@@ -522,6 +537,95 @@ canonical error envelope `code: "PRICE_ORACLE_DIVERGENCE"`:
 "Cotizaciones pausadas por discrepancia de mercado. Reintentando…" state (disable
 the confirm button, offer retry) rather than a generic error. Pairs without an
 `externalSymbol` are manually priced and never paused by this mechanism.
+
+---
+
+### 17. Next.js `web/` app — auth endpoints consumed (Slice 1, 2026-10-08)
+
+The rebuilt frontend (`web/`) now consumes the following auth endpoints directly.
+This section documents the contract as the `web/` app sees it, so the rest of the
+stack knows what the new client depends on.
+
+**Endpoints consumed**
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/user/register` | POST | Create account; returns `{ token }` (temporal, for verify-email step) |
+| `/user/verify-email` | POST | Confirm email with 6-digit code |
+| `/user/resend-verification-email` | POST | Re-send the email verification code |
+| `/user/login` | POST | Step 1: password auth; see 2FA shape below |
+| `/user/verify-2fa` | POST | Step 2: second-factor challenge resolution |
+| `/user/resend-2fa` | POST | Re-send the email 2FA code (email method only) |
+| `/user/forgot-password` | POST | Request password-reset code |
+| `/user/verify-reset-code` | POST | Validate the reset code before allowing new password |
+| `/user/reset-password` | POST | Submit new password with verified code |
+| `/user/login/google` | POST | Google Identity Services sign-in (see §7) |
+| `/user/me` | GET | Authenticated user profile |
+
+**Code field is `codigo`, not `code`**
+
+All endpoints that accept a short verification code use the field name **`codigo`**:
+- `POST /user/verify-email` → `{ codigo }`
+- `POST /user/verify-2fa` → `{ temporalToken, codigo }`
+- `POST /user/verify-reset-code` → `{ email, codigo }`
+- `POST /user/reset-password` → `{ email, codigo, nuevaPassword, confirmarPassword }`
+
+The old CRA client sent `code` — that was a client-side bug. The port corrects it.
+Do not send `code`; the backend will reject it.
+
+**Login step-1 response shape — direct login vs 2FA challenge**
+
+`POST /user/login` returns one of two shapes:
+
+```json
+// Direct login (no 2FA enrolled)
+{ "token": "<jwt>", "user": { … } }
+
+// 2FA challenge
+{ "requires2FA": true, "twoFactorMethod": "totp" | "email", "temporalToken": "<short-lived-jwt>" }
+```
+
+When `requires2FA` is true, store `temporalToken` and route the user to the 2FA
+step. Do not call `/user/me` yet — the `temporalToken` is not a full session token.
+The `temporalToken` is consumed by `POST /user/verify-2fa`; on success that endpoint
+returns `{ token, user }` (the full session token).
+
+**Google sign-in** follows §7 exactly: `POST /user/login/google` accepts
+`{ idToken }` and returns `{ message, user, token, isNew }`.
+
+---
+
+### 18. Next.js `web/` app — wallet endpoints consumed (Slice 2, 2026-10-08)
+
+The `web/` wallet vertical (`web/src/features/wallet/`) consumes these endpoints.
+Shapes are the **real** post-rename (English) contract — see the correction note
+at the top of §9.
+
+| Endpoint | Method | Request | Response | Envelope |
+|---|---|---|---|---|
+| `/balances/my/balances` | GET | — | `BalanceEntry[]` | **raw array** (no wrapper) |
+| `/balances/my/transfer` | POST | `{ cryptoId, amount, from, to }` | `{ message, data:{ from, to } }` | raw object |
+| `/transaccionBlockchain/deposit-address/:cryptoId` | GET | — | `{ address, crypto, qrCode, derivationIndex, metadata:{ network, confirmationsRequired, createdAt }, mensaje }` | `{ success, data }` |
+| `/transaccionBlockchain/withdraw` | POST | `{ cryptoId, amount, destinationAddress }` | `BlockchainTransaction` | `{ success, data }` |
+| `/transaccionBlockchain/my` | GET | query `type?,status?,cryptoId?,limit,offset` | `BlockchainTransaction[]` | `{ success, data }` |
+
+- `BalanceEntry`: `{ userId, criptomonedaId, availableBalance, blockedBalance,
+  pendingBalance, compartments:{ funding:{available,blocked,pending}, spot:{available,blocked} },
+  crypto:{id,symbol,name,network,decimals}|null }`. `pendingBalance` is Funding-only and
+  **display-only** (never spendable); spendable = compartment `available`.
+- `BlockchainTransaction`: `{ id, userId, cryptoId, type:'deposit'|'withdrawal', amount,
+  destinationAddress?, txHash?, confirmations, requiredConfirmations,
+  status:'pending'|'processing'|'confirmed'|'completed'|'failed', createdAt }`.
+- **Envelope note:** balances endpoints return raw arrays/objects; the on-chain
+  (`/transaccionBlockchain/*`) endpoints wrap payloads in `{ success, data }` — the
+  client unwraps `.data` for those. Errors use the canonical `{ error:{ code, message } }`
+  envelope (§1) and the client decodes them to `ApiError`.
+- **Idempotency** (§3) is auto-attached by the shared client for the two money POSTs
+  (`/balances/my/transfer`, `/transaccionBlockchain/withdraw`) — the feature code does
+  not set the header itself.
+- Withdrawals are **Funding-only**; the compartment transfer moves between Funding and
+  Spot. Error codes surfaced to the user include `WITHDRAWAL_COOLDOWN`,
+  `WITHDRAWAL_INVALID_ADDRESS`, `WITHDRAWAL_VALIDATION_FAILED`, `BALANCE_INSUFFICIENT`.
 
 ---
 
