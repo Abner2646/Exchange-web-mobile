@@ -54,8 +54,10 @@ export default function SwapForm() {
       ? compare(requiredSpend, availableInCompartment) > 0
       : false;
 
-  // Advisory daily-limit check; NOT the gate (execute is authoritative).
-  const checkLimit = useCheckLimit(quote.data?.calculo.quoteAmount ?? '0', Boolean(quote.data));
+  // Advisory daily-limit check; NOT the gate (execute is authoritative). Gate on
+  // amountOk too: a cleared amount keeps TanStack's last quote.data, so without
+  // this the advisory would re-fire against a stale quote the user no longer intends.
+  const checkLimit = useCheckLimit(quote.data?.calculo.quoteAmount ?? '0', Boolean(quote.data) && amountOk);
   const limitExceeded = checkLimit.isError && (checkLimit.error as { code?: string } | null)?.code === 'EXCHANGE_DAILY_LIMIT_EXCEEDED';
 
   // canSubmit: all gates must pass.
@@ -124,17 +126,23 @@ export default function SwapForm() {
         />
       </Field>
 
-      {pair && (
-        <QuoteDisplay
-          quote={quote.data}
-          error={quote.error}
-          isFetching={quote.isFetching}
-          type={type}
-          baseAmount={parsed.ok ? parsed.value : '0'}
-          baseSymbol={pair.baseSymbol}
-          quoteSymbol={pair.quoteSymbol}
-          onRetry={() => quote.refetch()}
-        />
+      {pair?.oraclePaused ? (
+        // Pair paused at the list level (quote never fires): explain why submit is
+        // blocked. The execute-time 503 path is handled by QuoteDisplay instead.
+        <p role="alert" className={styles.paused}>{t('swap.form.paused')}</p>
+      ) : (
+        pair && (
+          <QuoteDisplay
+            quote={quote.data}
+            error={quote.error}
+            isFetching={quote.isFetching}
+            type={type}
+            baseAmount={parsed.ok ? parsed.value : '0'}
+            baseSymbol={pair.baseSymbol}
+            quoteSymbol={pair.quoteSymbol}
+            onRetry={() => quote.refetch()}
+          />
+        )
       )}
 
       {insufficient && (

@@ -62,6 +62,7 @@ describe('SwapForm (money-path)', () => {
     await userEvent.selectOptions(screen.getAllByRole('combobox')[0], 'p1');
     await userEvent.type(screen.getByLabelText('swap.form.amount'), '0.5');
     expect(screen.getByRole('button', { name: 'swap.form.submit' })).toBeDisabled();
+    expect(screen.getByText('swap.form.paused')).toBeInTheDocument();
   });
 
   it('shows remaining daily-limit advisory when check-limit succeeds and limit is not exceeded', async () => {
