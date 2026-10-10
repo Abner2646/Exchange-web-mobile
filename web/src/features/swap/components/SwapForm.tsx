@@ -147,6 +147,11 @@ export default function SwapForm() {
           {t('swap.form.limitExceeded')}
         </p>
       )}
+      {checkLimit.data?.canTransact && !limitExceeded && (
+        <p className={styles.label}>
+          {t('swap.form.limitRemaining', { remaining: String(checkLimit.data.remainingLimit) })}
+        </p>
+      )}
       {execute.isError && execute.error && (
         <p role="alert" className={styles.label}>
           {tError((execute.error as { code?: string }).code ?? 'FALLBACK_UNKNOWN_ERROR', {
