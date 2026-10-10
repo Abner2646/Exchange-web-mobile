@@ -1187,9 +1187,10 @@ git commit -m "feat(web): swap PairSelect component (S3)"
 - Produces: `QuoteDisplay` (named export) with props:
   ```ts
   { quote?: QuoteResponse; error?: ApiError | null; isFetching: boolean; type: 'buy'|'sell';
-    baseSymbol: string; quoteSymbol: string; onRetry: () => void; }
+    baseAmount: string; baseSymbol: string; quoteSymbol: string; onRetry: () => void; }
   ```
-  Renders: loading text; a `PRICE_ORACLE_DIVERGENCE` paused panel with a retry button (when `error?.code === 'PRICE_ORACLE_DIVERGENCE'`); otherwise the indicative quote (youPay/youReceive + fee + price + the `swap.quote.indicative` disclosure). `youPay`/`youReceive` are derived from the quote: for **buy**, youPay = `finalAmount` (quote), youReceive = `baseAmount` (base); for **sell**, youPay = `baseAmount` (base), youReceive = `finalAmount` (quote).
+  `baseAmount` is the **canonical entered amount** (the form's `parseInput` result) — the money-safe source of truth for the base display. **Never** format `quote.calculo.baseAmount` (the backend echo, possibly a JS number — `String(1e-8)` would break `formatDisplay`).
+  Renders: loading text; a `PRICE_ORACLE_DIVERGENCE` paused panel with a retry button (when `error?.code === 'PRICE_ORACLE_DIVERGENCE'`); otherwise the indicative quote (youPay/youReceive + fee + price + the `swap.quote.indicative` disclosure). `youPay`/`youReceive` are derived: for **buy**, youPay = `quote.calculo.finalAmount` (quote), youReceive = `baseAmount` prop (base); for **sell**, youPay = `baseAmount` prop (base), youReceive = `quote.calculo.finalAmount` (quote).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1214,19 +1215,19 @@ const quote: QuoteResponse = {
 
 describe('QuoteDisplay', () => {
   it('shows the indicative disclosure and amounts for a buy', () => {
-    render(<QuoteDisplay quote={quote} error={null} isFetching={false} type="buy" baseSymbol="BTC" quoteSymbol="USDT" onRetry={() => {}} />);
+    render(<QuoteDisplay quote={quote} error={null} isFetching={false} type="buy" baseAmount="0.5" baseSymbol="BTC" quoteSymbol="USDT" onRetry={() => {}} />);
     expect(screen.getByText('swap.quote.indicative')).toBeInTheDocument();
     expect(screen.getByText('swap.quote.fee')).toBeInTheDocument();
   });
   it('shows the paused panel + retry on PRICE_ORACLE_DIVERGENCE', async () => {
     const onRetry = vi.fn();
-    render(<QuoteDisplay quote={undefined} error={{ code: 'PRICE_ORACLE_DIVERGENCE', status: 503 } as any} isFetching={false} type="buy" baseSymbol="BTC" quoteSymbol="USDT" onRetry={onRetry} />);
+    render(<QuoteDisplay quote={undefined} error={{ code: 'PRICE_ORACLE_DIVERGENCE', status: 503 } as any} isFetching={false} type="buy" baseAmount="0.5" baseSymbol="BTC" quoteSymbol="USDT" onRetry={onRetry} />);
     expect(screen.getByText('PRICE_ORACLE_DIVERGENCE')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'swap.form.pausedRetry' }));
     expect(onRetry).toHaveBeenCalled();
   });
   it('shows loading while fetching', () => {
-    render(<QuoteDisplay quote={undefined} error={null} isFetching={true} type="buy" baseSymbol="BTC" quoteSymbol="USDT" onRetry={() => {}} />);
+    render(<QuoteDisplay quote={undefined} error={null} isFetching={true} type="buy" baseAmount="0.5" baseSymbol="BTC" quoteSymbol="USDT" onRetry={() => {}} />);
     expect(screen.getByText('swap.quote.loading')).toBeInTheDocument();
   });
 });
@@ -1256,12 +1257,13 @@ interface Props {
   error?: ApiError | null;
   isFetching: boolean;
   type: SwapType;
+  baseAmount: string; // canonical entered amount (money-safe source of truth for base display)
   baseSymbol: string;
   quoteSymbol: string;
   onRetry: () => void;
 }
 
-export function QuoteDisplay({ quote, error, isFetching, type, baseSymbol, quoteSymbol, onRetry }: Props) {
+export function QuoteDisplay({ quote, error, isFetching, type, baseAmount, baseSymbol, quoteSymbol, onRetry }: Props) {
   const { t, locale } = useTranslation();
   const { tError } = useErrorTranslation();
 
@@ -1280,7 +1282,9 @@ export function QuoteDisplay({ quote, error, isFetching, type, baseSymbol, quote
   if (!quote) return <p className={styles.label}>{t('swap.quote.empty')}</p>;
 
   const c = quote.calculo;
-  const base = String(c.baseAmount);
+  // Use the canonical entered amount for the base display — NEVER String(c.baseAmount)
+  // (backend echo may be a JS number; String(1e-8) would break formatDisplay).
+  const base = baseAmount;
   // buy: pay finalAmount (quote), receive base; sell: pay base, receive finalAmount (quote)
   const youPay = type === 'buy' ? `${fmt(c.finalAmount)} ${quoteSymbol}` : `${fmt(base)} ${baseSymbol}`;
   const youReceive = type === 'buy' ? `${fmt(base)} ${baseSymbol}` : `${fmt(c.finalAmount)} ${quoteSymbol}`;
@@ -1516,6 +1520,7 @@ export default function SwapForm() {
           error={quote.error}
           isFetching={quote.isFetching}
           type={type}
+          baseAmount={parsed.ok ? parsed.value : '0'}
           baseSymbol={pair.baseSymbol}
           quoteSymbol={pair.quoteSymbol}
           onRetry={() => quote.refetch()}

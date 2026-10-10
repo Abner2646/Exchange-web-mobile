@@ -41,6 +41,11 @@ export interface QuoteRequest {
 export interface QuoteResponse {
   par: { id: string; base: string; quote: string; price: string; volume24h?: string; lastUpdated?: string };
   calculo: {
+    // Backend echo of the REQUEST baseAmount, after server-side parseFloat — so it
+    // can arrive as a JS number. GUARDRAIL: never format or compute this as money
+    // (String(1e-8) would break formatDisplay); use the canonical entered amount
+    // (the form's parseInput result) for the base display. Kept as string|number to
+    // stay honest about the wire reality.
     baseAmount: string | number;
     quoteAmount: string;
     feePercent: string;
