@@ -1,9 +1,10 @@
 import { apiClient } from '@/shared/api';
-import type { TradingPair, TradingPairDTO, OrderBook, RecentTrade } from './types';
+import type { TradingPair, TradingPairDTO, OrderBook, RecentTrade, TradingOrder } from './types';
 
 interface PairsEnvelope { success?: boolean; pairs?: TradingPairDTO[] }
 interface OrderBookEnvelope { success?: boolean; orderBook?: OrderBook }
 interface TradesEnvelope { success?: boolean; trades?: RecentTrade[] }
+interface OrdersEnvelope { success?: boolean; orders?: TradingOrder[]; total?: number }
 
 function normalizePair(dto: TradingPairDTO): TradingPair | null {
   const parts = (dto.symbol ?? '').split('/');
@@ -44,4 +45,12 @@ export const tradingApi = {
     apiClient.get<TradesEnvelope | RecentTrade[]>(`/trading/trades/${tradingPairId}`).then((r) =>
       Array.isArray(r) ? r : (r.trades ?? []),
     ),
+
+  getActiveOrders: () =>
+    apiClient.get<OrdersEnvelope | TradingOrder[]>('/trading/orders/active').then((r) =>
+      Array.isArray(r) ? r : (r.orders ?? []),
+    ),
+
+  cancelOrder: (orderId: string) =>
+    apiClient.delete<{ success: boolean; message?: string; error?: string }>(`/trading/orders/${orderId}`),
 };
