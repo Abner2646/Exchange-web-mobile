@@ -1,5 +1,5 @@
 import { apiClient } from '@/shared/api';
-import type { TradingPair, TradingPairDTO, OrderBook, RecentTrade, TradingOrder } from './types';
+import type { TradingPair, TradingPairDTO, OrderBook, RecentTrade, TradingOrder, PlaceOrderRequest, PlaceOrderResponse } from './types';
 
 interface PairsEnvelope { success?: boolean; pairs?: TradingPairDTO[] }
 interface OrderBookEnvelope { success?: boolean; orderBook?: OrderBook }
@@ -53,4 +53,18 @@ export const tradingApi = {
 
   cancelOrder: (orderId: string) =>
     apiClient.delete<{ success: boolean; message?: string; error?: string }>(`/trading/orders/${orderId}`),
+
+  // Money POST. The shared client auto-attaches an Idempotency-Key (isMoneyEndpoint
+  // matches /trading/order). quantity/price stay STRINGS; price is omitted for market.
+  placeOrder: (req: PlaceOrderRequest) => {
+    const body: Record<string, unknown> = {
+      tradingPairId: req.tradingPairId,
+      orderType: req.orderType,
+      side: req.side,
+      quantity: req.quantity,
+    };
+    if (req.orderType === 'limit' && req.price != null) body.price = req.price;
+    if (req.clientOrderId) body.clientOrderId = req.clientOrderId;
+    return apiClient.post<PlaceOrderResponse>('/trading/orders', body);
+  },
 };
