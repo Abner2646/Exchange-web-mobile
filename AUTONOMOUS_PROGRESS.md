@@ -2,6 +2,30 @@
 
 **Started:** 2026-09-23. Coordinator: Claude (Opus). Abner is away for several days; full autonomy.
 
+## ▶️ SESSION 2026-10-10 (cont.) — Next.js Slice 4 (SPOT TRADING) COMPLETE + MERGED to main (PR #43)
+Built the order-book trading vertical subagent-driven (10 tasks, fresh implementer + spec/quality review per
+task; money-path tasks 5/place-order + 9/OrderForm reviewed line-by-line by me). Plan:
+`docs/superpowers/plans/2026-10-10-nextjs-slice-4-trading.md` (grounded in the REAL order-book contract —
+trading.routes/controller + orderValidator/feeCalculator/balanceManager).
+- **Delivered:** order book (bids/asks/spread) + recent trades + last price; **market/limit buy/sell** orders;
+  fee charged on the RECEIVED asset (buy→base, sell→quote), explained; Funding→Spot prerequisite with a prompt;
+  open-order lifecycle + cancel. `/trading` route + nav + i18n (en/es) + contract doc §20.
+- **Decisions (in the plan):** market+limit only (stop deferred); Spot-only; GTC implicit; market data =
+  book+trades+lastPrice (no candle chart). Book/trade figures are backend NUMBERS = read-only market display
+  (`Intl`), NEVER the user spend path.
+- **Money-path (mine, TDD):** spend/compare/sufficiency only via `@/shared/money` strings; `quantity`/`price`
+  STRINGS, `price` OMITTED for market. Exact Spot gate (sell→base≥qty; limit-buy→quote≥qty×price+takerFee;
+  market-buy soft), blocks on unknown balance. Idempotency auto (`isMoneyEndpoint` /trading/order) + no-retry +
+  disabled-while-pending = double-submit guard.
+- **Gate (HEAD):** tsc 0, Vitest **231/231** (56 files), `next build` OK (`/trading`). Disk healthy.
+- **Final opus review:** Ready to merge, **0 Critical / 0 Important**. Fixed `as any` cast finding.
+- **`/code-review` high-effort (PR #43, by me):** 0 Critical money-path. Fixed 1 real UX/a11y bug:
+  `trading.form.side` legend used but MISSING from catalogs+parity test → raw key rendered; added (Side/Lado).
+  Backlog (non-blocking): type dup, PairSelect/`num` reuse, two pairId states (documented), dup book header,
+  poll cadence, dead sell-branch guard, requiredSpend-null UX. Refuted: orderbook prefix-invalidate (correct v5).
+- **✅ dev→main MERGED (`dbfc5e0`, --no-ff, PR #43).** `dev == main == origin` (0 0). **main NOT deployed.**
+- **NEXT:** Slice 5 (P2P — offer/accept/payment/complete/cancel state machine; typed 4xx recovery).
+
 ## ▶️ SESSION 2026-10-10 — Next.js Slice 3 (SWAP) COMPLETE + MERGED to main (PR #42)
 PASO 0 clean (dev==main+2 docs-only, all pushed). Built the swap vertical subagent-driven (11 tasks, fresh
 implementer + spec/quality review per task; money-path tasks 6/execute + 10/SwapForm reviewed line-by-line by me).
