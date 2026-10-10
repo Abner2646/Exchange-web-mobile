@@ -605,3 +605,18 @@ MUST-FIX before the web is deployed (tracked):
 4. Pre-deploy: evaluate Next 16 / React 19 (npm audit of the 14.x line).
 
 NEXT: Slice 3 per the design spec (swap/trading), OR de-risk the web money-path (must-fix #1) first if prioritized.
+
+## 2026-10-10 — SPRINT DEFINED (Abner): "Complete & ship the Next.js frontend"
+Direction chosen = path A (build out the whole new frontend + go live). Sprint scope, in order:
+S3 Swap → S4 Spot trading → S5 P2P → S6 Profile/security → S7 Admin → S8 marketing + delete CRA + NGINX FLIP (go live),
+plus a front-fixes/polish pass. Each slice: subagent-driven, dev→main per PR with /code-review, accumulates on main
+UNDEPLOYED. Stop "accumulate-without-deploy" at S8 — the sprint's end state is PRODUCTION on the new web.
+
+GO-LIVE GATE (non-negotiable before the S8 nginx flip): (1) per-intent idempotency key on every money mutation
+(deferred during feature-building by Abner's call, required before deploy); (2) (app) guard redirects on
+emailVerified=false + reactive to 401 clear; (3) Playwright E2E green for all money flows; (4) Next 16/React 19 eval +
+1GB-box build check; (5) check:operator-mfa green.
+
+START = Slice 3 (Swap), money-path (mine, TDD): writing-plans grounded in backend/modules/swap/* + the oracle breaker
+(503 PRICE_ORACLE_DIVERGENCE). Full startup prompt rewritten in HANDOFF.md (§RESUME HERE → "EL SPRINT"); design-spec
+§6 cutover note updated; frontend-nextjs-migration memory updated.
