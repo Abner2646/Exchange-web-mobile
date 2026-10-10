@@ -1,5 +1,5 @@
 import { apiClient } from '@/shared/api';
-import type { SwapPair, SwapPairDTO, QuoteRequest, QuoteResponse, CheckLimitResponse } from './types';
+import type { SwapPair, SwapPairDTO, QuoteRequest, QuoteResponse, CheckLimitResponse, ExecuteSwapRequest, ExecuteSwapResponse } from './types';
 
 function normalizePair(dto: SwapPairDTO): SwapPair | null {
   if (!dto.baseCrypto || !dto.quoteCrypto) return null; // can't trade a pair we can't label
@@ -35,5 +35,14 @@ export const swapApi = {
   checkLimit: (quoteAmount: string) =>
     apiClient.post<CheckLimitResponse>('/intercambioExchange/check-limit', {
       quoteAmount: Number(quoteAmount),
+    }),
+  // Money POST. The shared client auto-attaches an Idempotency-Key for this path
+  // (isMoneyEndpoint matches /intercambioExchange). baseAmount stays a STRING.
+  executeSwap: (req: ExecuteSwapRequest) =>
+    apiClient.post<ExecuteSwapResponse>('/intercambioExchange', {
+      pairId: req.pairId,
+      type: req.type,
+      baseAmount: req.baseAmount,
+      compartimento: req.compartimento,
     }),
 };

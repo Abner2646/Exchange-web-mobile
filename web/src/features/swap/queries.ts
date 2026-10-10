@@ -1,9 +1,10 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ApiError } from '@/shared/api';
 import { swapApi } from './api';
-import type { SwapPair, QuoteRequest, QuoteResponse, CheckLimitResponse } from './types';
+import type { SwapPair, QuoteRequest, QuoteResponse, CheckLimitResponse, ExecuteSwapRequest, ExecuteSwapResponse } from './types';
+import { WALLET_BALANCES_KEY } from '@/features/wallet/queries';
 
 export const SWAP_PAIRS_KEY = ['swap', 'pairs'] as const;
 
@@ -35,5 +36,22 @@ export function useCheckLimit(quoteAmount: string, enabled: boolean) {
     enabled,
     retry: false,
     staleTime: 10_000,
+  });
+}
+
+export const SWAP_MY_SWAPS_KEY = ['swap', 'my-swaps'] as const;
+export const SWAP_DAILY_VOLUME_KEY = ['swap', 'daily-volume'] as const;
+
+export function useExecuteSwap() {
+  const qc = useQueryClient();
+  // Mutations do not retry by default — combined with disabled-while-pending this
+  // is the S3 double-submit guard (per-intent idempotency key is a deferred go-live item).
+  return useMutation<ExecuteSwapResponse, ApiError, ExecuteSwapRequest>({
+    mutationFn: swapApi.executeSwap,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: WALLET_BALANCES_KEY });
+      qc.invalidateQueries({ queryKey: SWAP_MY_SWAPS_KEY });
+      qc.invalidateQueries({ queryKey: SWAP_DAILY_VOLUME_KEY });
+    },
   });
 }
