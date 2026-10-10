@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { ApiError } from '@/shared/api';
 import { swapApi } from './api';
-import type { SwapPair, QuoteRequest, QuoteResponse } from './types';
+import type { SwapPair, QuoteRequest, QuoteResponse, CheckLimitResponse } from './types';
 
 export const SWAP_PAIRS_KEY = ['swap', 'pairs'] as const;
 
@@ -22,6 +22,16 @@ export function useSwapQuote(req: QuoteRequest, enabled: boolean) {
   return useQuery<QuoteResponse, ApiError>({
     queryKey: SWAP_QUOTE_KEY(req),
     queryFn: () => swapApi.getQuote(req),
+    enabled,
+    retry: false,
+    staleTime: 10_000,
+  });
+}
+
+export function useCheckLimit(quoteAmount: string, enabled: boolean) {
+  return useQuery<CheckLimitResponse, ApiError>({
+    queryKey: ['swap', 'check-limit', quoteAmount] as const,
+    queryFn: () => swapApi.checkLimit(quoteAmount),
     enabled,
     retry: false,
     staleTime: 10_000,

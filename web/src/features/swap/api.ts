@@ -1,5 +1,5 @@
 import { apiClient } from '@/shared/api';
-import type { SwapPair, SwapPairDTO, QuoteRequest, QuoteResponse } from './types';
+import type { SwapPair, SwapPairDTO, QuoteRequest, QuoteResponse, CheckLimitResponse } from './types';
 
 function normalizePair(dto: SwapPairDTO): SwapPair | null {
   if (!dto.baseCrypto || !dto.quoteCrypto) return null; // can't trade a pair we can't label
@@ -26,5 +26,14 @@ export const swapApi = {
       pairId: req.pairId,
       baseAmount: req.baseAmount,
       type: req.type,
+    }),
+  // Advisory ONLY. The check-limit endpoint rejects anything whose typeof !== 'number',
+  // so we convert the canonical amount to a Number at THIS wire boundary — the one
+  // sanctioned exception to the money-string rule (see plan Global Constraints). The
+  // authoritative daily-limit enforcement is server-side at execution
+  // (EXCHANGE_DAILY_LIMIT_EXCEEDED); this result must never be the sole submit gate.
+  checkLimit: (quoteAmount: string) =>
+    apiClient.post<CheckLimitResponse>('/intercambioExchange/check-limit', {
+      quoteAmount: Number(quoteAmount),
     }),
 };
