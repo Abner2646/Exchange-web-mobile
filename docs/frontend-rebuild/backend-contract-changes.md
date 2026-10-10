@@ -641,6 +641,17 @@ The rebuilt frontend (`web/`) consumes the swap vertical:
 
 ---
 
+### 20. Next.js `web/` app — trading (order book) endpoints consumed (Slice 4, 2026-10-10)
+
+The rebuilt frontend (`web/`) consumes the spot-trading vertical:
+- `GET /trading/pairs` — active pairs (normalized to `{ id, symbol, baseSymbol, quoteSymbol, lastPrice, fees, min/max, precision }`).
+- `GET /trading/orderbook/:id`, `GET /trading/trades/:id` — market data (numbers; read-only display, never the user's spend).
+- `POST /trading/orders` — place order (money POST, Idempotency-Key auto-attached). `quantity`/`price` sent as canonical decimal STRINGS; `price` omitted for market. Fee is charged on the received asset (buy→base, sell→quote), explained in the form. Trading uses the Spot compartment; insufficient Spot shows a Funding→Spot prompt.
+- `GET /trading/orders/active` + `DELETE /trading/orders/:id` — open-order lifecycle + cancel.
+- Scope: market + limit orders only (stop orders deferred); no candlestick chart (deferred).
+
+---
+
 ## Expected upcoming contract changes (heads-up, not yet done)
 
 These are tracked in `ROADMAP.md`; listed here so the rebuild anticipates them and
