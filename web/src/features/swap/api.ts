@@ -1,5 +1,5 @@
 import { apiClient } from '@/shared/api';
-import type { SwapPair, SwapPairDTO } from './types';
+import type { SwapPair, SwapPairDTO, QuoteRequest, QuoteResponse } from './types';
 
 function normalizePair(dto: SwapPairDTO): SwapPair | null {
   if (!dto.baseCrypto || !dto.quoteCrypto) return null; // can't trade a pair we can't label
@@ -21,4 +21,10 @@ export const swapApi = {
     apiClient.get<SwapPairDTO[]>('/parExchange').then((rows) =>
       (rows ?? []).map(normalizePair).filter((p): p is SwapPair => p !== null && p.active),
     ),
+  getQuote: (req: QuoteRequest) =>
+    apiClient.post<QuoteResponse>('/intercambioExchange/calculate', {
+      pairId: req.pairId,
+      baseAmount: req.baseAmount,
+      type: req.type,
+    }),
 };
