@@ -138,6 +138,7 @@ export const es: Catalog = {
     'trading.trades.side': 'Lado',
     'trading.form.title': 'Colocar orden',
     'trading.form.type': 'Tipo de orden',
+    'trading.form.side': 'Lado',
     'trading.form.market': 'Mercado',
     'trading.form.limit': 'Límite',
     'trading.form.buy': 'Comprar',

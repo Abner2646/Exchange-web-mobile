@@ -8,7 +8,7 @@ const UI_KEYS = [
   'trading.book.title', 'trading.book.price', 'trading.book.amount', 'trading.book.total',
   'trading.book.bids', 'trading.book.asks', 'trading.book.spread', 'trading.book.empty',
   'trading.trades.title', 'trading.trades.empty', 'trading.trades.price', 'trading.trades.amount', 'trading.trades.side',
-  'trading.form.title', 'trading.form.type', 'trading.form.market', 'trading.form.limit',
+  'trading.form.title', 'trading.form.type', 'trading.form.side', 'trading.form.market', 'trading.form.limit',
   'trading.form.buy', 'trading.form.sell', 'trading.form.quantity', 'trading.form.price',
   'trading.form.submitBuy', 'trading.form.submitSell', 'trading.form.feeNoteBuy', 'trading.form.feeNoteSell',
   'trading.form.marketCostNote', 'trading.form.insufficient', 'trading.form.fundSpot',
