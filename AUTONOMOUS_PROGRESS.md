@@ -578,3 +578,45 @@ Always run `cd backend && npm test` (unit, no DB) after any shared-file change; 
 2. Build rest of Slice 0 (i18n skeleton, UI primitives, tokens) — delegable.
 3. Wire oracle→swap (money-path, mine): pause swap on divergence, emit PRICE_ORACLE_DIVERGENCE via events module, fire Telegram alert. Needs OpenAPI/contract-doc updates.
 4. Backend breadth: Referrals, Launchpad, KYC toggle+Tiers (each delegated, my review, own migration).
+
+## 2026-10-09 — Next.js Slice 2 (wallet) COMPLETE + first web→main merge (PR #41)
+Slice 2 built subagent-driven (12 tasks, fresh implementer + spec/quality review per task; the 2 money-path
+tasks reviewed carefully by me). Delivered the `login → real balances` vertical: compartmented balances
+(Funding/Spot, available/blocked/pending display-only), Funding↔Spot transfer, deposit address + history,
+on-chain withdrawal (Funding-only). All money is `@/shared/money` decimal strings (no float); idempotency
+auto-attached by the shared client; audit guards (no double-submit, Funding/Spot never conflated, pending
+never spendable) enforced + behaviorally tested.
+
+Reviews: opus whole-branch final = Ready to merge (0 Critical/Important). `/code-review` high-effort (run by
+Claude) on PR #41 found 1 real Slice-2 bug — wallet `tError()` omitted `{requestId}` → `INTERNAL_ERROR` (500)
+rendered literal `{{requestId}}` — FIXED across transfer/deposit/withdraw; also hardened the money submit guard
+(require a known available balance), fixed a misleading nav aria-label, exported `walletDepositKey`.
+
+Gate (merge): tsc 0, Vitest 182/182 (28 files), `next build` OK (`/wallet` present). Merged PR #41 dev→main
+(`e7cc59c`); dev fast-forwarded; `dev==main==origin`, all pushed. main is NOT deployed (CRA still serves prod).
+
+MUST-FIX before the web is deployed (tracked):
+1. Idempotency per-INTENT key reused across retries — `shared/api/idempotency.ts` currently generates a fresh
+   UUID per fetch; a manual re-submit after a client-perceived failure uses a new key → if the first request
+   actually landed server-side, a double money op is possible. Mitigated now by disabled-while-pending +
+   backend per-key dedup + retry:false. Proper fix = key tied to the submission intent in the mutation layer.
+2. `(app)` guard checks only token presence — not `emailVerified`, and not reactive to a 401-triggered clear.
+3. Playwright wallet E2E (Task 12) deferred — local disk was full (ENOSPC risk). Backfill: `cd web && npx playwright test`.
+4. Pre-deploy: evaluate Next 16 / React 19 (npm audit of the 14.x line).
+
+NEXT: Slice 3 per the design spec (swap/trading), OR de-risk the web money-path (must-fix #1) first if prioritized.
+
+## 2026-10-10 — SPRINT DEFINED (Abner): "Complete & ship the Next.js frontend"
+Direction chosen = path A (build out the whole new frontend + go live). Sprint scope, in order:
+S3 Swap → S4 Spot trading → S5 P2P → S6 Profile/security → S7 Admin → S8 marketing + delete CRA + NGINX FLIP (go live),
+plus a front-fixes/polish pass. Each slice: subagent-driven, dev→main per PR with /code-review, accumulates on main
+UNDEPLOYED. Stop "accumulate-without-deploy" at S8 — the sprint's end state is PRODUCTION on the new web.
+
+GO-LIVE GATE (non-negotiable before the S8 nginx flip): (1) per-intent idempotency key on every money mutation
+(deferred during feature-building by Abner's call, required before deploy); (2) (app) guard redirects on
+emailVerified=false + reactive to 401 clear; (3) Playwright E2E green for all money flows; (4) Next 16/React 19 eval +
+1GB-box build check; (5) check:operator-mfa green.
+
+START = Slice 3 (Swap), money-path (mine, TDD): writing-plans grounded in backend/modules/swap/* + the oracle breaker
+(503 PRICE_ORACLE_DIVERGENCE). Full startup prompt rewritten in HANDOFF.md (§RESUME HERE → "EL SPRINT"); design-spec
+§6 cutover note updated; frontend-nextjs-migration memory updated.

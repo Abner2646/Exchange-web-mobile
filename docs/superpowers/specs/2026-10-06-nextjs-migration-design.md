@@ -80,7 +80,13 @@ Next reaches parity.
 | S7 | Admin | Least-privilege routing, operator MFA state, business config, AML/KYC/audit ops (mount the already-built admin feature). |
 | S8 | Marketing + legacy removal | Responsive marketing UX; nginx flip to Next; delete `frontend/` (CRA) and every replaced legacy file. |
 
-**nginx cutover:** when S0–S2 reach usable parity (or at S8 — confirm at the time). Until then CRA serves prod.
+**nginx cutover — DECISION (Abner, 2026-10-10):** the sprint goal is to build ALL remaining slices (S3–S8) and
+**go live at S8** via the nginx flip. Slices accumulate on `main` UNDEPLOYED until then. The flip is gated by the
+**go-live must-fix list** (non-negotiable before cutover): (1) per-intent idempotency key on every money mutation
+(deferred during feature-building, required before deploy); (2) `(app)` guard redirects on `emailVerified=false` and
+is reactive to a 401 token-clear; (3) Playwright E2E green for all money flows (auth/wallet/swap/trading); (4) Next
+16/React 19 evaluation (npm audit of the 14.x line) + build/SSR check on the 1GB box; (5) `check:operator-mfa` green.
+Until the flip, the CRA serves prod. Full sprint definition in `HANDOFF.md` (§RESUME HERE → "EL SPRINT").
 
 ## 7. Testing & release gates
 
