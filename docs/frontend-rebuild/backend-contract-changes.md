@@ -629,6 +629,18 @@ at the top of §9.
 
 ---
 
+### 19. Next.js `web/` app — swap endpoints consumed (Slice 3, 2026-10-10)
+
+The rebuilt frontend (`web/`) consumes the swap vertical:
+- `GET /parExchange` — list active swap pairs (normalized to `{ id, baseSymbol, quoteSymbol, currentPrice, feePercent, oraclePaused }`; pairs with a missing base/quote crypto are dropped).
+- `POST /intercambioExchange/calculate` — indicative quote. `baseAmount` is sent as a canonical decimal STRING (backend parseFloats). The UI labels the quote as indicative (no quote-lock, contract §5) and shows youPay/youReceive/fee/price.
+- `POST /intercambioExchange/check-limit` — advisory daily-limit feedback only. `quoteAmount` is sent as a Number at this wire boundary (the endpoint rejects non-numbers); the authoritative limit is enforced at execution.
+- `POST /intercambioExchange` — execute (money POST, Idempotency-Key auto-attached). Body `{ pairId, type, baseAmount: string, compartimento }`. Success shows the executed price (`data.precioUsado`) and fee (`data.comisionCalculada`).
+- `GET /intercambioExchange/me` — recent swaps list.
+- **503 `PRICE_ORACLE_DIVERGENCE`** on quote or execute renders a dedicated paused panel with a retry, not a generic error.
+
+---
+
 ## Expected upcoming contract changes (heads-up, not yet done)
 
 These are tracked in `ROADMAP.md`; listed here so the rebuild anticipates them and
