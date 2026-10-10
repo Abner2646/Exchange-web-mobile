@@ -143,7 +143,7 @@ export default function OrderForm() {
         </div>
       )}
       {place.isError && place.error && (
-        <p role="alert" className={styles.label}>{tError((place.error as any).code, { requestId: (place.error as any).requestId ?? '' })}</p>
+        <p role="alert" className={styles.label}>{tError(place.error.code, { requestId: place.error.requestId ?? '' })}</p>
       )}
       {place.isSuccess && <p role="status" className={styles.label}>{t('trading.form.success')}</p>}
 
