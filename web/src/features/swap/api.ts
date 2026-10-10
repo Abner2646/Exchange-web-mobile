@@ -1,5 +1,5 @@
 import { apiClient } from '@/shared/api';
-import type { SwapPair, SwapPairDTO, QuoteRequest, QuoteResponse, CheckLimitResponse, ExecuteSwapRequest, ExecuteSwapResponse } from './types';
+import type { SwapPair, SwapPairDTO, QuoteRequest, QuoteResponse, CheckLimitResponse, ExecuteSwapRequest, ExecuteSwapResponse, MySwap } from './types';
 
 function normalizePair(dto: SwapPairDTO): SwapPair | null {
   if (!dto.baseCrypto || !dto.quoteCrypto) return null; // can't trade a pair we can't label
@@ -45,4 +45,8 @@ export const swapApi = {
       baseAmount: req.baseAmount,
       compartimento: req.compartimento,
     }),
+  getMySwaps: () =>
+    apiClient.get<MySwap[] | { rows: MySwap[] }>('/intercambioExchange/me?limit=25').then((r) =>
+      Array.isArray(r) ? r : (r?.rows ?? []),
+    ),
 };

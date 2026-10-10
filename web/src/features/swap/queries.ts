@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ApiError } from '@/shared/api';
 import { swapApi } from './api';
-import type { SwapPair, QuoteRequest, QuoteResponse, CheckLimitResponse, ExecuteSwapRequest, ExecuteSwapResponse } from './types';
+import type { SwapPair, QuoteRequest, QuoteResponse, CheckLimitResponse, ExecuteSwapRequest, ExecuteSwapResponse, MySwap } from './types';
 import { WALLET_BALANCES_KEY } from '@/features/wallet/queries';
 
 export const SWAP_PAIRS_KEY = ['swap', 'pairs'] as const;
@@ -41,6 +41,14 @@ export function useCheckLimit(quoteAmount: string, enabled: boolean) {
 
 export const SWAP_MY_SWAPS_KEY = ['swap', 'my-swaps'] as const;
 export const SWAP_DAILY_VOLUME_KEY = ['swap', 'daily-volume'] as const;
+
+export function useMySwaps() {
+  return useQuery<MySwap[], ApiError>({
+    queryKey: SWAP_MY_SWAPS_KEY,
+    queryFn: () => swapApi.getMySwaps(),
+    staleTime: 15_000,
+  });
+}
 
 export function useExecuteSwap() {
   const qc = useQueryClient();
