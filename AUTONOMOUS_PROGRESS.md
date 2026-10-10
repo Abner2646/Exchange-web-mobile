@@ -2,6 +2,38 @@
 
 **Started:** 2026-09-23. Coordinator: Claude (Opus). Abner is away for several days; full autonomy.
 
+## ▶️ SESSION 2026-10-10 — Next.js Slice 3 (SWAP) COMPLETE + MERGED to main (PR #42)
+PASO 0 clean (dev==main+2 docs-only, all pushed). Built the swap vertical subagent-driven (11 tasks, fresh
+implementer + spec/quality review per task; money-path tasks 6/execute + 10/SwapForm reviewed line-by-line by me).
+Plan: `docs/superpowers/plans/2026-10-10-nextjs-slice-3-swap.md` (grounded in the REAL backend swap contract —
+read swap.routes/controller/model/settlement + oracle breaker, not the stale OpenAPI `number` typing).
+- **Delivered:** pick pair → **indicative** quote (fee/total disclosure, no quote-lock) → daily-limit advisory
+  → idempotent execute vs the house; **503 PRICE_ORACLE_DIVERGENCE** paused state first-class. `/swap` route +
+  nav link + i18n (en/es) + contract doc §19. Mirrors the S2 wallet feature.
+- **Money-path (mine, TDD):** amounts only via `@/shared/money` canonical strings; `baseAmount` STRING on the wire
+  to `/calculate` + `/intercambioExchange`; ONE sanctioned `Number()` at the advisory `check-limit` boundary
+  (backend rejects non-numbers; advisory-only, never the gate — backend counts **quoteAmount** pre-fee, so I
+  REJECTED the opus review's "use finalAmount" finding as server-divergent). Exact sufficiency gate (buy→quote
+  asset vs finalAmount, sell→base asset vs entered amount), blocks on unknown balance. Idempotency-Key
+  auto-attached + no-retry mutation + disabled-while-pending = double-submit guard.
+- **Task 1 review adjudication:** `QuoteResponse.calculo.baseAmount` kept `string|number` (backend echoes
+  parseFloat→number; "string" would be a false type) — guardrail comment + QuoteDisplay takes a canonical
+  `baseAmount` prop, never formats the echo.
+- **Gate (HEAD):** tsc 0, Vitest **205/205** (42 files), `next build` OK (`/swap` 4.68 kB). Disk was HEALTHY
+  this session (127 GB free) — the chronic ENOSPC did not bite.
+- **Final opus whole-branch review:** 0 Critical. 2 Important adjudicated vs real contract (both advisory-UX,
+  not safety): #1 rejected (quoteAmount basis correct), #2 half-fixed (dead `remainingLimit` copy now rendered).
+- **`/code-review` high-effort (PR #42, by me):** correctness finder 7 candidates / 0 Critical money-path
+  (cleanup finder hit the session limit; recovered). Fixed 2: explicit paused message for list-level
+  oraclePaused (was dead `swap.form.paused` key) + gated the advisory check-limit on `amountOk` (stale-quote
+  re-fire). Backlog (non-blocking): idempotency.ts auto-attaches key to /calculate+/check-limit (pre-existing
+  S0, inert); SwapHistory formatDisplay would throw on a non-canonical backend amount (same pattern as merged
+  wallet); advisory non-DAILY_LIMIT errors intentionally silent; QuoteDisplay isFetching masks a non-oracle
+  error during refetch.
+- **✅ dev→main MERGED (`82dd79a`, --no-ff, PR #42).** tsc re-verified on the merged tree; main pushed, dev
+  fast-forwarded; `dev == main == origin` (0 0). **main NOT deployed** (CRA serves prod until the S8 nginx flip).
+- **NEXT:** Slice 4 (Spot trading) per the sprint order (S3→S4→…→S8 go-live). Money-path → mine, TDD.
+
 ## ▶️ SESSION 2026-10-08 — Next.js migration Slice 1 (auth journey) COMPLETO (en `dev`)
 Subagent-driven (igual que Slice 0): writing-plans → 10 tareas, implementer fresco + review por tarea
 (spec+calidad) + review final whole-branch (opus). Todo en `dev`, pusheado commit a commit. Commits
