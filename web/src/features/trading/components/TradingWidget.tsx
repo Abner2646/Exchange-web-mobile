@@ -15,8 +15,12 @@ export default function TradingWidget() {
     <section>
       <h1>{t('trading.title')}</h1>
       <TradingPairSelect value={marketPairId} onChange={setMarketPairId} />
-      <OrderBookView tradingPairId={marketPairId} />
-      <RecentTradesView tradingPairId={marketPairId} />
+      {marketPairId && (
+        <>
+          <OrderBookView tradingPairId={marketPairId} />
+          <RecentTradesView tradingPairId={marketPairId} />
+        </>
+      )}
       <OrderForm />
       <MyOrdersView />
     </section>
