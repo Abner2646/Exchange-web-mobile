@@ -223,6 +223,12 @@ export const es: Catalog = {
     'p2p.offers.asset': 'Activo',
     'p2p.detail.sellerAddress': 'Dirección de pago del vendedor',
     'p2p.detail.inactive': 'Esta oferta ya no está activa.',
+    'p2p.myTx.empty': 'Todavía no tenés transacciones P2P.',
+    'p2p.myTx.error': 'No pudimos cargar tus transacciones P2P. Intentá de nuevo.',
+    'p2p.myTx.buyer': 'Comprador',
+    'p2p.myTx.seller': 'Vendedor',
+    'p2p.myTx.counterparty': 'Contraparte',
+    'p2p.myTx.date': 'Fecha',
   },
   errors: {
     'INTERNAL_ERROR': 'Ocurrió un error inesperado. Por favor, inténtalo de nuevo. Request ID: {{requestId}}',

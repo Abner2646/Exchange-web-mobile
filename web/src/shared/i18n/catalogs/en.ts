@@ -223,6 +223,12 @@ export const en: Catalog = {
     'p2p.offers.asset': 'Asset',
     'p2p.detail.sellerAddress': 'Seller payment address',
     'p2p.detail.inactive': 'This offer is no longer active.',
+    'p2p.myTx.empty': 'You have no P2P transactions yet.',
+    'p2p.myTx.error': 'We could not load your P2P transactions. Please try again.',
+    'p2p.myTx.buyer': 'Buyer',
+    'p2p.myTx.seller': 'Seller',
+    'p2p.myTx.counterparty': 'Counterparty',
+    'p2p.myTx.date': 'Date',
   },
   errors: {
     'INTERNAL_ERROR': 'An unexpected error occurred. Please try again. Request ID: {{requestId}}',

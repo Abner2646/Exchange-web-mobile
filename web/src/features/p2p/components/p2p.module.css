@@ -30,3 +30,33 @@
 /* Price / range cells */
 .price { font-variant-numeric: tabular-nums; }
 .range { font-variant-numeric: tabular-nums; font-size: 0.8125rem; color: var(--color-text-muted, #555); }
+
+/* My Transactions row — full-width clickable button inside a td */
+.txRow {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  font-size: 0.875rem;
+  color: inherit;
+}
+.txRow:hover { background: var(--color-surface-hover, #f5f5f5); }
+.txPending { background: var(--color-warning-bg, #fff8e1); }
+.txPending:hover { background: var(--color-warning-bg-hover, #fff3cd); }
+.txCell { flex: 1; padding: 0.375rem 0.5rem; border-bottom: 1px solid var(--color-border, #eee); }
+.txStatus { font-weight: 600; }
+.txRole {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--color-surface-2, #f0f0f0);
+  color: var(--color-text-muted, #555);
+}
