@@ -652,6 +652,20 @@ The rebuilt frontend (`web/`) consumes the spot-trading vertical:
 
 ---
 
+### 21. Next.js `web/` app — P2P endpoints consumed (Slice 5, 2026-10-11)
+
+The rebuilt frontend (`web/`) consumes the P2P vertical over the **legacy Spanish mount paths** (no `/api` prefix on the client, same as swap/trading):
+
+- **Offers** — `GET /ofertaP2P/activas` (active offers), `GET /ofertaP2P?type=&cryptoId=&fiatCurrency=` (filtered), `GET /ofertaP2P/:id`, `GET /ofertaP2P/me/ofertas` (mine). `POST /ofertaP2P` creates an offer (`{ type: 'buy'|'sell', cryptoId, minAmount, maxAmount, unitPrice, fiatCurrency, additionalTerms?, metodosPagoIds: string[] (≥1), direccionFiat (REQUIRED for sell) }`). `PATCH /ofertaP2P/:id/toggle` `{ active }`, `DELETE /ofertaP2P/:id` (deactivate). Offer shape carries `paymentMethods[]` but **no crypto symbol** — the client resolves `cryptoId → symbol` from `GET /crypto`. Offers auto-deactivate server-side after 12h.
+- **Transactions / state machine** — `POST /transaccionP2P` `{ offerId, amount, paymentMethodId }` accepts an offer and **locks the SELLER's Funding crypto** (the accepting user is the buyer if the offer is `sell`, the seller if the offer is `buy`). Transitions: `PATCH /transaccionP2P/:id/confirm-payment` (buyer, `initiated → payment_confirmed`), `/complete` (seller, `payment_confirmed → completed`, releases crypto), `/cancel` (buyer or seller, from `initiated`/`payment_confirmed`, unlocks). `GET /transaccionP2P/me/transacciones` returns `{ transacciones: [...+esComprador], total, page, limit }` (each row includes `crypto`/`buyer`/`seller` associations). `GET /transaccionP2P/:id` is participant-gated (403 otherwise).
+- **Payment methods** — `GET /metodoPago/status/active` (global catalog; read-only for users).
+- **Money shape:** `amount`, `unitPrice`, `minAmount`, `maxAmount` are sent as **canonical decimal STRINGS** (the backend `String()`s + `money.compare`/`money.multiply` them). `fiatAmount = amount × unitPrice`. The client's accept-offer sufficiency pre-check (advisory; server authoritative via `P2P_TX_INSUFFICIENT_FUNDS`) applies **only when the acceptor becomes the seller** (accepting a `buy` offer), compared against their Funding `available`.
+- **Typed 4xx recovery:** `P2P_TX_{INVALID_STATE,OWN_OFFER,AMOUNT_OUT_OF_RANGE,INSUFFICIENT_FUNDS,OFFER_INACTIVE,FORBIDDEN,NOT_FOUND,OFFER_NOT_FOUND}` are surfaced verbatim via the error catalog (all already present in `web/src/shared/i18n/catalogs`).
+- **⚠️ Known gap (backend follow-up, NOT a client defect):** the idempotency middleware is **NOT applied to any P2P route** — `POST /transaccionP2P` is not backend-deduplicated (unlike swap/trade/transfer/withdraw) and is not in the client's `isMoneyEndpoint` list, so no `Idempotency-Key` is attached. The client mitigates a double-submit with a disabled-while-pending button + a `retry:false` mutation; the proper fix is backend-side idempotency on P2P accept. State-machine PATCHes are naturally idempotent (the status guard rejects a repeat with `P2P_TX_INVALID_STATE`).
+- Scope: browse/filter + create/manage offers + accept + full state machine. Ratings (`/valoracion`) and P2P admin ops (stats/force-status/check-timeouts, → Admin slice S7) are deferred.
+
+---
+
 ## Expected upcoming contract changes (heads-up, not yet done)
 
 These are tracked in `ROADMAP.md`; listed here so the rebuild anticipates them and

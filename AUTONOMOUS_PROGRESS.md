@@ -2,6 +2,56 @@
 
 **Started:** 2026-09-23. Coordinator: Claude (Opus). Abner is away for several days; full autonomy.
 
+## ▶️ SESSION 2026-10-11 — Next.js Slice 5 (P2P) IMPLEMENTED on `dev` (pre dev→main review)
+PASO 0 clean (dev==main+1 docs-only, all pushed). Built the P2P vertical subagent-driven (12 tasks, fresh
+implementer + spec/quality review per task; money-path tasks 6/AcceptOfferForm + 8/TransactionDetail reviewed
+line-by-line by me). Plan: `docs/superpowers/plans/2026-10-11-nextjs-slice-5-p2p.md` (grounded in the REAL P2P
+contract — p2pOffer/p2pTransaction/paymentMethod routes+controller+model+entity, errorCodes, Funding compartment).
+- **Delivered:** browse/filter active offers (buy/sell) + offer detail → **accept** (opens a tx, server locks the
+  SELLER's Funding crypto) → full **state machine** initiated→payment_confirmed→completed / cancelled with
+  role-gated actions (buyer confirm-payment, seller complete, either cancel) + typed 4xx recovery; create/manage
+  own offers (maker). `/p2p` route + nav + tabs (browse/myTransactions/myOffers/create) + i18n (en/es) + contract §21.
+- **Decisions (in the plan):** scope = offers + accept + state machine + maker; ratings (`/valoracion`) and P2P
+  admin ops deferred to S7; fr/it/pt out of scope. Offer has no symbol → resolved via `GET /crypto`.
+- **Money-path (mine, TDD):** `amount`/`unitPrice`/`min`/`max` canonical STRINGS on the wire; sufficiency gate
+  ONLY when acceptor becomes the seller (accepting a `buy` offer) vs Funding `available` (`criptomonedaId` +
+  `compartments.funding.available`), blocks on unknown balance; `fiatOwed = multiply(amount, unitPrice)`. State
+  machine gated from the LIVE tx (stale prop cannot enable a forbidden action); `anyPending` locks all buttons;
+  confirm Dialog before every mutation; typed 4xx surfaced via `tError(code,{requestId})`.
+- **⚠️ KNOWN GAP (backend follow-up, flagged in §21 + plan):** backend applies NO idempotency middleware to any
+  P2P route → `POST /transaccionP2P` (accept) is not server-deduplicated. Client mitigates with disabled-while-
+  pending + `retry:false` (no `Idempotency-Key` attached, P2P not in `isMoneyEndpoint`). Proper fix = backend
+  idempotency on P2P accept. State-machine PATCHes are naturally idempotent (status guard → `P2P_TX_INVALID_STATE`).
+- **Gate (HEAD `110c577`):** tsc 0, Vitest **320/320** (67 files = 231 prior + 89 P2P), `next build` OK (`/p2p` 8.05 kB).
+- **Credit note:** the Task 11 implementer subagent hit the session credit limit (0 work done); per handoff lesson
+  the coordinator implemented Task 11 (page shell/tabs/route/nav) inline and ran the gate. Watch for more limits.
+- **NEXT:** final whole-branch review (opus) over `dbfc5e0..HEAD`, then `/code-review` high-effort (Claude) → PR #44
+  dev→main. dev==main==origin after merge. main NOT deployed (CRA serves prod until the S8 nginx flip).
+
+## ▶️ SESSION 2026-10-10 (cont.) — Next.js Slice 4 (SPOT TRADING) COMPLETE + MERGED to main (PR #43)
+Built the order-book trading vertical subagent-driven (10 tasks, fresh implementer + spec/quality review per
+task; money-path tasks 5/place-order + 9/OrderForm reviewed line-by-line by me). Plan:
+`docs/superpowers/plans/2026-10-10-nextjs-slice-4-trading.md` (grounded in the REAL order-book contract —
+trading.routes/controller + orderValidator/feeCalculator/balanceManager).
+- **Delivered:** order book (bids/asks/spread) + recent trades + last price; **market/limit buy/sell** orders;
+  fee charged on the RECEIVED asset (buy→base, sell→quote), explained; Funding→Spot prerequisite with a prompt;
+  open-order lifecycle + cancel. `/trading` route + nav + i18n (en/es) + contract doc §20.
+- **Decisions (in the plan):** market+limit only (stop deferred); Spot-only; GTC implicit; market data =
+  book+trades+lastPrice (no candle chart). Book/trade figures are backend NUMBERS = read-only market display
+  (`Intl`), NEVER the user spend path.
+- **Money-path (mine, TDD):** spend/compare/sufficiency only via `@/shared/money` strings; `quantity`/`price`
+  STRINGS, `price` OMITTED for market. Exact Spot gate (sell→base≥qty; limit-buy→quote≥qty×price+takerFee;
+  market-buy soft), blocks on unknown balance. Idempotency auto (`isMoneyEndpoint` /trading/order) + no-retry +
+  disabled-while-pending = double-submit guard.
+- **Gate (HEAD):** tsc 0, Vitest **231/231** (56 files), `next build` OK (`/trading`). Disk healthy.
+- **Final opus review:** Ready to merge, **0 Critical / 0 Important**. Fixed `as any` cast finding.
+- **`/code-review` high-effort (PR #43, by me):** 0 Critical money-path. Fixed 1 real UX/a11y bug:
+  `trading.form.side` legend used but MISSING from catalogs+parity test → raw key rendered; added (Side/Lado).
+  Backlog (non-blocking): type dup, PairSelect/`num` reuse, two pairId states (documented), dup book header,
+  poll cadence, dead sell-branch guard, requiredSpend-null UX. Refuted: orderbook prefix-invalidate (correct v5).
+- **✅ dev→main MERGED (`dbfc5e0`, --no-ff, PR #43).** `dev == main == origin` (0 0). **main NOT deployed.**
+- **NEXT:** Slice 5 (P2P — offer/accept/payment/complete/cancel state machine; typed 4xx recovery).
+
 ## ▶️ SESSION 2026-10-10 — Next.js Slice 3 (SWAP) COMPLETE + MERGED to main (PR #42)
 PASO 0 clean (dev==main+2 docs-only, all pushed). Built the swap vertical subagent-driven (11 tasks, fresh
 implementer + spec/quality review per task; money-path tasks 6/execute + 10/SwapForm reviewed line-by-line by me).
