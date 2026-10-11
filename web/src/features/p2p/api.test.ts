@@ -9,6 +9,7 @@ vi.mock('@/shared/api', () => ({
 const mockGet = apiClient.get as unknown as ReturnType<typeof vi.fn>;
 const mockPost = apiClient.post as unknown as ReturnType<typeof vi.fn>;
 const mockPatch = apiClient.patch as unknown as ReturnType<typeof vi.fn>;
+const mockDelete = apiClient.delete as unknown as ReturnType<typeof vi.fn>;
 
 beforeEach(() => vi.clearAllMocks());
 
@@ -55,6 +56,12 @@ describe('p2pApi paths + shapes', () => {
     expect(mockPatch).toHaveBeenNthCalledWith(1, '/transaccionP2P/t1/confirm-payment');
     expect(mockPatch).toHaveBeenNthCalledWith(2, '/transaccionP2P/t1/complete');
     expect(mockPatch).toHaveBeenNthCalledWith(3, '/transaccionP2P/t1/cancel');
+  });
+
+  it('deleteOffer calls DELETE on the correct path', async () => {
+    mockDelete.mockResolvedValue({ message: 'deleted' });
+    await p2pApi.deleteOffer('o1');
+    expect(mockDelete).toHaveBeenCalledWith('/ofertaP2P/o1');
   });
 
   it('getMyTransactions returns the { transacciones } envelope', async () => {
