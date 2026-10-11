@@ -9,14 +9,39 @@ const mutateAsync = vi.fn();
 
 vi.mock('../queries', () => ({
   useAcceptOffer: vi.fn(() => ({ mutateAsync, isPending: false, isError: false, error: null })),
+  useCryptoCatalog: vi.fn(() => ({ data: [{ id: 'c-btc', symbol: 'BTC', name: 'Bitcoin' }] })),
 }));
 
 vi.mock('@/features/wallet/queries', () => ({
   useMyBalances: vi.fn(),
 }));
 
+// Mini en-catalog for keys this component uses — enables interpolation smoke-test.
+const enCatalog: Record<string, string> = {
+  'p2p.accept.amountLabel': 'Amount ({{crypto}})',
+  'p2p.accept.amountHint': 'Must be between {{min}} and {{max}} {{crypto}}.',
+  'p2p.accept.fiatOwed': 'You will owe {{amount}} {{fiat}} to the seller.',
+  'p2p.accept.youReceive': 'You receive',
+  'p2p.accept.outOfRange': 'The amount must be between {{min}} and {{max}} {{crypto}}.',
+  'p2p.accept.pickPaymentMethod': 'Select a payment method',
+  'p2p.accept.submit': 'Accept offer',
+  'p2p.accept.insufficientFunds': 'Insufficient funds.',
+  'p2p.accept.loadingBalance': 'Checking balance…',
+  'p2p.accept.sellerAddress': 'Seller payment address',
+};
+
 vi.mock('@/shared/i18n', () => ({
-  useTranslation: () => ({ t: (k: string) => k, locale: 'en' }),
+  useTranslation: () => ({
+    t: (k: string, p?: Record<string, string | number>) => {
+      const template = enCatalog[k] ?? k;
+      if (!p) return template;
+      return Object.entries(p).reduce(
+        (s, [key, val]) => s.replace(new RegExp(`{{${key}}}`, 'g'), String(val)),
+        template,
+      );
+    },
+    locale: 'en',
+  }),
 }));
 
 vi.mock('@/shared/i18n/errorCatalog', () => ({
@@ -26,7 +51,7 @@ vi.mock('@/shared/i18n/errorCatalog', () => ({
 // Keep real money module — money-path rules forbid mocking it.
 // Keep real shared/ui so Field label→input association is real.
 
-import { useAcceptOffer } from '../queries';
+import { useAcceptOffer, useCryptoCatalog } from '../queries';
 import { useMyBalances } from '@/features/wallet/queries';
 import { AcceptOfferForm } from './AcceptOfferForm';
 
@@ -76,9 +101,9 @@ beforeEach(() => {
 // ---- helpers ----
 
 function fillForm(amount: string, pmValue = 'pm1') {
-  const amountInput = screen.getByLabelText(/p2p\.accept\.amountLabel/i);
+  const amountInput = screen.getByLabelText(/amount/i);
   fireEvent.change(amountInput, { target: { value: amount } });
-  const select = screen.getByLabelText(/p2p\.accept\.pickPaymentMethod/i);
+  const select = screen.getByLabelText(/select a payment method/i);
   fireEvent.change(select, { target: { value: pmValue } });
 }
 
@@ -89,8 +114,8 @@ describe('AcceptOfferForm money-path', () => {
     // buyOffer.minAmount = '0.01', entering '0.001' → out of range
     render(<AcceptOfferForm offer={buyOffer} onDone={vi.fn()} />);
     fillForm('0.001');
-    expect(screen.getByRole('button', { name: /p2p\.accept\.submit/i })).toBeDisabled();
-    expect(screen.getByText(/p2p\.accept\.outOfRange/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /accept offer/i })).toBeDisabled();
+    expect(screen.getByText(/amount must be between/i)).toBeInTheDocument();
   });
 
   it('as seller (buy offer), blocks submit when Funding balance is insufficient', () => {
@@ -99,8 +124,8 @@ describe('AcceptOfferForm money-path', () => {
     (useMyBalances as any).mockReturnValue({ data: makeBalances('0.5') });
     render(<AcceptOfferForm offer={buyOffer} onDone={vi.fn()} />);
     fillForm('1');
-    expect(screen.getByRole('button', { name: /p2p\.accept\.submit/i })).toBeDisabled();
-    expect(screen.getByText(/p2p\.accept\.insufficientFunds/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /accept offer/i })).toBeDisabled();
+    expect(screen.getByText(/insufficient funds/i)).toBeInTheDocument();
   });
 
   it('as seller, blocks submit while the balance is still unknown', () => {
@@ -108,8 +133,8 @@ describe('AcceptOfferForm money-path', () => {
     (useMyBalances as any).mockReturnValue({ data: undefined });
     render(<AcceptOfferForm offer={buyOffer} onDone={vi.fn()} />);
     fillForm('1');
-    expect(screen.getByRole('button', { name: /p2p\.accept\.submit/i })).toBeDisabled();
-    expect(screen.getByText(/p2p\.accept\.loadingBalance/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /accept offer/i })).toBeDisabled();
+    expect(screen.getByText(/checking balance/i)).toBeInTheDocument();
   });
 
   it('as buyer (sell offer), no crypto gate — discloses fiat owed and seller address, submit enabled', () => {
@@ -118,10 +143,10 @@ describe('AcceptOfferForm money-path', () => {
     // direccionFiat = 'acct-xyz'
     render(<AcceptOfferForm offer={sellOffer} onDone={vi.fn()} />);
     fillForm('1');
-    // fiatOwed must appear (either formatted or raw); regex covers both.
+    // Interpolated sentence "You will owe 65,000 USD to the seller." contains the number.
     expect(screen.getByText(/65,?000/)).toBeInTheDocument();
     expect(screen.getByText(/acct-xyz/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /p2p\.accept\.submit/i })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /accept offer/i })).toBeEnabled();
   });
 
   it('submits amount as the canonical string and disables while pending', () => {
@@ -129,7 +154,7 @@ describe('AcceptOfferForm money-path', () => {
     mutateAsync.mockResolvedValue({ id: 'tx1' } as any);
     const { rerender } = render(<AcceptOfferForm offer={sellOffer} onDone={vi.fn()} />);
     fillForm('1.5');
-    fireEvent.click(screen.getByRole('button', { name: /p2p\.accept\.submit/i }));
+    fireEvent.click(screen.getByRole('button', { name: /accept offer/i }));
     expect(mutateAsync).toHaveBeenCalledWith({
       offerId: 'o2',
       amount: '1.5',
@@ -139,6 +164,17 @@ describe('AcceptOfferForm money-path', () => {
     // Re-render the SAME instance with isPending:true to verify disabled-while-pending.
     (useAcceptOffer as any).mockReturnValue({ mutateAsync, isPending: true, isError: false, error: null });
     rerender(<AcceptOfferForm offer={sellOffer} onDone={vi.fn()} />);
-    expect(screen.getByRole('button', { name: /p2p\.accept\.submit/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /accept offer/i })).toBeDisabled();
+  });
+
+  it('as seller (buy offer), discloses fiat to receive', () => {
+    // buyOffer.type === 'buy' → acceptor is seller; seller should see how much fiat they receive.
+    // fiatOwed = multiply('1', '65000.0000') = '65000.0000'
+    (useMyBalances as any).mockReturnValue({ data: makeBalances('100') });
+    render(<AcceptOfferForm offer={buyOffer} onDone={vi.fn()} />);
+    fillForm('1');
+    // Seller disclosure: "You receive" key + fiat amount
+    expect(screen.getByText(/you receive/i)).toBeInTheDocument();
+    expect(screen.getByText(/65,?000/)).toBeInTheDocument();
   });
 });

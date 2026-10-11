@@ -6,7 +6,7 @@ import { useTranslation } from '@/shared/i18n';
 import { useErrorTranslation } from '@/shared/i18n/errorCatalog';
 import { Button, Field } from '@/shared/ui';
 import { useMyBalances } from '@/features/wallet/queries';
-import { useAcceptOffer } from '../queries';
+import { useAcceptOffer, useCryptoCatalog } from '../queries';
 import type { Offer, Transaction } from '../types';
 import styles from './p2p.module.css';
 
@@ -20,7 +20,16 @@ export function AcceptOfferForm({
   const { t, locale } = useTranslation();
   const { tError } = useErrorTranslation();
   const { data: balances } = useMyBalances();
+  const { data: cryptos } = useCryptoCatalog();
   const mutation = useAcceptOffer();
+
+  // ---- Crypto symbol lookup ----
+  const symbolMap = useMemo(() => {
+    const map = new Map<string, string>();
+    (cryptos ?? []).forEach((c) => map.set(c.id, c.symbol));
+    return map;
+  }, [cryptos]);
+  const symbol = symbolMap.get(offer.cryptoId) ?? offer.cryptoId.slice(0, 8);
 
   const [rawAmount, setRawAmount] = useState('');
   const [paymentMethodId, setPaymentMethodId] = useState('');
@@ -55,11 +64,11 @@ export function AcceptOfferForm({
     requiredSpend !== null &&
     compare(requiredSpend, fundingAvailable) > 0;
 
-  // ---- Fiat disclosure (buyer only) ----
+  // ---- Fiat disclosure (buyer and seller) ----
   const fiatOwed = useMemo(() => {
-    if (!amountOk || isSeller) return null;
+    if (!amountOk) return null;
     return multiply(parsed.value, offer.unitPrice);
-  }, [amountOk, isSeller, parsed, offer.unitPrice]);
+  }, [amountOk, parsed, offer.unitPrice]);
 
   // ---- Submit disabled predicate (exact as specified) ----
   const canSubmit =
@@ -87,11 +96,11 @@ export function AcceptOfferForm({
     <form onSubmit={handleSubmit} noValidate>
       {/* Amount input */}
       <Field
-        label={t('p2p.accept.amountLabel', { crypto: offer.cryptoId })}
+        label={t('p2p.accept.amountLabel', { crypto: symbol })}
         helpText={t('p2p.accept.amountHint', {
           min: offer.minAmount,
           max: offer.maxAmount,
-          crypto: offer.cryptoId,
+          crypto: symbol,
         })}
       >
         <input
@@ -109,7 +118,7 @@ export function AcceptOfferForm({
           {t('p2p.accept.outOfRange', {
             min: offer.minAmount,
             max: offer.maxAmount,
-            crypto: offer.cryptoId,
+            crypto: symbol,
           })}
         </p>
       )}
@@ -126,25 +135,32 @@ export function AcceptOfferForm({
         </p>
       )}
 
-      {/* Fiat disclosure — buyer only */}
-      {!isSeller && fiatOwed !== null && (
-        <div>
-          <p>
-            <span>{t('p2p.accept.fiatOwed')}</span>
-            {' '}
-            <span data-testid="fiat-owed">
-              {formatDisplay(fiatOwed, { locale, maxDecimals: 2, stripTrailingZeros: true })}{' '}
-              {offer.fiatCurrency}
-            </span>
-          </p>
-          {offer.direccionFiat && (
-            <p>
-              <span className={styles.label}>{t('p2p.accept.sellerAddress')}: </span>
-              <span>{offer.direccionFiat}</span>
-            </p>
-          )}
-        </div>
-      )}
+      {/* Fiat disclosure — buyer and seller */}
+      {fiatOwed !== null && (() => {
+        const fiatText = formatDisplay(fiatOwed, { locale, maxDecimals: 2, stripTrailingZeros: true });
+        return (
+          <div>
+            {!isSeller && (
+              <p>
+                {t('p2p.accept.fiatOwed', { amount: fiatText, fiat: offer.fiatCurrency })}
+              </p>
+            )}
+            {isSeller && (
+              <p>
+                <span>{t('p2p.accept.youReceive')}</span>
+                {' '}
+                <span>{fiatText} {offer.fiatCurrency}</span>
+              </p>
+            )}
+            {!isSeller && offer.direccionFiat && (
+              <p>
+                <span className={styles.label}>{t('p2p.accept.sellerAddress')}: </span>
+                <span>{offer.direccionFiat}</span>
+              </p>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Payment method select */}
       <Field label={t('p2p.accept.pickPaymentMethod')}>
