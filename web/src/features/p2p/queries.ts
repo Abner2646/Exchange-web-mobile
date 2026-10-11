@@ -84,6 +84,7 @@ function useTxMutation<V>(fn: (v: V) => Promise<Transaction>) {
   const qc = useQueryClient();
   return useMutation<Transaction, ApiError, V>({
     mutationFn: fn,
+    retry: false,
     onSuccess: (tx) => {
       qc.invalidateQueries({ queryKey: P2P_MY_TX_KEY });
       qc.invalidateQueries({ queryKey: WALLET_BALANCES_KEY });
@@ -112,6 +113,7 @@ export function useCreateOffer() {
   const qc = useQueryClient();
   return useMutation<Offer, ApiError, CreateOfferRequest>({
     mutationFn: (req) => p2pApi.createOffer(req),
+    retry: false,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: P2P_MY_OFFERS_KEY });
       qc.invalidateQueries({ queryKey: P2P_OFFERS_KEY });
@@ -123,6 +125,7 @@ export function useToggleOffer() {
   const qc = useQueryClient();
   return useMutation<Offer, ApiError, { id: string; active: boolean }>({
     mutationFn: ({ id, active }) => p2pApi.toggleOffer(id, active),
+    retry: false,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: P2P_MY_OFFERS_KEY });
       qc.invalidateQueries({ queryKey: P2P_OFFERS_KEY });
@@ -134,6 +137,7 @@ export function useDeleteOffer() {
   const qc = useQueryClient();
   return useMutation<{ message: string }, ApiError, string>({
     mutationFn: (id) => p2pApi.deleteOffer(id),
+    retry: false,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: P2P_MY_OFFERS_KEY });
       qc.invalidateQueries({ queryKey: P2P_OFFERS_KEY });
