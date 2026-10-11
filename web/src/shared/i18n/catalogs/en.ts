@@ -221,6 +221,8 @@ export const en: Catalog = {
     'p2p.offers.accept': 'Accept',
     'p2p.offers.tabAll': 'All',
     'p2p.offers.asset': 'Asset',
+    'p2p.detail.sellerAddress': 'Seller payment address',
+    'p2p.detail.inactive': 'This offer is no longer active.',
   },
   errors: {
     'INTERNAL_ERROR': 'An unexpected error occurred. Please try again. Request ID: {{requestId}}',
