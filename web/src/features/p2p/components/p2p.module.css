@@ -1,0 +1,32 @@
+.panel { display: flex; flex-direction: column; gap: var(--space-3, 0.75rem); }
+
+/* Tab toggle */
+.tabs { display: flex; gap: var(--space-1, 0.25rem); border-bottom: 1px solid var(--color-border, #eee); padding-bottom: var(--space-1, 0.25rem); }
+.tab { background: none; border: none; cursor: pointer; padding: 0.375rem 0.75rem; border-radius: 4px 4px 0 0; font-size: 0.9375rem; color: var(--color-text-muted, #666); }
+.tab:hover { background: var(--color-surface-hover, #f5f5f5); }
+.tabActive { color: var(--color-primary, #0060df); border-bottom: 2px solid var(--color-primary, #0060df); font-weight: 600; }
+
+/* Crypto filter */
+.filterRow { display: flex; align-items: center; gap: var(--space-2, 0.5rem); }
+.filterLabel { font-size: 0.875rem; color: var(--color-text-muted, #666); }
+.filterSelect { font-size: 0.875rem; padding: 0.25rem 0.5rem; border: 1px solid var(--color-border, #ddd); border-radius: 4px; }
+
+/* State messages */
+.label { color: var(--color-text-muted, #666); font-size: 0.875rem; }
+.empty { color: var(--color-text-muted, #666); font-size: 0.9375rem; padding: var(--space-3, 0.75rem) 0; }
+.error { color: var(--color-danger, #b00); padding: var(--space-2, 0.5rem) 0; }
+
+/* Offers table */
+.table { width: 100%; border-collapse: collapse; }
+.table th, .table td { text-align: left; padding: 0.375rem 0.5rem; border-bottom: 1px solid var(--color-border, #eee); font-size: 0.875rem; vertical-align: middle; }
+.table th { color: var(--color-text-muted, #666); font-weight: 600; font-size: 0.8125rem; }
+.table td:last-child { text-align: right; }
+.table th:last-child { text-align: right; }
+
+/* Type badge */
+.typeBuy { color: var(--color-success, #0a0); font-weight: 600; }
+.typeSell { color: var(--color-danger, #b00); font-weight: 600; }
+
+/* Price / range cells */
+.price { font-variant-numeric: tabular-nums; }
+.range { font-variant-numeric: tabular-nums; font-size: 0.8125rem; color: var(--color-text-muted, #555); }

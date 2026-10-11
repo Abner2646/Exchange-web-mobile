@@ -218,6 +218,9 @@ export const en: Catalog = {
     'p2p.myOffers.toggleInactive': 'Inactive',
     'p2p.myOffers.deactivate': 'Deactivate',
     'p2p.myOffers.deactivateConfirm': 'Deactivate this offer? It will no longer be visible to other users.',
+    'p2p.offers.accept': 'Accept',
+    'p2p.offers.tabAll': 'All',
+    'p2p.offers.asset': 'Asset',
   },
   errors: {
     'INTERNAL_ERROR': 'An unexpected error occurred. Please try again. Request ID: {{requestId}}',
