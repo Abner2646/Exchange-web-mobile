@@ -16,6 +16,12 @@ import type {
   AuditListResponse,
   AuditVerifyResult,
   AuditQueryParams,
+  UpdateUserStatusRequest,
+  UpdateUserRoleRequest,
+  UpdateUserKycRequest,
+  UpdateUserDailyLimitRequest,
+  UpdateUserReputationRequest,
+  UserStatsResponse,
 } from './types';
 
 // ── Query keys ─────────────────────────────────────────────────────────────────
@@ -194,11 +200,24 @@ export function useResolveCase() {
 }
 
 // ── User-admin mutations ───────────────────────────────────────────────────────
+// SECURITY NOTE: The update endpoints return { user, token } where token belongs
+// to the TARGET user. We NEVER call session.setToken() with it — only invalidate
+// the users cache. The return type is typed as void to make this constraint clear.
+
+export const ADMIN_USER_STATS_KEY = ['admin', 'userStats'] as const;
+
+export function useUserStats() {
+  return useQuery<UserStatsResponse, ApiError>({
+    queryKey: ADMIN_USER_STATS_KEY,
+    queryFn: () => adminApi.getUserStats(),
+    staleTime: 60_000,
+  });
+}
 
 export function useUpdateUserStatus() {
   const qc = useQueryClient();
-  return useMutation<void, ApiError, { id: string; body?: Record<string, unknown> }>({
-    mutationFn: ({ id, body = {} }) => adminApi.updateUserStatus(id, body),
+  return useMutation<void, ApiError, { id: string; body: UpdateUserStatusRequest }>({
+    mutationFn: ({ id, body }) => adminApi.updateUserStatus(id, body).then(() => undefined),
     retry: false,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ADMIN_USERS_KEY });
@@ -208,8 +227,8 @@ export function useUpdateUserStatus() {
 
 export function useUpdateUserRole() {
   const qc = useQueryClient();
-  return useMutation<void, ApiError, { id: string; body?: Record<string, unknown> }>({
-    mutationFn: ({ id, body = {} }) => adminApi.updateUserRole(id, body),
+  return useMutation<void, ApiError, { id: string; body: UpdateUserRoleRequest }>({
+    mutationFn: ({ id, body }) => adminApi.updateUserRole(id, body).then(() => undefined),
     retry: false,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ADMIN_USERS_KEY });
@@ -219,8 +238,8 @@ export function useUpdateUserRole() {
 
 export function useUpdateUserKyc() {
   const qc = useQueryClient();
-  return useMutation<void, ApiError, { id: string; body?: Record<string, unknown> }>({
-    mutationFn: ({ id, body = {} }) => adminApi.updateUserKyc(id, body),
+  return useMutation<void, ApiError, { id: string; body: UpdateUserKycRequest }>({
+    mutationFn: ({ id, body }) => adminApi.updateUserKyc(id, body).then(() => undefined),
     retry: false,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ADMIN_USERS_KEY });
@@ -230,8 +249,8 @@ export function useUpdateUserKyc() {
 
 export function useUpdateUserDailyLimit() {
   const qc = useQueryClient();
-  return useMutation<void, ApiError, { id: string; body?: Record<string, unknown> }>({
-    mutationFn: ({ id, body = {} }) => adminApi.updateUserDailyLimit(id, body),
+  return useMutation<void, ApiError, { id: string; body: UpdateUserDailyLimitRequest }>({
+    mutationFn: ({ id, body }) => adminApi.updateUserDailyLimit(id, body).then(() => undefined),
     retry: false,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ADMIN_USERS_KEY });
@@ -241,8 +260,8 @@ export function useUpdateUserDailyLimit() {
 
 export function useUpdateUserReputation() {
   const qc = useQueryClient();
-  return useMutation<void, ApiError, { id: string; body?: Record<string, unknown> }>({
-    mutationFn: ({ id, body = {} }) => adminApi.updateUserReputation(id, body),
+  return useMutation<void, ApiError, { id: string; body: UpdateUserReputationRequest }>({
+    mutationFn: ({ id, body }) => adminApi.updateUserReputation(id, body).then(() => undefined),
     retry: false,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ADMIN_USERS_KEY });

@@ -104,6 +104,44 @@ export interface AdminUser {
   kycVerified?: boolean;
   kycLevel?: string;
   dailyLimit?: string;
+  dailyLimitUsd?: string;
+  averageRating?: number;
+  totalRatings?: number;
+}
+
+// ── User-admin request body types ─────────────────────────────────────────────
+
+export interface UpdateUserStatusRequest {
+  active: boolean;
+}
+
+export interface UpdateUserRoleRequest {
+  role: string;
+}
+
+export interface UpdateUserKycRequest {
+  verified: boolean;
+  kycData?: Record<string, unknown>;
+}
+
+export interface UpdateUserDailyLimitRequest {
+  /** Decimal string — never parseFloat */
+  dailyLimitUsd: string;
+}
+
+export interface UpdateUserReputationRequest {
+  averageRating: number;
+  totalRatings?: number;
+}
+
+export interface UserAdminUpdateResponse {
+  /** Token belongs to the TARGET user — the admin MUST NOT call session.setToken with it */
+  token: string;
+  user: AdminUser;
+}
+
+export interface UserStatsResponse {
+  [key: string]: unknown;
 }
 
 export interface AuditRow {

@@ -15,6 +15,13 @@ import {
   AuditListResponse,
   AuditVerifyResult,
   AuditQueryParams,
+  UpdateUserStatusRequest,
+  UpdateUserRoleRequest,
+  UpdateUserKycRequest,
+  UpdateUserDailyLimitRequest,
+  UpdateUserReputationRequest,
+  UserAdminUpdateResponse,
+  UserStatsResponse,
 } from './types';
 
 export const adminApi = {
@@ -84,24 +91,24 @@ export const adminApi = {
     return apiClient.get<AdminUser[]>(`/user/search?q=${encodeURIComponent(q)}`);
   },
 
-  async updateUserStatus(userId: string, body: Record<string, unknown>) {
-    return apiClient.patch<void>(`/user/${userId}/status`, body);
+  async updateUserStatus(userId: string, body: UpdateUserStatusRequest) {
+    return apiClient.patch<UserAdminUpdateResponse>(`/user/${userId}/status`, body);
   },
 
-  async updateUserRole(userId: string, body: Record<string, unknown>) {
-    return apiClient.patch<void>(`/user/${userId}/role`, body);
+  async updateUserRole(userId: string, body: UpdateUserRoleRequest) {
+    return apiClient.patch<UserAdminUpdateResponse>(`/user/${userId}/role`, body);
   },
 
-  async updateUserKyc(userId: string, body: Record<string, unknown>) {
-    return apiClient.patch<void>(`/user/${userId}/kyc`, body);
+  async updateUserKyc(userId: string, body: UpdateUserKycRequest) {
+    return apiClient.patch<UserAdminUpdateResponse>(`/user/${userId}/kyc`, body);
   },
 
-  async updateUserDailyLimit(userId: string, body: Record<string, unknown>) {
-    return apiClient.patch<void>(`/user/${userId}/daily-limit`, body);
+  async updateUserDailyLimit(userId: string, body: UpdateUserDailyLimitRequest) {
+    return apiClient.patch<UserAdminUpdateResponse>(`/user/${userId}/daily-limit`, body);
   },
 
-  async updateUserReputation(userId: string, body: Record<string, unknown>) {
-    return apiClient.patch<void>(`/user/${userId}/reputation`, body);
+  async updateUserReputation(userId: string, body: UpdateUserReputationRequest) {
+    return apiClient.patch<UserAdminUpdateResponse>(`/user/${userId}/reputation`, body);
   },
 
   async deleteUser(userId: string) {
@@ -109,7 +116,7 @@ export const adminApi = {
   },
 
   async getUserStats() {
-    return apiClient.get<Record<string, unknown>>('/user/admin/stats');
+    return apiClient.get<UserStatsResponse>('/user/admin/stats');
   },
 
   // Audit

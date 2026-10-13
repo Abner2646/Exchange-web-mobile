@@ -28,6 +28,7 @@ const {
   updateUserDailyLimit,
   updateUserReputation,
   deleteUser,
+  getUserStats,
 } = vi.hoisted(() => ({
   getPending: vi.fn(),
   getReadiness: vi.fn(),
@@ -51,6 +52,7 @@ const {
   updateUserDailyLimit: vi.fn(),
   updateUserReputation: vi.fn(),
   deleteUser: vi.fn(),
+  getUserStats: vi.fn(),
 }));
 
 vi.mock('./api', () => ({
@@ -77,6 +79,7 @@ vi.mock('./api', () => ({
     updateUserDailyLimit,
     updateUserReputation,
     deleteUser,
+    getUserStats,
   },
 }));
 
@@ -113,6 +116,7 @@ import {
   useUpdateUserDailyLimit,
   useUpdateUserReputation,
   useDeleteUser,
+  useUserStats,
   ADMIN_PENDING_KEY,
   ADMIN_READINESS_KEY,
   ADMIN_CONFIG_KEY,
@@ -121,6 +125,7 @@ import {
   ADMIN_CASES_KEY,
   ADMIN_USERS_KEY,
   ADMIN_AUDIT_KEY,
+  ADMIN_USER_STATS_KEY,
 } from './queries';
 
 function wrapper(qc: QueryClient) {
@@ -163,6 +168,9 @@ describe('exported query keys', () => {
   });
   it('ADMIN_AUDIT_KEY is correct', () => {
     expect(ADMIN_AUDIT_KEY).toEqual(['admin', 'audit']);
+  });
+  it('ADMIN_USER_STATS_KEY is correct', () => {
+    expect(ADMIN_USER_STATS_KEY).toEqual(['admin', 'userStats']);
   });
 });
 
@@ -255,6 +263,15 @@ describe('admin queries', () => {
     const { result } = renderHook(() => useAudit(params), { wrapper: wrapper(qc) });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(getAudit).toHaveBeenCalledWith(params);
+  });
+
+  it('useUserStats fetches via adminApi.getUserStats', async () => {
+    getUserStats.mockResolvedValueOnce({ totalUsers: 42, activeUsers: 38 });
+    const qc = makeQC();
+    const { result } = renderHook(() => useUserStats(), { wrapper: wrapper(qc) });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(getUserStats).toHaveBeenCalledTimes(1);
+    expect(result.current.data).toEqual({ totalUsers: 42, activeUsers: 38 });
   });
 });
 
@@ -468,9 +485,9 @@ describe('user-admin mutations', () => {
     const spy = vi.spyOn(qc, 'invalidateQueries');
     const { result } = renderHook(() => useUpdateUserKyc(), { wrapper: wrapper(qc) });
     await act(async () => {
-      await result.current.mutateAsync({ id: 'u1', body: { kycVerified: true } });
+      await result.current.mutateAsync({ id: 'u1', body: { verified: true } });
     });
-    expect(updateUserKyc).toHaveBeenCalledWith('u1', { kycVerified: true });
+    expect(updateUserKyc).toHaveBeenCalledWith('u1', { verified: true });
     expect(spy).toHaveBeenCalledWith({ queryKey: ADMIN_USERS_KEY });
   });
 
@@ -480,9 +497,9 @@ describe('user-admin mutations', () => {
     const spy = vi.spyOn(qc, 'invalidateQueries');
     const { result } = renderHook(() => useUpdateUserDailyLimit(), { wrapper: wrapper(qc) });
     await act(async () => {
-      await result.current.mutateAsync({ id: 'u1', body: { dailyLimit: '5000' } });
+      await result.current.mutateAsync({ id: 'u1', body: { dailyLimitUsd: '5000' } });
     });
-    expect(updateUserDailyLimit).toHaveBeenCalledWith('u1', { dailyLimit: '5000' });
+    expect(updateUserDailyLimit).toHaveBeenCalledWith('u1', { dailyLimitUsd: '5000' });
     expect(spy).toHaveBeenCalledWith({ queryKey: ADMIN_USERS_KEY });
   });
 
@@ -492,9 +509,9 @@ describe('user-admin mutations', () => {
     const spy = vi.spyOn(qc, 'invalidateQueries');
     const { result } = renderHook(() => useUpdateUserReputation(), { wrapper: wrapper(qc) });
     await act(async () => {
-      await result.current.mutateAsync({ id: 'u1', body: { score: 90 } });
+      await result.current.mutateAsync({ id: 'u1', body: { averageRating: 90 } });
     });
-    expect(updateUserReputation).toHaveBeenCalledWith('u1', { score: 90 });
+    expect(updateUserReputation).toHaveBeenCalledWith('u1', { averageRating: 90 });
     expect(spy).toHaveBeenCalledWith({ queryKey: ADMIN_USERS_KEY });
   });
 
