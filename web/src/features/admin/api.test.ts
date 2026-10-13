@@ -36,6 +36,11 @@ describe('adminApi', () => {
     m.put.mockResolvedValue({});
     await adminApi.setAmlConfig('aml.monitoring_enabled', 'true');
     expect(m.put).toHaveBeenCalledWith('/aml/config/aml.monitoring_enabled', { value: 'true' });
+    const denylistRows = [{ id: 'd1', address: '0xabc', network: 'ETH', addedBy: 'u1', createdAt: '' }];
+    m.get.mockResolvedValueOnce(denylistRows);
+    const result = await adminApi.getDenylist();
+    expect(m.get).toHaveBeenCalledWith('/aml/denylist');
+    expect(result).toEqual(denylistRows);
     m.post.mockResolvedValue({});
     await adminApi.addDenylist({ address: '0xabc', network: 'ETH' });
     expect(m.post).toHaveBeenCalledWith('/aml/denylist', { address: '0xabc', network: 'ETH' });

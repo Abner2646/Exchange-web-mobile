@@ -66,9 +66,7 @@ export function useAmlConfig() {
 export function useDenylist() {
   return useQuery<DenylistAddress[], ApiError>({
     queryKey: ADMIN_DENYLIST_KEY,
-    // NOTE: adminApi.getDenylist is not yet implemented (will be added in a later task);
-    // placeholder returns empty array until the backend list endpoint is wired up.
-    queryFn: () => Promise.resolve([] as DenylistAddress[]),
+    queryFn: () => adminApi.getDenylist(),
     staleTime: 30_000,
   });
 }

@@ -54,6 +54,10 @@ export const adminApi = {
     return apiClient.put<void>(`/aml/config/${key}`, { value });
   },
 
+  async getDenylist() {
+    return apiClient.get<DenylistAddress[]>('/aml/denylist');
+  },
+
   async addDenylist(body: DenylistAddRequest) {
     return apiClient.post<DenylistAddress>('/aml/denylist', body);
   },

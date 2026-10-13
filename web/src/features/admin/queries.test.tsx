@@ -14,6 +14,7 @@ const {
   upsertConfig,
   getAmlConfig,
   setAmlConfig,
+  getDenylist,
   addDenylist,
   removeDenylist,
   getCases,
@@ -36,6 +37,7 @@ const {
   upsertConfig: vi.fn(),
   getAmlConfig: vi.fn(),
   setAmlConfig: vi.fn(),
+  getDenylist: vi.fn(),
   addDenylist: vi.fn(),
   removeDenylist: vi.fn(),
   getCases: vi.fn(),
@@ -61,6 +63,7 @@ vi.mock('./api', () => ({
     upsertConfig,
     getAmlConfig,
     setAmlConfig,
+    getDenylist,
     addDenylist,
     removeDenylist,
     getCases,
@@ -208,12 +211,17 @@ describe('admin queries', () => {
     expect(getAmlConfig).toHaveBeenCalledTimes(1);
   });
 
-  it('useDenylist fetches via adminApi.addDenylist — list endpoint', async () => {
-    // useDenylist uses a separate list API; mock getCases-equivalent if not present
-    // The denylist query calls adminApi — verify it calls getAmlConfig or a list fn
-    // Actually useDenylist wraps a list call — test against what's available in api.ts
-    // api.ts doesn't have a getDenylist but we need it — skip and test shape
-    expect(ADMIN_DENYLIST_KEY).toEqual(['admin', 'denylist']);
+  it('useDenylist fetches via adminApi.getDenylist and surfaces data', async () => {
+    const rows = [
+      { id: 'd1', address: '0xabc', network: 'ETH', addedBy: 'u1', createdAt: '2026-01-01T00:00:00.000Z' },
+      { id: 'd2', address: '0xdef', network: 'BTC', addedBy: 'u2', createdAt: '2026-01-02T00:00:00.000Z' },
+    ];
+    getDenylist.mockResolvedValueOnce(rows);
+    const qc = makeQC();
+    const { result } = renderHook(() => useDenylist(), { wrapper: wrapper(qc) });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(getDenylist).toHaveBeenCalledTimes(1);
+    expect(result.current.data).toEqual(rows);
   });
 
   it('useCases fetches via adminApi.getCases', async () => {
