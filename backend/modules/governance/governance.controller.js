@@ -1,5 +1,6 @@
 const { PendingAdminAction } = require('./governance.model');
 const makerChecker = require('./makerChecker.service');
+const operatorReadiness = require('./operatorReadiness.service');
 const { User } = require('../../models');
 const totp = require('../users/totp.service');
 const AppError = require('../../utils/AppError');
@@ -65,4 +66,12 @@ async function listPending(req, res) {
   res.json({ pending: actions });
 }
 
-module.exports = { propose, approve, reject, listPending };
+// Read-only deploy-readiness view: can dual control actually be exercised (≥2 distinct
+// operators fully MFA-enrolled)? Reuses the tested pure assessor; projects only
+// non-sensitive operator fields. Feeds the admin panel's go-live gate visibility.
+async function readiness(req, res) {
+  const operators = await operatorReadiness.loadOperators();
+  res.json(operatorReadiness.assessMfaReadiness(operators));
+}
+
+module.exports = { propose, approve, reject, listPending, readiness };
