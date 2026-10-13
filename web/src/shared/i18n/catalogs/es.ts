@@ -5,6 +5,7 @@ export const es: Catalog = {
     'common.submit': 'Enviar',
     'common.cancel': 'Cancelar',
     'common.loading': 'Cargando...',
+    'common.error': 'Algo salió mal. Intentá de nuevo.',
     'greeting': '¡Hola, {{name}}!',
     'auth.register.title': 'Creá tu cuenta',
     'auth.register.submit': 'Registrarme',

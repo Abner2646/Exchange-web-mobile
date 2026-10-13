@@ -5,6 +5,7 @@ export const en: Catalog = {
     'common.submit': 'Submit',
     'common.cancel': 'Cancel',
     'common.loading': 'Loading...',
+    'common.error': 'Something went wrong. Please try again.',
     'greeting': 'Hello, {{name}}!',
     'auth.register.title': 'Create your account',
     'auth.register.submit': 'Register',

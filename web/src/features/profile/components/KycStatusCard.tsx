@@ -22,7 +22,7 @@ export function KycStatusCard() {
   if (isQueryError || data == null) {
     return (
       <p role="alert" className={styles.error}>
-        {t('common.loading')}
+        {t('common.error')}
       </p>
     );
   }

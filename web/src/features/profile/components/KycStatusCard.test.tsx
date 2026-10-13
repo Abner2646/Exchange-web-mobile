@@ -153,7 +153,11 @@ describe('KycStatusCard', () => {
     });
     setup();
 
-    expect(screen.getByRole('alert')).toBeInTheDocument();
+    const alert = screen.getByRole('alert');
+    expect(alert).toBeInTheDocument();
+    // Assert the error text is NOT the loading message
+    expect(alert.textContent).toMatch(/something went wrong|algo salió mal|common\.error/i);
+    expect(alert.textContent).not.toMatch(/loading|cargando/i);
   });
 
   // ── (6) Mutation error: renders via tError ────────────────────────────────
