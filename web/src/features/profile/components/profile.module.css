@@ -42,3 +42,82 @@
   padding: 0.5rem 0.75rem;
   font-size: 0.9375rem;
 }
+
+/* ── Notification list ────────────────────────────────────────────────────── */
+
+.notifHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.notifBadge {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text-muted, #666);
+}
+
+.notifList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.notifItem {
+  padding: 0.75rem;
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 4px;
+  background: var(--color-surface, #fff);
+}
+
+/* Unread items get a left accent and a subtle tinted background */
+.notifItemUnread {
+  padding: 0.75rem;
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-left: 3px solid var(--color-primary, #0057ff);
+  border-radius: 4px;
+  background: var(--color-primary-bg, #f0f5ff);
+}
+
+.notifItemHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.notifTypeLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted, #666);
+}
+
+.notifDate {
+  font-size: 0.75rem;
+  color: var(--color-text-muted, #666);
+}
+
+.notifTitle {
+  margin: 0 0 0.25rem;
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+.notifMessage {
+  margin: 0 0 0.5rem;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary, #444);
+}
+
+.notifItemActions {
+  display: flex;
+  gap: 0.5rem;
+}

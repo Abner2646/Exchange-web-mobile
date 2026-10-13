@@ -44,8 +44,8 @@ export function NotificationsView() {
   return (
     <section className={styles.form}>
       {/* Header row: badge + bulk actions */}
-      <div className={notifStyles.header}>
-        <span className={notifStyles.badge}>
+      <div className={styles.notifHeader}>
+        <span className={styles.notifBadge}>
           {t('profile.notifications.unreadBadge', { count: unreadCount })}
         </span>
         <button
@@ -67,7 +67,7 @@ export function NotificationsView() {
       {items.length === 0 ? (
         <p>{t('profile.notifications.empty')}</p>
       ) : (
-        <ul className={notifStyles.list}>
+        <ul className={styles.notifList}>
           {items.map((n) => {
             const isUnread = !n.read;
             const dateStr = new Date(
@@ -78,19 +78,19 @@ export function NotificationsView() {
               <li
                 key={n.id}
                 data-testid={`notification-${n.id}`}
-                className={[notifStyles.item, isUnread ? notifStyles.unread : '']
+                className={[styles.notifItem, isUnread ? styles.notifItemUnread : '']
                   .filter(Boolean)
                   .join(' ')}
               >
-                <div className={notifStyles.itemHeader}>
-                  <span className={notifStyles.typeLabel}>
+                <div className={styles.notifItemHeader}>
+                  <span className={styles.notifTypeLabel}>
                     {t(`profile.notifications.type.${n.type}`)}
                   </span>
-                  <span className={notifStyles.date}>{dateStr}</span>
+                  <span className={styles.notifDate}>{dateStr}</span>
                 </div>
-                <p className={notifStyles.title}>{n.title}</p>
-                <p className={notifStyles.message}>{n.message}</p>
-                <div className={notifStyles.itemActions}>
+                <p className={styles.notifTitle}>{n.title}</p>
+                <p className={styles.notifMessage}>{n.message}</p>
+                <div className={styles.notifItemActions}>
                   {isUnread ? (
                     <button
                       type="button"
@@ -119,20 +119,3 @@ export function NotificationsView() {
     </section>
   );
 }
-
-// ── Inline style objects (no new CSS file needed — reuse profile.module.css
-//    for error/form shell; notification-specific layout via inline styles) ──────
-
-const notifStyles = {
-  header: 'notifHeader',
-  badge: 'notifBadge',
-  list: 'notifList',
-  item: 'notifItem',
-  unread: 'notifItemUnread',
-  itemHeader: 'notifItemHeader',
-  typeLabel: 'notifTypeLabel',
-  date: 'notifDate',
-  title: 'notifTitle',
-  message: 'notifMessage',
-  itemActions: 'notifItemActions',
-} as const;
