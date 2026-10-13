@@ -2,6 +2,32 @@
 
 **Started:** 2026-09-23. Coordinator: Claude (Opus). Abner is away for several days; full autonomy.
 
+## ▶️ SESSION 2026-10-12 — Next.js Slice 6 (PROFILE & SECURITY) COMPLETE + MERGED to main (PR #45)
+Built the profile & security vertical subagent-driven (11 tasks, fresh implementer + spec/quality review per task;
+the 3 SECURITY tasks — 5/change-password, 6/email-change, 7/2FA-TOTP — reviewed line-by-line by me). Plan:
+`docs/superpowers/plans/2026-10-12-nextjs-slice-6-profile-security.md` (grounded in the real user/notification/kyc
+contract). No money-spend path this slice; security = mine.
+- **Delivered:** account edit (displayName/country/state/locale; username immutable; locale change syncs app UI);
+  change password; two-step email change with the **withdrawal-cooldown** disclosure; 2FA (email toggle + TOTP
+  enrollment QR/secret→enable→disable); notifications (list/unread/mark/delete); KYC status + handoff CTA.
+  `/profile` route + nav + 4 tabs + i18n (en/es) + contract §22.
+- **Security (mine, line-by-line):** change-password confirm field NEVER sent (only `{currentPassword,newPassword}`);
+  email-change two-step held ONLY in React state (new email + code never URL/storage), exact Spanish body names,
+  cooldown disclosed up-front + re-stated on success; TOTP `secret`/`qr` component-state-only, cleared on enable,
+  disable behind confirm dialog; all security mutations `retry:false` + disabled-while-pending + typed 4xx; profile
+  update stores reissued token BEFORE invalidating the user cache (no stale auth).
+- **Two real bugs caught in per-task review + fixed:** (1) NotificationsView used a plain-string class object →
+  notification CSS incl. the unread highlight was dead in prod (test passed via `/unread/i` literal match) → replaced
+  with real CSS-module classes; (2) KycStatusCard rendered the "Loading..." key in the red error box on a failed
+  status fetch → added `common.error` + used it.
+- **Gate (HEAD):** tsc 0, Vitest **427/427** (77 files = 320 prior + 107 profile), `next build` OK (`/profile` 4.51 kB).
+- **Whole-branch high-effort review run by me** (not the 8-angle fan-out — credit-prudent after the S5 Task-11 limit):
+  0 Critical / 0 Important. Minor backlog (recurring `as {code?}` casts, same-as-current silent disable, empty-field
+  gates, a11y, panel-wrapper cosmetic, test-coverage gaps) → transversal front-polish/a11y pass.
+- **✅ dev→main MERGED (`9910339`, PR #45).** tsc re-verified on the merged tree; `dev == main == origin` (0 0). main NOT deployed.
+- **Credit note:** the session limit did NOT bite this slice (reset); all 11 tasks ran subagent-driven. Watch for limits.
+- **NEXT:** Slice 7 (Admin — least-privilege routing, operator MFA status, editable business config, AML/KYC/audit ops).
+
 ## ▶️ SESSION 2026-10-11 — Next.js Slice 5 (P2P) COMPLETE + MERGED to main (PR #44)
 Whole-branch high-effort review run by the coordinator (Claude/Opus) — money-path review is mine per the handoff;
 the full 8-angle subagent fan-out was skipped deliberately after the Task-11 subagent hit the credit limit (risk of
