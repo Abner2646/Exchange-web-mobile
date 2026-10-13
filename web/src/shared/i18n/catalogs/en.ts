@@ -247,6 +247,8 @@ export const en: Catalog = {
     'profile.account.country.label': 'Country',
     'profile.account.state.label': 'State / Province',
     'profile.account.locale.label': 'Language',
+    'profile.account.localeEn': 'English',
+    'profile.account.localeEs': 'Español',
     'profile.account.save': 'Save changes',
     'profile.account.saved': 'Changes saved.',
     // Change password

@@ -107,8 +107,8 @@ export function ProfileForm() {
           value={locale}
           onChange={(e) => setLocaleField(e.target.value)}
         >
-          <option value="en">English</option>
-          <option value="es">Español</option>
+          <option value="en">{t('profile.account.localeEn')}</option>
+          <option value="es">{t('profile.account.localeEs')}</option>
         </select>
       </Field>
 
