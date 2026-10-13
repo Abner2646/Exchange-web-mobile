@@ -4,6 +4,7 @@ export const en: Catalog = {
   ui: {
     'common.submit': 'Submit',
     'common.cancel': 'Cancel',
+    'common.edit': 'Edit',
     'common.loading': 'Loading...',
     'common.error': 'Something went wrong. Please try again.',
     'greeting': 'Hello, {{name}}!',
@@ -361,6 +362,7 @@ export const en: Catalog = {
     'admin.config.save': 'Save',
     'admin.config.saved': 'Configuration saved.',
     'admin.config.invalidAdvisory': 'One or more values are invalid. Please review and correct before saving.',
+    'admin.config.categoryFilter.label': 'Filter by category',
     // AML
     'admin.aml.monitoring.toggle': 'AML monitoring',
     'admin.aml.holdEnforcement.toggle': 'Hold enforcement',
@@ -427,5 +429,6 @@ export const en: Catalog = {
     'TRADING_PAIR_NOT_FOUND': 'That trading pair is unavailable.',
     'INVALID_ORDER': 'The order is invalid. Check the amount, price, and limits.',
     'INSUFFICIENT_BALANCE': 'Insufficient Spot balance to place this order.',
+    'CONFIG_INVALID_INPUT': 'Invalid configuration input. Please check the value and type.',
   }
 };

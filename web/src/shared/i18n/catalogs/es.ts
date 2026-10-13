@@ -4,6 +4,7 @@ export const es: Catalog = {
   ui: {
     'common.submit': 'Enviar',
     'common.cancel': 'Cancelar',
+    'common.edit': 'Editar',
     'common.loading': 'Cargando...',
     'common.error': 'Algo salió mal. Intentá de nuevo.',
     'greeting': '¡Hola, {{name}}!',
@@ -361,6 +362,7 @@ export const es: Catalog = {
     'admin.config.save': 'Guardar',
     'admin.config.saved': 'Configuración guardada.',
     'admin.config.invalidAdvisory': 'Uno o más valores son inválidos. Revisalos y corregílos antes de guardar.',
+    'admin.config.categoryFilter.label': 'Filtrar por categoría',
     // AML
     'admin.aml.monitoring.toggle': 'Monitoreo AML',
     'admin.aml.holdEnforcement.toggle': 'Retención forzosa',
@@ -427,5 +429,6 @@ export const es: Catalog = {
     'TRADING_PAIR_NOT_FOUND': 'Ese par no está disponible.',
     'INVALID_ORDER': 'La orden es inválida. Revisá la cantidad, el precio y los límites.',
     'INSUFFICIENT_BALANCE': 'Saldo Spot insuficiente para colocar esta orden.',
+    'CONFIG_INVALID_INPUT': 'Entrada de configuración inválida. Revisá el valor y el tipo.',
   }
 };
