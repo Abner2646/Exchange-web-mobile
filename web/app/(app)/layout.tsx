@@ -5,11 +5,14 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { session } from '@/shared/api';
 import { useTranslation } from '@/shared/i18n';
+import { useCurrentUser } from '@/features/auth/queries';
+import { isAdminRole } from '@/features/admin/roles';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { t } = useTranslation();
   const authed = session.hasToken();
+  const { data: user } = useCurrentUser();
 
   useEffect(() => {
     if (!authed) router.replace('/login');
@@ -25,6 +28,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <Link href="/trading">{t('nav.trading')}</Link>
         <Link href="/p2p">{t('nav.p2p')}</Link>
         <Link href="/profile">{t('nav.profile')}</Link>
+        {isAdminRole(user) && <Link href="/admin">{t('nav.admin')}</Link>}
       </nav>
       {children}
     </>
