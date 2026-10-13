@@ -13,6 +13,8 @@ export interface User {
   kycLevel: 'none' | 'basic' | 'full';
   dateOfBirth?: string;
   legalName?: string;
+  locale?: string;
+  totpEnabled?: boolean;
 }
 
 export interface AuthSession {
