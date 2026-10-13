@@ -24,6 +24,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <Link href="/swap">{t('nav.swap')}</Link>
         <Link href="/trading">{t('nav.trading')}</Link>
         <Link href="/p2p">{t('nav.p2p')}</Link>
+        <Link href="/profile">{t('nav.profile')}</Link>
       </nav>
       {children}
     </>
