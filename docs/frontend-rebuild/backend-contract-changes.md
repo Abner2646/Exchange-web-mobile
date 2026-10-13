@@ -666,6 +666,22 @@ The rebuilt frontend (`web/`) consumes the P2P vertical over the **legacy Spanis
 
 ---
 
+### 22. Next.js `web/` app — profile & security endpoints consumed (Slice 6, 2026-10-12)
+
+The rebuilt frontend (`web/`) consumes the profile & security vertical over the **legacy mount paths** (no `/api` prefix on the client, same as the auth feature):
+
+- **Profile** — `GET /user/me` (reused via the auth feature's `useCurrentUser()`); `PUT /user/me` updates the profile. The server whitelist is `{ displayName, country, state, locale }` only — **`username` is immutable** (login handle) and shown read-only; `PUT /user/me` returns `{ user, token? }` and the client stores a reissued `token` (via `session.setToken`) before refetching the user. On a `locale` change the client also syncs the app UI language.
+- **Security:**
+  - `PATCH /user/me/change-password` `{ currentPassword, newPassword }` — the client's confirm-password field is a client-only check and is NEVER sent on the wire.
+  - `POST /user/me/email-change` `{ nuevoEmail, passwordActual }` (sends a code to the NEW email) → `POST /user/me/email-change/confirm` `{ codigo }`. **Confirming places withdrawals on a temporary cooldown** — the client discloses this up-front on the request step and re-states it on success. Request body field names are the backend's exact (Spanish) names; the new email + code live only in React state (never URL/storage).
+  - `PATCH /user/me/2fa-toggle` — **no body**; flips email-2FA server-side; returns `{ message, twoFactorEnabled }`.
+  - TOTP enrollment: `POST /user/me/totp/setup` → `{ otpauthUri, secret, qr }` (QR PNG data URL + secret shown once, kept only in component state, cleared on enable); `POST /user/me/totp/enable` `{ codigo }`; `POST /user/me/totp/disable` `{ codigo }` (behind a confirm dialog). Bad code → `401` surfaced via the error catalog.
+- **Notifications** — `GET /notificaciones/me` (`{ notificaciones: [...] }`; the client uses the English fields `title`/`message`/`read`/`type`, ignoring the Spanish aliases), `GET /notificaciones/me/unread-count`, `PATCH /notificaciones/me/mark-all-read`, `PATCH /notificaciones/me/:id/mark-read|mark-unread`, `DELETE /notificaciones/me/read`.
+- **KYC handoff** — `GET /kyc/status` → `{ kycVerified, kycLevel }` (display); `POST /user/me/kyc-request` initiates verification. Persona is config-driven/stubbed (no inquiry-URL endpoint is exposed), so the client shows status + a CTA that submits the request and notes the external provider review follows.
+- Scope: profile edit + password/email/2FA-TOTP security + notifications + KYC status/handoff. Public profile / user search and admin user management (→ S7 Admin) are deferred. No money-spend path in this slice.
+
+---
+
 ## Expected upcoming contract changes (heads-up, not yet done)
 
 These are tracked in `ROADMAP.md`; listed here so the rebuild anticipates them and

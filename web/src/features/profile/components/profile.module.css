@@ -1,0 +1,131 @@
+/* web/src/features/profile/components/profile.module.css
+   Shared styles for the profile feature components (AccountForm, SecurityForm, etc.) */
+
+/* ── Tab shell ────────────────────────────────────────────────────────────── */
+
+.panel { display: flex; flex-direction: column; gap: var(--space-3, 0.75rem); }
+.tabs { display: flex; gap: var(--space-1, 0.25rem); border-bottom: 1px solid var(--color-border, #eee); padding-bottom: var(--space-1, 0.25rem); }
+.tab { background: none; border: none; cursor: pointer; padding: 0.375rem 0.75rem; border-radius: 4px 4px 0 0; font-size: 0.9375rem; color: var(--color-text-muted, #666); }
+.tab:hover { background: var(--color-surface-hover, #f5f5f5); }
+.tabActive { color: var(--color-primary, #0060df); border-bottom: 2px solid var(--color-primary, #0060df); font-weight: 600; }
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 480px;
+}
+
+.actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+/* Inline note under a read-only field */
+.readOnlyNote {
+  font-size: 0.8rem;
+  color: var(--color-text-muted, #666);
+  margin: -0.5rem 0 0.25rem;
+}
+
+/* Status / success */
+.success {
+  color: var(--color-success, #0a7a3b);
+  font-size: 0.9375rem;
+}
+
+/* Mutation error */
+.error {
+  color: var(--color-danger, #b00);
+  font-size: 0.9375rem;
+}
+
+/* Security / informational warning (e.g. withdrawal-cooldown disclosure) */
+.warning {
+  color: var(--color-warning-text, #7a5200);
+  background: var(--color-warning-bg, #fff8e6);
+  border: 1px solid var(--color-warning-border, #f5c842);
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9375rem;
+}
+
+/* ── Notification list ────────────────────────────────────────────────────── */
+
+.notifHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.notifBadge {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text-muted, #666);
+}
+
+.notifList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.notifItem {
+  padding: 0.75rem;
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 4px;
+  background: var(--color-surface, #fff);
+}
+
+/* Unread items get a left accent and a subtle tinted background */
+.notifItemUnread {
+  padding: 0.75rem;
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-left: 3px solid var(--color-primary, #0057ff);
+  border-radius: 4px;
+  background: var(--color-primary-bg, #f0f5ff);
+}
+
+.notifItemHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.notifTypeLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted, #666);
+}
+
+.notifDate {
+  font-size: 0.75rem;
+  color: var(--color-text-muted, #666);
+}
+
+.notifTitle {
+  margin: 0 0 0.25rem;
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+.notifMessage {
+  margin: 0 0 0.5rem;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary, #444);
+}
+
+.notifItemActions {
+  display: flex;
+  gap: 0.5rem;
+}
