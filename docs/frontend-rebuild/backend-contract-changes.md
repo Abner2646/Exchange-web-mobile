@@ -682,6 +682,27 @@ The rebuilt frontend (`web/`) consumes the profile & security vertical over the 
 
 ---
 
+### 23. Next.js `web/` app — admin endpoints consumed (Slice 7, 2026-10-13)
+
+The rebuilt frontend (`web/`) mounts the privileged admin panel at `/admin` over the **legacy mount paths** (no `/api` prefix on the client). Two **new, additive, read-only** backend endpoints were added in this slice (both reuse already-tested internal logic).
+
+- **Least-privilege role model.** Role hierarchy mirrors the backend (`utils/authz.js` / `adminMiddleware.js`): `normal/usuario/user=1 < admin/administrator=2 < super_admin/superadmin/super-admin=3` (case-insensitive). The `/admin` nav link is hidden for level < 2 AND the `/admin` route redirects level < 2 to `/dashboard` (defence-in-depth, matching the backend's per-route `isAdmin`/`isSuperAdmin`). **Super-admin-only (level 3)** actions — change user role, delete user — are NOT rendered for level 2 (conditional render, not merely disabled).
+- **Governance (Maker-Checker)** — all `auth + requireOperatorMFA`:
+  - `GET /governance/pending` → `{ pending: PendingAction[] }` (status `pending`). `PendingAction` carries `amountUsd` as a **canonical decimal string | null** — rendered verbatim, never `parseFloat`.
+  - `POST /governance/:id/approve` `{ codigo }` — the checker's **TOTP** code (a DISTINCT operator; 4-eyes). `401` on bad/replayed/not-enrolled; typed 4xx for maker===checker / already-resolved. The `codigo` lives only in component state.
+  - `POST /governance/:id/reject` `{ reason? }`.
+  - **NEW** `GET /governance/readiness` → `{ ready, operatorCount, enrolledCount, minEnrolled, enrolled: OperatorSummary[], pending: OperatorSummary[], reasons: string[] }` where `OperatorSummary = { id, email, role, active, totpEnabled, twoFactorEnabled }`. Reuses `operatorReadiness.service` (`assessMfaReadiness`); projects non-sensitive fields only. This is the go-live-gate operator-MFA visibility surface.
+- **Business config** — `auth + isAdmin + requireOperatorMFA`: `GET /config?category=` → `{ data: BusinessConfigItem[] }`; `PUT /config/:key` `{ value, type?, category?, description? }` → `{ message, data }`. `BusinessConfigItem = { key, value, type: 'string'|'number'|'boolean'|'json', category, description }`. **`value` is ALWAYS a canonical string** (the `type` only tags interpretation) — edited and sent as a string, never numerically coerced. `400 CONFIG_INVALID_INPUT` on empty value / bad type.
+- **AML ops** — `auth + isAdmin + requireOperatorMFA`:
+  - `GET /aml/config` → `{ monitoringEnabled, holdEnforcementEnabled }`; `PUT /aml/config/:key` `{ value }` where the key MUST start with `aml.`. **The real keys are `aml.monitoring.enabled` and `aml.holdEnforcement.enabled`** (dot+camelCase), value sent as the string `'true'`/`'false'`.
+  - `GET /aml/denylist` → `DenylistAddress[]`; `POST /aml/denylist` `{ address, network, reason?, source? }`; `DELETE /aml/denylist/:id` → `{ removed }`.
+  - `GET /aml/cases?status=` → `AmlCase[]` (tipping-off: case data is admin-only); `PUT /aml/cases/:id/resolve` `{ decision: 'approve'|'reject' }` — **approve releases a held S5 withdrawal, reject refunds it** (disclosed in a confirm dialog). `409` if already resolved.
+- **User management** — `GET /user` (admin); `GET /user/search?q=`; privileged mutations with the backend's EXACT bodies (locked from `user.controller.js`): `PATCH /user/:id/status {active}`, `PATCH /user/:id/kyc {verified, kycData?}`, `PATCH /user/:id/daily-limit {dailyLimitUsd}` (decimal string), `PATCH /user/:id/reputation {averageRating, totalRatings?}`, and **super-admin-only** `PATCH /user/:id/role {role}` + `DELETE /user/:id`; `GET /user/admin/stats`. **⚠️ Security:** the `update*` endpoints return `{ user, token }` for the TARGET user — the admin client MUST NOT `session.setToken` with it (session-hijack risk); the client discards the response and only invalidates its user-list cache.
+- **Audit (read-only)** — **NEW**, `auth + isAdmin` only (reads need no operator-MFA; all writes above keep `requireOperatorMFA`): `GET /audit?eventType=&aggregateId=&limit=&beforeId=` → `{ rows: AuditRow[], nextBeforeId: number|null }` (keyset, id DESC, limit clamped 1..100); `GET /audit/verify` → `{ ok, brokenAtSeq, checked }` (reuses `verifyAuditChain` to recompute the tamper-evident hash chain). Read-only — the client never mutates the chain.
+- Scope: least-privilege routing + governance inbox + operator readiness + user management + business-config editing + AML ops + read-only audit viewer. OUT: legacy seed/setup ops (wallet-init, exchange-pair/crypto-icon generation, direct admin balance update — the latter already routes through Maker-Checker and appears in the governance inbox); fr/it/pt locales. No money-spend path (privileged balance moves are Maker-Checker proposals surfaced in the inbox).
+
+---
+
 ## Expected upcoming contract changes (heads-up, not yet done)
 
 These are tracked in `ROADMAP.md`; listed here so the rebuild anticipates them and
