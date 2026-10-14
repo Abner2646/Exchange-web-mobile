@@ -78,7 +78,9 @@ export default function Home() {
       </main>
 
       <footer className={styles.footer}>
-        <p>© {new Date().getFullYear()} BitFlow. Custodial exchange — mainnet assets held in custody.</p>
+        {/* No build-time date: this page is statically prerendered, so new Date()
+            would freeze to the build year. A plain mark avoids a stale year. */}
+        <p>© BitFlow — custodial exchange. Mainnet assets held in custody.</p>
       </footer>
     </div>
   );

@@ -23,7 +23,6 @@ BACKEND_DIR="$REPO_DIR/backend"
 DB_NAME="${DB_NAME:-bitflow_prod}"
 DB_USER="${DB_USER:-bitflow}"
 PROCESS_MGR="${PROCESS_MGR:-pm2}"
-WEBROOT="/var/www/bitflow"
 log(){ echo -e "\n\033[1;36m==> $*\033[0m"; }
 
 # --- 0. Swap (no opcional en 1GB) ---------------------------------------------
@@ -126,7 +125,13 @@ else
   log "Levantando backend con pm2 (instances:1, fork)"
   command -v pm2 >/dev/null || sudo npm i -g pm2
   sudo mkdir -p /var/log/bitflow
-  (cd "$REPO_DIR" && pm2 start deploy/ecosystem.config.js && pm2 save)
+  # Arranca bitflow-web SOLO si el bundle Next ya está rsync-eado; si no, levanta
+  # solo el backend para no dejar bitflow-web en loop de restart (script not found).
+  if [ -f "$REPO_DIR/web/.next/standalone/server.js" ]; then
+    (cd "$REPO_DIR" && pm2 start deploy/ecosystem.config.js && pm2 save)
+  else
+    (cd "$REPO_DIR" && pm2 start deploy/ecosystem.config.js --only bitflow-backend && pm2 save)
+  fi
   sudo env PATH="$PATH" pm2 startup systemd -u "$USER" --hp "$HOME" || true
 fi
 
