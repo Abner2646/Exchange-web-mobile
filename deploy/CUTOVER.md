@@ -1,5 +1,10 @@
 # Go-live cutover — CRA → Next.js (Slice 8)
 
+> ✅ **EXECUTED 2026-10-14** — production (`https://bitflow.community`) now serves the Next.js
+> app (pm2 `bitflow-web` :3000 behind nginx). This runbook is kept for re-deploys and rollback.
+> Rollback is live-ready: `/etc/nginx/sites-available/bitflow.cra.bak` + the CRA build under
+> `/var/www/bitflow` are intact.
+
 Flip production from the static CRA SPA to the self-hosted Next.js app. The Next
 process runs as a 2nd pm2 app (`bitflow-web`, port 3000, bound to 127.0.0.1) behind
 nginx, same-origin with the backend (`/api` + `/health` → 3001). **Reversible.**
@@ -20,18 +25,25 @@ npm run build          # output:'standalone' → web/.next/standalone/server.js
 
 ## 2. Ship the standalone bundle to the box
 
-`server.js` needs the static assets and public/ copied beside the standalone output
-(Next does not copy them automatically):
+`next build` leaves `web/.next/standalone/{server.js,node_modules,package.json,.next/…}`
+but does **not** copy the hashed static assets — copy `web/.next/static` INTO the bundle
+at `.next/static` (beside `server.js`; `server.js` resolves `.next/static` from its own
+dir). This app has no `web/public/`, so there is nothing else to copy. Verified layout
+(2026-10-14 go-live): bundle is FLAT — static lives at `standalone/.next/static`, NOT
+`standalone/web/.next/static`.
 
 ```bash
-# from your build machine, repo root:
-rsync -a --delete web/.next/standalone/   ubuntu@BOX:~/Exchange-web-mobile/web/.next/standalone/
-rsync -a --delete web/.next/static/       ubuntu@BOX:~/Exchange-web-mobile/web/.next/standalone/web/.next/static/
-rsync -a --delete web/public/             ubuntu@BOX:~/Exchange-web-mobile/web/public/
+# from your build machine, repo root — assemble + ship as a tarball (rsync not needed):
+cp -r web/.next/static web/.next/standalone/.next/static
+tar czf /tmp/bundle.tgz -C web/.next/standalone .
+scp -i <key.pem> /tmp/bundle.tgz ubuntu@BOX:/tmp/bundle.tgz
+ssh -i <key.pem> ubuntu@BOX 'mkdir -p ~/Exchange-web-mobile/web/.next/standalone \
+  && tar xzf /tmp/bundle.tgz -C ~/Exchange-web-mobile/web/.next/standalone'
 ```
 
-(The standalone server resolves static from `web/.next/static` and public from `web/public`
-relative to the app dir; adjust the target to your layout and verify once with step 3.)
+SSH key for the prod box: `bitflow-key-2.pem` (user `ubuntu`, host `54.146.193.5` /
+`bitflow.community`). On Windows, native `ssh.exe` rejects the key as "bad permissions" —
+use it from Git Bash (`chmod 600` a copy) or fix the file ACL.
 
 ## 3. Start the Next pm2 process
 
