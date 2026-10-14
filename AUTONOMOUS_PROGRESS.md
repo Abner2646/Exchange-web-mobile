@@ -2,6 +2,26 @@
 
 **Started:** 2026-09-23. Coordinator: Claude (Opus). Abner is away for several days; full autonomy.
 
+## ▶️ SESSION 2026-10-14 (cont.) — SLICE 8: marketing + nginx flip + CRA removal (repo-side)
+Abner: "Hazlo ahora." Adopted the §B.5 decision (**launch on Next 14.2.35**) and executed S8's
+repo-side deliverables (the actual EC2 deploy/flip is operational — I have no server access — captured as a runbook).
+- **Marketing home ✅** — replaced the stub with a recruiter-facing, responsive SSG landing page (hero + register/
+  sign-in CTAs + six honest feature cards + header/footer), styled with the shared tokens (light/dark). Stays `○ /`
+  static. `web/app/{page.tsx,marketing.module.css}` + updated `page.test.tsx`.
+- **nginx flip ✅ (config)** — `deploy/nginx/bitflow-next.conf` (new live config: `/`→Next:3000, `/api`+`/health`→
+  backend:3001, `/_next/static` immutable) + `bitflow.conf` generic template switched to the same proxy model.
+- **pm2 ✅** — added `bitflow-web` app (Next standalone `server.js` on 127.0.0.1:3000, `max_memory_restart:400M`).
+- **bootstrap.sh ✅** — §5 deploys the Next standalone bundle instead of `frontend/build`.
+- **CUTOVER runbook ✅** — `deploy/CUTOVER.md` (build-off-box → rsync → pm2 → nginx flip, with rollback).
+- **CRA deleted ✅** — `git rm -r frontend/` (289 files, 41.8k lines). Verified no runtime dep: backend unit
+  **625/625** still green (only ref was a comment). Last CRA build stays under `/var/www/bitflow` for rollback.
+- **Docs ✅** — README strangler marked complete (dropped `frontend/` layout line, added `web/e2e/`); B.5 decision recorded.
+- **Gate:** web Vitest **594/594**, `next build` OK (`/` SSG 460 B), backend unit 625/625, tsc clean.
+- **REMAINING (operational, Abner on the box):** run `deploy/CUTOVER.md` — build the standalone bundle off-box, rsync,
+  `pm2 start --only bitflow-web`, `cp bitflow-next.conf → sites-available/bitflow`, `nginx -t && reload`; then §B.6
+  (`check:operator-mfa` green + `external_symbol` on USD(T) pairs). That flip = GO LIVE. Also pending: dev→main PR +
+  /code-review for the whole gate+S8 branch (dev is ~16 commits ahead of main).
+
 ## ▶️ SESSION 2026-10-14 — GO-LIVE GATE (known-issues §B) — money-path mine, TDD
 PASO 0 clean (dev==main==origin==`8aa5725`, 0 0 / 0 0). Abner: "Gate go live, no preguntes más, trabajá autónomo."
 Worked the §B must-fix list top-down. All commits direct to `dev`, pushed after each (origin/dev...dev = 0 0 throughout).
