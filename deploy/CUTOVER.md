@@ -41,9 +41,17 @@ ssh -i <key.pem> ubuntu@BOX 'mkdir -p ~/Exchange-web-mobile/web/.next/standalone
   && tar xzf /tmp/bundle.tgz -C ~/Exchange-web-mobile/web/.next/standalone'
 ```
 
-SSH key for the prod box: `bitflow-key-2.pem` (user `ubuntu`, host `54.146.193.5` /
+SSH key for the prod box: `bitflow-prod.pem` (user `ubuntu`, host `54.146.193.5` /
 `bitflow.community`). On Windows, native `ssh.exe` rejects the key as "bad permissions" —
 use it from Git Bash (`chmod 600` a copy) or fix the file ACL.
+
+**If SSH fails with `kex_exchange_identification: ... Connection reset`** (TCP connects but the
+handshake resets): this is NOT the key (the reset is pre-auth, before any key is used) and NOT
+the Security Group (port 22 accepts the TCP). The box is OOM / rebooting / fail2ban-throttled.
+Do NOT keep retrying — each attempt can extend a fail2ban ban. Wait, or reboot the instance from
+the AWS console (EC2 → Instance state → Reboot) / use EC2 Instance Connect (no port 22) to run
+`free -h`, `sudo fail2ban-client set sshd unbanip <IP>`, `sudo systemctl restart ssh`. On the
+2026-10-14 go-live a reboot cleared it.
 
 ## 3. Start the Next pm2 process
 

@@ -19,16 +19,20 @@ repo-side deliverables (the actual EC2 deploy/flip is operational — I have no 
 - **Gate:** web Vitest **594/594**, `next build` OK (`/` SSG 460 B), backend unit 625/625, tsc clean.
 - **MERGED to main ✅** — `/code-review` run (money-path core: 2 fixes; S8 cutover delta: 4 fixes), then **PR #48
   (dev→main) merged; dev == main == origin (0 0)**. main NOT deployed (accumulates per the strategy).
-- **✅ GO LIVE DONE (2026-10-14):** SSH'd into the prod box (key `bitflow-key-2.pem`, `ubuntu@54.146.193.5` — the box
+- **✅ GO LIVE DONE (2026-10-14):** SSH'd into the prod box (key `bitflow-prod.pem`, `ubuntu@54.146.193.5` — the box
   had just rebooted, which cleared the earlier sshd reset/OOM), shipped the Next standalone bundle (tar+scp; layout is
   FLAT — `standalone/.next/static`, no `web/public`), installed the updated `ecosystem.config.js`, started pm2
   `bitflow-web` on :3000 (verified /login /register /wallet /swap /trading /p2p /verify-email all 200 locally), then
   flipped nginx (`bitflow-next.conf`, backup `bitflow.cra.bak`) and reloaded. **`https://bitflow.community/` now serves
   Next** (title "BitFlow — Custodial crypto exchange", marketing hero), `/api/health` OK, routes 200. Box stable
   (449Mi RAM available, swap untouched, bitflow-web 0 restarts). Rollback ready (CRA config bak + `/var/www/bitflow` build).
-- **REMAINING (optional, deploy-day ops):** §B.6 — run `check:operator-mfa` on the box + set `external_symbol` on USD(T)
-  pairs if the swap oracle breaker is enabled. Not blocking general use; gates only large-withdrawal Maker-Checker release.
-  Also: monitor the 1 GB box under real traffic (pm2 monit) — Next+backend fit now but watch swap.
+- **§B.6 RUN on prod (2026-10-14):** `external_symbol` ✅ — every swap pair already has one (BTC/USDT→`BTCUSDT`, etc.),
+  so the oracle breaker covers the USD(T) pairs; nothing to set. `check:operator-mfa` ❌ **NOT READY** — only 1 operator
+  (`grgurichabner@gmail.com`, super_admin) and TOTP✗/2FA✗; the gate needs ≥2 active operators with TOTP for Maker-Checker
+  to release large withdrawals (>$20k). **Action for Abner (account-level, needs his authenticator):** enroll TOTP on the
+  super_admin (POST /api/user/me/totp/{setup,enable}) + create a 2nd operator and enroll its TOTP. Not blocking general
+  use; only gates large-withdrawal dual-control release. Runbook: `docs/runbooks/operator-totp-enrollment.md`.
+- **REMAINING:** operator-MFA enrollment (above); monitor the 1 GB box under real traffic (`pm2 monit`) — Next+backend fit now but watch swap.
 
 ## ▶️ SESSION 2026-10-14 — GO-LIVE GATE (known-issues §B) — money-path mine, TDD
 PASO 0 clean (dev==main==origin==`8aa5725`, 0 0 / 0 0). Abner: "Gate go live, no preguntes más, trabajá autónomo."
