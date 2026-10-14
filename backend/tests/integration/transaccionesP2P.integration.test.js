@@ -1,4 +1,5 @@
 require('../helpers/testEnv');
+const { randomUUID } = require('crypto');
 const request = require('supertest');
 const app = require('../../app');
 const { sequelize, resetDb } = require('../helpers/db');
@@ -46,8 +47,11 @@ async function seedScenario({ sellerFunds = '5' } = {}) {
   return { seller, buyer, btc, metodo, oferta };
 }
 
-const create = (buyer, oferta, metodo, amount) =>
+// POST /transaccionP2P requires an Idempotency-Key (money-path dedup, §B.2).
+// Each call is a fresh intent unless an explicit key is passed (double-submit test).
+const create = (buyer, oferta, metodo, amount, key = randomUUID()) =>
   request(app).post('/api/transaccionP2P/').set(f.authHeader(buyer))
+    .set('Idempotency-Key', key)
     .send({ offerId: oferta.id, amount, paymentMethodId: metodo.id });
 
 const confirm = (user, id) =>
@@ -101,6 +105,41 @@ describe('P2P transaction — happy path (create → confirm → complete)', () 
     const sellerBal = await f.getBalance(seller, btc);
     expect(sellerBal.availableBalance).toBe('5.00000000');
     expect(sellerBal.blockedBalance).toBe('0.00000000');
+  });
+});
+
+describe('P2P accept — idempotency (§B.2: a double-submit must not lock funds twice)', () => {
+  test('same Idempotency-Key replays the first response and blocks the seller funds ONCE', async () => {
+    const { seller, buyer, btc, metodo, oferta } = await seedScenario({ sellerFunds: '5' });
+    const key = randomUUID();
+
+    const first = await create(buyer, oferta, metodo, 2, key);
+    expect(first.status).toBe(201);
+    const txId = first.body.data.id;
+
+    // Re-submit the identical request with the SAME key (the double-submit).
+    const replay = await create(buyer, oferta, metodo, 2, key);
+    expect(replay.status).toBe(201);
+    expect(replay.body.data.id).toBe(txId); // same transaction, not a second one
+
+    // Exactly one transaction exists, and the seller's funds were blocked once.
+    const rows = await P2PTransaction.findAll({ where: { offerId: oferta.id } });
+    expect(rows).toHaveLength(1);
+    const sellerBal = await f.getBalance(seller, btc);
+    expect(sellerBal.availableBalance).toBe('3.00000000');
+    expect(sellerBal.blockedBalance).toBe('2.00000000');
+  });
+
+  test('reusing a key with a DIFFERENT body is rejected (422 KEY_REUSED)', async () => {
+    const { buyer, metodo, oferta } = await seedScenario({ sellerFunds: '5' });
+    const key = randomUUID();
+
+    const first = await create(buyer, oferta, metodo, 2, key);
+    expect(first.status).toBe(201);
+
+    const reused = await create(buyer, oferta, metodo, 3, key); // different amount, same key
+    expect(reused.status).toBe(422);
+    expect(reused.body.error.code).toBe('IDEMPOTENCY_KEY_REUSED');
   });
 });
 

@@ -7,6 +7,7 @@ const { P2PTransaction, Crypto, User } = require('../../models/index.js');
 const AppError = require('../../utils/AppError');
 const errorCodes = require('../../utils/errorCodes');
 const authz = require('../../utils/authz');
+const idempotency = require('../../middleware/idempotency.middleware');
 
 // No controller-level Sequelize transactions in this file.
 // The model methods (createTransaction, confirmPayment, completeTransaction,
@@ -128,17 +129,22 @@ const createTransaccion = async (req, res) => {
   // on any failure it rolls back and re-throws — no rollback needed here.
   // Business errors (inactive offer, amount out of range, insufficient seller
   // funds) are translated to their typed 4xx envelope; unknown → sanitized 500.
+  //
+  // Anti-double-spend (§B.2): the idempotency key is completed INSIDE the model's
+  // transaction (finalize hook), so "funds blocked" and "key completed" commit
+  // atomically. The finalized body must equal what we send below.
+  const message = 'Transacción iniciada exitosamente. Los fondos han sido bloqueados.';
   let nuevaTransaccion;
   try {
-    nuevaTransaccion = await P2PTransaction.createTransaction(transaccionData);
+    nuevaTransaccion = await P2PTransaction.createTransaction(transaccionData, {
+      finalize: (transaction, record) =>
+        idempotency.finalizeInTransaction(req, transaction, 201, { message, data: record }),
+    });
   } catch (error) {
     throw mapP2PModelError(error);
   }
 
-  res.status(201).json({
-    message: 'Transacción iniciada exitosamente. Los fondos han sido bloqueados.',
-    data: nuevaTransaccion
-  });
+  res.status(201).json({ message, data: nuevaTransaccion });
 };
 
 // Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #11): updateTransaccionStatus
