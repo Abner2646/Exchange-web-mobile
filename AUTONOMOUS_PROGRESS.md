@@ -2,6 +2,45 @@
 
 **Started:** 2026-09-23. Coordinator: Claude (Opus). Abner is away for several days; full autonomy.
 
+## ▶️ SESSION 2026-10-14 — GO-LIVE GATE (known-issues §B) — money-path mine, TDD
+PASO 0 clean (dev==main==origin==`8aa5725`, 0 0 / 0 0). Abner: "Gate go live, no preguntes más, trabajá autónomo."
+Worked the §B must-fix list top-down. All commits direct to `dev`, pushed after each (origin/dev...dev = 0 0 throughout).
+
+- **§B.1 — Idempotency BY INTENT on money mutations ✅ DONE + verified** (`feat(web)`). New
+  `web/src/shared/api/idempotencyManager.ts`: a per-mutation-hook manager fingerprints each payload → stable
+  `Idempotency-Key`; **reused on a manual retry of the identical payload** (backend dedups, no double-spend),
+  **new key when the payload changes** (avoids backend 422 KEY_REUSED), **rotated on success** (`reset()`).
+  Wired into `useExecuteSwap`, `useCompartmentTransfer`, `useWithdraw`, `usePlaceOrder`, `useAcceptOffer`. Added
+  `/transaccionP2P` to `isMoneyEndpoint`. Tests: manager (reuse/rotate/key-order), swap hook reuse-then-rotate,
+  api-layer key forwarding. **Web suite 588/588, tsc clean.**
+- **§B.2 — Backend idempotency on POST /transaccionP2P (P2P accept) ✅ CODE DONE, unit+wiring verified** (`feat(p2p)`).
+  Mounted the Stripe-style middleware on accept (400 w/o key; replay on same key; 422 on same-key+different-body).
+  Key is completed **inside the model's fund-block transaction** via a new optional `finalize` hook on
+  `P2PTransaction.createTransaction` (getById fetched within the tx so the response body is known pre-commit) →
+  mirrors the withdraw/transfer/swap/trade anti-double-spend hardening. Tests: `idempotencyP2PAcceptWiring.test.js`
+  (unit, green) + `transaccionesP2P.model.test.js` finalize-in-tx (green) + an integration double-submit
+  (blocks funds once + 422) **written but NOT run locally — Postgres unavailable (Docker won't start, see below)**.
+  **Backend unit 625/625 green.** OpenAPI + contract doc §21 updated.
+- **§B.3 — (app) guard reactive + emailVerified redirect ✅ DONE + verified** (`fix(web)`). `authed` is now React state
+  seeded from `session.hasToken()` + updated via `session.onUnauthorized` (401-clear → redirect `/login` reactively);
+  unverified user (`emailVerified===false`) → redirect `/verify-email` (optimistic render while loading).
+  `guard.test.tsx` 5 cases green; tsc clean.
+- **§B.5 — Next 16 / React 19 eval ✅ EVALUATED** (doc). `next build` on 14.2.35 passes (17 routes). npm audit
+  criticals on the 14.x line have **no 14.x fix** (14.2.35 is latest 14.x; fix = Next 16 + React 19, conflicts with
+  the LOCKED React18/14.2.35 port). **Applicability LOW** — app uses none of the vulnerable features (no next/image,
+  rewrites, middleware, beforeInteractive/nonce). **Recommend: launch on 14.2.35, schedule 16/19 post-launch.** (Abner's call.)
+- **§B.4 — Playwright E2E money flows ⛔ BLOCKED locally** — needs backend + running Postgres; **Docker Desktop will
+  not start on this box** (engine never ready after ~10 min of polling; processes up but WSL2 engine never connects).
+  Disk is NOT the blocker now (137 GB free). Run on a Docker/Postgres box or in CI.
+- **§B.6 — check:operator-mfa + external_symbol ⛔ DEPLOY-DAY OPERATIONAL** — the script authenticates against the live
+  DB and verifies ≥2 operators enrolled TOTP; can't pass without the deploy DB. Tooling already exists and works.
+- **Blocker this session:** Docker Desktop does not start → no local Postgres → B.2 integration, B.4 E2E, and B.6
+  cannot be exercised locally. See memory [[docker-unavailable-local]]. Everything code-verifiable is green and pushed.
+- **NET:** §B.1, §B.3 fully closed; §B.2 code closed (integration pending a DB); §B.5 evaluated w/ recommendation.
+  Remaining true-blockers (§B.4 E2E, §B.6 operator-MFA, §B.2 integration run) all need a running Postgres.
+- **NEXT:** get a Postgres up (fix Docker/WSL or run a local PG on a free port per the WinNAT note) → run the P2P
+  integration + money-flow Playwright E2E; then Abner decides B.5 (launch-on-14.2.35 vs 16/19) and S8 (nginx flip).
+
 ## ▶️ SESSION 2026-10-13/14 — Next.js Slice 7 (ADMIN) COMPLETE + MERGED to main (PR #46)
 13 tasks subagent-driven. **✅ dev→main MERGED (`6c1896b`, PR #46); tsc re-verified clean on merged tree; dev == main
 == origin (0 0 / 0 0). main NOT deployed (CRA serves prod until S8 flip).** Final whole-branch review + high-effort
