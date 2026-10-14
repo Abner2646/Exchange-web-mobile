@@ -17,10 +17,11 @@ repo-side deliverables (the actual EC2 deploy/flip is operational — I have no 
   **625/625** still green (only ref was a comment). Last CRA build stays under `/var/www/bitflow` for rollback.
 - **Docs ✅** — README strangler marked complete (dropped `frontend/` layout line, added `web/e2e/`); B.5 decision recorded.
 - **Gate:** web Vitest **594/594**, `next build` OK (`/` SSG 460 B), backend unit 625/625, tsc clean.
-- **REMAINING (operational, Abner on the box):** run `deploy/CUTOVER.md` — build the standalone bundle off-box, rsync,
-  `pm2 start --only bitflow-web`, `cp bitflow-next.conf → sites-available/bitflow`, `nginx -t && reload`; then §B.6
-  (`check:operator-mfa` green + `external_symbol` on USD(T) pairs). That flip = GO LIVE. Also pending: dev→main PR +
-  /code-review for the whole gate+S8 branch (dev is ~16 commits ahead of main).
+- **MERGED to main ✅** — `/code-review` run (money-path core: 2 fixes; S8 cutover delta: 4 fixes), then **PR #48
+  (dev→main) merged; dev == main == origin (0 0)**. main NOT deployed (accumulates per the strategy).
+- **REMAINING (operational, Abner on the box) = the actual GO LIVE:** run `deploy/CUTOVER.md` — build the standalone
+  bundle off-box, rsync, `pm2 start --only bitflow-web`, `cp bitflow-next.conf → sites-available/bitflow`,
+  `nginx -t && reload`; then §B.6 (`check:operator-mfa` green + `external_symbol` on USD(T) pairs). That flip = GO LIVE.
 
 ## ▶️ SESSION 2026-10-14 — GO-LIVE GATE (known-issues §B) — money-path mine, TDD
 PASO 0 clean (dev==main==origin==`8aa5725`, 0 0 / 0 0). Abner: "Gate go live, no preguntes más, trabajá autónomo."
