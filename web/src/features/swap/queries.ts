@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ApiError } from '@/shared/api';
+import { useIdempotencyKey } from '@/shared/api/idempotencyManager';
 import { swapApi } from './api';
 import type { SwapPair, QuoteRequest, QuoteResponse, CheckLimitResponse, ExecuteSwapRequest, ExecuteSwapResponse, MySwap } from './types';
 import { WALLET_BALANCES_KEY } from '@/features/wallet/queries';
@@ -52,11 +53,14 @@ export function useMySwaps() {
 
 export function useExecuteSwap() {
   const qc = useQueryClient();
-  // Mutations do not retry by default — combined with disabled-while-pending this
-  // is the S3 double-submit guard (per-intent idempotency key is a deferred go-live item).
+  const idem = useIdempotencyKey();
+  // Idempotency by intent: the key is tied to the swap payload, reused on a manual
+  // retry of the identical request (so the backend dedups instead of double-spending),
+  // and rotated on success. Mutations also do not retry automatically.
   return useMutation<ExecuteSwapResponse, ApiError, ExecuteSwapRequest>({
-    mutationFn: swapApi.executeSwap,
+    mutationFn: (req) => swapApi.executeSwap(req, idem.keyFor(req)),
     onSuccess: () => {
+      idem.reset();
       qc.invalidateQueries({ queryKey: WALLET_BALANCES_KEY });
       qc.invalidateQueries({ queryKey: SWAP_MY_SWAPS_KEY });
       qc.invalidateQueries({ queryKey: SWAP_DAILY_VOLUME_KEY });

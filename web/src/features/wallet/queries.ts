@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ApiError } from '@/shared/api';
+import { useIdempotencyKey } from '@/shared/api/idempotencyManager';
 import { walletApi } from './api';
 import type {
   BalanceEntry,
@@ -28,9 +29,13 @@ export function useMyBalances() {
 
 export function useCompartmentTransfer() {
   const qc = useQueryClient();
+  const idem = useIdempotencyKey();
+  // Idempotency by intent: key tied to the transfer payload, reused on manual retry,
+  // rotated on success (go-live gate §B.1).
   return useMutation<CompartmentTransferResponse, ApiError, CompartmentTransferRequest>({
-    mutationFn: walletApi.transferCompartments,
+    mutationFn: (data) => walletApi.transferCompartments(data, idem.keyFor(data)),
     onSuccess: () => {
+      idem.reset();
       qc.invalidateQueries({ queryKey: WALLET_BALANCES_KEY });
     },
   });
@@ -48,9 +53,13 @@ export function useDepositAddress(cryptoId: string, enabled: boolean) {
 
 export function useWithdraw() {
   const qc = useQueryClient();
+  const idem = useIdempotencyKey();
+  // Idempotency by intent: key tied to the withdrawal payload, reused on manual retry,
+  // rotated on success (go-live gate §B.1).
   return useMutation<WithdrawResponse, ApiError, WithdrawRequest>({
-    mutationFn: walletApi.withdraw,
+    mutationFn: (data) => walletApi.withdraw(data, idem.keyFor(data)),
     onSuccess: () => {
+      idem.reset();
       qc.invalidateQueries({ queryKey: WALLET_BALANCES_KEY });
       qc.invalidateQueries({ queryKey: WALLET_TX_KEY });
     },

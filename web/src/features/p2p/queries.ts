@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ApiError } from '@/shared/api';
+import { useIdempotencyKey } from '@/shared/api/idempotencyManager';
 import { p2pApi } from './api';
 import type {
   Offer,
@@ -80,12 +81,13 @@ export function useCryptoCatalog() {
   });
 }
 
-function useTxMutation<V>(fn: (v: V) => Promise<Transaction>) {
+function useTxMutation<V>(fn: (v: V) => Promise<Transaction>, afterSuccess?: () => void) {
   const qc = useQueryClient();
   return useMutation<Transaction, ApiError, V>({
     mutationFn: fn,
     retry: false,
     onSuccess: (tx) => {
+      afterSuccess?.();
       qc.invalidateQueries({ queryKey: P2P_MY_TX_KEY });
       qc.invalidateQueries({ queryKey: WALLET_BALANCES_KEY });
       if (tx?.id) qc.invalidateQueries({ queryKey: P2P_TX_KEY(tx.id) });
@@ -94,7 +96,13 @@ function useTxMutation<V>(fn: (v: V) => Promise<Transaction>) {
 }
 
 export function useAcceptOffer() {
-  return useTxMutation((req: AcceptOfferRequest) => p2pApi.acceptOffer(req));
+  // Idempotency by intent: key tied to the accept payload, reused on manual retry,
+  // rotated on success (go-live gate §B.2). The backend is the authoritative dedup.
+  const idem = useIdempotencyKey();
+  return useTxMutation(
+    (req: AcceptOfferRequest) => p2pApi.acceptOffer(req, idem.keyFor(req)),
+    () => idem.reset(),
+  );
 }
 
 export function useConfirmPayment() {

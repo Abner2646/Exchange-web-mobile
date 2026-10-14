@@ -48,6 +48,9 @@ const MONEY_POST_PATTERNS: RegExp[] = [
   /\/balances\/my\/transfer/,
   /\/api\/referrals\/claim/,
   /\/referrals\/claim/,
+  // P2P accept (opens a transaction and locks the seller's funds). Matches ONLY the
+  // base POST /transaccionP2P — not its admin sub-paths (e.g. /admin/check-timeouts).
+  /\/transaccionP2P$/,
 ];
 
 /**

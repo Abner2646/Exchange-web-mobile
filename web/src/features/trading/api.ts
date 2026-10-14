@@ -54,9 +54,11 @@ export const tradingApi = {
   cancelOrder: (orderId: string) =>
     apiClient.delete<{ success: boolean; message?: string; error?: string }>(`/trading/orders/${orderId}`),
 
-  // Money POST. The shared client auto-attaches an Idempotency-Key (isMoneyEndpoint
-  // matches /trading/order). quantity/price stay STRINGS; price is omitted for market.
-  placeOrder: (req: PlaceOrderRequest) => {
+  // Money POST. An idempotency key tied to the submit intent is supplied by the
+  // mutation hook (go-live gate §B.1); if omitted, the shared client still
+  // auto-attaches one (isMoneyEndpoint matches /trading/order). quantity/price stay
+  // STRINGS; price is omitted for market.
+  placeOrder: (req: PlaceOrderRequest, idempotencyKey?: string) => {
     const body: Record<string, unknown> = {
       tradingPairId: req.tradingPairId,
       orderType: req.orderType,
@@ -65,6 +67,6 @@ export const tradingApi = {
     };
     if (req.orderType === 'limit' && req.price != null) body.price = req.price;
     if (req.clientOrderId) body.clientOrderId = req.clientOrderId;
-    return apiClient.post<PlaceOrderResponse>('/trading/orders', body);
+    return apiClient.post<PlaceOrderResponse>('/trading/orders', body, { idempotencyKey });
   },
 };
