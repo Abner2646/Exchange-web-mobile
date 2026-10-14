@@ -7,6 +7,7 @@ jest.mock('../../models', () => ({ User: { findByPk: jest.fn() } }));
 jest.mock('../users/totp.service', () => ({ verifyForUser: jest.fn() }));
 
 const makerChecker = require('./makerChecker.service');
+const operatorReadiness = require('./operatorReadiness.service');
 const controller = require('./governance.controller');
 
 function res() {
@@ -43,5 +44,36 @@ describe('governance controller — :id UUID validation (500 → clean 404)', ()
     };
     await controller.approve(req, res());
     expect(makerChecker.approve).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('governance controller — operator-MFA readiness', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  test('readiness returns assessMfaReadiness over the loaded operators', async () => {
+    jest.spyOn(operatorReadiness, 'loadOperators').mockResolvedValue([
+      { id: 'a', email: 'a@x.co', role: 'admin', active: true, totpEnabled: true, twoFactorEnabled: true },
+      { id: 'b', email: 'b@x.co', role: 'admin', active: true, totpEnabled: false, twoFactorEnabled: true },
+    ]);
+    const r = res();
+    await controller.readiness({}, r);
+    expect(r.json).toHaveBeenCalledWith(expect.objectContaining({
+      ready: false,
+      operatorCount: 2,
+      enrolledCount: 1,
+      minEnrolled: 2,
+    }));
+    operatorReadiness.loadOperators.mockRestore();
+  });
+
+  test('readiness is ready when ≥2 operators are fully enrolled', async () => {
+    jest.spyOn(operatorReadiness, 'loadOperators').mockResolvedValue([
+      { id: 'a', email: 'a@x.co', role: 'super_admin', active: true, totpEnabled: true, twoFactorEnabled: true },
+      { id: 'b', email: 'b@x.co', role: 'admin', active: true, totpEnabled: true, twoFactorEnabled: true },
+    ]);
+    const r = res();
+    await controller.readiness({}, r);
+    expect(r.json).toHaveBeenCalledWith(expect.objectContaining({ ready: true, enrolledCount: 2 }));
+    operatorReadiness.loadOperators.mockRestore();
   });
 });

@@ -26,6 +26,7 @@ const referralsRoutes = require('../modules/referrals/referrals.routes.js')
 const launchpadRoutes = require('../modules/launchpad/launchpad.routes.js')
 const kycRoutes = require('../modules/kyc/kyc.routes.js')
 const governanceRoutes = require('../modules/governance/governance.routes.js')
+const auditRoutes = require('../modules/audit/audit.routes.js')
 
 // Wire the large-withdrawal dual-control executor + compensator into the Maker-Checker engine at
 // boot: a checker's approval of a `large_withdrawal_release` action releases the held withdrawal,
@@ -63,6 +64,7 @@ router.use('/referrals', referralsRoutes)
 router.use('/launchpad', launchpadRoutes)
 router.use('/kyc', kycRoutes)
 router.use('/governance', governanceRoutes)
+router.use('/audit', auditRoutes)
 router.use('/user', userRoutes)
 // Fix 2026-08-19 (AUDITORIA_BACKEND.md Altos #11): estaba comentada pese a
 // que el modelo/controller ya estaban completos y activos en

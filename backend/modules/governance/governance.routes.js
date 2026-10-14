@@ -22,6 +22,20 @@ router.get('/pending', authenticateToken, requireOperatorMFA, asyncHandler(gover
 
 /**
  * @openapi
+ * /api/governance/readiness:
+ *   get:
+ *     tags: [Governance]
+ *     summary: Estado de readiness del control dual (operadores con MFA enrolados)
+ *     description: >-
+ *       Read-only. ¿Hay al menos 2 operadores ACTIVOS con TOTP habilitado para que
+ *       maker≠checker sea liberable? Proyecta solo campos no sensibles del operador.
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get('/readiness', authenticateToken, requireOperatorMFA, asyncHandler(governanceController.readiness));
+
+/**
+ * @openapi
  * /api/governance/propose:
  *   post:
  *     tags: [Governance]
