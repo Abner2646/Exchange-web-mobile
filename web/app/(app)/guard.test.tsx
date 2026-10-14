@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor, act, cleanup } from '@testing-library/react';
 import React from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { makeQueryClient } from '@/app/providers';
@@ -79,8 +79,29 @@ describe('(app) guard', () => {
     currentUser = { emailVerified: true };
     renderGuard();
     expect(screen.getByText('secret')).toBeInTheDocument();
-    // Simulate the transport clearing the token on a 401 anywhere in the app.
+    // session.notifyUnauthorized() clears the token FIRST, then fires listeners.
+    hasToken = false;
     act(() => { unauthorizedCb?.(); });
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/login'));
+    expect(screen.queryByText('secret')).not.toBeInTheDocument();
+  });
+
+  it('redirects to /login after a manual logout (clearToken does NOT fire onUnauthorized)', async () => {
+    hasToken = true;
+    currentUser = { emailVerified: true };
+    const { rerender } = renderGuard();
+    expect(screen.getByText('secret')).toBeInTheDocument();
+    // Logout clears the token and nulls the user cache → the guard re-renders via
+    // its useCurrentUser subscription. Model that re-render with the token gone.
+    hasToken = false;
+    currentUser = null as unknown as undefined;
+    rerender(
+      <QueryClientProvider client={makeQueryClient()}>
+        <LocaleProvider>
+          <AppLayout><div>secret</div></AppLayout>
+        </LocaleProvider>
+      </QueryClientProvider>
+    );
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/login'));
     expect(screen.queryByText('secret')).not.toBeInTheDocument();
   });

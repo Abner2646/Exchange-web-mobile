@@ -41,6 +41,19 @@ describe('createIdempotencyManager (idempotency by intent)', () => {
     expect(after).toMatch(UUID_V4);
   });
 
+  it('fingerprints an undefined field like an omitted one (matches the JSON wire body), distinct from explicit null', () => {
+    const m = createIdempotencyManager();
+    // JSON.stringify drops undefined keys, so { a, b: undefined } and { a } hit the
+    // same wire body → must share a key (else a retry would double-spend).
+    const omitted = m.keyFor({ a: '1' });
+    const undef = m.keyFor({ a: '1', b: undefined });
+    expect(undef).toBe(omitted);
+    // explicit null IS sent on the wire → a genuinely different body → different key
+    // (reusing the key here would earn a backend 422 IDEMPOTENCY_KEY_REUSED).
+    const explicitNull = m.keyFor({ a: '1', b: null });
+    expect(explicitNull).not.toBe(omitted);
+  });
+
   it('keeps distinct payloads on distinct keys until reset', () => {
     const m = createIdempotencyManager();
     const k10a = m.keyFor({ amount: '10' });

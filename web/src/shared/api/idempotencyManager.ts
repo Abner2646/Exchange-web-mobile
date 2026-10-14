@@ -18,12 +18,19 @@
 import { useRef } from 'react';
 import { generateIdempotencyKey } from './idempotency';
 
-/** Deterministic, key-order-independent stringify so {a,b} and {b,a} fingerprint alike. */
+/**
+ * Deterministic, key-order-independent stringify so {a,b} and {b,a} fingerprint
+ * alike. Mirrors JSON.stringify wire semantics: object keys whose value is
+ * `undefined` are DROPPED (they never reach the wire body), so an omitted field
+ * and an `undefined` field fingerprint identically — but an explicit `null` is
+ * kept, because it IS sent and would change the backend request hash.
+ */
 function stableStringify(value: unknown): string {
-  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null';
+  if (value === undefined) return 'undefined'; // only reachable at the top level
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
   const obj = value as Record<string, unknown>;
-  const keys = Object.keys(obj).sort();
+  const keys = Object.keys(obj).filter((k) => obj[k] !== undefined).sort();
   return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify(obj[k])}`).join(',')}}`;
 }
 
