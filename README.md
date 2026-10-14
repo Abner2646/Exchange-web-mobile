@@ -65,7 +65,7 @@ Most "crypto exchange" portfolio projects are a price chart and a fake order boo
 ```
 
 - **Modular monolith, not microservices** — the architecture adopts the *principles* (event-driven, durable timers, least-privilege identity, observability/reconciliation) without the operational tax of distribution. Domain code lives under `backend/modules/<domain>/`.
-- **Strangler migration** — the new Next.js app in `web/` was built slice-by-slice alongside the legacy CRA in `frontend/`; the planned final step flips nginx to Next and removes the CRA.
+- **Strangler migration (complete)** — the new Next.js app in `web/` was built slice-by-slice alongside the legacy CRA; the legacy CRA has now been removed and nginx is configured to serve Next (same-origin, `/api` → backend). See `deploy/CUTOVER.md`.
 
 ### Tech stack
 
@@ -138,7 +138,7 @@ web/                Next.js App Router app (the current frontend)
   app/(app)/        client-rendered authenticated app (wallet/swap/trading/p2p/profile/admin)
   src/features/*    per-feature api/queries/components
   src/shared/*      money, api transport, i18n, ui
-frontend/           legacy CRA app (being strangled out)
+  e2e/              Playwright money-flow specs
 docs/               design specs, implementation plans, regulatory mapping,
                     frontend contract, engineering notes
 nginx/              reverse-proxy config (same-origin / → Next, /api → backend)
