@@ -106,14 +106,14 @@ log "Migraciones + seeds"
 npm run migrate
 npm run seed || log "seed falló/vacío — revisá (el exchange necesita catálogo de criptos)"
 
-# --- 5. Frontend estático (NO se buildea en la caja de 1GB) -------------------
-sudo mkdir -p "$WEBROOT"
-if [ -d "$REPO_DIR/frontend/build" ]; then
-  log "Copiando frontend/build → $WEBROOT"
-  sudo rsync -a --delete "$REPO_DIR/frontend/build/" "$WEBROOT/"
+# --- 5. Frontend Next.js (NO se buildea en la caja de 1GB) --------------------
+# El bundle standalone (web/.next/standalone/server.js + web/.next/static + web/public)
+# se buildea FUERA de la caja (`cd web && npm ci && npm run build`) y se rsync-ea al repo.
+# pm2 (bitflow-web, §6) lo levanta en :3000; nginx (§7) proxya todo lo no-/api hacia ahí.
+if [ -f "$REPO_DIR/web/.next/standalone/server.js" ]; then
+  log "Bundle Next standalone presente (web/.next/standalone) → lo levanta pm2 en :3000"
 else
-  log "⚠️  No hay frontend/build (buildealo FUERA de la caja y rsync a $WEBROOT). Sigo con el backend."
-  [ -f "$WEBROOT/index.html" ] || echo '<h1>BitFlow API up — frontend build pendiente</h1>' | sudo tee "$WEBROOT/index.html" >/dev/null
+  log "⚠️  No hay web/.next/standalone (buildealo FUERA de la caja: cd web && npm ci && npm run build; rsync web/.next + web/public). El backend sigue igual."
 fi
 
 # --- 6. Process manager (una sola instancia; los jobs son singleton) ----------
