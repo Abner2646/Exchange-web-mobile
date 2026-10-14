@@ -29,17 +29,21 @@ Worked the §B must-fix list top-down. All commits direct to `dev`, pushed after
   criticals on the 14.x line have **no 14.x fix** (14.2.35 is latest 14.x; fix = Next 16 + React 19, conflicts with
   the LOCKED React18/14.2.35 port). **Applicability LOW** — app uses none of the vulnerable features (no next/image,
   rewrites, middleware, beforeInteractive/nonce). **Recommend: launch on 14.2.35, schedule 16/19 post-launch.** (Abner's call.)
-- **§B.4 — Playwright E2E money flows ⛔ BLOCKED locally** — needs backend + running Postgres; **Docker Desktop will
-  not start on this box** (engine never ready after ~10 min of polling; processes up but WSL2 engine never connects).
-  Disk is NOT the blocker now (137 GB free). Run on a Docker/Postgres box or in CI.
-- **§B.6 — check:operator-mfa + external_symbol ⛔ DEPLOY-DAY OPERATIONAL** — the script authenticates against the live
-  DB and verifies ≥2 operators enrolled TOTP; can't pass without the deploy DB. Tooling already exists and works.
-- **Blocker this session:** Docker Desktop does not start → no local Postgres → B.2 integration, B.4 E2E, and B.6
-  cannot be exercised locally. See memory [[docker-unavailable-local]]. Everything code-verifiable is green and pushed.
-- **NET:** §B.1, §B.3 fully closed; §B.2 code closed (integration pending a DB); §B.5 evaluated w/ recommendation.
-  Remaining true-blockers (§B.4 E2E, §B.6 operator-MFA, §B.2 integration run) all need a running Postgres.
-- **NEXT:** get a Postgres up (fix Docker/WSL or run a local PG on a free port per the WinNAT note) → run the P2P
-  integration + money-flow Playwright E2E; then Abner decides B.5 (launch-on-14.2.35 vs 16/19) and S8 (nginx flip).
+- **§B.4 — Playwright E2E money flows ✅ DONE (8/8 green)** — resolved the same day: the E2E harness is
+  **route-stubbed** (`page.route('**/api/...')` → canned JSON against the Next dev server), so it needs NO backend/DB;
+  the earlier "blocked" read was wrong. Added `e2e/{wallet,swap,trading,p2p}.spec.ts` + `e2e/support.ts`; each drives
+  the real UI (login via UI + nav-link SPA nav to dodge a Next-dev hydration overlay) and **asserts the Idempotency-Key
+  is attached** on the money POST. `npm run e2e` → 8/8 (incl. the existing auth specs). tsc clean.
+- **§B.6 — check:operator-mfa + external_symbol ⏳ DEPLOY-DAY OPERATIONAL** — the script authenticates against the live
+  DB and verifies ≥2 operators enrolled TOTP; can't pass without the deploy DB (the local test DB is empty). Tooling exists and works.
+- **UPDATE — Docker came up later in the session:** `docker info` eventually responded (engine 28.1.1). Brought up the
+  test Postgres (`test:integration:up`) and **ran the P2P integration suite: 11/11 GREEN**, including the two §B.2
+  idempotency cases (same key → replay + blocks seller funds ONCE; same key + different body → 422 KEY_REUSED). So
+  **§B.2 is now verified end-to-end**, not just unit+wiring.
+- **NET: gate essentially GREEN.** §B.1 ✅, §B.2 ✅ (unit+wiring+integration), §B.3 ✅ (+E2E), §B.4 ✅ (E2E 8/8),
+  §B.5 ✅ evaluated (recommend launch-on-14.2.35 — **Abner's decision**), §B.6 ⏳ deploy-day only.
+- **NEXT:** Abner decides §B.5 (launch on 14.2.35 vs migrate to Next 16/React 19) → then **S8** (marketing SSG +
+  nginx flip `/`→Next:3000 + delete the CRA `frontend/` = GO LIVE), with §B.6 run on deploy day after operators enroll TOTP.
 
 ## ▶️ SESSION 2026-10-13/14 — Next.js Slice 7 (ADMIN) COMPLETE + MERGED to main (PR #46)
 13 tasks subagent-driven. **✅ dev→main MERGED (`6c1896b`, PR #46); tsc re-verified clean on merged tree; dev == main
