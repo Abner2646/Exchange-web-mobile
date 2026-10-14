@@ -70,6 +70,15 @@ The mutation/query error is already typed `ApiError`, so `(error as { code?: str
 - TradingPairSelect is a near-copy of swap/PairSelect; a `num()` formatter is duplicated → extract a shared pair-select + number formatter.
 - `TradingPairDTO`/`TradingPair` field duplication (intersection type).
 
+### C6. Admin (Slice 7) — from per-task + final `/code-review` (all Minor; 0 Critical/Important)
+- **Empty-state copy renders a heading/column i18n key instead of a dedicated empty message** (most visible): `AmlOps` denylist (`admin.aml.denylist.list.heading`) + cases (`admin.aml.cases.list.heading`); `AuditViewer` (`admin.audit.col.eventType`). Add `*.list.empty` / `admin.audit.empty` keys (en/es) and use them.
+- `UsersAdmin` `colSpan={isSuperAdmin ? 1 : 0}` emits an invalid `colSpan=0` for plain admins → use `1` or drop the cell.
+- `GovernanceInbox` uses one shared approve/reject mutation instance for the whole list → `anyPending` disables every row's buttons during any single action (false-busy at scale; fine for a short inbox). Consider per-row mutation state.
+- `api.ts` `getConfig`/`getCases`/`getAudit` query-param values are not `encodeURIComponent`'d (safe for current values; inconsistent with `searchUsers`).
+- `es` catalog: `admin.readiness` "enrollados/enrollar" → rioplatense "enrolados/enrolar".
+- `AuditViewer` eventType filter fires on every keystroke (no debounce); `appendedBeforeId` ref not reset on a background refetch (benign for an immutable log).
+- `UsersAdmin` `common.cancel`/`common.confirm` hardcoded string fallbacks (keys outside `admin.*`); business-config edit row stays open after a successful save; `AdminGate` redundant `user !== undefined` guard (harmless); legacy `AdminUser.dailyLimit` shim (drop once the backend emits `dailyLimitUsd` exclusively); `admin.module.css` tab rules one-line density.
+
 ---
 
 ## How to use this doc
