@@ -33,17 +33,17 @@ export const walletApi = {
   // Raw array response (no envelope).
   getBalances: () => apiClient.get<BalanceEntry[]>('/balances/my/balances'),
 
-  transferCompartments: (data: CompartmentTransferRequest) =>
-    apiClient.post<CompartmentTransferResponse>('/balances/my/transfer', data),
+  transferCompartments: (data: CompartmentTransferRequest, idempotencyKey?: string) =>
+    apiClient.post<CompartmentTransferResponse>('/balances/my/transfer', data, { idempotencyKey }),
 
   getDepositAddress: (cryptoId: string) =>
     apiClient
       .get<SuccessEnvelope<DepositAddressResponse>>(`/transaccionBlockchain/deposit-address/${cryptoId}`)
       .then((r) => r.data),
 
-  withdraw: (data: WithdrawRequest) =>
+  withdraw: (data: WithdrawRequest, idempotencyKey?: string) =>
     apiClient
-      .post<SuccessEnvelope<WithdrawResponse>>('/transaccionBlockchain/withdraw', data)
+      .post<SuccessEnvelope<WithdrawResponse>>('/transaccionBlockchain/withdraw', data, { idempotencyKey })
       .then((r) => r.data),
 
   getTransactions: (params?: TransactionHistoryParams) =>

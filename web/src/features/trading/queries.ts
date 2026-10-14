@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ApiError } from '@/shared/api';
+import { useIdempotencyKey } from '@/shared/api/idempotencyManager';
 import { tradingApi } from './api';
 import type { TradingPair, OrderBook, RecentTrade, TradingOrder, PlaceOrderRequest, PlaceOrderResponse } from './types';
 import { WALLET_BALANCES_KEY } from '@/features/wallet/queries';
@@ -60,11 +61,13 @@ export function useCancelOrder() {
 
 export function usePlaceOrder() {
   const qc = useQueryClient();
-  // Mutations don't retry by default — with disabled-while-pending this is the S4
-  // double-submit guard (per-intent idempotency key is a deferred go-live item).
+  const idem = useIdempotencyKey();
+  // Idempotency by intent: key tied to the order payload, reused on manual retry,
+  // rotated on success (go-live gate §B.1).
   return useMutation<PlaceOrderResponse, ApiError, PlaceOrderRequest>({
-    mutationFn: tradingApi.placeOrder,
+    mutationFn: (req) => tradingApi.placeOrder(req, idem.keyFor(req)),
     onSuccess: () => {
+      idem.reset();
       qc.invalidateQueries({ queryKey: WALLET_BALANCES_KEY });
       qc.invalidateQueries({ queryKey: TRADING_ORDERS_KEY });
       qc.invalidateQueries({ queryKey: ['trading', 'orderbook'] });

@@ -132,6 +132,14 @@ describe('shared/api/idempotency.ts', () => {
     expect(isMoneyEndpoint('/api/balances/my/transfer', 'POST')).toBe(true);
   });
 
+  it('isMoneyEndpoint matches the P2P accept POST but not its admin sub-paths', () => {
+    expect(isMoneyEndpoint('/transaccionP2P', 'POST')).toBe(true);
+    expect(isMoneyEndpoint('/api/transaccionP2P', 'POST')).toBe(true);
+    // admin/sub-paths and reads must NOT be treated as the money accept endpoint
+    expect(isMoneyEndpoint('/transaccionP2P/admin/check-timeouts', 'POST')).toBe(false);
+    expect(isMoneyEndpoint('/transaccionP2P/me/transacciones', 'GET')).toBe(false);
+  });
+
   it('isMoneyEndpoint rejects methods that are not POST or non-monetary routes', () => {
     expect(isMoneyEndpoint('/api/trading/order', 'GET')).toBe(false);
     expect(isMoneyEndpoint('/api/user/login', 'POST')).toBe(false);

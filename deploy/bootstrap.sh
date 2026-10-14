@@ -23,7 +23,6 @@ BACKEND_DIR="$REPO_DIR/backend"
 DB_NAME="${DB_NAME:-bitflow_prod}"
 DB_USER="${DB_USER:-bitflow}"
 PROCESS_MGR="${PROCESS_MGR:-pm2}"
-WEBROOT="/var/www/bitflow"
 log(){ echo -e "\n\033[1;36m==> $*\033[0m"; }
 
 # --- 0. Swap (no opcional en 1GB) ---------------------------------------------
@@ -106,14 +105,14 @@ log "Migraciones + seeds"
 npm run migrate
 npm run seed || log "seed falló/vacío — revisá (el exchange necesita catálogo de criptos)"
 
-# --- 5. Frontend estático (NO se buildea en la caja de 1GB) -------------------
-sudo mkdir -p "$WEBROOT"
-if [ -d "$REPO_DIR/frontend/build" ]; then
-  log "Copiando frontend/build → $WEBROOT"
-  sudo rsync -a --delete "$REPO_DIR/frontend/build/" "$WEBROOT/"
+# --- 5. Frontend Next.js (NO se buildea en la caja de 1GB) --------------------
+# El bundle standalone (web/.next/standalone/server.js + web/.next/static + web/public)
+# se buildea FUERA de la caja (`cd web && npm ci && npm run build`) y se rsync-ea al repo.
+# pm2 (bitflow-web, §6) lo levanta en :3000; nginx (§7) proxya todo lo no-/api hacia ahí.
+if [ -f "$REPO_DIR/web/.next/standalone/server.js" ]; then
+  log "Bundle Next standalone presente (web/.next/standalone) → lo levanta pm2 en :3000"
 else
-  log "⚠️  No hay frontend/build (buildealo FUERA de la caja y rsync a $WEBROOT). Sigo con el backend."
-  [ -f "$WEBROOT/index.html" ] || echo '<h1>BitFlow API up — frontend build pendiente</h1>' | sudo tee "$WEBROOT/index.html" >/dev/null
+  log "⚠️  No hay web/.next/standalone (buildealo FUERA de la caja: cd web && npm ci && npm run build; rsync web/.next + web/public). El backend sigue igual."
 fi
 
 # --- 6. Process manager (una sola instancia; los jobs son singleton) ----------
@@ -126,7 +125,13 @@ else
   log "Levantando backend con pm2 (instances:1, fork)"
   command -v pm2 >/dev/null || sudo npm i -g pm2
   sudo mkdir -p /var/log/bitflow
-  (cd "$REPO_DIR" && pm2 start deploy/ecosystem.config.js && pm2 save)
+  # Arranca bitflow-web SOLO si el bundle Next ya está rsync-eado; si no, levanta
+  # solo el backend para no dejar bitflow-web en loop de restart (script not found).
+  if [ -f "$REPO_DIR/web/.next/standalone/server.js" ]; then
+    (cd "$REPO_DIR" && pm2 start deploy/ecosystem.config.js && pm2 save)
+  else
+    (cd "$REPO_DIR" && pm2 start deploy/ecosystem.config.js --only bitflow-backend && pm2 save)
+  fi
   sudo env PATH="$PATH" pm2 startup systemd -u "$USER" --hp "$HOME" || true
 fi
 

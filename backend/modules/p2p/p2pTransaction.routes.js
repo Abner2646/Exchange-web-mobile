@@ -7,6 +7,7 @@ const router = Router();
 const { authenticateToken, requireEmailVerified } = require('../../middleware/authMiddleware.js');
 const { isAdmin } = require('../../middleware/adminMiddleware.js');
 const requireOperatorMFA = require('../../middleware/operatorMFA.middleware');
+const idempotency = require('../../middleware/idempotency.middleware');
 const asyncHandler = require('../../utils/asyncHandler');
 
 // <--------- Este símbolo son las rutas que nos sirven posta
@@ -51,12 +52,18 @@ const transaccionP2PController = require('./p2pTransaction.controller.js');
  *   post:
  *     tags: [P2P transacciones]
  *     summary: Crear una transacción (aceptar una oferta) — bloquea las cryptos del vendedor
+ *     parameters:
+ *       - in: header
+ *         name: Idempotency-Key
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *         description: Clave de idempotencia (money-path). Un re-submit con la misma clave reproduce la respuesta original; con un body distinto devuelve 422.
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema: { type: object, required: [offerId], properties: { offerId: { type: string, format: uuid }, amount: { type: number } } }
- *     responses: { 201: { description: Transacción creada }, 400: { $ref: '#/components/responses/BadRequest' } }
+ *     responses: { 201: { description: Transacción creada }, 400: { description: 'Falta Idempotency-Key u otro error de validación' }, 422: { description: 'Idempotency-Key reusada con un body distinto' } }
  * /transaccionP2P/{id}:
  *   get:
  *     tags: [P2P transacciones]
@@ -124,8 +131,11 @@ router.get('/', authenticateToken, requireEmailVerified, asyncHandler(transaccio
 // Obtener transacción por ID
 router.get('/:id', authenticateToken, requireEmailVerified, asyncHandler(transaccionP2PController.getTransaccionById));
 
-// Crear nueva transacción (aceptar oferta)
-router.post('/', authenticateToken, requireEmailVerified, asyncHandler(transaccionP2PController.createTransaccion)); // <-----
+// Crear nueva transacción (aceptar oferta) — money-path: bloquea fondos del
+// vendedor. Idempotency-Key obligatorio (dedup Stripe-style) para que un
+// doble-submit no abra dos transacciones ni bloquee fondos dos veces (§B.2).
+// idempotency NO se envuelve en asyncHandler (maneja sus propios errores vía next).
+router.post('/', authenticateToken, requireEmailVerified, idempotency, asyncHandler(transaccionP2PController.createTransaccion)); // <-----
 
 // Fix 2026-08-19 (AUDITORIA_BACKEND.md Críticos #11): /status llamaba a un
 // método inexistente del modelo y era redundante con las transiciones

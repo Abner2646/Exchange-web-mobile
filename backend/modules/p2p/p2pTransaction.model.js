@@ -16,15 +16,19 @@ function createTransaccionP2PModel(sequelize) {
     'cancelled': []
   };
 
-P2PTransaction.createTransaction = async (data) => {
-  const { 
-    offerId, 
-    buyerId, 
-    sellerId, 
-    cryptoId, 
-    amount, 
-    unitPrice, 
-    paymentMethodId 
+// options.finalize(transaction, record): optional async hook run INSIDE the DB
+// transaction right before commit. The P2P accept controller uses it to complete
+// the idempotency key atomically with the fund block (anti-double-spend §B.2), so
+// a crash in the post-commit window cannot leave the key reclaimable and re-run.
+P2PTransaction.createTransaction = async (data, options = {}) => {
+  const {
+    offerId,
+    buyerId,
+    sellerId,
+    cryptoId,
+    amount,
+    unitPrice,
+    paymentMethodId
   } = data;
 
   if (buyerId === sellerId) {
@@ -119,10 +123,18 @@ P2PTransaction.createTransaction = async (data) => {
       },
     }, { transaction, aggregateId: transaccionConDatos.id });
 
+    // Fetch the full record WITHIN the transaction so the response body is known
+    // before commit — the idempotency finalize hook stores exactly this body.
+    const record = await P2PTransaction.getById(nuevaTransaccion.id, { transaction });
+
+    if (typeof options.finalize === 'function') {
+      await options.finalize(transaction, record);
+    }
+
     await transaction.commit();
-    
-    return await P2PTransaction.getById(nuevaTransaccion.id);
-    
+
+    return record;
+
   } catch (error) {
     if (!transaction.finished) {
       await transaction.rollback();
@@ -345,8 +357,9 @@ P2PTransaction.cancelTransaction = async (id, userId) => {
   };
 
   // Métodos de consulta (sin cambios)
-  P2PTransaction.getById = async (id) => {
+  P2PTransaction.getById = async (id, options = {}) => {
     return await P2PTransaction.findByPk(id, {
+      transaction: options.transaction,
       include: [
         {
           association: 'offer',

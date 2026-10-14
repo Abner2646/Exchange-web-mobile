@@ -2,6 +2,69 @@
 
 **Started:** 2026-09-23. Coordinator: Claude (Opus). Abner is away for several days; full autonomy.
 
+## ▶️ SESSION 2026-10-14 (cont.) — SLICE 8: marketing + nginx flip + CRA removal (repo-side)
+Abner: "Hazlo ahora." Adopted the §B.5 decision (**launch on Next 14.2.35**) and executed S8's
+repo-side deliverables (the actual EC2 deploy/flip is operational — I have no server access — captured as a runbook).
+- **Marketing home ✅** — replaced the stub with a recruiter-facing, responsive SSG landing page (hero + register/
+  sign-in CTAs + six honest feature cards + header/footer), styled with the shared tokens (light/dark). Stays `○ /`
+  static. `web/app/{page.tsx,marketing.module.css}` + updated `page.test.tsx`.
+- **nginx flip ✅ (config)** — `deploy/nginx/bitflow-next.conf` (new live config: `/`→Next:3000, `/api`+`/health`→
+  backend:3001, `/_next/static` immutable) + `bitflow.conf` generic template switched to the same proxy model.
+- **pm2 ✅** — added `bitflow-web` app (Next standalone `server.js` on 127.0.0.1:3000, `max_memory_restart:400M`).
+- **bootstrap.sh ✅** — §5 deploys the Next standalone bundle instead of `frontend/build`.
+- **CUTOVER runbook ✅** — `deploy/CUTOVER.md` (build-off-box → rsync → pm2 → nginx flip, with rollback).
+- **CRA deleted ✅** — `git rm -r frontend/` (289 files, 41.8k lines). Verified no runtime dep: backend unit
+  **625/625** still green (only ref was a comment). Last CRA build stays under `/var/www/bitflow` for rollback.
+- **Docs ✅** — README strangler marked complete (dropped `frontend/` layout line, added `web/e2e/`); B.5 decision recorded.
+- **Gate:** web Vitest **594/594**, `next build` OK (`/` SSG 460 B), backend unit 625/625, tsc clean.
+- **REMAINING (operational, Abner on the box):** run `deploy/CUTOVER.md` — build the standalone bundle off-box, rsync,
+  `pm2 start --only bitflow-web`, `cp bitflow-next.conf → sites-available/bitflow`, `nginx -t && reload`; then §B.6
+  (`check:operator-mfa` green + `external_symbol` on USD(T) pairs). That flip = GO LIVE. Also pending: dev→main PR +
+  /code-review for the whole gate+S8 branch (dev is ~16 commits ahead of main).
+
+## ▶️ SESSION 2026-10-14 — GO-LIVE GATE (known-issues §B) — money-path mine, TDD
+PASO 0 clean (dev==main==origin==`8aa5725`, 0 0 / 0 0). Abner: "Gate go live, no preguntes más, trabajá autónomo."
+Worked the §B must-fix list top-down. All commits direct to `dev`, pushed after each (origin/dev...dev = 0 0 throughout).
+
+- **§B.1 — Idempotency BY INTENT on money mutations ✅ DONE + verified** (`feat(web)`). New
+  `web/src/shared/api/idempotencyManager.ts`: a per-mutation-hook manager fingerprints each payload → stable
+  `Idempotency-Key`; **reused on a manual retry of the identical payload** (backend dedups, no double-spend),
+  **new key when the payload changes** (avoids backend 422 KEY_REUSED), **rotated on success** (`reset()`).
+  Wired into `useExecuteSwap`, `useCompartmentTransfer`, `useWithdraw`, `usePlaceOrder`, `useAcceptOffer`. Added
+  `/transaccionP2P` to `isMoneyEndpoint`. Tests: manager (reuse/rotate/key-order), swap hook reuse-then-rotate,
+  api-layer key forwarding. **Web suite 588/588, tsc clean.**
+- **§B.2 — Backend idempotency on POST /transaccionP2P (P2P accept) ✅ CODE DONE, unit+wiring verified** (`feat(p2p)`).
+  Mounted the Stripe-style middleware on accept (400 w/o key; replay on same key; 422 on same-key+different-body).
+  Key is completed **inside the model's fund-block transaction** via a new optional `finalize` hook on
+  `P2PTransaction.createTransaction` (getById fetched within the tx so the response body is known pre-commit) →
+  mirrors the withdraw/transfer/swap/trade anti-double-spend hardening. Tests: `idempotencyP2PAcceptWiring.test.js`
+  (unit, green) + `transaccionesP2P.model.test.js` finalize-in-tx (green) + an integration double-submit
+  (blocks funds once + 422) **written but NOT run locally — Postgres unavailable (Docker won't start, see below)**.
+  **Backend unit 625/625 green.** OpenAPI + contract doc §21 updated.
+- **§B.3 — (app) guard reactive + emailVerified redirect ✅ DONE + verified** (`fix(web)`). `authed` is now React state
+  seeded from `session.hasToken()` + updated via `session.onUnauthorized` (401-clear → redirect `/login` reactively);
+  unverified user (`emailVerified===false`) → redirect `/verify-email` (optimistic render while loading).
+  `guard.test.tsx` 5 cases green; tsc clean.
+- **§B.5 — Next 16 / React 19 eval ✅ EVALUATED** (doc). `next build` on 14.2.35 passes (17 routes). npm audit
+  criticals on the 14.x line have **no 14.x fix** (14.2.35 is latest 14.x; fix = Next 16 + React 19, conflicts with
+  the LOCKED React18/14.2.35 port). **Applicability LOW** — app uses none of the vulnerable features (no next/image,
+  rewrites, middleware, beforeInteractive/nonce). **Recommend: launch on 14.2.35, schedule 16/19 post-launch.** (Abner's call.)
+- **§B.4 — Playwright E2E money flows ✅ DONE (8/8 green)** — resolved the same day: the E2E harness is
+  **route-stubbed** (`page.route('**/api/...')` → canned JSON against the Next dev server), so it needs NO backend/DB;
+  the earlier "blocked" read was wrong. Added `e2e/{wallet,swap,trading,p2p}.spec.ts` + `e2e/support.ts`; each drives
+  the real UI (login via UI + nav-link SPA nav to dodge a Next-dev hydration overlay) and **asserts the Idempotency-Key
+  is attached** on the money POST. `npm run e2e` → 8/8 (incl. the existing auth specs). tsc clean.
+- **§B.6 — check:operator-mfa + external_symbol ⏳ DEPLOY-DAY OPERATIONAL** — the script authenticates against the live
+  DB and verifies ≥2 operators enrolled TOTP; can't pass without the deploy DB (the local test DB is empty). Tooling exists and works.
+- **UPDATE — Docker came up later in the session:** `docker info` eventually responded (engine 28.1.1). Brought up the
+  test Postgres (`test:integration:up`) and **ran the P2P integration suite: 11/11 GREEN**, including the two §B.2
+  idempotency cases (same key → replay + blocks seller funds ONCE; same key + different body → 422 KEY_REUSED). So
+  **§B.2 is now verified end-to-end**, not just unit+wiring.
+- **NET: gate essentially GREEN.** §B.1 ✅, §B.2 ✅ (unit+wiring+integration), §B.3 ✅ (+E2E), §B.4 ✅ (E2E 8/8),
+  §B.5 ✅ evaluated (recommend launch-on-14.2.35 — **Abner's decision**), §B.6 ⏳ deploy-day only.
+- **NEXT:** Abner decides §B.5 (launch on 14.2.35 vs migrate to Next 16/React 19) → then **S8** (marketing SSG +
+  nginx flip `/`→Next:3000 + delete the CRA `frontend/` = GO LIVE), with §B.6 run on deploy day after operators enroll TOTP.
+
 ## ▶️ SESSION 2026-10-13/14 — Next.js Slice 7 (ADMIN) COMPLETE + MERGED to main (PR #46)
 13 tasks subagent-driven. **✅ dev→main MERGED (`6c1896b`, PR #46); tsc re-verified clean on merged tree; dev == main
 == origin (0 0 / 0 0). main NOT deployed (CRA serves prod until S8 flip).** Final whole-branch review + high-effort

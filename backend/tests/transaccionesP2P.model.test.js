@@ -54,4 +54,53 @@ describe('P2PTransaction.createTransaction — fiatAmount y bloqueo exactos', ()
     // de usuario, sin suspense) con la amount exacta como string.
     expect(UserBalance.blockBalance).toHaveBeenCalledWith('v', 'crypto', '0.1', expect.anything());
   });
+
+  test('invokes the finalize callback with (transaction, record) BEFORE commit (idempotency hardening §B.2)', async () => {
+    const commit = jest.fn();
+    const fakeTx = { commit, rollback: jest.fn(), finished: false };
+    sequelize.transaction.mockResolvedValue(fakeTx);
+    P2POffer.findByPk = jest.fn().mockResolvedValue({
+      active: true, minAmount: '0.01', maxAmount: '10',
+      crypto: { symbol: 'BTC' }, fiatCurrency: 'USD',
+    });
+    UserBalance.getByUserAndCrypto = jest.fn().mockResolvedValue({ availableBalance: '5' });
+    UserBalance.blockBalance = jest.fn().mockResolvedValue();
+    P2PTransaction.create = jest.fn().mockResolvedValue({ id: 'tx1' });
+    const record = { id: 'tx1', status: 'initiated' };
+    P2PTransaction.getById = jest.fn().mockResolvedValue(record);
+
+    const order = [];
+    const finalize = jest.fn(async () => { order.push('finalize'); });
+    commit.mockImplementation(async () => { order.push('commit'); });
+
+    const result = await P2PTransaction.createTransaction({
+      offerId: 'o1', buyerId: 'c', sellerId: 'v', cryptoId: 'crypto',
+      amount: '0.1', unitPrice: '0.2', paymentMethodId: 'm1',
+    }, { finalize });
+
+    // finalize runs with the DB transaction + the full record, before the commit
+    expect(finalize).toHaveBeenCalledWith(fakeTx, record);
+    expect(P2PTransaction.getById).toHaveBeenCalledWith('tx1', { transaction: fakeTx });
+    expect(order).toEqual(['finalize', 'commit']);
+    // return contract unchanged: the full record
+    expect(result).toBe(record);
+  });
+
+  test('createTransaction still works with no options (finalize optional)', async () => {
+    const fakeTx = { commit: jest.fn(), rollback: jest.fn(), finished: false };
+    sequelize.transaction.mockResolvedValue(fakeTx);
+    P2POffer.findByPk = jest.fn().mockResolvedValue({
+      active: true, minAmount: '0.01', maxAmount: '10',
+      crypto: { symbol: 'BTC' }, fiatCurrency: 'USD',
+    });
+    UserBalance.getByUserAndCrypto = jest.fn().mockResolvedValue({ availableBalance: '5' });
+    UserBalance.blockBalance = jest.fn().mockResolvedValue();
+    P2PTransaction.create = jest.fn().mockResolvedValue({ id: 'tx1' });
+    P2PTransaction.getById = jest.fn().mockResolvedValue({ id: 'tx1' });
+
+    await expect(P2PTransaction.createTransaction({
+      offerId: 'o1', buyerId: 'c', sellerId: 'v', cryptoId: 'crypto',
+      amount: '0.1', unitPrice: '0.2', paymentMethodId: 'm1',
+    })).resolves.toEqual({ id: 'tx1' });
+  });
 });

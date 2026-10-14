@@ -29,12 +29,14 @@ describe('p2p queries', () => {
     expect(result.current.data).toEqual([{ id: 'o1' }]);
   });
 
-  it('useAcceptOffer calls acceptOffer and does not retry', async () => {
+  it('useAcceptOffer calls acceptOffer with an idempotency key and does not retry', async () => {
     (p2pApi.acceptOffer as any).mockResolvedValue({ id: 't1', status: 'initiated' });
     const { result } = renderHook(() => useAcceptOffer(), { wrapper: wrapper() });
     result.current.mutate({ offerId: 'o1', amount: '1', paymentMethodId: 'pm1' });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(p2pApi.acceptOffer).toHaveBeenCalledWith({ offerId: 'o1', amount: '1', paymentMethodId: 'pm1' });
+    const [req, key] = (p2pApi.acceptOffer as any).mock.calls[0];
+    expect(req).toEqual({ offerId: 'o1', amount: '1', paymentMethodId: 'pm1' });
+    expect(key).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
   });
 
   it('useConfirmPayment calls confirmPayment', async () => {

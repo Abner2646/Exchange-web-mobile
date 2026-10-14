@@ -43,13 +43,21 @@ export const p2pApi = {
   deleteOffer: (id: string) => apiClient.delete<{ message: string }>(`/ofertaP2P/${id}`),
 
   // --- transactions (state machine) ---
-  acceptOffer: (req: AcceptOfferRequest) =>
+  // Money POST: opens a transaction and locks the seller's funds. An idempotency key
+  // tied to the submit intent is supplied by the mutation hook (go-live gate §B.2);
+  // the shared client also auto-attaches one for this path (isMoneyEndpoint). The
+  // AUTHORITATIVE dedup is backend-side (idempotency middleware on POST /transaccionP2P).
+  acceptOffer: (req: AcceptOfferRequest, idempotencyKey?: string) =>
     apiClient
-      .post<{ message: string; data: Transaction }>('/transaccionP2P', {
-        offerId: req.offerId,
-        amount: req.amount, // STRING on the wire
-        paymentMethodId: req.paymentMethodId,
-      })
+      .post<{ message: string; data: Transaction }>(
+        '/transaccionP2P',
+        {
+          offerId: req.offerId,
+          amount: req.amount, // STRING on the wire
+          paymentMethodId: req.paymentMethodId,
+        },
+        { idempotencyKey },
+      )
       .then((r) => r.data),
 
   getMyTransactions: () => apiClient.get<MyTxResponse>('/transaccionP2P/me/transacciones'),

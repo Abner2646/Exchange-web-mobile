@@ -36,15 +36,21 @@ export const swapApi = {
     apiClient.post<CheckLimitResponse>('/intercambioExchange/check-limit', {
       quoteAmount: Number(quoteAmount),
     }),
-  // Money POST. The shared client auto-attaches an Idempotency-Key for this path
-  // (isMoneyEndpoint matches /intercambioExchange). baseAmount stays a STRING.
-  executeSwap: (req: ExecuteSwapRequest) =>
-    apiClient.post<ExecuteSwapResponse>('/intercambioExchange', {
-      pairId: req.pairId,
-      type: req.type,
-      baseAmount: req.baseAmount,
-      compartimento: req.compartimento,
-    }),
+  // Money POST. An idempotency key tied to the submit intent is supplied by the
+  // mutation hook (go-live gate §B.1); if omitted, the shared client still
+  // auto-attaches one (isMoneyEndpoint matches /intercambioExchange). baseAmount
+  // stays a STRING.
+  executeSwap: (req: ExecuteSwapRequest, idempotencyKey?: string) =>
+    apiClient.post<ExecuteSwapResponse>(
+      '/intercambioExchange',
+      {
+        pairId: req.pairId,
+        type: req.type,
+        baseAmount: req.baseAmount,
+        compartimento: req.compartimento,
+      },
+      { idempotencyKey },
+    ),
   getMySwaps: () =>
     apiClient.get<MySwap[] | { rows: MySwap[] }>('/intercambioExchange/me?limit=25').then((r) =>
       Array.isArray(r) ? r : (r?.rows ?? []),

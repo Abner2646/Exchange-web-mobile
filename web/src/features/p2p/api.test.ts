@@ -26,12 +26,14 @@ describe('p2pApi paths + shapes', () => {
     expect(await p2pApi.getActiveOffers()).toEqual([{ id: 'o2' }]);
   });
 
-  it('acceptOffer sends amount as a STRING to /transaccionP2P and returns data', async () => {
+  it('acceptOffer sends amount as a STRING to /transaccionP2P, forwards the idempotency key, and returns data', async () => {
     mockPost.mockResolvedValue({ message: 'ok', data: { id: 't1', status: 'initiated' } });
-    const tx = await p2pApi.acceptOffer({ offerId: 'o1', amount: '1.5', paymentMethodId: 'pm1' });
-    expect(mockPost).toHaveBeenCalledWith('/transaccionP2P', {
-      offerId: 'o1', amount: '1.5', paymentMethodId: 'pm1',
-    });
+    const tx = await p2pApi.acceptOffer({ offerId: 'o1', amount: '1.5', paymentMethodId: 'pm1' }, 'key-p2p');
+    expect(mockPost).toHaveBeenCalledWith(
+      '/transaccionP2P',
+      { offerId: 'o1', amount: '1.5', paymentMethodId: 'pm1' },
+      { idempotencyKey: 'key-p2p' },
+    );
     const body = mockPost.mock.calls[0][1];
     expect(typeof body.amount).toBe('string');
     expect(tx).toEqual({ id: 't1', status: 'initiated' });
