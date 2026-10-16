@@ -216,3 +216,6 @@ HANDOFF.md
 .agents/
 .claude/
 skills-lock.json
+
+# Legacy CRA design reference (extracted from git history for the visual port; not source)
+design-reference/

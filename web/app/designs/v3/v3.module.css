@@ -1,0 +1,310 @@
+/* V3 — "pro terminal" (dark/gold). Dense, data-forward, the markets table is
+   the protagonist. Display = Rajdhani (condensed, uppercased for labels);
+   figures = Roboto Mono (--font-num). Tokens scoped as CSS vars on .page. */
+
+.page {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- Header ---------- */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 1rem 1.75rem;
+}
+.brand {
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.brand::first-letter { color: var(--gold); }
+.headerNav { display: flex; align-items: center; gap: 1.25rem; }
+.navLink {
+  color: var(--ink-soft);
+  font-weight: 500;
+  font-size: 0.875rem;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+.navLink:hover { color: var(--gold); }
+.ctaSmall {
+  background: var(--gold);
+  color: #0B0E11;
+  font-weight: 700;
+  font-size: 0.875rem;
+  text-decoration: none;
+  padding: 0.55rem 1.1rem;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+.ctaSmall:hover { background: var(--gold-dark); }
+
+/* ---------- Ticker strip (signature) ---------- */
+.ticker {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  scrollbar-width: none;
+}
+.ticker::-webkit-scrollbar { display: none; }
+.tickerItem {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.6rem 1.1rem;
+  border-right: 1px solid var(--line);
+  white-space: nowrap;
+  font-family: var(--font-num), ui-monospace, monospace;
+  font-size: 0.8125rem;
+}
+.tickerIcon { border-radius: 999px; flex-shrink: 0; }
+.tickerSym { font-weight: 600; color: var(--ink); }
+.tickerPrice { color: var(--ink-soft); }
+
+/* ---------- Hero (compact) ---------- */
+.hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 3rem;
+  align-items: center;
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 3rem 1.75rem 2.5rem;
+}
+.heroContent { flex: 1; max-width: 600px; }
+.title {
+  font-size: 3.6rem;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: 0;
+  color: var(--ink);
+  margin-bottom: 1.25rem;
+  text-transform: uppercase;
+}
+.titleAccent { color: var(--gold); }
+.subtitle {
+  font-size: 1.0625rem;
+  color: var(--ink-soft);
+  line-height: 1.55;
+  margin-bottom: 1.75rem;
+  max-width: 480px;
+}
+.actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+.ctaPrimary {
+  background: var(--gold);
+  color: #0B0E11;
+  border: none;
+  padding: 0.8rem 1.6rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+.ctaPrimary:hover { background: var(--gold-dark); }
+.ctaSecondary {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  padding: 0.8rem 1.4rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.ctaSecondary:hover { border-color: var(--gold); color: var(--gold); }
+
+/* ---------- Gainers card (dense) ---------- */
+.gainersCard {
+  flex: 0 0 360px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.75rem;
+}
+.gainersHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.25rem 0.4rem 0.6rem;
+  margin-bottom: 0.25rem;
+  border-bottom: 1px solid var(--line);
+}
+.gainersHeader h3 { font-size: 1rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--ink); }
+.gainersBadge { font-size: 0.6875rem; font-weight: 700; color: var(--gold); background: var(--gold-wash); padding: 0.15rem 0.5rem; border-radius: 4px; }
+.gainersList { display: flex; flex-direction: column; }
+.gainersItem {
+  display: grid;
+  grid-template-columns: 22px auto 1fr auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem;
+  border-radius: 4px;
+  transition: background 0.12s ease;
+}
+.gainersItem:hover { background: var(--surface-2); }
+.coinIcon { border-radius: 999px; flex-shrink: 0; object-fit: cover; background: var(--surface-2); }
+.gainersSymbol { font-weight: 600; color: var(--ink); font-size: 0.8125rem; }
+.gainersPrice {
+  font-family: var(--font-num), ui-monospace, monospace;
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-align: right;
+}
+.gainersChange {
+  font-family: var(--font-num), ui-monospace, monospace;
+  font-weight: 500;
+  color: var(--success);
+  font-size: 0.8125rem;
+  text-align: right;
+}
+
+/* ---------- Section scaffolding ---------- */
+.section { max-width: 1320px; margin: 0 auto; padding: 2.5rem 1.75rem; }
+.sectionHead { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 1rem; }
+.sectionTitle {
+  font-size: 1.9rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.sectionMeta { font-size: 0.8125rem; color: var(--muted); font-family: var(--font-num), ui-monospace, monospace; }
+
+/* ---------- Markets table (dense, protagonist) ---------- */
+.tableWrap { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.table { width: 100%; border-collapse: collapse; }
+.table thead tr { background: var(--bg); }
+.table th {
+  padding: 0.7rem 1rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.thNum { text-align: right !important; }
+.row { border-top: 1px solid var(--line); transition: background 0.12s ease; }
+.row:hover { background: var(--surface-2); }
+.table td { padding: 0.65rem 1rem; color: var(--ink); vertical-align: middle; }
+.coinCell { min-width: 180px; }
+.coinInfo { display: flex; align-items: center; gap: 0.6rem; }
+.coinSymbol { display: block; font-weight: 600; color: var(--ink); font-size: 0.875rem; line-height: 1.2; }
+.coinName { display: block; font-size: 0.75rem; color: var(--muted); }
+.priceCell, .changeCell, .numCell {
+  font-family: var(--font-num), ui-monospace, monospace;
+  text-align: right;
+}
+.priceCell { font-weight: 600; font-size: 0.875rem; color: var(--ink); }
+.changeCell { font-weight: 500; font-size: 0.8125rem; }
+.numCell { font-size: 0.8125rem; color: var(--ink-soft); }
+.positive { color: var(--success); }
+.negative { color: var(--error); }
+.neutral { color: var(--neutral); }
+
+/* ---------- Download ---------- */
+.download { max-width: 1100px; margin: 0 auto; padding: 3.5rem 1.75rem; }
+.downloadInner { display: flex; align-items: center; gap: 3.5rem; }
+.downloadContent { flex: 1; }
+.downloadMockup { flex: 0 0 240px; display: flex; justify-content: center; order: 2; }
+.downloadMockupImg { width: 220px; height: auto; filter: drop-shadow(0 20px 40px rgba(0,0,0,0.6)); }
+.downloadTitle { font-size: 2rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; margin-bottom: 0.3rem; color: var(--ink); }
+.downloadSubtitle { font-size: 1.0625rem; color: var(--ink-soft); margin-bottom: 1.75rem; }
+.qrRow { display: flex; align-items: center; gap: 1.25rem; }
+.qrBox { background: #fff; padding: 11px; border-radius: 8px; line-height: 0; flex-shrink: 0; }
+.notAvailable { font-size: 1.0625rem; font-weight: 700; color: var(--ink); margin-bottom: 0.25rem; }
+.qrHint { color: var(--muted); font-size: 0.9375rem; }
+
+/* ---------- FAQ ---------- */
+.faq { max-width: 860px; margin: 0 auto; padding: 3.5rem 1.75rem; }
+.faqContainer { display: flex; flex-direction: column; gap: 0.5rem; }
+.faqItem { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.faqItem:hover { border-color: var(--muted); }
+.faqQuestion {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem 1.25rem;
+  background: transparent;
+  border: none;
+  color: var(--ink);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 0.15s ease;
+}
+.faqQuestion:hover, .faqActive { color: var(--gold); }
+.faqChevron { width: 18px; height: 18px; flex-shrink: 0; transition: transform 0.3s ease; color: var(--muted); }
+.faqChevronOpen { transform: rotate(180deg); color: var(--gold); }
+.faqAnswer { max-height: 0; overflow: hidden; transition: max-height 0.3s ease, padding 0.3s ease; }
+.faqAnswerOpen { max-height: 500px; padding: 0 1.25rem 1.1rem; }
+.faqAnswer p { color: var(--ink-soft); line-height: 1.55; font-size: 0.9375rem; }
+
+/* ---------- Features ---------- */
+.features { max-width: 1320px; margin: 0 auto; padding: 3.5rem 1.75rem 4.5rem; }
+.featuresGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; }
+.featureCard {
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-top: 2px solid var(--gold);
+  transition: background 0.15s ease;
+}
+.featureCard:hover { background: var(--surface-2); }
+.featureIcon {
+  width: 44px;
+  height: 44px;
+  margin-bottom: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--gold-wash);
+  color: var(--gold);
+}
+.featureIcon svg { width: 24px; height: 24px; }
+.featureCard h3 { font-size: 1.0625rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; color: var(--ink); margin-bottom: 0.4rem; }
+.featureCard p { font-size: 0.9rem; color: var(--ink-soft); line-height: 1.55; }
+
+/* ---------- Footer ---------- */
+.footer {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 1.75rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.8125rem;
+  text-align: center;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1040px) {
+  .hero { flex-direction: column; align-items: stretch; gap: 2.5rem; }
+  .gainersCard { flex: 1 1 auto; width: 100%; max-width: 440px; }
+  .title { font-size: 2.8rem; }
+  .downloadInner { flex-direction: column; text-align: center; }
+  .downloadMockup { order: 0; }
+  .qrRow { justify-content: center; }
+}
+@media (max-width: 640px) {
+  .title { font-size: 2.1rem; }
+  .subtitle { font-size: 0.95rem; }
+  .numCell, .thHideSm { display: none; }
+}
