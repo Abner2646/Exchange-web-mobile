@@ -194,7 +194,6 @@
   gap: var(--spacing-sm);
   padding: 0.5rem var(--spacing-xs);
   border-radius: var(--radius-md);
-  cursor: pointer;
   transition: background 0.2s ease;
 }
 .gainersItem:hover { background: var(--interactive-hover); }
@@ -261,7 +260,6 @@
 .thCenter { text-align: center !important; }
 .row {
   border-bottom: 1px solid var(--border-secondary);
-  cursor: pointer;
   transition: background 0.2s ease;
 }
 .row:last-child { border-bottom: none; }
@@ -294,6 +292,22 @@
 
 /* mini sparkline */
 .spark { width: 88px; height: 32px; display: block; }
+
+/* "View all markets" link under the teaser table */
+.marketsMore { margin-top: var(--spacing-lg); text-align: center; }
+.marketsMoreLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: var(--brand-primary);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  text-decoration: none;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-md);
+  transition: color 0.2s ease, background 0.2s ease;
+}
+.marketsMoreLink:hover { color: var(--brand-secondary); background: var(--interactive-hover); }
 
 /* ---------- Download section ---------- */
 .download {
@@ -427,6 +441,28 @@
   color: var(--text-tertiary);
   font-size: 0.875rem;
   text-align: center;
+}
+
+/* ---------- Accessibility ---------- */
+/* Visible keyboard focus for the page-body interactive elements. */
+.ctaPrimary:focus-visible,
+.ctaSecondary:focus-visible,
+.faqQuestion:focus-visible,
+.marketsMoreLink:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+/* Respect reduced-motion: neutralize transitions/animations in this subtree. */
+@media (prefers-reduced-motion: reduce) {
+  .page *,
+  .page *::before,
+  .page *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* ---------- Responsive ---------- */

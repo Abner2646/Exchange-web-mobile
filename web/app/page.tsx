@@ -158,6 +158,9 @@ export default function Home() {
               </tbody>
             </table>
           </div>
+          <div className={styles.marketsMore}>
+            <Link href="/trading" className={styles.marketsMoreLink}>Ver todos los mercados →</Link>
+          </div>
         </section>
 
         {/* Download */}
