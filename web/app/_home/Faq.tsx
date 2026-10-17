@@ -26,7 +26,7 @@ function Chevron({ open, styles }: { open: boolean; styles: FaqStyles }) {
 }
 
 export default function Faq({ styles = baseStyles }: { styles?: FaqStyles }) {
-  const [open, setOpen] = useState<number | null>(0);
+  const [open, setOpen] = useState<number | null>(null);
 
   return (
     <div className={styles.faqContainer}>
