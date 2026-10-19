@@ -1,7 +1,7 @@
 /* frontend/src/shared/styles/a11y.css */
 /* WCAG 2.2 AA Focus Visible */
 *:focus-visible {
-  outline: 2px solid var(--color-primary);
+  outline: 2px solid var(--border-focus);
   outline-offset: 2px;
 }
 

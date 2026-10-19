@@ -19,16 +19,33 @@
 
 ## 0. Estado actual vs. objetivo (importante)
 
-- El Home (`/`) aplica el tema **legacy-dark scoped**: define sus tokens inline
-  en `.page` (ver `theme` en `page.tsx`) para no filtrar al resto del app.
-- La capa global `web/src/shared/styles/tokens.css` es **otra cosa**: un set
-  genérico light-por-defecto + `prefers-color-scheme: dark`, con `--color-*`,
-  fuentes del sistema y otra escala de espaciado. Los primitivos actuales
-  (`src/shared/ui/Button|Field|Dialog`) usan esos tokens genéricos y se ven
-  espartanos.
-- **Objetivo:** promover la estética legacy-dark del Home a la capa global y
-  reestilar los primitivos para que todo el app hable el mismo idioma visual.
-  (Es el primer ítem del roadmap, Fase A.)
+- **A1 hecho.** La estética legacy-dark ya está promovida a la capa global
+  `web/src/shared/styles/tokens.css` (nombres de token del Home: `--bg-*`,
+  `--brand-*`, `--text-*`, `--border-*`, `--spacing-xs…xxl`, `--radius-sm…xl`,
+  sombras). Manrope + Inter se cargan vía `next/font` en `app/layout.tsx` y se
+  exponen como `--font-sans` / `--font-num` en `<html>`.
+- El Home (`/`) **ya no** define tokens inline: es un *dark island* que consume
+  los globales vía `data-theme="dark"` en su wrapper `.page`.
+- **Primitivos pendientes (A2):** `src/shared/ui/{Button,Field,Dialog}` todavía
+  usan alias de compatibilidad (`--color-*`, `--spacing-1..7`) que `tokens.css`
+  mantiene temporalmente. Se migran a los tokens §1 y se borran los alias en A2.
+
+### Temas (dark + light) — decisión y mecanismo
+
+- El app soporta **dark + light** (decisión de producto). **Light es el default**;
+  el tema sigue el SO vía `prefers-color-scheme`, y un `data-theme` explícito en
+  `<html>` lo fuerza (base para un toggle futuro, sin tocar componentes).
+- **No** usamos `light-dark()`: su resolución dentro de custom properties es
+  ambigua para *islas* de tema por subárbol. En su lugar los valores viven en
+  bloques por tema (`:root`/`[data-theme="light"]` y `@media prefers dark` +
+  `[data-theme="dark"]`); como los custom properties heredan de forma
+  determinista, `data-theme="dark"` sobre **cualquier** subárbol lo fuerza a dark
+  en todo navegador (así el Home es un dark island aunque el SO esté en light).
+- `color-scheme` se setea por tema para que controles nativos y scrollbars
+  acompañen.
+
+**Objetivo restante:** reestilar los primitivos (A2) y sumar los primitivos de
+estado (A3) e iconografía (A4) para que todo el app hable el mismo idioma visual.
 
 ---
 
@@ -59,8 +76,30 @@ variables CSS, no hardcodear hex en componentes.
 | Borde de foco | `--border-focus` | `#3B82F6` |
 | Hover interactivo (fondo) | `--interactive-hover` | `#1E2329` |
 
-Washes (fondos tintados para badges/íconos): acento `rgba(59,130,246,0.14)`,
-éxito `rgba(16,185,129,0.12)`. Son convención, no tokens fijos todavía.
+Washes (fondos tintados para badges/íconos): ya son tokens — `--wash-brand`,
+`--wash-success`, `--wash-error`, `--wash-warning` (alpha por tema).
+
+Los valores de arriba son el tema **dark**. El tema **light** (default) deriva
+los mismos roles manteniendo el azul de marca y contraste AA:
+
+| Rol | Token | Light |
+|---|---|---|
+| Fondo base | `--bg-primary` | `#F7F8FA` |
+| Fondo secundario / elevado | `--bg-secondary` · `--bg-elevated` | `#FFFFFF` |
+| Fondo terciario | `--bg-tertiary` | `#EDEFF3` |
+| Texto principal | `--text-primary` | `#0D1117` |
+| Texto secundario | `--text-secondary` | `#3A4454` |
+| Texto terciario / muted | `--text-tertiary` | `#5B6676` (≈4.8:1 AA) |
+| Texto sobre acento | `--text-inverse` | `#FFFFFF` |
+| Acento de marca | `--brand-primary` | `#2563EB` |
+| Acento hover/activo | `--brand-secondary` | `#1D4ED8` |
+| Acento tenue | `--brand-tertiary` | `#DBEAFE` |
+| Positivo / Negativo / Advertencia | `--success`·`--error`·`--warning` | `#059669`·`#DC2626`·`#D97706` |
+| Borde principal / secundario | `--border-primary`·`--border-secondary` | `#DCE0E7`·`#EAEDF2` |
+| Hover interactivo | `--interactive-hover` | `#F1F3F7` |
+
+Regla: en light los deltas usan los mismos tokens `--success`/`--error`/
+`--text-tertiary`, así la regla verde/rojo/neutro vale en ambos temas.
 
 ### Espaciado
 `--spacing-xs .375rem` · `sm .75rem` · `md 1.25rem` · `lg 2rem` · `xl 2.5rem` ·
@@ -223,10 +262,10 @@ lógica se cablea con el backend; la *apariencia* sigue estas reglas:
 > matriz de estados (§7) como parte del trabajo.
 
 ### Fase A — Fundaciones de estética *(habilita el resto)*
-- [ ] **A1. Promover tokens legacy-dark a global.** Reemplazar/extender
-  `src/shared/styles/tokens.css` con la paleta/espaciado/radios/sombras de §1 y
-  cargar Manrope+Inter vía `next/font` en `app/layout.tsx`. Decidir si queda
-  dark-único por ahora (recomendado) o dark + light.
+- [x] **A1. Promover tokens legacy-dark a global.** `tokens.css` con la
+  paleta/espaciado/radios/sombras de §1 en **dark + light** (ver §0), Manrope+Inter
+  vía `next/font` en `app/layout.tsx` (`--font-sans`/`--font-num`), Home migrado a
+  *dark island* (`data-theme="dark"`). Alias de compat para primitivos hasta A2.
 - [ ] **A2. Reestilar primitivos** a la estética: `Button` (primary/secondary/
   ghost/danger + sizes + loading), `Field`/`Input`/`Select`/`Textarea`, `Card`,
   `Table`, `Badge/Pill`, `Tabs`, `Dialog` (ya existe), `Tooltip`, `Toast`.
