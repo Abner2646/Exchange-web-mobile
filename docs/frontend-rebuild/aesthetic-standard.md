@@ -266,13 +266,18 @@ lógica se cablea con el backend; la *apariencia* sigue estas reglas:
   paleta/espaciado/radios/sombras de §1 en **dark + light** (ver §0), Manrope+Inter
   vía `next/font` en `app/layout.tsx` (`--font-sans`/`--font-num`), Home migrado a
   *dark island* (`data-theme="dark"`). Alias de compat para primitivos hasta A2.
-- [ ] **A2. Reestilar primitivos** a la estética: `Button` (primary/secondary/
+- [x] **A2. Reestilar primitivos** a la estética: `Button` (primary/secondary/
   ghost/danger + sizes + loading), `Field`/`Input`/`Select`/`Textarea`, `Card`,
-  `Table`, `Badge/Pill`, `Tabs`, `Dialog` (ya existe), `Tooltip`, `Toast`.
-- [ ] **A3. Primitivos de estado:** `Skeleton`, `Spinner`, `EmptyState`,
+  `Table`, `Badge/Pill`, `Tabs`, `Dialog`, `Tooltip`, `Toast`. En `src/shared/ui`.
+- [x] **A3. Primitivos de estado:** `Skeleton`, `Spinner`, `EmptyState`,
   `ErrorState`/`InlineError` (reutilizables por todas las páginas).
-- [ ] **A4. Iconografía:** set de line-icons (stroke 1.6) + wrapper de logo de
-  moneda con fallback (reusar `iconUrl`).
+- [x] **A4. Iconografía:** set de line-icons (stroke 1.6) en `ui/icons/Icon.tsx`
+  + `CoinLogo` con fallback a monograma (`iconUrl` en `shared/lib/coinIcon.ts`).
+
+> **Showcase (dev):** `GET /showcase` (solo dev, `notFound()` en prod, noindex)
+> muestra cada primitivo en sus estados con toggle dark/light. Quitar al cerrar
+> la revisión de fundaciones. *(En App Router `_showcase` sería carpeta privada
+> sin ruta; por eso la URL es `/showcase`.)*
 
 ### Fase B — Páginas públicas de auth *(poca dependencia de datos)*
 - [ ] `login`, `register`, `verify-email`, `forgot-password`.
