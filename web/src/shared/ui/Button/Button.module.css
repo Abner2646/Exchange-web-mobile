@@ -2,83 +2,94 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-family-sans);
-  font-weight: var(--font-weight-medium);
+  gap: var(--spacing-xs);
+  font-family: inherit;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
   border-radius: var(--radius-md);
   border: 1px solid transparent;
   cursor: pointer;
-  transition: all var(--motion-duration-fast) var(--motion-easing-ease);
-  position: relative;
+  white-space: nowrap;
+  transition: background-color var(--motion-duration-fast) var(--motion-easing-ease),
+    border-color var(--motion-duration-fast) var(--motion-easing-ease),
+    color var(--motion-duration-fast) var(--motion-easing-ease),
+    transform var(--motion-duration-fast) var(--motion-easing-ease),
+    box-shadow var(--motion-duration-fast) var(--motion-easing-ease);
 }
 
-.button:disabled, .button[aria-busy="true"] {
-  opacity: 0.6;
+.button:disabled,
+.button[aria-busy='true'] {
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
-/* Sizes */
+/* ---------------- Sizes ---------------- */
 .size-small {
-  padding: var(--spacing-1) var(--spacing-2);
-  font-size: var(--font-size-sm);
-  min-height: 32px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  min-height: 36px;
 }
 
 .size-medium {
-  padding: var(--spacing-2) var(--spacing-3);
+  padding: var(--spacing-sm) var(--spacing-md);
   font-size: var(--font-size-base);
   min-height: 44px; /* WCAG touch target */
 }
 
 .size-large {
-  padding: var(--spacing-3) var(--spacing-4);
-  font-size: var(--font-size-lg);
+  padding: var(--spacing-sm) var(--spacing-xl);
+  font-size: var(--font-size-md);
   min-height: 48px;
 }
 
-/* Variants */
+/* ---------------- Variants ---------------- */
+/* Primary carries the page's one bet with character: the Home's hover lift. */
 .variant-primary {
-  background-color: var(--color-primary);
-  color: var(--color-base-white);
+  background-color: var(--brand-primary);
+  color: var(--text-inverse);
 }
-
-.variant-primary:not(:disabled):not([aria-busy="true"]):hover {
-  background-color: var(--color-primary-hover);
+.variant-primary:not(:disabled):not([aria-busy='true']):hover {
+  background-color: var(--brand-secondary);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+.variant-primary:not(:disabled):not([aria-busy='true']):active {
+  transform: translateY(0);
+  box-shadow: none;
 }
 
 .variant-secondary {
-  background-color: var(--color-bg-secondary);
-  color: var(--color-text-primary);
-  border-color: var(--color-border);
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border-color: var(--border-primary);
 }
-
-.variant-secondary:not(:disabled):not([aria-busy="true"]):hover {
-  background-color: var(--color-bg-primary);
-}
-
-.variant-danger {
-  background-color: var(--color-error);
-  color: var(--color-base-white);
-}
-
-.variant-danger:not(:disabled):not([aria-busy="true"]):hover {
-  opacity: 0.9;
+.variant-secondary:not(:disabled):not([aria-busy='true']):hover {
+  background-color: var(--bg-elevated);
+  border-color: var(--border-focus);
 }
 
 .variant-ghost {
   background-color: transparent;
-  color: var(--color-primary);
+  color: var(--brand-primary);
+}
+.variant-ghost:not(:disabled):not([aria-busy='true']):hover {
+  background-color: var(--interactive-hover);
 }
 
-.variant-ghost:not(:disabled):not([aria-busy="true"]):hover {
-  background-color: var(--color-bg-primary);
+.variant-danger {
+  background-color: var(--error);
+  color: var(--color-base-white);
+}
+.variant-danger:not(:disabled):not([aria-busy='true']):hover {
+  filter: brightness(1.08);
 }
 
-/* Spinner */
+/* ---------------- Loading spinner ---------------- */
 .spinner {
-  margin-right: var(--spacing-2);
-  animation: spin 1s linear infinite;
   width: 1em;
   height: 1em;
+  flex-shrink: 0;
+  animation: spin 0.8s linear infinite;
 }
 
 @keyframes spin {

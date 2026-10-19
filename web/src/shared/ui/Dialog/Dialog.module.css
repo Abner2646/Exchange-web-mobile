@@ -1,36 +1,38 @@
 .backdrop {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: var(--spacing-md);
   z-index: var(--z-index-modal);
 }
 
 .dialog {
-  background-color: var(--color-bg-secondary);
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
-  padding: var(--spacing-4);
-  width: 90%;
-  max-width: 500px;
+  padding: var(--spacing-lg);
+  width: 100%;
+  max-width: 480px;
   max-height: 90vh;
   overflow-y: auto;
   outline: none;
-  font-family: var(--font-family-sans);
+  color: var(--text-primary);
 }
 
 .title {
   margin-top: 0;
-  margin-bottom: var(--spacing-3);
+  margin-bottom: var(--spacing-md);
   font-size: var(--font-size-xl);
-  color: var(--color-text-primary);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--tracking-snug);
+  color: var(--text-primary);
 }
 
 .content {
-  color: var(--color-text-primary);
+  color: var(--text-secondary);
+  line-height: 1.6;
 }

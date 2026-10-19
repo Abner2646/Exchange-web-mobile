@@ -196,9 +196,10 @@
 }
 
 /* =====================================================================
-   Legacy compatibility aliases — the pre-rebuild primitives
-   (Button/Field/Dialog) still reference these names. Removed in A2 once the
-   primitives migrate to the §1 tokens above.
+   Legacy compatibility aliases. The rebuilt primitives now use the §1 tokens
+   above; these remain only for not-yet-rebuilt feature pages (admin, etc.) that
+   still reference the old names (often with their own inline fallbacks).
+   Remove in the Fase E transversal pass once every page is rebuilt.
    ===================================================================== */
 :root {
   --color-bg-primary: var(--bg-primary);

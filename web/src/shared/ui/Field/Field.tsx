@@ -1,6 +1,7 @@
 'use client';
 import React, { useId, ReactElement, cloneElement, InputHTMLAttributes } from 'react';
 import styles from './Field.module.css';
+import controlStyles from '../controls/controls.module.css';
 
 export interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
@@ -51,7 +52,7 @@ export const Field: React.FC<FieldProps> = ({
       ) : (
         <input
           type="text"
-          className={[styles.input, isInvalid && styles.inputError].filter(Boolean).join(' ')}
+          className={controlStyles.control}
           {...props}
           id={controlId}
           aria-invalid={isInvalid}

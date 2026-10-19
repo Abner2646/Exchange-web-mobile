@@ -1,0 +1,56 @@
+/* Data table. Consumers write semantic <thead>/<tbody>/<tr>/<th>/<td>; styling
+   is element-scoped so markup stays clean. Numeric cells opt in with `data-num`
+   to get the tabular figure font and right alignment. */
+.wrap {
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table thead tr {
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.table th {
+  padding: var(--spacing-md);
+  text-align: left;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+}
+
+.table td {
+  padding: var(--spacing-md);
+  color: var(--text-primary);
+  font-size: var(--font-size-base);
+}
+
+.table tbody tr {
+  border-bottom: 1px solid var(--border-secondary);
+}
+.table tbody tr:last-child {
+  border-bottom: none;
+}
+
+/* Reading-aid hover only — not a click affordance (see standard §6). */
+.table tbody tr:hover {
+  background-color: var(--interactive-hover);
+}
+
+.table th[data-num],
+.table td[data-num] {
+  text-align: right;
+  font-family: var(--font-num), var(--font-sans, system-ui), sans-serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tracking-snug);
+}

@@ -1,0 +1,64 @@
+/* Shared form-control surface for Input / Select / Textarea and the Field
+   fallback input. Imported via `composes` so there is a single source of truth. */
+.control {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  color: var(--text-primary);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  min-height: 44px; /* WCAG touch target */
+  transition: border-color var(--motion-duration-fast) var(--motion-easing-ease),
+    box-shadow var(--motion-duration-fast) var(--motion-easing-ease);
+}
+
+.control::placeholder {
+  color: var(--text-tertiary);
+}
+
+.control:hover:not(:disabled):not(:focus) {
+  border-color: var(--border-focus);
+}
+
+.control:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--wash-brand);
+}
+
+.control[aria-invalid='true'] {
+  border-color: var(--error);
+}
+
+.control[aria-invalid='true']:focus {
+  box-shadow: 0 0 0 3px var(--wash-error);
+}
+
+.control:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: var(--bg-tertiary);
+}
+
+/* Select keeps the native arrow — themed by `color-scheme` per theme. */
+.select {
+  composes: control;
+  cursor: pointer;
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 20px) center, calc(100% - 15px) center;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  color: var(--text-primary);
+  padding-right: var(--spacing-xl);
+}
+
+.textarea {
+  composes: control;
+  min-height: 96px;
+  line-height: 1.5;
+  resize: vertical;
+}

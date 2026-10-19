@@ -1,0 +1,29 @@
+.card {
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  color: var(--text-primary);
+}
+
+/* "Quiet" cards recede with a softer border. */
+.quiet {
+  border-color: var(--border-secondary);
+}
+
+.pad-lg {
+  padding: var(--spacing-lg);
+}
+
+/* Interactive cards lift on hover (only when the whole card is a link/button). */
+.interactive {
+  cursor: pointer;
+  transition: transform var(--motion-duration-fast) var(--motion-easing-ease),
+    box-shadow var(--motion-duration-fast) var(--motion-easing-ease),
+    border-color var(--motion-duration-fast) var(--motion-easing-ease);
+}
+.interactive:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--border-focus);
+}

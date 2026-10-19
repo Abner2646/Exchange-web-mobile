@@ -1,0 +1,38 @@
+.tablist {
+  display: flex;
+  gap: var(--spacing-md);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.tab {
+  position: relative;
+  padding: var(--spacing-sm) 0;
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: color var(--motion-duration-fast) var(--motion-easing-ease);
+}
+
+.tab:hover {
+  color: var(--text-primary);
+}
+
+.tab[aria-selected='true'] {
+  color: var(--brand-primary);
+}
+
+/* Active underline sits on the container's bottom border. */
+.tab[aria-selected='true']::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background-color: var(--brand-primary);
+  border-radius: var(--radius-full);
+}
