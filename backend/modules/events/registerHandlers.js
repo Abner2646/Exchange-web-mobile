@@ -1,6 +1,8 @@
 // modules/events/registerHandlers.js
 // Wires all domain-event handlers to the eventBus. Call once at app bootstrap,
 // before the outbox publisher job starts.
+'use strict';
+
 const eventBus = require('./eventBus');
 const notificationHandlers = require('../notifications/notificationEventHandlers');
 const auditHandlers = require('../audit/auditConsumer');
