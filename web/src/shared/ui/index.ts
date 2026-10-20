@@ -3,6 +3,7 @@ export * from './Field/Field';
 export * from './Dialog/Dialog';
 export * from './controls/Input';
 export * from './controls/Select';
+export * from './controls/NativeSelect';
 export * from './controls/Textarea';
 export * from './Card/Card';
 export * from './Badge/Badge';

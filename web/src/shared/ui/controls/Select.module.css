@@ -1,0 +1,117 @@
+.root {
+  position: relative;
+}
+
+/* Trigger reuses the shared control surface look. */
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  color: var(--text-primary);
+  text-align: left;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  min-height: 44px;
+  cursor: pointer;
+  transition: border-color var(--motion-duration-fast) var(--motion-easing-ease),
+    box-shadow var(--motion-duration-fast) var(--motion-easing-ease);
+}
+
+.trigger:hover:not(:disabled) {
+  border-color: var(--border-focus);
+}
+
+.trigger:focus-visible,
+.triggerOpen {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--wash-brand);
+}
+
+.trigger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: var(--bg-tertiary);
+}
+
+.value {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex: 1;
+  min-width: 0;
+}
+.valueText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.placeholder {
+  color: var(--text-tertiary);
+}
+
+.chevron {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+  transition: transform var(--motion-duration-fast) var(--motion-easing-ease);
+}
+.chevronOpen {
+  transform: rotate(180deg);
+  color: var(--brand-primary);
+}
+
+/* Popup panel */
+.panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: var(--z-index-dropdown);
+  max-height: 260px;
+  overflow-y: auto;
+  padding: var(--spacing-xs);
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  list-style: none;
+  margin: 0;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: var(--font-size-base);
+  cursor: pointer;
+}
+
+.optionActive {
+  background-color: var(--interactive-hover);
+}
+
+.optionSelected {
+  color: var(--brand-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.optionLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.check {
+  flex-shrink: 0;
+  color: var(--brand-primary);
+}

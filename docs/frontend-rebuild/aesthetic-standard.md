@@ -169,11 +169,23 @@ para elevar lo que flota (cards destacadas, menús); el resto se separa con bord
   **Arranca cerrado** (sin ítem abierto por defecto).
 - **Badges / pills.** Chicos, `radius-full`, fondo wash tintado + texto del color
   del rol (éxito/acento), `.75rem` peso 600.
-- **Inputs / Field (a construir).** `--bg-secondary` + `1px --border-primary` +
-  `radius-md`; foco = `--border-focus` + anillo; label `--text-secondary`; texto
-  de ayuda `.8125rem`; error en `--error` con mensaje accionable (§7).
+- **Inputs / Field.** Superficie `.control`: `--bg-secondary` + `1px
+  --border-primary` + `radius-md`; foco = `--border-focus` + anillo
+  `--wash-brand`; label `--text-secondary`; ayuda `.8125rem`; error en `--error`
+  con mensaje accionable (§7). `Input`/`NativeSelect`/`Textarea` la comparten.
+  El **textarea no es redimensionable** (`resize:none`, alto predefinido); si el
+  texto excede, scrollea dentro con scrollbar temático.
+- **Select.** Dos variantes: `NativeSelect` (el `<select>` nativo) para casos
+  simples; y **`Select` custom** (patrón listbox accesible) cuando las opciones
+  llevan **ícono/logo** (ej. logos reales de monedas) o se quiere un panel
+  estilizado — el `<select>` nativo no puede renderizar imágenes ni estilar su
+  panel. Trigger = look `.control`; panel = superficie elevada + sombra, opción
+  activa `--interactive-hover`, seleccionada en `--brand-primary` con check.
 - **Diálogos/menús.** Superficie elevada + sombra `lg`; overlay oscurecido;
   respetan z-index tokens; foco atrapado (lo da el primitivo).
+- **Scrollbars.** Temáticos globalmente (thin, thumb `--bg-tertiary` → hover
+  `--text-tertiary`), consistentes en página, textareas, diálogos, tablas y el
+  panel del Select.
 
 ---
 

@@ -5,6 +5,7 @@ import {
   Field,
   Input,
   Select,
+  NativeSelect,
   Textarea,
   Card,
   Badge,
@@ -88,9 +89,16 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
+const COIN_OPTIONS = ['BTC', 'ETH', 'SOL', 'USDC', 'XRP', 'BNB'].map((s) => ({
+  value: s,
+  label: s,
+  icon: <CoinLogo symbol={s} size={22} />,
+}));
+
 export default function ShowcaseClient() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [tab, setTab] = useState('overview');
+  const [coin, setCoin] = useState('BTC');
 
   return (
     <ToastProvider>
@@ -131,13 +139,17 @@ export default function ShowcaseClient() {
               <Field label="Email" placeholder="tu@email.com" helpText="Nunca lo compartimos." />
               <Field label="Monto" placeholder="0.00" error="Saldo insuficiente." defaultValue="9999" />
               <Field label="Moneda">
-                <Select defaultValue="BTC">
-                  <option value="BTC">Bitcoin (BTC)</option>
-                  <option value="ETH">Ethereum (ETH)</option>
-                </Select>
+                <Select options={COIN_OPTIONS} value={coin} onChange={setCoin} />
+              </Field>
+              <Field label="Red (nativo)">
+                <NativeSelect defaultValue="erc20">
+                  <option value="erc20">Ethereum (ERC-20)</option>
+                  <option value="bep20">BNB Smart Chain (BEP-20)</option>
+                  <option value="trc20">Tron (TRC-20)</option>
+                </NativeSelect>
               </Field>
               <Field label="Nota">
-                <Textarea placeholder="Opcional…" />
+                <Textarea placeholder="Escribí una nota larga para ver el scroll interno del campo…" />
               </Field>
             </div>
           </Section>

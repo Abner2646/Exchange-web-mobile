@@ -58,7 +58,8 @@
 
 .textarea {
   composes: control;
-  min-height: 96px;
+  height: 112px; /* predefined — not user-resizable */
   line-height: 1.5;
-  resize: vertical;
+  resize: none;
+  overflow-y: auto;
 }
