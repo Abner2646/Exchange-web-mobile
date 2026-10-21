@@ -1,5 +1,87 @@
-.form { display: flex; flex-direction: column; gap: var(--space-4, 16px); }
-.error { color: var(--color-danger, #b00020); }
-.actions { display: flex; flex-direction: column; gap: var(--space-3, 12px); }
-.links { display: flex; flex-direction: column; gap: var(--space-2, 8px); font-size: 0.9rem; }
-.divider { text-align: center; color: var(--color-muted, #666); font-size: 0.85rem; }
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--tracking-snug);
+  color: var(--text-primary);
+}
+
+.subtitle {
+  margin: 0;
+  font-size: var(--font-size-base);
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* Error banner — what happened, accented, not an apology (standard §7). */
+.error {
+  margin: 0;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: var(--wash-error);
+  border-left: 3px solid var(--error);
+  border-radius: var(--radius-sm);
+  color: var(--error);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.notice {
+  margin: 0;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: var(--wash-success);
+  border-left: 3px solid var(--success);
+  border-radius: var(--radius-sm);
+  color: var(--success);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+/* Stacked actions stretch full width for a clear primary target. */
+.actions > button {
+  width: 100%;
+}
+
+/* Divider with a centered label ("o"). */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  color: var(--text-tertiary);
+  font-size: var(--font-size-xs);
+  text-transform: lowercase;
+}
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background-color: var(--border-secondary);
+}
+
+.links {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-xs);
+}
+.links a {
+  color: var(--brand-primary);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+}
+.links a:hover {
+  color: var(--brand-secondary);
+  text-decoration: underline;
+}

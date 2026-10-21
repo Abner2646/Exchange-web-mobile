@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Field, Button } from '@/shared/ui';
+import { Field, Button, Input } from '@/shared/ui';
 import { useTranslation, useErrorTranslation } from '@/shared/i18n';
 import { isApiError } from '@/shared/api';
 import { useForgotPassword, useVerifyResetCode, useResetPassword } from '../queries';
@@ -62,11 +62,11 @@ export const ForgotPasswordForm: React.FC = () => {
   if (step === 'code') {
     return (
       <form className={styles.form} onSubmit={onCode} noValidate>
-        <h1>{t('auth.reset.codeTitle')}</h1>
-        {notice && <p role="status">{notice}</p>}
+        <h1 className={styles.title}>{t('auth.reset.codeTitle')}</h1>
+        {notice && <p className={styles.notice} role="status">{notice}</p>}
         {error && <p className={styles.error} role="alert">{error}</p>}
         <Field label={t('auth.field.code')}>
-          <input type="text" inputMode="numeric" autoComplete="one-time-code" required value={codigo} onChange={(e) => setCodigo(e.target.value)} />
+          <Input type="text" inputMode="numeric" autoComplete="one-time-code" required value={codigo} onChange={(e) => setCodigo(e.target.value)} />
         </Field>
         <div className={styles.actions}>
           <Button type="submit" loading={verifyCode.isPending}>{t('auth.reset.codeSubmit')}</Button>
@@ -78,13 +78,13 @@ export const ForgotPasswordForm: React.FC = () => {
   if (step === 'reset') {
     return (
       <form className={styles.form} onSubmit={onReset} noValidate>
-        <h1>{t('auth.reset.title')}</h1>
+        <h1 className={styles.title}>{t('auth.reset.title')}</h1>
         {error && <p className={styles.error} role="alert">{error}</p>}
         <Field label={t('auth.field.newPassword')}>
-          <input type="password" autoComplete="new-password" required value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+          <Input type="password" autoComplete="new-password" required value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
         </Field>
         <Field label={t('auth.field.confirmPassword')}>
-          <input type="password" autoComplete="new-password" required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+          <Input type="password" autoComplete="new-password" required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
         </Field>
         <div className={styles.actions}>
           <Button type="submit" loading={reset.isPending}>{t('auth.reset.submit')}</Button>
@@ -95,10 +95,10 @@ export const ForgotPasswordForm: React.FC = () => {
 
   return (
     <form className={styles.form} onSubmit={onRequest} noValidate>
-      <h1>{t('auth.forgot.title')}</h1>
+      <h1 className={styles.title}>{t('auth.forgot.title')}</h1>
       {error && <p className={styles.error} role="alert">{error}</p>}
       <Field label={t('auth.field.email')}>
-        <input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+        <Input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
       </Field>
       <div className={styles.actions}>
         <Button type="submit" loading={forgot.isPending}>{t('auth.forgot.submit')}</Button>

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Field, Button } from '@/shared/ui';
+import { Field, Button, Input } from '@/shared/ui';
 import { useTranslation, useErrorTranslation } from '@/shared/i18n';
 import { isApiError } from '@/shared/api';
 import { useRegister } from '../queries';
@@ -32,16 +32,16 @@ export const RegisterForm: React.FC = () => {
 
   return (
     <form className={styles.form} onSubmit={onSubmit} noValidate>
-      <h1>{t('auth.register.title')}</h1>
+      <h1 className={styles.title}>{t('auth.register.title')}</h1>
       {error && <p className={styles.error} role="alert">{error}</p>}
       <Field label={t('auth.field.email')}>
-        <input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+        <Input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
       </Field>
       <Field label={t('auth.field.username')}>
-        <input type="text" autoComplete="username" required value={username} onChange={(e) => setUsername(e.target.value)} />
+        <Input type="text" autoComplete="username" required value={username} onChange={(e) => setUsername(e.target.value)} />
       </Field>
       <Field label={t('auth.field.password')}>
-        <input type="password" autoComplete="new-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+        <Input type="password" autoComplete="new-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
       </Field>
       <div className={styles.actions}>
         <Button type="submit" loading={register.isPending}>{t('auth.register.submit')}</Button>

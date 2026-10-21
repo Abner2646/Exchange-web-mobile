@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Field, Button } from '@/shared/ui';
+import { Field, Button, Input } from '@/shared/ui';
 import { useTranslation, useErrorTranslation } from '@/shared/i18n';
 import { isApiError } from '@/shared/api';
 import { useLogin, useVerify2FA, useResend2FA } from '../queries';
@@ -65,10 +65,10 @@ export const LoginForm: React.FC = () => {
   if (step.kind === 'twofa') {
     return (
       <form className={styles.form} onSubmit={onTwoFactor} noValidate>
-        <h1>{step.method === 'totp' ? t('auth.twofa.title.totp') : t('auth.twofa.title.email')}</h1>
+        <h1 className={styles.title}>{step.method === 'totp' ? t('auth.twofa.title.totp') : t('auth.twofa.title.email')}</h1>
         {error && <p className={styles.error} role="alert">{error}</p>}
         <Field label={t('auth.field.code')}>
-          <input type="text" inputMode="numeric" autoComplete="one-time-code" required value={codigo} onChange={(e) => setCodigo(e.target.value)} />
+          <Input type="text" inputMode="numeric" autoComplete="one-time-code" required value={codigo} onChange={(e) => setCodigo(e.target.value)} />
         </Field>
         <div className={styles.actions}>
           <Button type="submit" loading={verify2fa.isPending}>{t('auth.twofa.submit')}</Button>
@@ -82,18 +82,18 @@ export const LoginForm: React.FC = () => {
 
   return (
     <form className={styles.form} onSubmit={onCredentials} noValidate>
-      <h1>{t('auth.login.title')}</h1>
+      <h1 className={styles.title}>{t('auth.login.title')}</h1>
       {error && <p className={styles.error} role="alert">{error}</p>}
       <Field label={t('auth.field.email')}>
-        <input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+        <Input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
       </Field>
       <Field label={t('auth.field.password')}>
-        <input type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+        <Input type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
       </Field>
       <div className={styles.actions}>
         <Button type="submit" loading={login.isPending}>{t('auth.login.submit')}</Button>
       </div>
-      <div className={styles.divider}>—</div>
+      <div className={styles.divider} aria-hidden="true" />
       <GoogleSignInButton />
       <div className={styles.links}>
         <Link href="/forgot-password">{t('auth.login.forgot')}</Link>

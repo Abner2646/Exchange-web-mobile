@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Field, Button } from '@/shared/ui';
+import { Field, Button, Input } from '@/shared/ui';
 import { useTranslation, useErrorTranslation } from '@/shared/i18n';
 import { isApiError } from '@/shared/api';
 import { useVerifyEmail, useResendVerification } from '../queries';
@@ -41,12 +41,12 @@ export const VerifyEmailForm: React.FC = () => {
 
   return (
     <form className={styles.form} onSubmit={onSubmit} noValidate>
-      <h1>{t('auth.verifyEmail.title')}</h1>
-      <p>{t('auth.verifyEmail.sent')}</p>
-      {notice && <p role="status">{notice}</p>}
+      <h1 className={styles.title}>{t('auth.verifyEmail.title')}</h1>
+      <p className={styles.subtitle}>{t('auth.verifyEmail.sent')}</p>
+      {notice && <p className={styles.notice} role="status">{notice}</p>}
       {error && <p className={styles.error} role="alert">{error}</p>}
       <Field label={t('auth.field.code')}>
-        <input type="text" inputMode="numeric" autoComplete="one-time-code" required value={codigo} onChange={(e) => setCodigo(e.target.value)} />
+        <Input type="text" inputMode="numeric" autoComplete="one-time-code" required value={codigo} onChange={(e) => setCodigo(e.target.value)} />
       </Field>
       <div className={styles.actions}>
         <Button type="submit" loading={verify.isPending}>{t('auth.verifyEmail.submit')}</Button>

@@ -291,10 +291,13 @@ lógica se cablea con el backend; la *apariencia* sigue estas reglas:
 > la revisión de fundaciones. *(En App Router `_showcase` sería carpeta privada
 > sin ruta; por eso la URL es `/showcase`.)*
 
-### Fase B — Páginas públicas de auth *(poca dependencia de datos)*
-- [ ] `login`, `register`, `verify-email`, `forgot-password`.
-- [ ] Estados: submit (loading en botón), error de credenciales/token, éxito /
-  confirmación. (Empty no aplica.)
+### Fase B — Páginas públicas de auth *(poca dependencia de datos)* ✅
+- [x] `login`, `register`, `verify-email`, `forgot-password`. Shell *dark island*
+  branded (card centrada + glow de marca) en el layout de `(auth)`; formas
+  restiladas (título, error banner, notice, divider, links, submit full-width).
+  Inputs crudos → primitivo `Input`. Wiring/i18n/tests intactos.
+- [x] Estados: submit (loading en botón), error de credenciales/token (banner
+  `role=alert`), notice de reenvío (`role=status`). (Empty no aplica.)
 
 ### Fase C — Core money pages *(acá pesan los estados)*
 - [ ] `wallet` (balances, depósito, retiro), `swap`, `trading` (order book,
