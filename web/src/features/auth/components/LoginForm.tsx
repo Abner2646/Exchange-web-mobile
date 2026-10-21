@@ -24,7 +24,7 @@ export const LoginForm: React.FC = () => {
   const resend2fa = useResend2FA();
 
   const [step, setStep] = useState<Step>({ kind: 'credentials' });
-  const [email, setEmail] = useState('');
+  const [emailOrUsername, setEmailOrUsername] = useState('');
   const [password, setPassword] = useState('');
   const [codigo, setCodigo] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -36,7 +36,7 @@ export const LoginForm: React.FC = () => {
     e.preventDefault();
     setError(null);
     try {
-      const result = await login.mutateAsync({ email, password });
+      const result = await login.mutateAsync({ emailOrUsername, password });
       if (isTwoFactorChallenge(result)) {
         setStep({ kind: 'twofa', method: result.twoFactorMethod, temporalToken: result.temporalToken });
         return;
@@ -62,43 +62,65 @@ export const LoginForm: React.FC = () => {
     catch (err) { showError(err); }
   };
 
+  const backToLogin = () => {
+    setStep({ kind: 'credentials' });
+    setCodigo(''); setError(null);
+  };
+
   if (step.kind === 'twofa') {
     return (
       <form className={styles.form} onSubmit={onTwoFactor} noValidate>
         <h1 className={styles.title}>{step.method === 'totp' ? t('auth.twofa.title.totp') : t('auth.twofa.title.email')}</h1>
         {error && <p className={styles.error} role="alert">{error}</p>}
         <Field label={t('auth.field.code')}>
-          <Input type="text" inputMode="numeric" autoComplete="one-time-code" required value={codigo} onChange={(e) => setCodigo(e.target.value)} />
+          <Input type="text" inputMode="numeric" autoComplete="one-time-code" autoFocus required value={codigo} onChange={(e) => setCodigo(e.target.value)} />
         </Field>
         <div className={styles.actions}>
           <Button type="submit" loading={verify2fa.isPending}>{t('auth.twofa.submit')}</Button>
-          {step.method === 'email' && (
-            <Button type="button" variant="ghost" loading={resend2fa.isPending} onClick={onResend}>{t('auth.twofa.resend')}</Button>
-          )}
         </div>
+        {step.method === 'email' && (
+          <div className={styles.resendRow}>
+            <button type="button" className={styles.resendButton} disabled={resend2fa.isPending} onClick={onResend}>
+              {t('auth.twofa.resend')}
+            </button>
+          </div>
+        )}
+        <button type="button" className={styles.backButton} onClick={backToLogin}>{t('auth.login.back')}</button>
       </form>
     );
   }
 
   return (
     <form className={styles.form} onSubmit={onCredentials} noValidate>
-      <h1 className={styles.title}>{t('auth.login.title')}</h1>
+      <div>
+        <h1 className={styles.title}>{t('auth.login.title')}</h1>
+        <p className={styles.description}>{t('auth.login.description')}</p>
+      </div>
+
+      <GoogleSignInButton />
+      <div className={styles.divider}><span>o</span></div>
+
       {error && <p className={styles.error} role="alert">{error}</p>}
-      <Field label={t('auth.field.email')}>
-        <Input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+
+      <Field label={t('auth.field.emailOrUsername')}>
+        <Input type="text" autoComplete="username" required value={emailOrUsername} onChange={(e) => setEmailOrUsername(e.target.value)} />
       </Field>
-      <Field label={t('auth.field.password')}>
-        <Input type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-      </Field>
+      <div>
+        <Field label={t('auth.field.password')}>
+          <Input type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+        </Field>
+        <div className={styles.forgotRow}>
+          <Link href="/forgot-password" className={styles.inlineLink}>{t('auth.login.forgot')}</Link>
+        </div>
+      </div>
+
       <div className={styles.actions}>
         <Button type="submit" loading={login.isPending}>{t('auth.login.submit')}</Button>
       </div>
-      <div className={styles.divider} aria-hidden="true" />
-      <GoogleSignInButton />
-      <div className={styles.links}>
-        <Link href="/forgot-password">{t('auth.login.forgot')}</Link>
-        <Link href="/register">{t('auth.login.needAccount')}</Link>
-      </div>
+
+      <p className={styles.footer}>
+        <Link href="/register" className={styles.footerLink}>{t('auth.login.needAccount')}</Link>
+      </p>
     </form>
   );
 };

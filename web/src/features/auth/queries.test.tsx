@@ -34,7 +34,7 @@ describe('auth queries', () => {
   it('useLogin success stores the token for a direct (non-2FA) login', async () => {
     login.mockResolvedValue({ user: { id: '1' }, token: 'jwt' });
     const { result } = renderHook(() => useLogin(), { wrapper });
-    result.current.mutate({ email: 'a@b.co', password: 'pw' });
+    result.current.mutate({ emailOrUsername: 'a@b.co', password: 'pw' });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(setToken).toHaveBeenCalledWith('jwt');
   });
@@ -42,7 +42,7 @@ describe('auth queries', () => {
   it('useLogin does NOT store a token on a 2FA challenge', async () => {
     login.mockResolvedValue({ requires2FA: true, twoFactorMethod: 'totp', temporalToken: 'tt' });
     const { result } = renderHook(() => useLogin(), { wrapper });
-    result.current.mutate({ email: 'a@b.co', password: 'pw' });
+    result.current.mutate({ emailOrUsername: 'a@b.co', password: 'pw' });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(setToken).not.toHaveBeenCalled();
   });

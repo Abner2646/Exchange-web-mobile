@@ -1,68 +1,29 @@
-/* Auth shell — a dark, branded island (like the Home) that centers a single
-   card. All auth pages share it via the (auth) route-group layout. */
+/* Auth shell — a plain dark, centered single card, faithful to the V1 CRA
+   (design-reference/legacy-cra/src/styles/Login.css): no logo, no decoration,
+   just the card. Dark island, consistent with the rest of the public surface. */
 .shell {
-  position: relative;
   min-height: 100vh;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--spacing-lg);
-  padding: var(--spacing-xl) var(--spacing-md);
+  padding: var(--spacing-lg);
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  overflow: hidden;
-}
-
-/* One quiet bet with character: a soft brand glow behind the card. */
-.glow {
-  position: absolute;
-  top: -10%;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 680px;
-  max-width: 120vw;
-  aspect-ratio: 1;
-  background: radial-gradient(circle, var(--wash-brand) 0%, transparent 60%);
-  pointer-events: none;
-  z-index: 0;
-}
-
-.inner {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  max-width: 420px;
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-lg);
-}
-
-.brand {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  align-self: center;
-  font-size: 1.5rem;
-  font-weight: var(--font-weight-bold);
-  letter-spacing: var(--tracking-tight);
-  color: var(--text-primary);
-  text-decoration: none;
-}
-
-.brandDot {
-  width: 12px;
-  height: 12px;
-  border-radius: var(--radius-full);
-  background: var(--brand-primary);
-  box-shadow: 0 0 12px var(--brand-primary);
 }
 
 .card {
+  width: 100%;
+  max-width: 460px;
   background-color: var(--bg-elevated);
   border: 1px solid var(--border-primary);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
-  padding: var(--spacing-lg);
+  padding: var(--spacing-xxl);
+  text-align: center;
+}
+
+@media (max-width: 480px) {
+  .card {
+    padding: var(--spacing-xl) var(--spacing-lg);
+  }
 }

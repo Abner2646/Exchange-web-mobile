@@ -5,11 +5,13 @@ import { es } from './es';
 const REQUIRED_UI = [
   'auth.register.title', 'auth.register.submit', 'auth.register.haveAccount',
   'auth.login.title', 'auth.login.submit', 'auth.login.forgot', 'auth.login.needAccount',
+  'auth.login.description', 'auth.login.back',
   'auth.verifyEmail.title', 'auth.verifyEmail.submit', 'auth.verifyEmail.resend', 'auth.verifyEmail.sent',
   'auth.twofa.title.totp', 'auth.twofa.title.email', 'auth.twofa.submit', 'auth.twofa.resend',
   'auth.forgot.title', 'auth.forgot.submit', 'auth.forgot.sent',
   'auth.reset.codeTitle', 'auth.reset.codeSubmit', 'auth.reset.title', 'auth.reset.submit', 'auth.reset.mismatch',
   'auth.field.email', 'auth.field.username', 'auth.field.password', 'auth.field.code', 'auth.field.newPassword', 'auth.field.confirmPassword',
+  'auth.field.emailOrUsername',
   'auth.google.button',
 ];
 const REQUIRED_ERRORS = ['INVALID_CREDENTIALS', 'UNAUTHORIZED', 'EMAIL_NOT_VERIFIED', 'TOO_MANY_REQUESTS', 'NETWORK_ERROR'];

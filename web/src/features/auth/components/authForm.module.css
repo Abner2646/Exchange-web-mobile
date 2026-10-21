@@ -1,45 +1,131 @@
-.form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
-}
+/* Auth forms — faithful to the V1 CRA (Login.css/Register.css), rebuilt on the
+   global tokens. Card content is centered; the form itself is left-aligned. */
 
 .title {
-  margin: 0;
-  font-size: var(--font-size-2xl);
+  margin: 0 0 var(--spacing-sm);
+  font-size: 2.25rem;
   font-weight: var(--font-weight-bold);
   letter-spacing: var(--tracking-snug);
   color: var(--text-primary);
 }
 
-.subtitle {
-  margin: 0;
-  font-size: var(--font-size-base);
+.description {
+  margin: 0 0 var(--spacing-xl);
+  font-size: var(--font-size-md);
   color: var(--text-secondary);
   line-height: 1.6;
 }
 
-/* Error banner — what happened, accented, not an apology (standard §7). */
-.error {
-  margin: 0;
-  padding: var(--spacing-sm) var(--spacing-md);
-  background-color: var(--wash-error);
-  border-left: 3px solid var(--error);
-  border-radius: var(--radius-sm);
-  color: var(--error);
+/* Google button — prominent, first (V1). Outline style with the 4-color mark. */
+.googleButton {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-family: inherit;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background-color var(--motion-duration-fast) var(--motion-easing-ease),
+    border-color var(--motion-duration-fast) var(--motion-easing-ease),
+    transform var(--motion-duration-fast) var(--motion-easing-ease),
+    box-shadow var(--motion-duration-fast) var(--motion-easing-ease);
+}
+.googleButton:hover {
+  background-color: var(--interactive-hover);
+  border-color: var(--border-focus);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+.googleIcon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+/* Divider with a centered "o" over a hairline (V1). */
+.divider {
+  position: relative;
+  text-align: center;
+  margin: var(--spacing-xl) 0;
+}
+.divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-color: var(--border-secondary);
+}
+.divider span {
+  position: relative;
+  z-index: 1;
+  padding: 0 var(--spacing-md);
+  background-color: var(--bg-elevated);
+  color: var(--text-tertiary);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
 }
 
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  text-align: left;
+}
+
+/* Error / success banners (what happened; §7). */
+.error {
+  margin: 0;
+  padding: var(--spacing-md);
+  background-color: var(--wash-error);
+  border: 1px solid var(--error);
+  border-radius: var(--radius-md);
+  color: var(--error);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  text-align: center;
+}
 .notice {
   margin: 0;
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: var(--spacing-md);
   background-color: var(--wash-success);
-  border-left: 3px solid var(--success);
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--success);
+  border-radius: var(--radius-md);
   color: var(--success);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
+  text-align: center;
+}
+
+/* Per-field inline error (register validation). */
+.fieldError {
+  margin-top: calc(var(--spacing-xs) * -1);
+  color: var(--error);
+  font-size: var(--font-size-xs);
+}
+
+/* "¿Olvidaste tu contraseña?" under the password field (V1). */
+.forgotRow {
+  margin-top: calc(var(--spacing-sm) * -1);
+  text-align: right;
+}
+.inlineLink {
+  color: var(--brand-primary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+}
+.inlineLink:hover {
+  color: var(--brand-secondary);
+  text-decoration: underline;
 }
 
 .actions {
@@ -47,41 +133,74 @@
   flex-direction: column;
   gap: var(--spacing-sm);
 }
-
-/* Stacked actions stretch full width for a clear primary target. */
 .actions > button {
   width: 100%;
 }
 
-/* Divider with a centered label ("o"). */
-.divider {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  color: var(--text-tertiary);
-  font-size: var(--font-size-xs);
-  text-transform: lowercase;
+/* 2FA "resend" (text button) + "back to login". */
+.resendRow {
+  text-align: center;
 }
-.divider::before,
-.divider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background-color: var(--border-secondary);
+.resendButton {
+  background: none;
+  border: none;
+  color: var(--brand-primary);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  padding: var(--spacing-xs);
+}
+.resendButton:hover:not(:disabled) {
+  color: var(--brand-secondary);
+}
+.resendButton:disabled {
+  color: var(--text-tertiary);
+  cursor: not-allowed;
+  text-decoration: none;
+}
+.backButton {
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-md);
+}
+.backButton:hover {
+  color: var(--text-secondary);
+  background-color: var(--interactive-hover);
 }
 
-.links {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
+/* Footer link ("¿No tenés cuenta? Registrate" / "¿Ya tenés cuenta?"). */
+.footer {
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--border-secondary);
   font-size: var(--font-size-xs);
+  color: var(--text-secondary);
 }
-.links a {
+.footerLink {
+  margin-left: var(--spacing-xs);
   color: var(--brand-primary);
   font-weight: var(--font-weight-semibold);
   text-decoration: none;
 }
-.links a:hover {
+.footerLink:hover {
   color: var(--brand-secondary);
+  text-decoration: underline;
+}
+
+.termsMessage {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  text-align: center;
+}
+.termsMessage a {
+  color: var(--brand-primary);
+  text-decoration: none;
+}
+.termsMessage a:hover {
   text-decoration: underline;
 }
