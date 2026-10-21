@@ -5,7 +5,6 @@ import {
   Field,
   Input,
   Select,
-  NativeSelect,
   Textarea,
   Card,
   Badge,
@@ -95,10 +94,17 @@ const COIN_OPTIONS = ['BTC', 'ETH', 'SOL', 'USDC', 'XRP', 'BNB'].map((s) => ({
   icon: <CoinLogo symbol={s} size={22} />,
 }));
 
+const NETWORK_OPTIONS = [
+  { value: 'erc20', label: 'Ethereum (ERC-20)' },
+  { value: 'bep20', label: 'BNB Smart Chain (BEP-20)' },
+  { value: 'trc20', label: 'Tron (TRC-20)' },
+];
+
 export default function ShowcaseClient() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [tab, setTab] = useState('overview');
   const [coin, setCoin] = useState('BTC');
+  const [net, setNet] = useState('erc20');
 
   return (
     <ToastProvider>
@@ -141,12 +147,8 @@ export default function ShowcaseClient() {
               <Field label="Moneda">
                 <Select options={COIN_OPTIONS} value={coin} onChange={setCoin} />
               </Field>
-              <Field label="Red (nativo)">
-                <NativeSelect defaultValue="erc20">
-                  <option value="erc20">Ethereum (ERC-20)</option>
-                  <option value="bep20">BNB Smart Chain (BEP-20)</option>
-                  <option value="trc20">Tron (TRC-20)</option>
-                </NativeSelect>
+              <Field label="Red">
+                <Select options={NETWORK_OPTIONS} value={net} onChange={setNet} />
               </Field>
               <Field label="Nota">
                 <Textarea placeholder="Escribí una nota larga para ver el scroll interno del campo…" />

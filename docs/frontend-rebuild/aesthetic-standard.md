@@ -172,15 +172,15 @@ para elevar lo que flota (cards destacadas, menús); el resto se separa con bord
 - **Inputs / Field.** Superficie `.control`: `--bg-secondary` + `1px
   --border-primary` + `radius-md`; foco = `--border-focus` + anillo
   `--wash-brand`; label `--text-secondary`; ayuda `.8125rem`; error en `--error`
-  con mensaje accionable (§7). `Input`/`NativeSelect`/`Textarea` la comparten.
-  El **textarea no es redimensionable** (`resize:none`, alto predefinido); si el
-  texto excede, scrollea dentro con scrollbar temático.
-- **Select.** Dos variantes: `NativeSelect` (el `<select>` nativo) para casos
-  simples; y **`Select` custom** (patrón listbox accesible) cuando las opciones
-  llevan **ícono/logo** (ej. logos reales de monedas) o se quiere un panel
-  estilizado — el `<select>` nativo no puede renderizar imágenes ni estilar su
-  panel. Trigger = look `.control`; panel = superficie elevada + sombra, opción
+  con mensaje accionable (§7). `Input`/`Textarea` la comparten. El **textarea no
+  es redimensionable** (`resize:none`, alto predefinido); si el texto excede,
+  scrollea dentro con scrollbar temático.
+- **Select / desplegables (regla fija).** **TODO desplegable usa el `Select`
+  custom** (patrón listbox accesible); **nunca** el `<select>` nativo — su panel
+  no es estilizable ni puede mostrar imágenes, así que rompería la consistencia.
+  Trigger = look `.control`; panel = superficie elevada + sombra `lg`, opción
   activa `--interactive-hover`, seleccionada en `--brand-primary` con check.
+  Las opciones pueden llevar ícono/logo (ej. logos reales de monedas).
 - **Diálogos/menús.** Superficie elevada + sombra `lg`; overlay oscurecido;
   respetan z-index tokens; foco atrapado (lo da el primitivo).
 - **Scrollbars.** Temáticos globalmente (thin, thumb `--bg-tertiary` → hover
