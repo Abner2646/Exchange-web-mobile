@@ -52,7 +52,7 @@ describe('LoginForm', () => {
     loginAsync.mockResolvedValue({ user: {}, token: 'jwt' });
     renderForm();
     await fillCreds();
-    await waitFor(() => expect(loginAsync).toHaveBeenCalledWith({ emailOrUsername: 'a@b.co', password: 'secret12' }));
+    await waitFor(() => expect(loginAsync).toHaveBeenCalledWith({ email: 'a@b.co', password: 'secret12' }));
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/dashboard'));
   });
 
@@ -62,7 +62,7 @@ describe('LoginForm', () => {
     await fillCreds();
     expect(await screen.findByText('Enter your authenticator code')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Resend code' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /continue with google/i })).not.toBeInTheDocument();
+    expect(screen.queryByText('google-widget')).not.toBeInTheDocument();
   });
 
   it('email challenge shows a resend button and completes verify-2fa', async () => {

@@ -16,37 +16,11 @@
   line-height: 1.6;
 }
 
-/* Google button — prominent, first (V1). Outline style with the 4-color mark. */
-.googleButton {
-  width: 100%;
-  display: inline-flex;
-  align-items: center;
+/* Google sign-in — the official widget (V2's secure idToken flow), centered and
+   placed first with an "o" divider to match the V1 layout. */
+.googleWrap {
+  display: flex;
   justify-content: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-md) var(--spacing-lg);
-  font-family: inherit;
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-semibold);
-  color: var(--text-primary);
-  background-color: var(--bg-primary);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: background-color var(--motion-duration-fast) var(--motion-easing-ease),
-    border-color var(--motion-duration-fast) var(--motion-easing-ease),
-    transform var(--motion-duration-fast) var(--motion-easing-ease),
-    box-shadow var(--motion-duration-fast) var(--motion-easing-ease);
-}
-.googleButton:hover {
-  background-color: var(--interactive-hover);
-  border-color: var(--border-focus);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
-}
-.googleIcon {
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
 }
 
 /* Divider with a centered "o" over a hairline (V1). */

@@ -47,8 +47,7 @@ export interface VerifyEmailResponse {
 }
 
 export interface LoginRequest {
-  /** Email OR username — the backend's loginStep1 reads `emailOrUsername`. */
-  emailOrUsername: string;
+  email: string;
   password: string;
 }
 

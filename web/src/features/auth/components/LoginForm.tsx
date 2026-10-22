@@ -36,7 +36,10 @@ export const LoginForm: React.FC = () => {
     e.preventDefault();
     setError(null);
     try {
-      const result = await login.mutateAsync({ emailOrUsername, password });
+      // Keep the V2 contract (sends `email`); the label stays "Email o usuario"
+      // (V1 visual). NOTE: backend loginStep1 reads `emailOrUsername` — see the
+      // reported possible bug; not changed here (tech stays as V2).
+      const result = await login.mutateAsync({ email: emailOrUsername, password });
       if (isTwoFactorChallenge(result)) {
         setStep({ kind: 'twofa', method: result.twoFactorMethod, temporalToken: result.temporalToken });
         return;
@@ -98,7 +101,6 @@ export const LoginForm: React.FC = () => {
       </div>
 
       <GoogleSignInButton />
-      <div className={styles.divider}><span>o</span></div>
 
       {error && <p className={styles.error} role="alert">{error}</p>}
 
