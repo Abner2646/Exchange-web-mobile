@@ -12,6 +12,7 @@ const REQUIRED_UI = [
   'auth.reset.codeTitle', 'auth.reset.codeSubmit', 'auth.reset.title', 'auth.reset.submit', 'auth.reset.mismatch',
   'auth.field.email', 'auth.field.username', 'auth.field.password', 'auth.field.code', 'auth.field.newPassword', 'auth.field.confirmPassword',
   'auth.field.emailOrUsername',
+  'auth.field.emailOrUsernamePlaceholder', 'auth.field.passwordPlaceholder', 'auth.field.codePlaceholder',
   'auth.google.button',
 ];
 const REQUIRED_ERRORS = ['INVALID_CREDENTIALS', 'UNAUTHORIZED', 'EMAIL_NOT_VERIFIED', 'TOO_MANY_REQUESTS', 'NETWORK_ERROR'];

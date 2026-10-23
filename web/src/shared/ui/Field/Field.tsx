@@ -17,6 +17,7 @@ export const Field: React.FC<FieldProps> = ({
   children,
   id: providedId,
   className,
+  required,
   ...props
 }) => {
   const generatedId = useId();
@@ -38,7 +39,7 @@ export const Field: React.FC<FieldProps> = ({
 
   return (
     <div className={[styles.field, className].filter(Boolean).join(' ')}>
-      <label htmlFor={controlId} className={styles.label}>
+      <label htmlFor={controlId} className={styles.label} data-required={required || undefined}>
         {label}
       </label>
 
@@ -53,6 +54,7 @@ export const Field: React.FC<FieldProps> = ({
         <input
           type="text"
           className={controlStyles.control}
+          required={required}
           {...props}
           id={controlId}
           aria-invalid={isInvalid}

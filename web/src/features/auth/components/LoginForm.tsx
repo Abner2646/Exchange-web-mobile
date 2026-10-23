@@ -75,8 +75,18 @@ export const LoginForm: React.FC = () => {
       <form className={styles.form} onSubmit={onTwoFactor} noValidate>
         <h1 className={styles.title}>{step.method === 'totp' ? t('auth.twofa.title.totp') : t('auth.twofa.title.email')}</h1>
         {error && <p className={styles.error} role="alert">{error}</p>}
-        <Field label={t('auth.field.code')}>
-          <Input type="text" inputMode="numeric" autoComplete="one-time-code" autoFocus required value={codigo} onChange={(e) => setCodigo(e.target.value)} />
+        <Field label={t('auth.field.code')} required>
+          <Input
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            placeholder={t('auth.field.codePlaceholder')}
+            maxLength={6}
+            autoFocus
+            required
+            value={codigo}
+            onChange={(e) => setCodigo(e.target.value.replace(/\D/g, '').slice(0, 6))}
+          />
         </Field>
         <div className={styles.actions}>
           <Button type="submit" loading={verify2fa.isPending}>{t('auth.twofa.submit')}</Button>
@@ -104,12 +114,12 @@ export const LoginForm: React.FC = () => {
 
       {error && <p className={styles.error} role="alert">{error}</p>}
 
-      <Field label={t('auth.field.emailOrUsername')}>
-        <Input type="text" autoComplete="username" required value={emailOrUsername} onChange={(e) => setEmailOrUsername(e.target.value)} />
+      <Field label={t('auth.field.emailOrUsername')} required>
+        <Input type="text" autoComplete="username" placeholder={t('auth.field.emailOrUsernamePlaceholder')} required value={emailOrUsername} onChange={(e) => setEmailOrUsername(e.target.value)} />
       </Field>
       <div>
-        <Field label={t('auth.field.password')}>
-          <Input type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+        <Field label={t('auth.field.password')} required>
+          <Input type="password" autoComplete="current-password" placeholder={t('auth.field.passwordPlaceholder')} required value={password} onChange={(e) => setPassword(e.target.value)} />
         </Field>
         <div className={styles.forgotRow}>
           <Link href="/forgot-password" className={styles.inlineLink}>{t('auth.login.forgot')}</Link>
