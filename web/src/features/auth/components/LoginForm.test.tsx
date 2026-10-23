@@ -62,7 +62,7 @@ describe('LoginForm', () => {
     await fillCreds();
     expect(await screen.findByText('Enter your authenticator code')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Resend code' })).not.toBeInTheDocument();
-    expect(screen.queryByText('google-widget')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /continue with google/i })).not.toBeInTheDocument();
   });
 
   it('email challenge shows a resend button and completes verify-2fa', async () => {
