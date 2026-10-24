@@ -19,13 +19,18 @@ La V2 está bien construida y es segura; la V1 es la referencia de *look & feel*
 
 ## 2. Regla de oro (no negociable)
 
+0. **El backend es la fuente de verdad última.** El backend NO se toca en estas
+   sesiones. Si el front (V1 **o** V2) no habla bien con el contrato real del
+   backend, **se adapta el front** — aunque el cambio vaya más allá de lo
+   estético (ej.: la V2 mandaba `{ email }` y el backend espera
+   `emailOrUsername` → se arregla el front). "Mantener la tech de la V2" significa
+   mantener su stack seguro, no perpetuar un front que contradice al backend.
 1. **La tech de la V2 se mantiene SIEMPRE.** No copiar la tech de la V1 ni
-   "arreglar" contratos/flujos para que calcen con la V1.
+   "arreglar" contratos/flujos del backend para que calcen con la V1. (Ajustar el
+   **front** para cumplir el contrato del backend sí está permitido — ver punto 0.)
 2. **El visual de la V1 se reproduce siempre que se pueda.** Tocar la estética lo
    menos posible fuera de igualar la V1.
-3. **Incongruencias / features nuevos de la V2** (cosas que la V1 no tenía — ej.
-   wallets Funding/Spot, Maker-Checker, audit trail) → **decisión de diseño
-   nueva** con los tokens del estándar. No hay V1 que copiar.
+3. **Divergencias** → ver §2.1 (tres casos). No todas se resuelven igual.
 4. **Si el visual de la V1 choca con la tech segura de la V2**, por defecto gana
    la tech V2 — pero **es decisión del dueño (Abner)**. Preguntar con el
    trade-off explícito, no asumir.
@@ -34,6 +39,33 @@ La V2 está bien construida y es segura; la V1 es la referencia de *look & feel*
 > **redirect** (`/auth/google`, OAuth server-side), no el widget idToken, porque
 > el widget oficial es un iframe cuadrado no estilable. Es la excepción al punto
 > 4. **No revertir.** (Caveat: el token viaja en la URL del callback.)
+
+---
+
+## 2.1 Los tres casos de divergencia (V1 ≠ V2)
+
+Cuando la V1 y la V2 no coinciden, **no es siempre el mismo problema**. Antes de
+decidir, clasificar en cuál de los tres casos cae — se resuelven distinto:
+
+- **Caso A — mismo feature, cambió el mecanismo interno.** La persona ve y usa lo
+  mismo; solo cambió cómo se ejecuta por detrás. *Ej.: login con Google* (idToken
+  widget en V1 → redirect OAuth en V2). → **Calcar el visual de la V1, mantener el
+  mecanismo de la V2.** El split V1-visual / V2-tech funciona limpio. Es la mayoría
+  de los casos.
+- **Caso B — cambió el feature / el dominio.** La V1 *tenía* una pantalla para
+  esto, pero el producto cambió de forma, así que copiarla mostraría algo que ya
+  no existe. *Ej.: wallet* — la V1 tenía **una sola** billetera; la V2 tiene
+  **Funding + Spot**, con disponible/bloqueado/pendiente, transferencia entre
+  compartimentos y retiros solo desde Funding. → La V1 **deja de ser referencia de
+  layout** (a lo sumo inspira el lenguaje visual); el layout se **rediseña
+  alrededor del modelo nuevo** con los tokens del estándar. La trampa es dejarse
+  llevar por la pantalla vieja y mentir sobre el producto actual.
+- **Caso C — feature nuevo que la V1 nunca tuvo.** *Ej.: Maker-Checker, audit
+  trail, 2FA TOTP.* No hay V1 que copiar → **diseño nuevo** con el estándar.
+
+Regla práctica: ante una divergencia, preguntar **"¿la persona ve/usa lo mismo?"**
+Sí → Caso A (calcar). No, porque el producto cambió → Caso B (rediseñar). No
+existía → Caso C (diseñar).
 
 ---
 
@@ -109,15 +141,17 @@ revisa, con su OK. Siempre dar la lista de lo que falta/difiere.
 - **Scrollbars temáticos** globales (en `reset.css`).
 - **Google = flujo redirect** (ver excepción §2).
 - **Textarea** no redimensionable (alto fijo).
+- **Modelo de divergencias A/B/C** (§2.1): clasificar toda V1≠V2 antes de resolver.
+- **Backend = fuente de verdad última** (§2.0): nunca se toca; el front se adapta
+  al contrato aunque no sea estético.
+- **Copy casing = Title Case (V1)** en superficies con equivalente V1 (auth, app).
+  Se calca el casing de la V1 ("Iniciar Sesión", "Crear Cuenta"). El estándar §8
+  se actualizó. El **Home de marketing** no tiene equivalente V1 → queda como está.
+- **Login field:** la V2 manda `emailOrUsername` (no `{ email }`) para cumplir el
+  contrato del backend `loginStep1` (Caso del §2.0: adaptar el front).
 
 ## 7. Pendientes / a decidir
 
-- **Copy casing:** la V1 usa Title Case ("Iniciar Sesión"); la V2 usa sentence
-  case por el estándar §8 ("Iniciar sesión"). **Sin decidir.** Si se quiere
-  calcar la V1, es un cambio de copy transversal.
-- **Posible bug de la V2 (no tocado):** el backend `loginStep1` lee
-  `req.body.emailOrUsername` pero la V2 manda `{ email }` → entrar con usuario
-  (y quizás el login normal) podría no andar. Reportado; decisión del dueño.
 - **Google loop en local:** requiere el wiring de env de §5.
 
 ---

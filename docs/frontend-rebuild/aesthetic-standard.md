@@ -244,9 +244,13 @@ lógica se cablea con el backend; la *apariencia* sigue estas reglas:
 ## 8. Voz y copy (material de diseño)
 
 - Español para el usuario; identificadores/código en inglés.
-- Voz activa, *sentence case*, verbos planos, sin relleno. El botón dice lo que
-  pasa ("Guardar cambios", no "Enviar") y mantiene el mismo nombre en todo el
-  flujo (si dice "Publicar", el toast dice "Publicado").
+- **Casing = Title Case** en títulos, botones y labels, calcando la V1 ("Iniciar
+  Sesión", "Crear Cuenta", "Olvidé Mi Contraseña"). Aplica a las superficies con
+  equivalente V1 (auth y app); el Home de marketing (sin V1) queda como está.
+  *(Decisión 2026-10-24; antes era sentence case. Ver `redesign-methodology.md` §6.)*
+- Voz activa, verbos planos, sin relleno. El botón dice lo que pasa ("Guardar
+  Cambios", no "Enviar") y mantiene el mismo nombre en todo el flujo (si dice
+  "Publicar", el toast dice "Publicado").
 - **Sin jerga interna** en superficies de usuario (nada de "ledger de partida
   doble", "Maker-Checker", "hash-chained"). Nombrar por lo que la persona
   controla y reconoce.
