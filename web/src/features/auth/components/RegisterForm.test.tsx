@@ -24,27 +24,41 @@ function renderForm() {
   );
 }
 
+async function fillValid() {
+  await userEvent.type(screen.getByLabelText('Email'), 'a@b.co');
+  await userEvent.type(screen.getByLabelText('Username'), 'neo');
+  await userEvent.type(screen.getByLabelText('Password'), 'secret12');
+  await userEvent.type(screen.getByLabelText('Confirm Password'), 'secret12');
+}
+
 beforeEach(() => { replace.mockReset(); mutateAsync.mockReset(); });
 
 describe('RegisterForm', () => {
-  it('submits credentials and routes to /verify-email on success', async () => {
+  it('submits credentials (without confirmPassword) and routes to /verify-email on success', async () => {
     mutateAsync.mockResolvedValue({ user: {}, token: 'temp', message: 'ok' });
+    renderForm();
+    await fillValid();
+    await userEvent.click(screen.getByRole('button', { name: 'Create Account' }));
+    await waitFor(() => expect(mutateAsync).toHaveBeenCalledWith({ email: 'a@b.co', username: 'neo', password: 'secret12' }));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/verify-email'));
+  });
+
+  it('blocks submit and shows an inline error when passwords do not match', async () => {
     renderForm();
     await userEvent.type(screen.getByLabelText('Email'), 'a@b.co');
     await userEvent.type(screen.getByLabelText('Username'), 'neo');
     await userEvent.type(screen.getByLabelText('Password'), 'secret12');
-    await userEvent.click(screen.getByRole('button', { name: 'Register' }));
-    await waitFor(() => expect(mutateAsync).toHaveBeenCalledWith({ email: 'a@b.co', username: 'neo', password: 'secret12' }));
-    await waitFor(() => expect(replace).toHaveBeenCalledWith('/verify-email'));
+    await userEvent.type(screen.getByLabelText('Confirm Password'), 'different');
+    await userEvent.click(screen.getByRole('button', { name: 'Create Account' }));
+    expect(await screen.findByText('Passwords do not match')).toBeInTheDocument();
+    expect(mutateAsync).not.toHaveBeenCalled();
   });
 
   it('shows a coded error message when the API rejects', async () => {
     mutateAsync.mockRejectedValue(new ApiError({ code: 'TOO_MANY_REQUESTS', status: 429 }));
     renderForm();
-    await userEvent.type(screen.getByLabelText('Email'), 'a@b.co');
-    await userEvent.type(screen.getByLabelText('Username'), 'neo');
-    await userEvent.type(screen.getByLabelText('Password'), 'secret12');
-    await userEvent.click(screen.getByRole('button', { name: 'Register' }));
+    await fillValid();
+    await userEvent.click(screen.getByRole('button', { name: 'Create Account' }));
     expect(await screen.findByText('Too many attempts. Please wait and try again.')).toBeInTheDocument();
     expect(replace).not.toHaveBeenCalled();
   });

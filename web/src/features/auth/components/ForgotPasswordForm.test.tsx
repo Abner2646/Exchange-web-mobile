@@ -45,7 +45,7 @@ describe('ForgotPasswordForm', () => {
     await waitFor(() => expect(verifyCodeAsync).toHaveBeenCalledWith({ email: 'a@b.co', codigo: '123456' }));
 
     await userEvent.type(await screen.findByLabelText('New password'), 'newsecret1');
-    await userEvent.type(screen.getByLabelText('Confirm password'), 'newsecret1');
+    await userEvent.type(screen.getByLabelText('Confirm Password'), 'newsecret1');
     await userEvent.click(screen.getByRole('button', { name: 'Update password' }));
     await waitFor(() => expect(resetAsync).toHaveBeenCalledWith({ email: 'a@b.co', codigo: '123456', newPassword: 'newsecret1', confirmPassword: 'newsecret1' }));
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/dashboard'));
@@ -60,7 +60,7 @@ describe('ForgotPasswordForm', () => {
     await userEvent.type(await screen.findByLabelText('Code'), '123456');
     await userEvent.click(screen.getByRole('button', { name: 'Verify code' }));
     await userEvent.type(await screen.findByLabelText('New password'), 'aaaa1111');
-    await userEvent.type(screen.getByLabelText('Confirm password'), 'bbbb2222');
+    await userEvent.type(screen.getByLabelText('Confirm Password'), 'bbbb2222');
     await userEvent.click(screen.getByRole('button', { name: 'Update password' }));
     expect(await screen.findByText('Passwords do not match.')).toBeInTheDocument();
     expect(resetAsync).not.toHaveBeenCalled();

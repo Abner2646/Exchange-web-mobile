@@ -4,6 +4,10 @@ import { es } from './es';
 
 const REQUIRED_UI = [
   'auth.register.title', 'auth.register.submit', 'auth.register.haveAccount',
+  'auth.register.description', 'auth.register.terms', 'auth.register.termsLink',
+  'auth.field.emailPlaceholder', 'auth.field.usernamePlaceholder',
+  'auth.field.passwordNewPlaceholder', 'auth.field.confirmPasswordPlaceholder',
+  'auth.google.register',
   'auth.login.title', 'auth.login.submit', 'auth.login.forgot', 'auth.login.needAccount',
   'auth.login.description', 'auth.login.back',
   'auth.verifyEmail.title', 'auth.verifyEmail.submit', 'auth.verifyEmail.resend', 'auth.verifyEmail.sent',
