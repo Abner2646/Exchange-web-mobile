@@ -36,10 +36,10 @@ export const LoginForm: React.FC = () => {
     e.preventDefault();
     setError(null);
     try {
-      // Keep the V2 contract (sends `email`); the label stays "Email o usuario"
-      // (V1 visual). NOTE: backend loginStep1 reads `emailOrUsername` — see the
-      // reported possible bug; not changed here (tech stays as V2).
-      const result = await login.mutateAsync({ email: emailOrUsername, password });
+      // Backend `loginStep1` reads `emailOrUsername` (email OR username). The V2
+      // used to send `{ email }`, which broke username login; the front is
+      // adapted to the backend contract (backend = ultimate source of truth).
+      const result = await login.mutateAsync({ emailOrUsername, password });
       if (isTwoFactorChallenge(result)) {
         setStep({ kind: 'twofa', method: result.twoFactorMethod, temporalToken: result.temporalToken });
         return;

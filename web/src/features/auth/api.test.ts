@@ -19,9 +19,9 @@ describe('authApi', () => {
     expect(post).toHaveBeenCalledWith('/user/verify-email', { codigo: '123456' });
   });
 
-  it('login posts email+password to /user/login', async () => {
-    await authApi.login({ email: 'a@b.co', password: 'pw' });
-    expect(post).toHaveBeenCalledWith('/user/login', { email: 'a@b.co', password: 'pw' });
+  it('login posts emailOrUsername+password to /user/login', async () => {
+    await authApi.login({ emailOrUsername: 'a@b.co', password: 'pw' });
+    expect(post).toHaveBeenCalledWith('/user/login', { emailOrUsername: 'a@b.co', password: 'pw' });
   });
 
   it('verify2FA posts temporalToken + codigo', async () => {

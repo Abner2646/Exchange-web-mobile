@@ -52,7 +52,7 @@ describe('LoginForm', () => {
     loginAsync.mockResolvedValue({ user: {}, token: 'jwt' });
     renderForm();
     await fillCreds();
-    await waitFor(() => expect(loginAsync).toHaveBeenCalledWith({ email: 'a@b.co', password: 'secret12' }));
+    await waitFor(() => expect(loginAsync).toHaveBeenCalledWith({ emailOrUsername: 'a@b.co', password: 'secret12' }));
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/dashboard'));
   });
 
