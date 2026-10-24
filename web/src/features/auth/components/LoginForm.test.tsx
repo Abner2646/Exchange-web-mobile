@@ -79,8 +79,11 @@ describe('LoginForm', () => {
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/dashboard'));
   });
 
-  it('shows a coded error on invalid credentials', async () => {
-    loginAsync.mockRejectedValue(new ApiError({ code: 'INVALID_CREDENTIALS', status: 401 }));
+  // The backend returns a bare 401 (legacy `{ error: string }`, decoded to code
+  // UNAUTHORIZED) for a bad login — not a specific INVALID_CREDENTIALS code. The
+  // form still shows the specific "invalid credentials" copy for any 401.
+  it('shows the invalid-credentials message on a 401 (decoded as UNAUTHORIZED)', async () => {
+    loginAsync.mockRejectedValue(new ApiError({ code: 'UNAUTHORIZED', status: 401 }));
     renderForm();
     await fillCreds();
     expect(await screen.findByText('Invalid email or password.')).toBeInTheDocument();
