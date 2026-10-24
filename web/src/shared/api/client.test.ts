@@ -80,6 +80,27 @@ describe('shared/api/errors.ts (ApiError)', () => {
     expect(errString.message).toBe('Invalid credentials');
     expect(errString.isUnauthorized()).toBe(true);
   });
+
+  // A non-JSON / empty body (e.g. an HTML 404 from a misrouted request, a proxy
+  // error page, or a 204) must still map to a status-based code — NOT the generic
+  // 'API_ERROR', which has no user-facing message and leaks "(Code: API_ERROR)".
+  it('maps the HTTP status to a code even when the body is not JSON (null)', () => {
+    expect(ApiError.fromResponse(null, 400).code).toBe('BAD_REQUEST');
+    expect(ApiError.fromResponse(null, 401).code).toBe('UNAUTHORIZED');
+    expect(ApiError.fromResponse(null, 403).code).toBe('FORBIDDEN');
+    expect(ApiError.fromResponse(null, 404).code).toBe('NOT_FOUND');
+    expect(ApiError.fromResponse(null, 429).code).toBe('TOO_MANY_REQUESTS');
+    expect(ApiError.fromResponse(null, 500).code).toBe('INTERNAL_ERROR');
+    expect(ApiError.fromResponse(null, 503).code).toBe('INTERNAL_ERROR');
+  });
+
+  it('maps the HTTP status to a code for a non-error-shaped string body', () => {
+    expect(ApiError.fromResponse('Internal Server Error', 500).code).toBe('INTERNAL_ERROR');
+  });
+
+  it('only falls back to API_ERROR for an unmapped status with no code', () => {
+    expect(ApiError.fromResponse(null, 418).code).toBe('API_ERROR');
+  });
 });
 
 describe('shared/api/session.ts (Session Seam)', () => {

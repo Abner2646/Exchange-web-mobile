@@ -19,7 +19,9 @@ const REQUIRED_UI = [
   'auth.field.emailOrUsernamePlaceholder', 'auth.field.passwordPlaceholder', 'auth.field.codePlaceholder',
   'auth.google.button',
 ];
-const REQUIRED_ERRORS = ['INVALID_CREDENTIALS', 'UNAUTHORIZED', 'EMAIL_NOT_VERIFIED', 'TOO_MANY_REQUESTS', 'NETWORK_ERROR'];
+const REQUIRED_ERRORS = ['INVALID_CREDENTIALS', 'UNAUTHORIZED', 'EMAIL_NOT_VERIFIED', 'TOO_MANY_REQUESTS', 'NETWORK_ERROR',
+  // Transport/status fallbacks the API client can produce — must have a human message, never a raw "(Code: X)".
+  'API_ERROR', 'BAD_REQUEST', 'FORBIDDEN', 'NOT_FOUND', 'CONFLICT', 'UNPROCESSABLE_ENTITY', 'INTERNAL_ERROR'];
 
 describe('auth catalogs', () => {
   it('en has all required auth ui + error keys', () => {

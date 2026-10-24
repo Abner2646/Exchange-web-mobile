@@ -111,20 +111,24 @@ export class ApiError extends Error {
       else if (typeof responseBody.message === 'string') {
         message = responseBody.message;
       }
-
-      // Default codes based on HTTP status if no code was explicitly provided
-      if (code === 'API_ERROR') {
-        if (status === 400) code = 'BAD_REQUEST';
-        else if (status === 401) code = 'UNAUTHORIZED';
-        else if (status === 403) code = 'FORBIDDEN';
-        else if (status === 404) code = 'NOT_FOUND';
-        else if (status === 409) code = 'CONFLICT';
-        else if (status === 422) code = 'UNPROCESSABLE_ENTITY';
-        else if (status === 429) code = 'TOO_MANY_REQUESTS';
-        else if (status >= 500) code = 'INTERNAL_ERROR';
-      }
     } else if (typeof responseBody === 'string' && responseBody.trim() !== '') {
       message = responseBody;
+    }
+
+    // Default codes based on HTTP status if no code was explicitly provided.
+    // Runs regardless of body shape: a non-JSON or empty body (e.g. an HTML 404
+    // from a misrouted request, a proxy error page, or a 204) must still get a
+    // status-based code instead of the generic 'API_ERROR', which has no
+    // user-facing message and would leak "(Code: API_ERROR)" to the user.
+    if (code === 'API_ERROR') {
+      if (status === 400) code = 'BAD_REQUEST';
+      else if (status === 401) code = 'UNAUTHORIZED';
+      else if (status === 403) code = 'FORBIDDEN';
+      else if (status === 404) code = 'NOT_FOUND';
+      else if (status === 409) code = 'CONFLICT';
+      else if (status === 422) code = 'UNPROCESSABLE_ENTITY';
+      else if (status === 429) code = 'TOO_MANY_REQUESTS';
+      else if (status >= 500) code = 'INTERNAL_ERROR';
     }
 
     return new ApiError({

@@ -437,6 +437,13 @@ export const es: Catalog = {
     'EMAIL_NOT_VERIFIED': 'Verificá tu email para continuar.',
     'TOO_MANY_REQUESTS': 'Demasiados intentos. Esperá un momento e intentá de nuevo.',
     'NETWORK_ERROR': 'No se pudo conectar con el servidor. Revisá tu conexión.',
+    // Fallbacks de transporte/status — el usuario nunca debe ver un "(Código: X)" crudo.
+    'API_ERROR': 'No pudimos completar la operación. Probá de nuevo en unos segundos.',
+    'BAD_REQUEST': 'Revisá los datos ingresados e intentá de nuevo.',
+    'FORBIDDEN': 'No tenés permiso para hacer esto.',
+    'NOT_FOUND': 'No encontramos lo que buscabas. Actualizá la página e intentá de nuevo.',
+    'CONFLICT': 'La operación entró en conflicto con otra. Actualizá e intentá de nuevo.',
+    'UNPROCESSABLE_ENTITY': 'No pudimos procesar esos datos. Revisalos e intentá de nuevo.',
     'WITHDRAWAL_VALIDATION_FAILED': 'No se pudo validar el retiro. Revisá el monto e intentá de nuevo.',
     'WITHDRAWAL_INVALID_ADDRESS': 'La dirección de destino no es válida para esta red.',
     'DEPOSIT_CRYPTO_NOT_FOUND': 'Ese activo no está disponible para depósitos.',

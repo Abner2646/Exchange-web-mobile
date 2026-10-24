@@ -437,6 +437,13 @@ export const en: Catalog = {
     'EMAIL_NOT_VERIFIED': 'Please verify your email to continue.',
     'TOO_MANY_REQUESTS': 'Too many attempts. Please wait and try again.',
     'NETWORK_ERROR': 'Could not connect to the server. Check your internet connection.',
+    // Transport/status fallbacks — a user must never see a raw "(Code: X)".
+    'API_ERROR': "We couldn't complete the request. Please try again in a moment.",
+    'BAD_REQUEST': 'Please check the information entered and try again.',
+    'FORBIDDEN': "You don't have permission to do this.",
+    'NOT_FOUND': "We couldn't find what you were looking for. Refresh and try again.",
+    'CONFLICT': 'This request conflicted with another. Refresh and try again.',
+    'UNPROCESSABLE_ENTITY': "We couldn't process that data. Please review it and try again.",
     'WITHDRAWAL_VALIDATION_FAILED': 'The withdrawal could not be validated. Check the amount and try again.',
     'WITHDRAWAL_INVALID_ADDRESS': 'The destination address is not valid for this network.',
     'DEPOSIT_CRYPTO_NOT_FOUND': 'That asset is unavailable for deposits.',
