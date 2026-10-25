@@ -2,6 +2,8 @@
 // withdrawal creation, inside the withdrawal's transaction, BEFORE the funds
 // leave. A hit does not itself act — the caller decides (hold vs shadow) based
 // on the amlConfig hold-enforcement toggle.
+'use strict';
+
 const denylist = require('./denylist.model');
 
 async function checkWithdrawal({ address, network }, transaction = null) {
