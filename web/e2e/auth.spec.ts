@@ -31,7 +31,7 @@ test('direct login → dashboard', async ({ page }) => {
   await page.goto('/login');
   await page.getByLabel('Email').fill('a@b.co');
   await page.getByLabel('Password').fill('secret12');
-  await page.getByRole('button', { name: 'Sign in' }).click();
+  await page.getByRole('button', { name: 'Sign In' }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
 });
 

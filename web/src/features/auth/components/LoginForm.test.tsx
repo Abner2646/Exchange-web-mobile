@@ -38,7 +38,7 @@ function renderForm() {
 async function fillCreds() {
   await userEvent.type(screen.getByLabelText('Email or username'), 'a@b.co');
   await userEvent.type(screen.getByLabelText('Password'), 'secret12');
-  await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Sign In' }));
 }
 
 beforeEach(() => {

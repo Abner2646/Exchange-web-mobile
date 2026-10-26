@@ -30,6 +30,12 @@ export const ForgotPasswordForm: React.FC = () => {
   const showError = (err: unknown) =>
     setError(isApiError(err) ? tError(err.code, { requestId: err.requestId ?? '' }) : tError('FALLBACK_UNKNOWN_ERROR'));
 
+  const backLink = (
+    <p className={styles.backRow}>
+      <Link href="/login" className={styles.inlineLink}>{t('auth.forgot.backToLogin')}</Link>
+    </p>
+  );
+
   const onRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -62,15 +68,29 @@ export const ForgotPasswordForm: React.FC = () => {
   if (step === 'code') {
     return (
       <form className={styles.form} onSubmit={onCode} noValidate>
-        <h1 className={styles.title}>{t('auth.reset.codeTitle')}</h1>
+        <div>
+          <h1 className={styles.title}>{t('auth.reset.codeTitle')}</h1>
+          <p className={styles.description}>{t('auth.reset.codeDescription')}</p>
+        </div>
         {notice && <p className={styles.notice} role="status">{notice}</p>}
         {error && <p className={styles.error} role="alert">{error}</p>}
-        <Field label={t('auth.field.code')}>
-          <Input type="text" inputMode="numeric" autoComplete="one-time-code" required value={codigo} onChange={(e) => setCodigo(e.target.value)} />
+        <Field label={t('auth.reset.codeLabel')} required>
+          <Input
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            placeholder={t('auth.reset.codePlaceholder')}
+            maxLength={6}
+            autoFocus
+            required
+            value={codigo}
+            onChange={(e) => setCodigo(e.target.value.replace(/\D/g, '').slice(0, 6))}
+          />
         </Field>
         <div className={styles.actions}>
-          <Button type="submit" loading={verifyCode.isPending}>{t('auth.reset.codeSubmit')}</Button>
+          <Button type="submit" loading={verifyCode.isPending} disabled={codigo.length !== 6}>{t('auth.reset.codeSubmit')}</Button>
         </div>
+        {backLink}
       </form>
     );
   }
@@ -78,34 +98,39 @@ export const ForgotPasswordForm: React.FC = () => {
   if (step === 'reset') {
     return (
       <form className={styles.form} onSubmit={onReset} noValidate>
-        <h1 className={styles.title}>{t('auth.reset.title')}</h1>
+        <div>
+          <h1 className={styles.title}>{t('auth.reset.title')}</h1>
+          <p className={styles.description}>{t('auth.reset.description')}</p>
+        </div>
         {error && <p className={styles.error} role="alert">{error}</p>}
-        <Field label={t('auth.field.newPassword')}>
-          <Input type="password" autoComplete="new-password" required value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+        <Field label={t('auth.field.newPassword')} required>
+          <Input type="password" autoComplete="new-password" placeholder={t('auth.reset.passwordPlaceholder')} required value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
         </Field>
-        <Field label={t('auth.field.confirmPassword')}>
-          <Input type="password" autoComplete="new-password" required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+        <Field label={t('auth.field.confirmPassword')} required>
+          <Input type="password" autoComplete="new-password" placeholder={t('auth.reset.passwordPlaceholder')} required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
         </Field>
         <div className={styles.actions}>
           <Button type="submit" loading={reset.isPending}>{t('auth.reset.submit')}</Button>
         </div>
+        {backLink}
       </form>
     );
   }
 
   return (
     <form className={styles.form} onSubmit={onRequest} noValidate>
-      <h1 className={styles.title}>{t('auth.forgot.title')}</h1>
+      <div>
+        <h1 className={styles.title}>{t('auth.forgot.title')}</h1>
+        <p className={styles.description}>{t('auth.forgot.description')}</p>
+      </div>
       {error && <p className={styles.error} role="alert">{error}</p>}
-      <Field label={t('auth.field.email')}>
-        <Input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+      <Field label={t('auth.field.email')} required>
+        <Input type="email" autoComplete="email" placeholder={t('auth.field.emailPlaceholder')} autoFocus required value={email} onChange={(e) => setEmail(e.target.value)} />
       </Field>
       <div className={styles.actions}>
         <Button type="submit" loading={forgot.isPending}>{t('auth.forgot.submit')}</Button>
       </div>
-      <div className={styles.links}>
-        <Link href="/login">{t('auth.login.title')}</Link>
-      </div>
+      {backLink}
     </form>
   );
 };

@@ -37,16 +37,16 @@ describe('ForgotPasswordForm', () => {
     renderForm();
 
     await userEvent.type(screen.getByLabelText('Email'), 'a@b.co');
-    await userEvent.click(screen.getByRole('button', { name: 'Send reset code' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Send Recovery Code' }));
     await waitFor(() => expect(forgotAsync).toHaveBeenCalledWith({ email: 'a@b.co' }));
 
-    await userEvent.type(await screen.findByLabelText('Code'), '123456');
-    await userEvent.click(screen.getByRole('button', { name: 'Verify code' }));
+    await userEvent.type(await screen.findByLabelText('Verification code'), '123456');
+    await userEvent.click(screen.getByRole('button', { name: 'Verify Code' }));
     await waitFor(() => expect(verifyCodeAsync).toHaveBeenCalledWith({ email: 'a@b.co', codigo: '123456' }));
 
-    await userEvent.type(await screen.findByLabelText('New password'), 'newsecret1');
+    await userEvent.type(await screen.findByLabelText('New Password'), 'newsecret1');
     await userEvent.type(screen.getByLabelText('Confirm Password'), 'newsecret1');
-    await userEvent.click(screen.getByRole('button', { name: 'Update password' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Save New Password' }));
     await waitFor(() => expect(resetAsync).toHaveBeenCalledWith({ email: 'a@b.co', codigo: '123456', newPassword: 'newsecret1', confirmPassword: 'newsecret1' }));
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/dashboard'));
   });
@@ -56,12 +56,12 @@ describe('ForgotPasswordForm', () => {
     verifyCodeAsync.mockResolvedValue({});
     renderForm();
     await userEvent.type(screen.getByLabelText('Email'), 'a@b.co');
-    await userEvent.click(screen.getByRole('button', { name: 'Send reset code' }));
-    await userEvent.type(await screen.findByLabelText('Code'), '123456');
-    await userEvent.click(screen.getByRole('button', { name: 'Verify code' }));
-    await userEvent.type(await screen.findByLabelText('New password'), 'aaaa1111');
+    await userEvent.click(screen.getByRole('button', { name: 'Send Recovery Code' }));
+    await userEvent.type(await screen.findByLabelText('Verification code'), '123456');
+    await userEvent.click(screen.getByRole('button', { name: 'Verify Code' }));
+    await userEvent.type(await screen.findByLabelText('New Password'), 'aaaa1111');
     await userEvent.type(screen.getByLabelText('Confirm Password'), 'bbbb2222');
-    await userEvent.click(screen.getByRole('button', { name: 'Update password' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Save New Password' }));
     expect(await screen.findByText('Passwords do not match.')).toBeInTheDocument();
     expect(resetAsync).not.toHaveBeenCalled();
   });

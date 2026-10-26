@@ -230,6 +230,12 @@
   text-decoration: underline;
 }
 
+/* Centered "← back to sign in" link (forgot/reset steps). */
+.backRow {
+  margin-top: var(--spacing-md);
+  text-align: center;
+}
+
 .termsMessage {
   margin: 0;
   font-size: var(--font-size-xs);
