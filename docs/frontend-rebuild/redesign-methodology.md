@@ -183,12 +183,17 @@ Esto pasó y costó retrabajo y confianza. Está acá para que no vuelva a pasar
 
 ## 9. Estado actual (snapshot)
 
-En `dev` (local, sin pushear). Fase A (fundaciones) ✅. Páginas:
-- `/` (Home) ✅ · `/login` ✅ (visual V1 sobre tech V2).
-- `/register`, `/verify-email`, `/forgot-password`: restiladas en Fase B pero
-  **sin** el pase de paridad V1 → **pendientes**.
-- `/wallet`, `/swap`, `/trading`, `/dashboard`, `/profile`, `/p2p`, `/admin`:
-  sin tocar (Fases C/D).
+En `dev` (local, sin pushear). Fase A (fundaciones) ✅. **Fase B (auth) ✅ COMPLETA:**
+- `/` (Home) ✅ *(marketing; pendiente rediseño Caso B: datos en vivo + modo logueado)*.
+- `/login` ✅ (V1 + funciona en local; 401→invalid-credentials copy).
+- `/register` ✅ (confirmar-contraseña, validación por campo, Title Case).
+- `/verify-email` ✅ (ícono mail, hint, reenvío con countdown, spam info).
+- `/forgot-password` ✅ (3 pasos V2; copy/placeholders/back-link V1; verificado end-to-end).
+- Copy casing = **Title Case** aplicado en toda la auth (decisión 2026-10-24).
+- Stack local andando: Postgres+backend+Next con rewrite dev `/api`→:3001 (ver
+  memoria `local-dev-stack-setup`). Hallazgo: login filtra `passwordHash` (backend).
+- **Siguiente:** Fase C (`/wallet`, `/swap`, `/trading`) o rediseño del Home.
+- `/dashboard`, `/profile`, `/p2p`, `/admin`: sin tocar (Fase D).
 - `/showcase`: galería de primitivos, **solo dev** (404 en prod).
 
 Memoria viva relacionada: `frontend-v1-parity`, `frontend-aesthetic-standard`,
