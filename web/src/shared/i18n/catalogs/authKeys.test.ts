@@ -11,6 +11,8 @@ const REQUIRED_UI = [
   'auth.login.title', 'auth.login.submit', 'auth.login.forgot', 'auth.login.needAccount',
   'auth.login.description', 'auth.login.back',
   'auth.verifyEmail.title', 'auth.verifyEmail.submit', 'auth.verifyEmail.resend', 'auth.verifyEmail.sent',
+  'auth.verifyEmail.description', 'auth.verifyEmail.codeLabel', 'auth.verifyEmail.codePlaceholder',
+  'auth.verifyEmail.hint', 'auth.verifyEmail.resendIn', 'auth.verifyEmail.spam',
   'auth.twofa.title.totp', 'auth.twofa.title.email', 'auth.twofa.submit', 'auth.twofa.resend',
   'auth.forgot.title', 'auth.forgot.submit', 'auth.forgot.sent',
   'auth.reset.codeTitle', 'auth.reset.codeSubmit', 'auth.reset.title', 'auth.reset.submit', 'auth.reset.mismatch',

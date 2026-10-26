@@ -16,6 +16,45 @@
   line-height: 1.6;
 }
 
+/* Centered head (icon + title + description) for single-action pages (verify). */
+.centerHead {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+  text-align: center;
+}
+.iconBadge {
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  background-color: var(--wash-brand);
+  color: var(--brand-primary);
+}
+.subtitle {
+  margin: 0;
+  font-size: var(--font-size-md);
+  color: var(--text-secondary);
+  line-height: 1.6;
+  text-align: center;
+}
+/* Muted hint row with an info icon (e.g. "check your spam folder"). */
+.spam {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  margin: 0;
+  color: var(--text-tertiary);
+  font-size: var(--font-size-xs);
+}
+.spam svg {
+  flex-shrink: 0;
+}
+
 /* Google button — V1-faithful: outline, full width, 4-color mark, first. */
 .googleButton {
   width: 100%;

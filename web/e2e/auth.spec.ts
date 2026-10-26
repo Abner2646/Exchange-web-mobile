@@ -20,8 +20,8 @@ test('register → verify email → dashboard', async ({ page }) => {
   await page.getByLabel('Confirm Password').fill('secret12');
   await page.getByRole('button', { name: 'Create Account' }).click();
   await expect(page).toHaveURL(/\/verify-email$/);
-  await page.getByLabel('Code').fill('123456');
-  await page.getByRole('button', { name: 'Verify' }).click();
+  await page.getByLabel('Verification code').fill('123456');
+  await page.getByRole('button', { name: 'Verify Email' }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
 });
