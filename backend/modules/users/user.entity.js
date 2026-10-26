@@ -13,6 +13,20 @@ class User extends Model {
     // The TOTP shared secret is a credential — it must never appear in any serialized
     // response (it is only ever handed to the user once, as a QR/URI, at enrollment).
     delete values.totpSecret;
+    // Credentials and one-time secrets must NEVER be serialized to any client: the
+    // password hash, the anti-replay TOTP step, and every email/reset/2FA/email-change
+    // code (these are delivered out of band via email, never echoed back). Internal
+    // code reads these via `this.<attr>` directly, so stripping them from the JSON is safe.
+    delete values.passwordHash;
+    delete values.totpLastUsedStep;
+    delete values.emailVerificationCode;
+    delete values.emailVerificationCodeExpiresAt;
+    delete values.passwordResetCode;
+    delete values.passwordResetCodeExpiresAt;
+    delete values.twoFactorCode;
+    delete values.twoFactorCodeExpiresAt;
+    delete values.emailChangeCode;
+    delete values.emailChangeCodeExpiresAt;
     return values;
   }
 

@@ -25,6 +25,14 @@ describe('POST /api/usuario/login + GET /api/usuario/me', () => {
     expect(res.status).toBe(200);
     expect(typeof res.body.token).toBe('string');
     expect(res.body.user.email).toBe('loginuser@test.local');
+
+    // Security: credentials and one-time codes must NEVER be serialized to the client.
+    expect(res.body.user.passwordHash).toBeUndefined();
+    expect(res.body.user.emailVerificationCode).toBeUndefined();
+    expect(res.body.user.passwordResetCode).toBeUndefined();
+    expect(res.body.user.twoFactorCode).toBeUndefined();
+    expect(res.body.user.emailChangeCode).toBeUndefined();
+    expect(res.body.user.totpSecret).toBeUndefined();
   });
 
   test('GET /me with the login token returns the profile (pins req.user, kills req.usuario regression)', async () => {
@@ -42,6 +50,9 @@ describe('POST /api/usuario/login + GET /api/usuario/me', () => {
     expect(me.status).toBe(200);
     expect(me.body.id).toBe(user.id);
     expect(me.body.email).toBe('loginuser@test.local');
+    expect(me.body.passwordHash).toBeUndefined();
+    expect(me.body.emailVerificationCode).toBeUndefined();
+    expect(me.body.passwordResetCode).toBeUndefined();
   });
 });
 
