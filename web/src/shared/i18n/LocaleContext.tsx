@@ -10,10 +10,21 @@ interface LocaleContextValue {
 
 const LocaleContext = createContext<LocaleContextValue | undefined>(undefined);
 
+// Fixed locale for the first paint (SSR + first client render MUST agree, or React
+// throws a hydration mismatch). The app is Spanish-first, so we render Spanish, then
+// adopt the browser's language after hydration (see the effect below).
+const DEFAULT_LOCALE = 'es';
+
 export const LocaleProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [locale, setLocaleState] = useState<Locale>(() =>
-    typeof navigator !== 'undefined' ? navigator.language : 'en-US'
-  );
+  const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
+
+  // Only after hydration — reading navigator in the initializer would make the
+  // first client render differ from the server (which has no navigator).
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && navigator.language) {
+      setLocaleState(navigator.language);
+    }
+  }, []);
 
   useEffect(() => {
     if (typeof document !== 'undefined') document.documentElement.lang = locale;
