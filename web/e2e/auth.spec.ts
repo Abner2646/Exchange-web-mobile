@@ -22,17 +22,17 @@ test('register → verify email → dashboard', async ({ page }) => {
   await expect(page).toHaveURL(/\/verify-email$/);
   await page.getByLabel('Verification code').fill('123456');
   await page.getByRole('button', { name: 'Verify Email' }).click();
-  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
 });
 
-test('direct login → dashboard', async ({ page }) => {
+test('direct login → home', async ({ page }) => {
   await stubAuth(page);
   await page.goto('/login');
   await page.getByLabel('Email').fill('a@b.co');
   await page.getByLabel('Password').fill('secret12');
   await page.getByRole('button', { name: 'Sign In' }).click();
-  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page).toHaveURL(/\/$/);
 });
 
 test('unauthenticated dashboard redirects to login', async ({ page }) => {

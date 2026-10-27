@@ -35,7 +35,7 @@ export const VerifyEmailForm: React.FC = () => {
     setError(null);
     try {
       await verify.mutateAsync({ codigo });
-      router.replace('/dashboard');
+      router.replace('/');
     } catch (err) {
       setError(isApiError(err) ? tError(err.code, { requestId: err.requestId ?? '' }) : tError('FALLBACK_UNKNOWN_ERROR'));
     }

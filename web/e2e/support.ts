@@ -33,7 +33,7 @@ export async function loginViaUI(page: Page, user: Record<string, unknown> = VER
   await page.getByLabel('Email').fill('a@b.co');
   await page.getByLabel('Password').fill('secret12');
   await page.getByRole('button', { name: 'Sign In' }).click();
-  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page).toHaveURL(/\/$/);
 }
 
 /** Client-side navigation to an (app) page via its nav link (no full reload). */

@@ -28,13 +28,13 @@ function renderForm() {
 beforeEach(() => { replace.mockReset(); verifyAsync.mockReset(); resendAsync.mockReset(); });
 
 describe('VerifyEmailForm', () => {
-  it('verifies the code (sent as codigo) and routes to /dashboard', async () => {
+  it('verifies the code (sent as codigo) and routes to the home', async () => {
     verifyAsync.mockResolvedValue({ user: {}, token: 'jwt', message: 'ok' });
     renderForm();
     await userEvent.type(screen.getByLabelText('Verification code'), '123456');
     await userEvent.click(screen.getByRole('button', { name: 'Verify Email' }));
     await waitFor(() => expect(verifyAsync).toHaveBeenCalledWith({ codigo: '123456' }));
-    await waitFor(() => expect(replace).toHaveBeenCalledWith('/dashboard'));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/'));
   });
 
   it('resends the verification code', async () => {

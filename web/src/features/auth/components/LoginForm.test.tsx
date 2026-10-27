@@ -48,12 +48,12 @@ beforeEach(() => {
 afterEach(() => { delete (process.env as Record<string, string | undefined>).NEXT_PUBLIC_GOOGLE_CLIENT_ID; });
 
 describe('LoginForm', () => {
-  it('direct login routes to /dashboard', async () => {
+  it('direct login routes to the home', async () => {
     loginAsync.mockResolvedValue({ user: {}, token: 'jwt' });
     renderForm();
     await fillCreds();
     await waitFor(() => expect(loginAsync).toHaveBeenCalledWith({ emailOrUsername: 'a@b.co', password: 'secret12' }));
-    await waitFor(() => expect(replace).toHaveBeenCalledWith('/dashboard'));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/'));
   });
 
   it('TOTP challenge shows the authenticator step WITHOUT a resend button', async () => {
@@ -76,7 +76,7 @@ describe('LoginForm', () => {
     await userEvent.type(screen.getByLabelText('Code'), '654321');
     await userEvent.click(screen.getByRole('button', { name: 'Verify' }));
     await waitFor(() => expect(verify2faAsync).toHaveBeenCalledWith({ temporalToken: 'tt', codigo: '654321' }));
-    await waitFor(() => expect(replace).toHaveBeenCalledWith('/dashboard'));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/'));
   });
 
   // The backend returns a bare 401 (legacy `{ error: string }`, decoded to code

@@ -7,7 +7,7 @@ import { session } from '@/shared/api';
 import { useTranslation } from '@/shared/i18n';
 import { useCurrentUser, useLogout } from '@/features/auth/queries';
 import {
-  SwapIcon, UsersIcon, ChartIcon, WalletIcon, GridIcon,
+  SwapIcon, UsersIcon, ChartIcon, WalletIcon,
   BellIcon, UserIcon, ChevronDownIcon, LogoutIcon, MenuIcon, CloseIcon, ShieldIcon, IconProps,
 } from '@/shared/ui/icons/Icon';
 import { isAdminRole } from '@/features/admin/roles';
@@ -15,10 +15,10 @@ import styles from './Navbar.module.css';
 
 type NavItem = { href: string; labelKey: string; Icon: React.FC<IconProps>; authOnly?: boolean };
 
-// V1 order: Swap · P2P · Trading · Wallet. Dashboard + Wallet only when signed in
-// (the V1 Wallet dropdown is unified into the single /wallet page — Caso B).
+// V1 order: Swap · P2P · Trading · Wallet. The logged-in dashboard is the home
+// itself (logo → /), like V1, so there's no separate dashboard link. Wallet shows
+// only when signed in (the V1 Wallet dropdown is unified into /wallet — Caso B).
 const ITEMS: NavItem[] = [
-  { href: '/dashboard', labelKey: 'nav.dashboard', Icon: GridIcon, authOnly: true },
   { href: '/swap', labelKey: 'nav.swap', Icon: SwapIcon },
   { href: '/p2p', labelKey: 'nav.p2p', Icon: UsersIcon },
   { href: '/trading', labelKey: 'nav.trading', Icon: ChartIcon },

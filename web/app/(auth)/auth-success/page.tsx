@@ -20,7 +20,7 @@ export default function AuthSuccessPage() {
       return () => clearTimeout(id);
     }
     session.setToken(token);
-    router.replace('/dashboard');
+    router.replace('/');
   }, [router]);
 
   return (

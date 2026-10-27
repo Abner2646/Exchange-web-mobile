@@ -44,7 +44,7 @@ export const LoginForm: React.FC = () => {
         setStep({ kind: 'twofa', method: result.twoFactorMethod, temporalToken: result.temporalToken });
         return;
       }
-      router.replace('/dashboard');
+      router.replace('/');
     } catch (err) {
       // On the credentials step a 401 always means wrong email/username or
       // password (backend `loginStep1` only throws there), so show the specific
@@ -63,7 +63,7 @@ export const LoginForm: React.FC = () => {
     setError(null);
     try {
       await verify2fa.mutateAsync({ temporalToken: step.temporalToken, codigo });
-      router.replace('/dashboard');
+      router.replace('/');
     } catch (err) { showError(err); }
   };
 

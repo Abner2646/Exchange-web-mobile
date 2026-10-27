@@ -61,7 +61,7 @@ export const ForgotPasswordForm: React.FC = () => {
     if (newPassword !== confirmPassword) { setError(t('auth.reset.mismatch')); return; }
     try {
       await reset.mutateAsync({ email, codigo, newPassword, confirmPassword });
-      router.replace('/dashboard');
+      router.replace('/');
     } catch (err) { showError(err); }
   };
 

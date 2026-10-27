@@ -29,10 +29,10 @@ describe('AdminGate', () => {
     expect(replaceMock).not.toHaveBeenCalled();
   });
 
-  it('redirects to /dashboard and renders nothing when user is not admin', async () => {
+  it('redirects to the home and renders nothing when user is not admin', async () => {
     useCurrentUserMock.mockReturnValue({ data: { role: 'normal' }, isLoading: false });
     render(<AdminGate><span>admin-content</span></AdminGate>);
-    await waitFor(() => expect(replaceMock).toHaveBeenCalledWith('/dashboard'));
+    await waitFor(() => expect(replaceMock).toHaveBeenCalledWith('/'));
     expect(screen.queryByText('admin-content')).toBeNull();
   });
 

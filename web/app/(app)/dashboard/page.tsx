@@ -1,15 +1,13 @@
 'use client';
 
-import { useCurrentUser, useLogout } from '@/features/auth/queries';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
+// The signed-in dashboard IS the home (/), like the V1. This route just forwards
+// there for any stale links/bookmarks. It stays under the (app) guard, so a
+// signed-out visitor is still sent to /login first.
 export default function DashboardPage() {
-  const { data: user } = useCurrentUser();
-  const logout = useLogout();
-  return (
-    <section>
-      <h1>Dashboard</h1>
-      <p>You are signed in{user?.username ? ` as ${user.username}` : ''}.</p>
-      <button type="button" onClick={logout}>Log out</button>
-    </section>
-  );
+  const router = useRouter();
+  useEffect(() => { router.replace('/'); }, [router]);
+  return null;
 }

@@ -30,7 +30,7 @@ function renderForm() {
 beforeEach(() => { replace.mockReset(); forgotAsync.mockReset(); verifyCodeAsync.mockReset(); resetAsync.mockReset(); });
 
 describe('ForgotPasswordForm', () => {
-  it('walks request → code → reset and routes to /dashboard', async () => {
+  it('walks request → code → reset and routes to the home', async () => {
     forgotAsync.mockResolvedValue({ message: 'sent' });
     verifyCodeAsync.mockResolvedValue({});
     resetAsync.mockResolvedValue({ user: {}, token: 'jwt' });
@@ -48,7 +48,7 @@ describe('ForgotPasswordForm', () => {
     await userEvent.type(screen.getByLabelText('Confirm Password'), 'newsecret1');
     await userEvent.click(screen.getByRole('button', { name: 'Save New Password' }));
     await waitFor(() => expect(resetAsync).toHaveBeenCalledWith({ email: 'a@b.co', codigo: '123456', newPassword: 'newsecret1', confirmPassword: 'newsecret1' }));
-    await waitFor(() => expect(replace).toHaveBeenCalledWith('/dashboard'));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/'));
   });
 
   it('blocks the reset step when passwords do not match', async () => {
