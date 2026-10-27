@@ -1,14 +1,22 @@
 'use client';
 
-import { useEffect, useReducer } from 'react';
+import { useEffect, useReducer, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { session } from '@/shared/api';
 import { useCurrentUser } from '@/features/auth/queries';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const [hydrated, setHydrated] = useState(false);
   const [, forceRender] = useReducer((n: number) => n + 1, 0);
   const { data: user } = useCurrentUser();
+
+  // The auth token lives in localStorage (client only). Reading it during the
+  // initial render would make the server (no token → render nothing) disagree with
+  // the first client render (token present → render the app), a hydration mismatch.
+  // So we render nothing until mounted; server and first client render then agree,
+  // and the guard resolves on the client right after.
+  useEffect(() => { setHydrated(true); }, []);
 
   useEffect(() => {
     // A 401 clears the token via session.notifyUnauthorized but nothing else
@@ -28,6 +36,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const mustVerifyEmail = user != null && user.emailVerified === false;
 
   useEffect(() => {
+    if (!hydrated) return;
     if (!authed) {
       router.replace('/login');
       return;
@@ -35,8 +44,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (mustVerifyEmail) {
       router.replace('/verify-email');
     }
-  }, [authed, mustVerifyEmail, router]);
+  }, [hydrated, authed, mustVerifyEmail, router]);
 
-  if (!authed || mustVerifyEmail) return null;
+  if (!hydrated || !authed || mustVerifyEmail) return null;
   return <>{children}</>;
 }
