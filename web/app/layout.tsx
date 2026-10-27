@@ -6,6 +6,7 @@ import type { Metadata } from 'next';
 import { Manrope, Inter } from 'next/font/google';
 import Providers from '@/app/providers';
 import { Navbar } from './_components/Navbar';
+import { Footer } from './_components/Footer';
 
 // UI type. Exposed as `--font-sans`; consumed by reset.css on <body>.
 const manrope = Manrope({
@@ -39,6 +40,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           <Navbar />
           {children}
+          <Footer />
         </Providers>
       </body>
     </html>

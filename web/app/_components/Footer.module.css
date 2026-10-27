@@ -1,0 +1,100 @@
+/* Footer — faithful to the V1 CRA footer (brand + social, link columns, bottom
+   bar), rebuilt on the global tokens. Injected app-wide via the root layout. */
+
+.footer {
+  background-color: var(--bg-secondary);
+  border-top: 1px solid var(--border-primary);
+  color: var(--text-secondary);
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--spacing-xxl) var(--spacing-lg) var(--spacing-lg);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1.6fr repeat(4, 1fr);
+  gap: var(--spacing-xl);
+}
+
+/* Brand column. */
+.brand { max-width: 320px; }
+.logoRow { display: flex; align-items: center; gap: var(--spacing-sm); }
+.logo {
+  color: var(--brand-primary);
+  font-size: 1.375rem;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--tracking-snug);
+}
+.badge {
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background-color: var(--wash-brand);
+  color: var(--brand-primary);
+  font-size: 0.6875rem;
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.description {
+  margin: var(--spacing-md) 0 var(--spacing-md);
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+  line-height: 1.6;
+}
+.social { display: flex; gap: var(--spacing-sm); }
+.socialLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background-color: var(--bg-tertiary);
+  color: var(--text-tertiary);
+  transition: background-color var(--motion-duration-fast) var(--motion-easing-ease),
+    color var(--motion-duration-fast) var(--motion-easing-ease);
+}
+.socialLink:hover { background-color: var(--brand-primary); color: var(--text-inverse); }
+.socialIcon { width: 18px; height: 18px; }
+
+/* Link columns. */
+.section {}
+.sectionTitle {
+  margin: 0 0 var(--spacing-md);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-primary);
+}
+.links { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--spacing-sm); }
+.link {
+  color: var(--text-tertiary);
+  font-size: var(--font-size-sm);
+  text-decoration: none;
+  transition: color var(--motion-duration-fast) var(--motion-easing-ease);
+}
+.link:hover { color: var(--brand-primary); }
+
+/* Bottom bar. */
+.bottom {
+  margin-top: var(--spacing-xl);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--border-secondary);
+}
+.copyright { margin: 0; font-size: var(--font-size-xs); color: var(--text-tertiary); }
+
+@media (prefers-reduced-motion: reduce) {
+  .socialLink, .link { transition: none; }
+}
+
+@media (max-width: 900px) {
+  .grid { grid-template-columns: 1fr 1fr; gap: var(--spacing-lg); }
+  .brand { grid-column: 1 / -1; max-width: none; }
+}
+@media (max-width: 520px) {
+  .grid { grid-template-columns: 1fr; }
+}

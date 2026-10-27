@@ -479,3 +479,39 @@
   .numCell, .thHideSm { display: none; }
   .trustGrid { grid-template-columns: 1fr; }
 }
+
+/* Live-data states (markets table + gainers). */
+.skel {
+  display: inline-block;
+  background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-tertiary) 37%, var(--bg-secondary) 63%);
+  background-size: 400% 100%;
+  border-radius: var(--radius-sm);
+  animation: skelShimmer 1.4s ease infinite;
+}
+@keyframes skelShimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skel { animation: none; }
+}
+.marketsError {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xl);
+  color: var(--text-secondary);
+  text-align: center;
+}
+.marketsRetry {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  background-color: var(--brand-primary);
+  color: var(--text-inverse);
+  border: none;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+.marketsRetry:hover { background-color: var(--brand-secondary); }

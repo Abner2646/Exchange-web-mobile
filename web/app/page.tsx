@@ -3,8 +3,10 @@ import Link from 'next/link';
 import styles from './marketing.module.css';
 import Faq from './_home/Faq';
 import AppQr from './_home/AppQr';
+import { LiveMarkets } from './_home/LiveMarkets';
+import { TopGainers } from './_home/TopGainers';
 import { FEATURE_ICONS } from './_home/icons';
-import { MARKET, GAINERS, FEATURES, REGION_NOTICE, iconUrl } from './_home/data';
+import { FEATURES, REGION_NOTICE } from './_home/data';
 
 export const metadata: Metadata = {
   title: 'BitFlow — Custodial crypto exchange',
@@ -19,11 +21,6 @@ export const metadata: Metadata = {
     type: 'website',
   },
 };
-
-function Pct({ v }: { v: number }) {
-  const cls = v > 0 ? styles.positive : v < 0 ? styles.negative : styles.neutral;
-  return <span className={cls}>{v > 0 ? '+' : ''}{v.toFixed(2)}%</span>;
-}
 
 export default function Home() {
   return (
@@ -45,71 +42,11 @@ export default function Home() {
             </div>
           </div>
 
-          <aside className={styles.gainersSection}>
-            <div className={styles.gainersCard}>
-              <div className={styles.gainersHeader}>
-                <svg className={styles.gainersIcon} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 5l7 8h-4v6h-6v-6H5l7-8z" /></svg>
-                <h3>Top Ganadores (24hs)</h3>
-              </div>
-              <div className={styles.gainersList}>
-                {GAINERS.map((c) => (
-                  <div key={c.symbol} className={styles.gainersItem}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img className={styles.coinIcon} src={iconUrl(c.symbol)} alt="" width={28} height={28} loading="lazy" />
-                    <div className={styles.gainersInfo}>
-                      <span className={styles.gainersSymbol}>{c.symbol}</span>
-                      <span className={styles.gainersPrice}>${c.price}</span>
-                    </div>
-                    <span className={styles.gainersChange}>+{c.change.toFixed(2)}%</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </aside>
+          <TopGainers />
         </section>
 
         {/* Markets */}
-        <section className={styles.section} id="markets">
-          <h2 className={styles.sectionTitle}>Mercados Populares</h2>
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Moneda</th>
-                  <th className={styles.thCenter}>Precio</th>
-                  <th className={styles.thCenter}>24h %</th>
-                  <th className={styles.thCenter}>7d %</th>
-                  <th className={styles.thHideSm} style={{ textAlign: 'right' }}>Volumen 24h</th>
-                  <th className={styles.thHideSm} style={{ textAlign: 'right' }}>Cap. de mercado</th>
-                </tr>
-              </thead>
-              <tbody>
-                {MARKET.map((c) => (
-                  <tr key={c.symbol} className={styles.row}>
-                    <td className={styles.coinCell}>
-                      <div className={styles.coinInfo}>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img className={styles.coinIcon} src={iconUrl(c.symbol)} alt="" width={30} height={30} loading="lazy" />
-                        <div>
-                          <div className={styles.coinSymbol}>{c.symbol}</div>
-                          <div className={styles.coinName}>{c.name}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className={styles.priceCell}>${c.price}</td>
-                    <td className={styles.changeCell}><Pct v={c.change24h} /></td>
-                    <td className={styles.changeCell}><Pct v={c.change7d} /></td>
-                    <td className={`${styles.numCell} ${styles.thHideSm}`}>{c.volume}</td>
-                    <td className={`${styles.numCell} ${styles.thHideSm}`}>{c.marketCap}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className={styles.marketsMore}>
-            <Link href="/trading" className={styles.marketsMoreLink}>Ver todos los mercados →</Link>
-          </div>
-        </section>
+        <LiveMarkets />
 
         {/* Download */}
         <section className={styles.download}>
@@ -155,10 +92,6 @@ export default function Home() {
           </div>
         </section>
       </main>
-
-      <footer className={styles.footer}>
-        <p>© BitFlow — custodial exchange. Activos de mainnet en custodia.</p>
-      </footer>
     </div>
   );
 }
