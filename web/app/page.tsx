@@ -1,10 +1,9 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import styles from './marketing.module.css';
 import Faq from './_home/Faq';
 import AppQr from './_home/AppQr';
+import { HomeHero } from './_home/HomeHero';
 import { LiveMarkets } from './_home/LiveMarkets';
-import { TopGainers } from './_home/TopGainers';
 import { FEATURE_ICONS } from './_home/icons';
 import { FEATURES, REGION_NOTICE } from './_home/data';
 
@@ -26,24 +25,8 @@ export default function Home() {
   return (
     <div className={styles.page} data-theme="dark">
       <main>
-        {/* Hero */}
-        <section className={styles.hero}>
-          <div className={styles.heroContent}>
-            <h1 className={styles.title}>
-              Tu plataforma definitiva para trading de <span className={styles.titleAccent}>criptomonedas</span>
-            </h1>
-            <p className={styles.subtitle}>
-              Opera con más de 200 activos digitales de forma segura, rápida y confiable. Únete a miles de
-              traders que ya confían en nosotros.
-            </p>
-            <div className={styles.actions}>
-              <Link href="/register" className={styles.ctaPrimary}>Empezar ahora</Link>
-              <a href="#markets" className={styles.ctaSecondary}>Ver mercados</a>
-            </div>
-          </div>
-
-          <TopGainers />
-        </section>
+        {/* Hero — marketing (signed out) or portfolio dashboard (signed in) */}
+        <HomeHero />
 
         {/* Markets */}
         <LiveMarkets />
