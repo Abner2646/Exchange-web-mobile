@@ -33,6 +33,18 @@ async function refreshPairFromOracle(pair, deps) {
     sequelize,
   } = deps;
 
+  // DEV-ONLY bypass. The external oracle sources (Binance/Coinbase/CoinGecko) are
+  // frequently unreachable from a local/dev network — e.g. Binance is geo-blocked in
+  // the US — which would pause every pair and make swaps untestable. In development
+  // we trust the pair's stored price and keep it live (never contacting the breaker).
+  // Production (NODE_ENV=production) and tests (NODE_ENV=test) are unaffected.
+  if (process.env.NODE_ENV === 'development') {
+    if (pair.oraclePaused) {
+      await pair.update({ oraclePaused: false, oraclePauseReason: null, oracleCheckedAt: new Date() });
+    }
+    return { action: 'dev-bypass', pairId: pair.id };
+  }
+
   // Manual-priced pairs (no external symbol) are intentionally out of scope.
   if (!pair.externalSymbol) {
     return { action: 'skipped', pairId: pair.id };
