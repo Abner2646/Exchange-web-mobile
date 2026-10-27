@@ -4,7 +4,6 @@ import { useEffect, useReducer } from 'react';
 import { useRouter } from 'next/navigation';
 import { session } from '@/shared/api';
 import { useCurrentUser } from '@/features/auth/queries';
-import { Navbar } from '../_components/Navbar';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -39,10 +38,5 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [authed, mustVerifyEmail, router]);
 
   if (!authed || mustVerifyEmail) return null;
-  return (
-    <>
-      <Navbar />
-      {children}
-    </>
-  );
+  return <>{children}</>;
 }

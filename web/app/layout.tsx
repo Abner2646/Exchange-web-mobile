@@ -5,6 +5,7 @@ import '@/shared/styles/a11y.css';
 import type { Metadata } from 'next';
 import { Manrope, Inter } from 'next/font/google';
 import Providers from '@/app/providers';
+import { Navbar } from './_components/Navbar';
 
 // UI type. Exposed as `--font-sans`; consumed by reset.css on <body>.
 const manrope = Manrope({
@@ -35,7 +36,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${manrope.variable} ${inter.variable}`}>
       <body>
-        <Providers>{children}</Providers>
+        <Providers>
+          <Navbar />
+          {children}
+        </Providers>
       </body>
     </html>
   );
