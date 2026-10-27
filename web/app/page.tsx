@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import styles from './marketing.module.css';
+import { Navbar } from './_components/Navbar';
 import Faq from './_home/Faq';
 import AppQr from './_home/AppQr';
 import { FEATURE_ICONS } from './_home/icons';
@@ -28,13 +29,7 @@ function Pct({ v }: { v: number }) {
 export default function Home() {
   return (
     <div className={styles.page} data-theme="dark">
-      <header className={styles.header}>
-        <span className={styles.brand}><span className={styles.brandDot} />BitFlow</span>
-        <nav className={styles.headerNav} aria-label="Primary">
-          <Link href="/login" className={styles.navLink}>Iniciar sesión</Link>
-          <Link href="/register" className={styles.ctaSmall}>Crear cuenta</Link>
-        </nav>
-      </header>
+      <Navbar />
 
       <main>
         {/* Hero */}

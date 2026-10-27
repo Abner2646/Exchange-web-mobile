@@ -6,7 +6,7 @@ import { makeQueryClient } from '@/app/providers';
 import { LocaleProvider } from '@/shared/i18n';
 
 const replace = vi.fn();
-vi.mock('next/navigation', () => ({ useRouter: () => ({ replace, push: vi.fn() }) }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ replace, push: vi.fn() }), usePathname: () => '/' }));
 
 let hasToken = false;
 let unauthorizedCb: (() => void) | null = null;
@@ -25,7 +25,7 @@ vi.mock('@/shared/api', async (orig) => {
 
 // Controllable current-user for the emailVerified gate.
 let currentUser: { emailVerified: boolean; role?: string } | undefined;
-vi.mock('@/features/auth/queries', () => ({ useCurrentUser: () => ({ data: currentUser }) }));
+vi.mock('@/features/auth/queries', () => ({ useCurrentUser: () => ({ data: currentUser }), useLogout: () => vi.fn() }));
 
 import AppLayout from './layout';
 

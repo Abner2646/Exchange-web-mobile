@@ -114,3 +114,12 @@ export const EyeOffIcon: React.FC<IconProps> = (p) => (
 export const MenuIcon: React.FC<IconProps> = (p) => (
   <Svg {...p}><path d="M4 7h16M4 12h16M4 17h16" /></Svg>
 );
+export const BellIcon: React.FC<IconProps> = (p) => (
+  <Svg {...p}><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></Svg>
+);
+export const UsersIcon: React.FC<IconProps> = (p) => (
+  <Svg {...p}><circle cx="9" cy="8" r="3.5" /><path d="M3 20a6 6 0 0 1 12 0" /><path d="M16 5.2a3.5 3.5 0 0 1 0 6.6" /><path d="M17 14.3A6 6 0 0 1 21 20" /></Svg>
+);
+export const GridIcon: React.FC<IconProps> = (p) => (
+  <Svg {...p}><rect x="4" y="4" width="7" height="7" rx="1.5" /><rect x="13" y="4" width="7" height="7" rx="1.5" /><rect x="4" y="13" width="7" height="7" rx="1.5" /><rect x="13" y="13" width="7" height="7" rx="1.5" /></Svg>
+);

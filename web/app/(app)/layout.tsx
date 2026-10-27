@@ -2,15 +2,12 @@
 
 import { useEffect, useReducer } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { session } from '@/shared/api';
-import { useTranslation } from '@/shared/i18n';
 import { useCurrentUser } from '@/features/auth/queries';
-import { isAdminRole } from '@/features/admin/roles';
+import { Navbar } from '../_components/Navbar';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { t } = useTranslation();
   const [, forceRender] = useReducer((n: number) => n + 1, 0);
   const { data: user } = useCurrentUser();
 
@@ -44,15 +41,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (!authed || mustVerifyEmail) return null;
   return (
     <>
-      <nav>
-        <Link href="/dashboard">{t('nav.dashboard')}</Link>
-        <Link href="/wallet">{t('nav.wallet')}</Link>
-        <Link href="/swap">{t('nav.swap')}</Link>
-        <Link href="/trading">{t('nav.trading')}</Link>
-        <Link href="/p2p">{t('nav.p2p')}</Link>
-        <Link href="/profile">{t('nav.profile')}</Link>
-        {isAdminRole(user) && <Link href="/admin">{t('nav.admin')}</Link>}
-      </nav>
+      <Navbar />
       {children}
     </>
   );
