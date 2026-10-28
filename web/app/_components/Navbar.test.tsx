@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { makeQueryClient } from '@/app/providers';
 import { LocaleProvider } from '@/shared/i18n';
+import { ThemeProvider } from '@/shared/theme';
 
 // Tests run under the default (en) locale.
 const replace = vi.fn();
@@ -34,7 +35,7 @@ import { Navbar } from './Navbar';
 
 function renderNav() {
   const qc = makeQueryClient();
-  return render(<QueryClientProvider client={qc}><LocaleProvider><Navbar /></LocaleProvider></QueryClientProvider>);
+  return render(<QueryClientProvider client={qc}><ThemeProvider><LocaleProvider><Navbar /></LocaleProvider></ThemeProvider></QueryClientProvider>);
 }
 
 beforeEach(() => { replace.mockReset(); logout.mockReset(); hasToken = false; currentUser = undefined; });

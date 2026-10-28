@@ -8,9 +8,11 @@ import { useTranslation } from '@/shared/i18n';
 import { useCurrentUser, useLogout } from '@/features/auth/queries';
 import {
   SwapIcon, UsersIcon, ChartIcon, WalletIcon,
-  BellIcon, UserIcon, ChevronDownIcon, LogoutIcon, MenuIcon, CloseIcon, ShieldIcon, IconProps,
+  BellIcon, UserIcon, ChevronDownIcon, LogoutIcon, MenuIcon, CloseIcon, ShieldIcon,
+  SunIcon, MoonIcon, IconProps,
 } from '@/shared/ui/icons/Icon';
 import { isAdminRole } from '@/features/admin/roles';
+import { useTheme } from '@/shared/theme';
 import styles from './Navbar.module.css';
 
 type NavItem = { href: string; labelKey: string; Icon: React.FC<IconProps>; authOnly?: boolean };
@@ -33,6 +35,7 @@ export const Navbar: React.FC = () => {
   const router = useRouter();
   const logout = useLogout();
   const { data: user } = useCurrentUser();
+  const { theme, toggleTheme } = useTheme();
 
   // Auth is resolved client-side (the token lives in localStorage). We start
   // `false` so SSR and the first client render agree (no hydration mismatch),
@@ -76,7 +79,7 @@ export const Navbar: React.FC = () => {
   const displayName = capitalize(user?.displayName || user?.username || '');
 
   return (
-    <header className={styles.navbar} data-theme="dark">
+    <header className={styles.navbar}>
       <div className={styles.container}>
         <Link href="/" className={styles.logo}>BitFlow</Link>
 
@@ -95,6 +98,9 @@ export const Navbar: React.FC = () => {
         </nav>
 
         <div className={styles.actions}>
+          <button type="button" className={styles.iconButton} aria-label={t('nav.theme')} onClick={toggleTheme}>
+            {theme === 'dark' ? <SunIcon size={20} /> : <MoonIcon size={20} />}
+          </button>
           {authed ? (
             <>
               <Link href="/profile" className={styles.iconButton} aria-label={t('nav.notifications')}>
@@ -167,6 +173,9 @@ export const Navbar: React.FC = () => {
             </Link>
           ))}
           <div className={styles.drawerDivider} />
+          <button type="button" className={styles.drawerLink} onClick={toggleTheme}>
+            {theme === 'dark' ? <SunIcon size={18} /> : <MoonIcon size={18} />}{t('nav.theme')}
+          </button>
           {authed ? (
             <>
               <Link href="/profile" className={styles.drawerLink}><UserIcon size={18} />{t('nav.profile')}</Link>

@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 
 export default function Home() {
   return (
-    <div className={styles.page} data-theme="dark">
+    <div className={styles.page}>
       <main>
         {/* Hero — marketing (signed out) or portfolio dashboard (signed in) */}
         <HomeHero />

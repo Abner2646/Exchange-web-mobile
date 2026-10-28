@@ -5,6 +5,7 @@ import '@/shared/styles/a11y.css';
 import type { Metadata } from 'next';
 import { Manrope, Inter } from 'next/font/google';
 import Providers from '@/app/providers';
+import { themeInitScript } from '@/shared/theme';
 import { Navbar } from './_components/Navbar';
 import { Footer } from './_components/Footer';
 
@@ -35,8 +36,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${manrope.variable} ${inter.variable}`}>
+    <html lang="en" data-theme="dark" suppressHydrationWarning className={`${manrope.variable} ${inter.variable}`}>
       <body>
+        {/* Apply the stored theme before paint (default dark) — no flash. */}
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <Providers>
           <Navbar />
           {children}

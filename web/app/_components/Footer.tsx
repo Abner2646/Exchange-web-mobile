@@ -40,7 +40,7 @@ function Column({ title, links }: { title: string; links: { label: string; href:
 export function Footer() {
   const year = new Date().getFullYear();
   return (
-    <footer className={styles.footer} data-theme="dark">
+    <footer className={styles.footer}>
       <div className={styles.container}>
         <div className={styles.grid}>
           <div className={styles.brand}>

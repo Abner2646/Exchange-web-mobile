@@ -83,6 +83,7 @@ export const es: Catalog = {
     'nav.greeting': 'Hola, {{name}}',
     'nav.notifications': 'Notificaciones',
     'nav.openMenu': 'Abrir menú',
+    'nav.theme': 'Cambiar tema',
     'wallet.title': 'Billetera',
     'wallet.tab.balances': 'Balances',
     'wallet.tab.deposit': 'Depositar',
