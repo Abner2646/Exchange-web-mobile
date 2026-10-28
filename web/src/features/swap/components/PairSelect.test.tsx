@@ -21,9 +21,10 @@ describe('PairSelect', () => {
     });
     const onChange = vi.fn();
     render(<PairSelect value="" onChange={onChange} />);
-    await userEvent.selectOptions(screen.getByRole('combobox'), 'p1');
-    expect(onChange).toHaveBeenCalledWith('p1');
+    await userEvent.click(screen.getByRole('button')); // open the custom listbox
     // the paused pair is present as an option
-    expect(screen.getByRole('option', { name: /ETH\/USDT/ })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: /ETH\s*\/USDT/ })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('option', { name: /BTC\s*\/USDT/ }));
+    expect(onChange).toHaveBeenCalledWith('p1');
   });
 });

@@ -32,11 +32,17 @@ beforeEach(() => {
   (useSwapQuote as any).mockReturnValue({ data: QUOTE, error: null, isFetching: false, refetch: vi.fn() });
 });
 
+// The pair uses the custom Select (button trigger + listbox), not a native <select>.
+async function selectPair() {
+  await userEvent.click(screen.getByRole('button', { name: 'swap.form.pair' }));
+  await userEvent.click(screen.getByRole('option', { name: /BTC\s*\/USDT/ }));
+}
+
 describe('SwapForm (money-path)', () => {
   it('blocks submit when the quote-asset Funding balance is insufficient for a buy', async () => {
     (useMyBalances as any).mockReturnValue({ data: balances('100', 'q1') }); // need 32532.5
     render(<SwapForm />);
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: /swap.form.pair/i }).closest('select') ?? screen.getAllByRole('combobox')[0], 'p1');
+    await selectPair();
     await userEvent.type(screen.getByLabelText('swap.form.amount'), '0.5');
     expect(screen.getByRole('button', { name: 'swap.form.submit' })).toBeDisabled();
     expect(screen.getByText('swap.form.insufficient')).toBeInTheDocument();
@@ -46,7 +52,7 @@ describe('SwapForm (money-path)', () => {
     (useMyBalances as any).mockReturnValue({ data: balances('50000', 'q1') });
     mutateAsync.mockResolvedValue({ message: 'ok', data: { precioUsado: '65000', comisionCalculada: '32.5' } });
     render(<SwapForm />);
-    await userEvent.selectOptions(screen.getAllByRole('combobox')[0], 'p1');
+    await selectPair();
     await userEvent.type(screen.getByLabelText('swap.form.amount'), '0.5');
     const btn = screen.getByRole('button', { name: 'swap.form.submit' });
     expect(btn).toBeEnabled();
@@ -59,7 +65,7 @@ describe('SwapForm (money-path)', () => {
     (useSwapQuote as any).mockReturnValue({ data: undefined, error: null, isFetching: false, refetch: vi.fn() });
     (useMyBalances as any).mockReturnValue({ data: balances('50000', 'q1') });
     render(<SwapForm />);
-    await userEvent.selectOptions(screen.getAllByRole('combobox')[0], 'p1');
+    await selectPair();
     await userEvent.type(screen.getByLabelText('swap.form.amount'), '0.5');
     expect(screen.getByRole('button', { name: 'swap.form.submit' })).toBeDisabled();
     expect(screen.getByText('swap.form.paused')).toBeInTheDocument();
@@ -73,7 +79,7 @@ describe('SwapForm (money-path)', () => {
       error: null,
     });
     render(<SwapForm />);
-    await userEvent.selectOptions(screen.getAllByRole('combobox')[0], 'p1');
+    await selectPair();
     await userEvent.type(screen.getByLabelText('swap.form.amount'), '0.5');
     expect(screen.getByText('swap.form.limitRemaining')).toBeInTheDocument();
   });

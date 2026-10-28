@@ -10,7 +10,7 @@ import SwapWidget from './SwapWidget';
 describe('SwapWidget', () => {
   it('renders the heading, form and history', () => {
     render(<SwapWidget />);
-    expect(screen.getByRole('heading', { name: 'swap.title' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'swap.page.title' })).toBeInTheDocument();
     expect(screen.getByText('form-stub')).toBeInTheDocument();
     expect(screen.getByText('history-stub')).toBeInTheDocument();
   });

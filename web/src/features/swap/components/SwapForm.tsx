@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { parseInput, compare } from '@/shared/money';
 import { useTranslation } from '@/shared/i18n';
 import { useErrorTranslation } from '@/shared/i18n/errorCatalog';
-import { Button, Field } from '@/shared/ui';
+import { Button, Field, Select } from '@/shared/ui';
 import { useMyBalances } from '@/features/wallet/queries';
 import { PairSelect } from './PairSelect';
 import { QuoteDisplay } from './QuoteDisplay';
@@ -36,6 +36,7 @@ export default function SwapForm() {
   // buy  → user spends quote asset (USDT), amount = quote.calculo.finalAmount
   // sell → user spends base asset (BTC),  amount = parsed.value (entered amount)
   const needAsset = pair ? (type === 'buy' ? pair.quoteCryptoId : pair.baseCryptoId) : null;
+  const needSymbol = pair ? (type === 'buy' ? pair.quoteSymbol : pair.baseSymbol) : '';
   const availableInCompartment = useMemo(() => {
     if (!needAsset) return null;
     const entry = (balances ?? []).find((b) => b.criptomonedaId === needAsset);
@@ -46,26 +47,14 @@ export default function SwapForm() {
   const requiredSpend =
     type === 'buy' ? (quote.data?.calculo.finalAmount ?? null) : parsed.ok ? parsed.value : null;
 
-  // insufficient = true only when both sides are known and the balance is short.
-  // If availableInCompartment is null (balance not loaded), we treat it as
-  // unknown → cannot submit (no pass-on-unknown; WithdrawForm lesson).
   const insufficient =
     availableInCompartment != null && requiredSpend != null
       ? compare(requiredSpend, availableInCompartment) > 0
       : false;
 
-  // Advisory daily-limit check; NOT the gate (execute is authoritative). Gate on
-  // amountOk too: a cleared amount keeps TanStack's last quote.data, so without
-  // this the advisory would re-fire against a stale quote the user no longer intends.
   const checkLimit = useCheckLimit(quote.data?.calculo.quoteAmount ?? '0', Boolean(quote.data) && amountOk);
   const limitExceeded = checkLimit.isError && (checkLimit.error as { code?: string } | null)?.code === 'EXCHANGE_DAILY_LIMIT_EXCEEDED';
 
-  // canSubmit: all gates must pass.
-  // - pair selected and not oracle-paused
-  // - amount is valid and positive
-  // - quote loaded and no quote error
-  // - sufficiency: balance must be loaded (availableInCompartment != null) AND sufficient
-  // - execute is not already pending (no double-submit)
   const canSubmit =
     Boolean(pairId) &&
     amountOk &&
@@ -73,9 +62,21 @@ export default function SwapForm() {
     !pair.oraclePaused &&
     !!quote.data &&
     quote.error == null &&
-    availableInCompartment != null &&   // block if balance not loaded
+    availableInCompartment != null &&
     !insufficient &&
     !execute.isPending;
+
+  // Max fills the BASE amount from the available balance of the asset being spent.
+  // sell → spend base directly; buy → convert the available quote at the pair price.
+  // Display convenience only; the authoritative gates above still re-check.
+  const maxBase = useMemo(() => {
+    if (!pair || availableInCompartment == null) return null;
+    if (type === 'sell') return availableInCompartment;
+    const price = Number(pair.currentPrice);
+    const avail = Number(availableInCompartment);
+    if (!price || !Number.isFinite(price) || !Number.isFinite(avail)) return null;
+    return (avail / price).toFixed(8).replace(/\.?0+$/, '');
+  }, [pair, availableInCompartment, type]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -90,45 +91,70 @@ export default function SwapForm() {
 
   return (
     <form className={styles.form} onSubmit={handleSubmit} noValidate>
-      <h2>{t('swap.form.title')}</h2>
-
       <PairSelect value={pairId} onChange={setPairId} />
 
-      <Field label={t('swap.form.type')}>
-        <select
-          id="swap-type"
-          value={type}
-          onChange={(e) => setType(e.target.value as SwapType)}
+      <div className={styles.directionToggle} role="group" aria-label={t('swap.form.type')}>
+        <button
+          type="button"
+          className={`${styles.directionBtn} ${type === 'buy' ? styles.directionActive : ''}`}
+          aria-pressed={type === 'buy'}
+          onClick={() => setType('buy')}
         >
-          <option value="buy">{t('swap.form.buy')}</option>
-          <option value="sell">{t('swap.form.sell')}</option>
-        </select>
-      </Field>
+          {t('swap.form.buy')}
+        </button>
+        <button
+          type="button"
+          className={`${styles.directionBtn} ${type === 'sell' ? styles.directionActive : ''}`}
+          aria-pressed={type === 'sell'}
+          onClick={() => setType('sell')}
+        >
+          {t('swap.form.sell')}
+        </button>
+      </div>
 
       <Field label={t('swap.form.compartment')}>
-        <select
-          id="swap-compartment"
+        <Select
           value={compartment}
-          onChange={(e) => setCompartment(e.target.value as SwapCompartment)}
-        >
-          <option value="funding">{t('wallet.balances.funding')}</option>
-          <option value="spot">{t('wallet.balances.spot')}</option>
-        </select>
-      </Field>
-
-      <Field label={t('swap.form.amount')}>
-        <input
-          id="swap-amount"
-          inputMode="decimal"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          autoComplete="off"
+          onChange={(v) => setCompartment(v as SwapCompartment)}
+          aria-label={t('swap.form.compartment')}
+          options={[
+            { value: 'funding', label: t('wallet.balances.funding') },
+            { value: 'spot', label: t('wallet.balances.spot') },
+          ]}
         />
       </Field>
 
+      <div>
+        <div className={styles.fieldHead}>
+          <label htmlFor="swap-amount" className={styles.fieldLabel}>{t('swap.form.amount')}</label>
+          {pair && availableInCompartment != null && (
+            <span className={styles.balanceText}>
+              {t('swap.form.balance')} <strong>{availableInCompartment}</strong> {needSymbol}
+            </span>
+          )}
+        </div>
+        <div className={styles.amountRow}>
+          <input
+            id="swap-amount"
+            className={styles.amountInput}
+            inputMode="decimal"
+            placeholder="0"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            autoComplete="off"
+          />
+          <button
+            type="button"
+            className={styles.maxBtn}
+            disabled={maxBase == null}
+            onClick={() => maxBase != null && setAmount(maxBase)}
+          >
+            {t('swap.form.max')}
+          </button>
+        </div>
+      </div>
+
       {pair?.oraclePaused ? (
-        // Pair paused at the list level (quote never fires): explain why submit is
-        // blocked. The execute-time 503 path is handled by QuoteDisplay instead.
         <p role="alert" className={styles.paused}>{t('swap.form.paused')}</p>
       ) : (
         pair && (
@@ -145,20 +171,10 @@ export default function SwapForm() {
         )
       )}
 
-      {insufficient && (
-        <p role="alert" className={styles.label}>
-          {t('swap.form.insufficient')}
-        </p>
-      )}
-      {limitExceeded && (
-        <p role="alert" className={styles.label}>
-          {t('swap.form.limitExceeded')}
-        </p>
-      )}
+      {insufficient && <p role="alert" className={styles.label}>{t('swap.form.insufficient')}</p>}
+      {limitExceeded && <p role="alert" className={styles.label}>{t('swap.form.limitExceeded')}</p>}
       {checkLimit.data?.canTransact && !limitExceeded && (
-        <p className={styles.label}>
-          {t('swap.form.limitRemaining', { remaining: String(checkLimit.data.remainingLimit) })}
-        </p>
+        <p className={styles.label}>{t('swap.form.limitRemaining', { remaining: String(checkLimit.data.remainingLimit) })}</p>
       )}
       {execute.isError && execute.error && (
         <p role="alert" className={styles.label}>
@@ -168,7 +184,7 @@ export default function SwapForm() {
         </p>
       )}
       {execute.isSuccess && execute.data && (
-        <div role="status" className={styles.label}>
+        <div role="status" className={styles.success}>
           <p>{t('swap.success.title')}</p>
           <p>{t('swap.success.priceUsed', { price: execute.data.data.precioUsado })}</p>
           <p>{t('swap.success.fee', { fee: execute.data.data.comisionCalculada })}</p>
