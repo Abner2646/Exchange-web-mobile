@@ -70,3 +70,45 @@ describe('Select (custom listbox)', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 });
+
+const META_OPTIONS: SelectOption[] = [
+  { value: 'BTC', label: <strong>BTC</strong>, text: 'BTC', meta: '1.5' },
+  { value: 'ETH', label: <strong>ETH</strong>, text: 'ETH' },
+  { value: 'SOL', label: <strong>SOL</strong>, text: 'SOL' },
+];
+
+function SearchHarness({ onChange }: { onChange?: (v: string) => void }) {
+  const [value, setValue] = useState<string | null>(null);
+  return (
+    <Select
+      aria-label="Moneda"
+      searchable
+      searchPlaceholder="Buscar"
+      options={META_OPTIONS}
+      value={value}
+      onChange={(v) => {
+        setValue(v);
+        onChange?.(v);
+      }}
+    />
+  );
+}
+
+describe('Select (searchable)', () => {
+  it('filters options by the query and selects a match', () => {
+    const onChange = vi.fn();
+    render(<SearchHarness onChange={onChange} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Moneda' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Buscar' }), { target: { value: 'eth' } });
+    const options = screen.getAllByRole('option');
+    expect(options).toHaveLength(1);
+    fireEvent.click(options[0]);
+    expect(onChange).toHaveBeenCalledWith('ETH');
+  });
+
+  it('renders option meta (e.g. balance) in the dropdown', () => {
+    render(<SearchHarness />);
+    fireEvent.click(screen.getByRole('button', { name: 'Moneda' }));
+    expect(screen.getByText('1.5')).toBeInTheDocument();
+  });
+});

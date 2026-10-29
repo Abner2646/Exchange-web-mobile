@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { parseInput, compare, multiply, divide, formatDisplay } from '@/shared/money';
 import { useTranslation } from '@/shared/i18n';
 import { useErrorTranslation } from '@/shared/i18n/errorCatalog';
@@ -13,14 +13,32 @@ import styles from './swap.module.css';
 
 type Coin = { id: string; symbol: string };
 
-function CoinSelect({ value, onChange, coins, label }: { value: string; onChange: (id: string) => void; coins: Coin[]; label: string }) {
-  const options = coins.map((c) => ({
-    value: c.id,
-    text: c.symbol,
-    icon: <CoinLogo symbol={c.symbol} size={22} />,
-    label: <strong>{c.symbol}</strong>,
-  }));
-  return <Select options={options} value={value || null} onChange={onChange} aria-label={label} placeholder="—" />;
+function CoinSelect({
+  value,
+  onChange,
+  coins,
+  label,
+  balanceOf,
+  fmt,
+}: {
+  value: string;
+  onChange: (id: string) => void;
+  coins: Coin[];
+  label: string;
+  balanceOf: (id: string) => string;
+  fmt: (v: string) => string;
+}) {
+  const options = coins.map((c) => {
+    const bal = balanceOf(c.id);
+    return {
+      value: c.id,
+      text: c.symbol,
+      icon: <CoinLogo symbol={c.symbol} size={22} />,
+      label: <strong>{c.symbol}</strong>,
+      meta: compare(bal, '0') > 0 ? fmt(bal) : undefined,
+    };
+  });
+  return <Select options={options} value={value || null} onChange={onChange} aria-label={label} placeholder="—" searchable searchPlaceholder={label} />;
 }
 
 export default function SwapForm() {
@@ -37,8 +55,29 @@ export default function SwapForm() {
   const [fromText, setFromText] = useState('');
   const [toText, setToText] = useState('');
   const [compartment, setCompartment] = useState<SwapCompartment>('funding');
+  const [spin, setSpin] = useState(0); // drives the ⇅ flip animation
 
   const fmt = (v: string) => formatDisplay(v, { locale, maxDecimals: 8, stripTrailingZeros: true });
+
+  // Available (total, display) balance per coin — used to rank + annotate the pickers.
+  const balanceOf = useCallback(
+    (id: string) => (balances ?? []).find((b) => b.criptomonedaId === id)?.availableBalance ?? '0',
+    [balances],
+  );
+  // Coins with a balance first (by balance, desc); zero-balance coins after, alphabetical.
+  const orderByBalance = useCallback(
+    (list: Coin[]) =>
+      [...list].sort((a, b) => {
+        const ba = balanceOf(a.id);
+        const bb = balanceOf(b.id);
+        const pa = compare(ba, '0') > 0;
+        const pb = compare(bb, '0') > 0;
+        if (pa && pb) return compare(bb, ba);
+        if (pa !== pb) return pa ? -1 : 1;
+        return a.symbol.localeCompare(b.symbol);
+      }),
+    [balanceOf],
+  );
 
   // All coins that appear in any pair, and (given From) the coins it can pair with.
   const coins = useMemo(() => {
@@ -59,6 +98,9 @@ export default function SwapForm() {
     });
     return coins.filter((c) => ok.has(c.id));
   }, [coins, pairs, fromId]);
+
+  const fromCoins = useMemo(() => orderByBalance(coins), [coins, orderByBalance]);
+  const toCoinsOrdered = useMemo(() => orderByBalance(toCoins), [toCoins, orderByBalance]);
 
   // Default to the first pair (buy base with quote) once pairs load.
   useEffect(() => {
@@ -137,7 +179,10 @@ export default function SwapForm() {
     setFromId(toId); setToId(fromId);
     setFromText(toText); setToText(fromText);
     setDriver((d) => (d === 'from' ? 'to' : 'from'));
+    setSpin((s) => s + 1);
   };
+  // Alternating class so the fade animation restarts on every flip (same keyframes).
+  const flipClass = spin === 0 ? '' : spin % 2 ? styles.flipA : styles.flipB;
   const chooseFrom = (id: string) => { setFromId(id); if (id === toId) setToId(''); };
 
   async function handleSubmit(e: React.FormEvent) {
@@ -156,7 +201,7 @@ export default function SwapForm() {
     <form className={styles.twoPanel} onSubmit={handleSubmit} noValidate>
       {/* LEFT — De / A */}
       <div className={styles.formCard}>
-        <div className={styles.coinField}>
+        <div className={[styles.coinField, flipClass].filter(Boolean).join(' ')}>
           <div className={styles.fieldHead}>
             <span className={styles.fieldLabel}>{t('swap.form.from')}</span>
             {availableFrom != null && (
@@ -166,7 +211,7 @@ export default function SwapForm() {
             )}
           </div>
           <div className={styles.coinRow}>
-            <CoinSelect value={fromId} onChange={chooseFrom} coins={coins} label={t('swap.form.from')} />
+            <CoinSelect value={fromId} onChange={chooseFrom} coins={fromCoins} label={t('swap.form.from')} balanceOf={balanceOf} fmt={fmt} />
             <input
               className={styles.amountInput}
               inputMode="decimal"
@@ -179,15 +224,21 @@ export default function SwapForm() {
         </div>
 
         <div className={styles.swapRow}>
-          <button type="button" className={styles.swapBtn} onClick={swapSides} aria-label={t('swap.form.flip')}>
+          <button
+            type="button"
+            className={styles.swapBtn}
+            style={{ transform: `rotate(${spin * 180}deg)` }}
+            onClick={swapSides}
+            aria-label={t('swap.form.flip')}
+          >
             <ArrowDownIcon size={18} />
           </button>
         </div>
 
-        <div className={styles.coinField}>
+        <div className={[styles.coinField, flipClass].filter(Boolean).join(' ')}>
           <span className={styles.fieldLabel}>{t('swap.form.to')}</span>
           <div className={styles.coinRow}>
-            <CoinSelect value={toId} onChange={setToId} coins={toCoins} label={t('swap.form.to')} />
+            <CoinSelect value={toId} onChange={setToId} coins={toCoinsOrdered} label={t('swap.form.to')} balanceOf={balanceOf} fmt={fmt} />
             <input
               className={styles.amountInput}
               inputMode="decimal"

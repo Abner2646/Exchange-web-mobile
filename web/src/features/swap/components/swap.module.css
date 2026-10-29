@@ -121,9 +121,18 @@
   background-color: var(--bg-tertiary);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: transform var(--motion-duration-fast) var(--motion-easing-ease), color var(--motion-duration-fast) var(--motion-easing-ease);
+  /* Inline transform (rotate per flip) animates via this transition. */
+  transition: transform 320ms var(--motion-easing-ease), color var(--motion-duration-fast) var(--motion-easing-ease), border-color var(--motion-duration-fast) var(--motion-easing-ease);
 }
-.swapBtn:hover { color: var(--brand-primary); transform: rotate(180deg); }
+.swapBtn:hover { color: var(--brand-primary); border-color: var(--border-focus); }
+
+/* Flip feedback: the two coin fields cross-fade. Alternating class names restart
+   the same keyframes on every flip. */
+.flipA, .flipB { animation: coinFlip 300ms var(--motion-easing-ease); }
+@keyframes coinFlip {
+  from { opacity: 0.35; }
+  to { opacity: 1; }
+}
 
 /* RIGHT — live receipt → result. */
 .receipt {
@@ -193,6 +202,6 @@
 .historyTitle { margin: var(--spacing-xl) 0 0; font-size: var(--font-size-md); font-weight: var(--font-weight-semibold); color: var(--text-primary); }
 
 @media (prefers-reduced-motion: reduce) {
-  .swapBtn { transition: none; }
-  .swapBtn:hover { transform: none; }
+  .swapBtn { transition: color var(--motion-duration-fast) var(--motion-easing-ease); }
+  .flipA, .flipB { animation: none; }
 }

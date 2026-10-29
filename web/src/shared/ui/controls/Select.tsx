@@ -1,15 +1,17 @@
 'use client';
-import React, { useCallback, useEffect, useId, useRef, useState, KeyboardEvent } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState, KeyboardEvent } from 'react';
 import styles from './Select.module.css';
 
 export interface SelectOption {
   value: string;
   /** Rich label (may include text + markup). */
   label: React.ReactNode;
-  /** Plain-text label for the trigger when `label` isn't a string. */
+  /** Plain-text label for the trigger when `label` isn't a string, and for search. */
   text?: string;
   /** Optional leading visual (icon, coin logo…). */
   icon?: React.ReactNode;
+  /** Optional trailing content shown only in the dropdown option (e.g. a balance). */
+  meta?: React.ReactNode;
   disabled?: boolean;
 }
 
@@ -21,6 +23,9 @@ export interface SelectProps {
   id?: string;
   disabled?: boolean;
   className?: string;
+  /** Show a filter input at the top of the dropdown. */
+  searchable?: boolean;
+  searchPlaceholder?: string;
   'aria-label'?: string;
   'aria-labelledby'?: string;
   'aria-invalid'?: boolean;
@@ -40,12 +45,15 @@ const Check = () => (
 
 function nextEnabled(options: SelectOption[], from: number, dir: 1 | -1): number {
   const n = options.length;
+  if (n === 0) return -1;
   for (let step = 1; step <= n; step++) {
     const i = (from + dir * step + n * step) % n;
     if (!options[i]?.disabled) return i;
   }
   return from;
 }
+
+const optionText = (o: SelectOption) => o.text ?? (typeof o.label === 'string' ? o.label : '');
 
 export const Select: React.FC<SelectProps> = ({
   options,
@@ -55,6 +63,8 @@ export const Select: React.FC<SelectProps> = ({
   id,
   disabled,
   className,
+  searchable = false,
+  searchPlaceholder,
   'aria-label': ariaLabel,
   'aria-labelledby': ariaLabelledby,
   'aria-invalid': ariaInvalid,
@@ -65,40 +75,52 @@ export const Select: React.FC<SelectProps> = ({
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   const optionRefs = useRef<(HTMLLIElement | null)[]>([]);
 
   const [open, setOpen] = useState(false);
-  const selectedIndex = options.findIndex((o) => o.value === value);
-  const [activeIndex, setActiveIndex] = useState(selectedIndex >= 0 ? selectedIndex : 0);
+  const [query, setQuery] = useState('');
 
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!searchable || !q) return options;
+    return options.filter((o) => optionText(o).toLowerCase().includes(q));
+  }, [options, query, searchable]);
+
+  const selectedIndex = options.findIndex((o) => o.value === value);
   const selected = selectedIndex >= 0 ? options[selectedIndex] : null;
+  const [activeIndex, setActiveIndex] = useState(0);
 
   const close = useCallback((focusTrigger = true) => {
     setOpen(false);
+    setQuery('');
     if (focusTrigger) triggerRef.current?.focus();
   }, []);
 
   const openPanel = useCallback(() => {
     if (disabled) return;
-    setActiveIndex(selectedIndex >= 0 ? selectedIndex : nextEnabled(options, -1, 1));
+    setQuery('');
+    const activeInFull = filtered.findIndex((o) => o.value === value);
+    setActiveIndex(activeInFull >= 0 ? activeInFull : nextEnabled(filtered, -1, 1));
     setOpen(true);
-  }, [disabled, options, selectedIndex]);
+  }, [disabled, filtered, value]);
 
   const choose = useCallback(
     (index: number) => {
-      const opt = options[index];
+      const opt = filtered[index];
       if (!opt || opt.disabled) return;
       onChange(opt.value);
       close(true);
     },
-    [options, onChange, close]
+    [filtered, onChange, close],
   );
 
-  // Focus the listbox and scroll the active option into view when opened.
+  // Focus the search input (if any) or the listbox when opened.
   useEffect(() => {
     if (!open) return;
-    listRef.current?.focus();
-  }, [open]);
+    if (searchable) searchRef.current?.focus();
+    else listRef.current?.focus();
+  }, [open, searchable]);
 
   useEffect(() => {
     if (!open) return;
@@ -109,11 +131,11 @@ export const Select: React.FC<SelectProps> = ({
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) close(false);
     };
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
-  }, [open]);
+  }, [open, close]);
 
   const onTriggerKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter' || e.key === ' ') {
@@ -122,26 +144,26 @@ export const Select: React.FC<SelectProps> = ({
     }
   };
 
-  const onListKeyDown = (e: KeyboardEvent<HTMLUListElement>) => {
+  // Shared navigation for both the listbox and the search input.
+  const onNavKeyDown = (e: KeyboardEvent<HTMLElement>) => {
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        setActiveIndex((i) => nextEnabled(options, i, 1));
+        setActiveIndex((i) => nextEnabled(filtered, i, 1));
         break;
       case 'ArrowUp':
         e.preventDefault();
-        setActiveIndex((i) => nextEnabled(options, i, -1));
+        setActiveIndex((i) => nextEnabled(filtered, i, -1));
         break;
       case 'Home':
         e.preventDefault();
-        setActiveIndex(nextEnabled(options, -1, 1));
+        setActiveIndex(nextEnabled(filtered, -1, 1));
         break;
       case 'End':
         e.preventDefault();
-        setActiveIndex(nextEnabled(options, 0, -1));
+        setActiveIndex(nextEnabled(filtered, 0, -1));
         break;
       case 'Enter':
-      case ' ':
         e.preventDefault();
         choose(activeIndex);
         break;
@@ -153,6 +175,11 @@ export const Select: React.FC<SelectProps> = ({
         setOpen(false);
         break;
     }
+  };
+
+  const onSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setQuery(e.target.value);
+    setActiveIndex(0);
   };
 
   const triggerText = selected ? (selected.text ?? (typeof selected.label === 'string' ? selected.label : undefined)) : undefined;
@@ -174,6 +201,7 @@ export const Select: React.FC<SelectProps> = ({
         aria-labelledby={ariaLabelledby}
         aria-invalid={ariaInvalid}
         aria-describedby={ariaDescribedby}
+        title={triggerText}
       >
         <span className={styles.value}>
           {selected?.icon}
@@ -187,47 +215,68 @@ export const Select: React.FC<SelectProps> = ({
       </button>
 
       {open && (
-        <ul
-          ref={listRef}
-          id={listId}
-          role="listbox"
-          tabIndex={-1}
-          className={styles.panel}
-          aria-activedescendant={`${listId}-opt-${activeIndex}`}
-          aria-label={ariaLabel}
-          aria-labelledby={ariaLabelledby}
-          onKeyDown={onListKeyDown}
-        >
-          {options.map((opt, i) => {
-            const isSelected = opt.value === value;
-            const isActive = i === activeIndex;
-            return (
-              <li
-                key={opt.value}
-                id={`${listId}-opt-${i}`}
-                ref={(el) => {
-                  optionRefs.current[i] = el;
-                }}
-                role="option"
-                aria-selected={isSelected}
-                aria-disabled={opt.disabled || undefined}
-                className={[
-                  styles.option,
-                  isActive && styles.optionActive,
-                  isSelected && styles.optionSelected,
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-                onClick={() => choose(i)}
-                onMouseEnter={() => !opt.disabled && setActiveIndex(i)}
-              >
-                {opt.icon}
-                <span className={styles.optionLabel}>{opt.label}</span>
-                {isSelected && <span className={styles.check}><Check /></span>}
-              </li>
-            );
-          })}
-        </ul>
+        <div className={styles.panel}>
+          {searchable && (
+            <input
+              ref={searchRef}
+              type="text"
+              className={styles.search}
+              value={query}
+              placeholder={searchPlaceholder ?? 'Buscar…'}
+              onChange={onSearchChange}
+              onKeyDown={onNavKeyDown}
+              aria-label={searchPlaceholder ?? ariaLabel}
+              aria-controls={listId}
+              aria-activedescendant={filtered[activeIndex] ? `${listId}-opt-${activeIndex}` : undefined}
+            />
+          )}
+          <ul
+            ref={listRef}
+            id={listId}
+            role="listbox"
+            tabIndex={searchable ? -1 : 0}
+            className={styles.list}
+            aria-activedescendant={filtered[activeIndex] ? `${listId}-opt-${activeIndex}` : undefined}
+            aria-label={ariaLabel}
+            aria-labelledby={ariaLabelledby}
+            onKeyDown={searchable ? undefined : onNavKeyDown}
+          >
+            {filtered.length === 0 ? (
+              <li className={styles.noResults} role="presentation">—</li>
+            ) : (
+              filtered.map((opt, i) => {
+                const isSelected = opt.value === value;
+                const isActive = i === activeIndex;
+                return (
+                  <li
+                    key={opt.value}
+                    id={`${listId}-opt-${i}`}
+                    ref={(el) => {
+                      optionRefs.current[i] = el;
+                    }}
+                    role="option"
+                    aria-selected={isSelected}
+                    aria-disabled={opt.disabled || undefined}
+                    className={[
+                      styles.option,
+                      isActive && styles.optionActive,
+                      isSelected && styles.optionSelected,
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                    onClick={() => choose(i)}
+                    onMouseEnter={() => !opt.disabled && setActiveIndex(i)}
+                  >
+                    {opt.icon}
+                    <span className={styles.optionLabel}>{opt.label}</span>
+                    {opt.meta != null && <span className={styles.optionMeta}>{opt.meta}</span>}
+                    {isSelected && <span className={styles.check}><Check /></span>}
+                  </li>
+                );
+              })
+            )}
+          </ul>
+        </div>
       )}
     </div>
   );

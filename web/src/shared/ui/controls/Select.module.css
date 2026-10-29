@@ -65,22 +65,52 @@
   color: var(--brand-primary);
 }
 
-/* Popup panel */
+/* Popup panel (wraps the optional search input + the scrollable list) */
 .panel {
   position: absolute;
   top: calc(100% + 4px);
   left: 0;
-  right: 0;
+  right: auto;
+  /* Size to the widest row (so label + meta/balance + check never clip), but never
+     narrower than the trigger, and capped so it stays reasonable. */
+  width: max-content;
+  min-width: 100%;
+  max-width: 320px;
   z-index: var(--z-index-dropdown);
-  max-height: 260px;
-  overflow-y: auto;
   padding: var(--spacing-xs);
   background-color: var(--bg-elevated);
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
+}
+
+.search {
+  width: 100%;
+  margin-bottom: var(--spacing-xs);
+  padding: var(--spacing-sm);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  outline: none;
+}
+.search:focus { border-color: var(--border-focus); box-shadow: 0 0 0 3px var(--wash-brand); }
+.search::placeholder { color: var(--text-tertiary); }
+
+.list {
+  max-height: 240px;
+  overflow-y: auto;
   list-style: none;
   margin: 0;
+  padding: 0;
+}
+
+.noResults {
+  padding: var(--spacing-sm);
+  color: var(--text-tertiary);
+  font-size: var(--font-size-sm);
+  text-align: center;
 }
 
 .option {
@@ -109,6 +139,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.optionMeta {
+  flex-shrink: 0;
+  padding-left: var(--spacing-sm);
+  color: var(--text-tertiary);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-num), var(--font-sans);
 }
 
 .check {

@@ -9,7 +9,7 @@
   gap: var(--spacing-md);
   color: #fff;
   cursor: pointer;
-  background: radial-gradient(circle at 50% 44%, #16c784 0%, #06a15f 55%, #04794a 100%);
+  background: radial-gradient(circle at 50% 44%, #3b82f6 0%, #2563eb 55%, #1d4ed8 100%);
   animation: flashIn 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .leaving {
