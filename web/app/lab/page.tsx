@@ -3,7 +3,12 @@
 import { Button, CoinLogo, useSuccessFlash } from '@/shared/ui';
 import styles from './lab.module.css';
 
-const SYMS = ['BTC', 'ETH', 'USDT', 'BNB', 'SOL', 'XRP', 'ADA', 'DOGE', 'LINK', 'FOOBAR', 'ZZ', 'QWE'];
+// The full seeded catalog (20) + a few unknowns to exercise the monogram fallback.
+const SYMS = [
+  'AAVE', 'ADA', 'ARB', 'BNB', 'BTC', 'DAI', 'DOGE', 'ETH', 'LINK', 'MATIC',
+  'MKR', 'OP', 'PEPE', 'SHIB', 'SOL', 'UNI', 'USDC', 'USDT', 'WBTC', 'XRP',
+  'FOOBAR', 'ZZ',
+];
 
 export default function LabPage() {
   const { flash } = useSuccessFlash();
@@ -37,7 +42,7 @@ export default function LabPage() {
         <h2 className={styles.h2}>Íconos de monedas — nunca vacíos</h2>
         <p className={styles.p}>
           Monograma de color determinístico de base; la imagen del CDN se superpone cuando carga.
-          Los símbolos inexistentes (FOOBAR, ZZ, QWE) se quedan en el monograma.
+          Los símbolos inexistentes (FOOBAR, ZZ) se quedan en el monograma.
         </p>
         <div className={styles.logos}>
           {SYMS.map((s) => (

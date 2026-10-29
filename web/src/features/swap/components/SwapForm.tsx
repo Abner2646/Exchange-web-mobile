@@ -102,11 +102,13 @@ export default function SwapForm() {
   const fromCoins = useMemo(() => orderByBalance(coins), [coins, orderByBalance]);
   const toCoinsOrdered = useMemo(() => orderByBalance(toCoins), [toCoins, orderByBalance]);
 
-  // Default to the first pair (buy base with quote) once pairs load.
+  // Default to paying with USDT (a familiar stablecoin) rather than whatever the
+  // catalog happens to list first (e.g. BTC/PEPE → PEPE). Falls back to pair 0.
   useEffect(() => {
     if (fromId || !pairs || pairs.length === 0) return;
-    setFromId(pairs[0].quoteCryptoId);
-    setToId(pairs[0].baseCryptoId);
+    const preferred = pairs.find((p) => p.quoteSymbol === 'USDT') ?? pairs[0];
+    setFromId(preferred.quoteCryptoId);
+    setToId(preferred.baseCryptoId);
   }, [pairs, fromId]);
 
   // Map the (from, to) coins to a backend pair + direction.

@@ -18,11 +18,20 @@ const COINGECKO_ICONS: Record<string, string> = {
   AAVE: 'https://coin-images.coingecko.com/coins/images/12645/large/aave-token-round.png',
   OP: 'https://coin-images.coingecko.com/coins/images/25244/large/Token.png',
   MATIC: 'https://coin-images.coingecko.com/coins/images/4713/large/polygon.png',
+  // The spothq jsdelivr fallback 404s for these (unmaintained repo), so pin the
+  // CoinGecko CDN image for every coin in the seeded catalog.
+  ARB: 'https://coin-images.coingecko.com/coins/images/16547/large/arb.jpg',
+  DAI: 'https://coin-images.coingecko.com/coins/images/9956/large/Badge_Dai.png',
+  MKR: 'https://coin-images.coingecko.com/coins/images/1364/large/Mark_Maker.png',
+  PEPE: 'https://coin-images.coingecko.com/coins/images/29850/large/pepe-token.jpeg',
+  SHIB: 'https://coin-images.coingecko.com/coins/images/11939/large/shiba.png',
+  WBTC: 'https://coin-images.coingecko.com/coins/images/7598/large/wrapped_bitcoin_wbtc.png',
 };
 
 export function iconUrl(symbol: string): string {
+  const key = (symbol || '').toUpperCase();
   return (
-    COINGECKO_ICONS[symbol] ||
-    `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/svg/color/${symbol.toLowerCase()}.svg`
+    COINGECKO_ICONS[key] ||
+    `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/svg/color/${key.toLowerCase()}.svg`
   );
 }
