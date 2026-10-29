@@ -36,9 +36,10 @@ export async function loginViaUI(page: Page, user: Record<string, unknown> = VER
   await expect(page).toHaveURL(/\/$/);
 }
 
-/** Client-side navigation to an (app) page via its nav link (no full reload). */
+/** Client-side navigation to an (app) page via its nav link (no full reload).
+ * Scoped to the primary navbar — the Footer repeats these link names. */
 export async function gotoApp(page: Page, linkName: string, urlRe: RegExp) {
-  await page.getByRole('link', { name: linkName }).click();
+  await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: linkName }).click();
   await expect(page).toHaveURL(urlRe);
 }
 

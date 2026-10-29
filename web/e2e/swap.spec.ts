@@ -34,6 +34,9 @@ test('swap buy: quote → execute with an Idempotency-Key and success', async ({
   await page.route('**/api/intercambioExchange/check-limit', (r) => r.fulfill(json({
     canTransact: true, dailyVolume: 0, limit: 100000, remainingLimit: 100000, requestedAmount: 65,
   })));
+  // SwapHistory's GET /intercambioExchange/me — stub it so a real backend's 401 for
+  // the e2e fake token can't fire notifyUnauthorized() and unmount the (app) subtree.
+  await page.route('**/api/intercambioExchange/me**', (r) => r.fulfill(json([])));
   const exec = captureIdempotencyKeys(page, '**/api/intercambioExchange', () => ({
     body: {
       message: 'ok',
@@ -47,12 +50,11 @@ test('swap buy: quote → execute with an Idempotency-Key and success', async ({
 
   await loginViaUI(page);
   await gotoApp(page, 'Swap', /\/swap$/);
-  await expect(page.getByRole('heading', { name: 'Instant swap' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Swap Crypto' })).toBeVisible();
 
-  await page.locator('#swap-pair').selectOption(PAIR);
-  await page.locator('#swap-type').selectOption('buy');
-  await page.locator('#swap-compartment').selectOption('funding');
-  await page.locator('#swap-amount').fill('0.001');
+  // Coin-based UI: the single pair defaults to From=USDT / To=BTC (a buy). Driving
+  // the To (BTC) field with 0.001 auto-computes the amount paid — Uniswap-style.
+  await page.getByLabel('Amount to receive').fill('0.001');
 
   const submit = page.getByRole('button', { name: 'Review & swap' });
   await expect(submit).toBeEnabled(); // waits for quote + sufficiency gates

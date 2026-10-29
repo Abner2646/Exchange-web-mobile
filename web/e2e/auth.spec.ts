@@ -9,6 +9,9 @@ async function stubAuth(page: Page) {
   await page.route('**/api/user/verify-email', (r) => r.fulfill(json({ user: { username: 'neo' }, token: 'jwt', message: 'ok' })));
   await page.route('**/api/user/login', (r) => r.fulfill(json({ user: { username: 'neo' }, token: 'jwt' })));
   await page.route('**/api/user/me', (r) => r.fulfill(json({ id: '1', username: 'neo', email: 'a@b.co', active: true, role: 'user', emailVerified: true, twoFactorEnabled: false, kycVerified: false, kycLevel: 'none' })));
+  // The logged-in home IS the dashboard (V1 model): it reads balances via the shared
+  // client, whose 401 would log the user out. Stub it so the authed home stays authed.
+  await page.route('**/api/balances/my/balances', (r) => r.fulfill(json([])));
 }
 
 test('register → verify email → dashboard', async ({ page }) => {
@@ -23,7 +26,8 @@ test('register → verify email → dashboard', async ({ page }) => {
   await page.getByLabel('Verification code').fill('123456');
   await page.getByRole('button', { name: 'Verify Email' }).click();
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+  // The home now doubles as the dashboard, greeting the signed-in user.
+  await expect(page.getByRole('heading', { name: /Hola de nuevo/ })).toBeVisible();
 });
 
 test('direct login → home', async ({ page }) => {

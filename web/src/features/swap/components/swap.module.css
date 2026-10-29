@@ -1,8 +1,9 @@
-/* Swap — V1-faithful (header + centered card, De/A feel, direction toggle, rate
-   info) rebuilt on the global tokens, over the V2 pair-based tech. */
+/* Swap — coin-based De/A (Uniswap-style auto-calc) with a live receipt panel on
+   the right (Binance-style), so the quote and CTA stay in view without scrolling.
+   Built on the global tokens over the V2 pair-based tech. */
 
 .page {
-  max-width: 560px;
+  max-width: 880px;
   margin: 0 auto;
   padding: var(--spacing-xl) var(--spacing-lg) var(--spacing-xxl);
 }
@@ -24,43 +25,36 @@
   color: var(--text-tertiary);
 }
 
-/* The swap card. */
-.form {
+/* Two-panel shell: form (left) + live receipt (right). Stacks on narrow screens. */
+.twoPanel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-lg);
+  align-items: start;
+}
+@media (max-width: 720px) {
+  .twoPanel { grid-template-columns: 1fr; }
+}
+
+/* LEFT — the De/A form card. */
+.formCard {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
+  gap: var(--spacing-sm);
   padding: var(--spacing-lg);
   background-color: var(--bg-elevated);
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg);
 }
 
-/* Buy/Sell segmented toggle. */
-.directionToggle {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-xs);
-  background-color: var(--bg-tertiary);
+.coinField {
+  padding: var(--spacing-md);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
   border-radius: var(--radius-md);
 }
-.directionBtn {
-  padding: var(--spacing-sm);
-  border: none;
-  border-radius: var(--radius-sm);
-  background: none;
-  color: var(--text-secondary);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-  transition: background-color var(--motion-duration-fast) var(--motion-easing-ease),
-    color var(--motion-duration-fast) var(--motion-easing-ease);
-}
-.directionBtn:hover { color: var(--text-primary); }
-.directionActive { background-color: var(--brand-primary); color: var(--text-inverse); }
-.directionActive:hover { color: var(--text-inverse); }
+.coinField:focus-within { border-color: var(--border-focus); box-shadow: 0 0 0 3px var(--wash-brand); }
 
-/* Amount row: input + Max. */
 .fieldHead {
   display: flex;
   justify-content: space-between;
@@ -68,19 +62,26 @@
   margin-bottom: var(--spacing-xs);
 }
 .fieldLabel { font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); }
-.balanceText { font-size: var(--font-size-xs); color: var(--text-tertiary); }
-.balanceText strong { color: var(--text-secondary); font-weight: var(--font-weight-medium); font-family: var(--font-num), var(--font-sans); }
 
-.amountRow {
+.balanceBtn {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+}
+.balanceBtn strong { color: var(--brand-primary); font-weight: var(--font-weight-semibold); font-family: var(--font-num), var(--font-sans); }
+.balanceBtn:hover { color: var(--text-secondary); }
+
+.coinRow {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-md);
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-md);
+  margin-top: var(--spacing-xs);
 }
-.amountRow:focus-within { border-color: var(--border-focus); box-shadow: 0 0 0 3px var(--wash-brand); }
+.coinRow > *:first-child { flex-shrink: 0; min-width: 132px; }
+
 .amountInput {
   flex: 1;
   min-width: 0;
@@ -88,48 +89,90 @@
   background: none;
   color: var(--text-primary);
   font-family: var(--font-num), var(--font-sans);
-  font-size: 1.25rem;
+  font-size: 1.5rem;
+  text-align: right;
   outline: none;
 }
 .amountInput::placeholder { color: var(--text-tertiary); }
-.maxBtn {
-  flex-shrink: 0;
-  padding: 4px 10px;
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-sm);
-  background-color: var(--bg-tertiary);
-  color: var(--brand-primary);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
+
+/* The ⇅ flip control between De and A. */
+.swapRow {
+  display: flex;
+  justify-content: center;
+  margin: calc(-1 * var(--spacing-xs)) 0;
 }
-.maxBtn:hover:not(:disabled) { border-color: var(--border-focus); }
-.maxBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+.swapBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border-primary);
+  border-radius: 999px;
+  background-color: var(--bg-tertiary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: transform var(--motion-duration-fast) var(--motion-easing-ease), color var(--motion-duration-fast) var(--motion-easing-ease);
+}
+.swapBtn:hover { color: var(--brand-primary); transform: rotate(180deg); }
 
-/* Pair option label (BASE/QUOTE). */
-.pairLabel { display: inline-flex; align-items: baseline; gap: 2px; }
-.pairQuote { color: var(--text-tertiary); }
-
-/* Quote / rate info. */
-.quote {
+/* RIGHT — live receipt → result. */
+.receipt {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
-  padding: var(--spacing-md);
+  padding: var(--spacing-lg);
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-secondary);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
+  position: sticky;
+  top: var(--spacing-lg);
 }
-.quote h2 { margin: 0; font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+.receiptTitle {
+  margin: 0 0 var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.receiveBig {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--spacing-md) 0 var(--spacing-sm);
+}
+.receiveLabel { font-size: var(--font-size-xs); color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.05em; }
+.receiveAmount {
+  font-family: var(--font-num), var(--font-sans);
+  font-size: 1.75rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
 .row { display: flex; justify-content: space-between; gap: var(--spacing-md); font-size: var(--font-size-sm); color: var(--text-secondary); }
 .row strong { color: var(--text-primary); font-family: var(--font-num), var(--font-sans); font-weight: var(--font-weight-semibold); }
 .row span:last-child { font-family: var(--font-num), var(--font-sans); color: var(--text-primary); }
 .label { color: var(--text-tertiary); font-size: var(--font-size-xs); }
 .paused { color: var(--error); font-size: var(--font-size-sm); display: flex; flex-direction: column; gap: var(--spacing-sm); }
+.alert { color: var(--error); font-size: var(--font-size-sm); }
 
-.success { color: var(--success); font-size: var(--font-size-sm); display: flex; flex-direction: column; gap: 2px; }
-.actions { margin-top: var(--spacing-xs); }
+.actions { margin-top: auto; padding-top: var(--spacing-md); }
 .actions > button { width: 100%; }
+
+/* Success comprobante (morphs in place of the live quote). */
+.receiptDone { display: flex; flex-direction: column; align-items: center; gap: var(--spacing-xs); text-align: center; padding: var(--spacing-lg) 0; }
+.doneCheck {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 56px; height: 56px; border-radius: 999px;
+  background-color: var(--wash-success, rgba(34, 197, 94, 0.15));
+  color: var(--success);
+  font-size: 1.75rem;
+}
+.doneTitle { margin: var(--spacing-xs) 0 0; font-size: var(--font-size-md); font-weight: var(--font-weight-semibold); color: var(--success); }
+.doneLine { margin: 0; font-size: var(--font-size-sm); color: var(--text-secondary); font-family: var(--font-num), var(--font-sans); }
 
 /* Recent swaps table. */
 .table { width: 100%; border-collapse: collapse; margin-top: var(--spacing-md); }
@@ -139,5 +182,6 @@
 .historyTitle { margin: var(--spacing-xl) 0 0; font-size: var(--font-size-md); font-weight: var(--font-weight-semibold); color: var(--text-primary); }
 
 @media (prefers-reduced-motion: reduce) {
-  .directionBtn { transition: none; }
+  .swapBtn { transition: none; }
+  .swapBtn:hover { transform: none; }
 }
