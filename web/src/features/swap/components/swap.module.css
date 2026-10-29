@@ -30,8 +30,12 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--spacing-lg);
-  align-items: start;
+  /* stretch → both cards share the row height (the form is content-stable and
+     fixes it), so the receipt never resizes as the quote/result fill in. */
+  align-items: stretch;
 }
+/* Let the columns honour 1fr instead of growing to their content min-size. */
+.twoPanel > * { min-width: 0; }
 @media (max-width: 720px) {
   .twoPanel { grid-template-columns: 1fr; }
 }
@@ -45,6 +49,7 @@
   background-color: var(--bg-elevated);
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg);
+  min-height: 440px;
 }
 
 .coinField {
@@ -125,8 +130,9 @@
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-secondary);
   border-radius: var(--radius-lg);
-  position: sticky;
-  top: var(--spacing-lg);
+  min-height: 440px;
+  /* Variable content (quote/result) must not grow the card: it scrolls inside. */
+  overflow: hidden;
 }
 .receiptTitle {
   margin: 0 0 var(--spacing-xs);
@@ -146,10 +152,10 @@
 .receiveLabel { font-size: var(--font-size-xs); color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.05em; }
 .receiveAmount {
   font-family: var(--font-num), var(--font-sans);
-  font-size: 1.75rem;
+  font-size: 1.6rem;
   font-weight: var(--font-weight-bold);
   color: var(--text-primary);
-  word-break: break-all;
+  overflow-wrap: break-word;
 }
 
 .row { display: flex; justify-content: space-between; gap: var(--spacing-md); font-size: var(--font-size-sm); color: var(--text-secondary); }
@@ -163,7 +169,7 @@
 .actions > button { width: 100%; }
 
 /* Success comprobante (morphs in place of the live quote). */
-.receiptDone { display: flex; flex-direction: column; align-items: center; gap: var(--spacing-xs); text-align: center; padding: var(--spacing-lg) 0; }
+.receiptDone { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--spacing-xs); text-align: center; padding: var(--spacing-lg) 0; }
 .doneCheck {
   display: inline-flex; align-items: center; justify-content: center;
   width: 56px; height: 56px; border-radius: 999px;
