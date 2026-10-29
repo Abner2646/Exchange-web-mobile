@@ -8,19 +8,23 @@
   padding: var(--spacing-xl) var(--spacing-lg) var(--spacing-xxl);
 }
 
+/* Compact, left-aligned header: title + inline tagline, out of the vertical centre. */
 .header {
-  text-align: center;
-  margin-bottom: var(--spacing-xl);
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
 }
 .title {
   margin: 0;
-  font-size: 2rem;
+  font-size: 1.4rem;
   font-weight: var(--font-weight-bold);
   letter-spacing: var(--tracking-snug);
   color: var(--text-primary);
 }
 .subtitle {
-  margin: var(--spacing-xs) 0 0;
+  margin: 0;
   font-size: var(--font-size-sm);
   color: var(--text-tertiary);
 }
@@ -157,6 +161,7 @@
   color: var(--text-primary);
   overflow-wrap: break-word;
 }
+.receiveAmount.muted { color: var(--text-tertiary); }
 
 .row { display: flex; justify-content: space-between; gap: var(--spacing-md); font-size: var(--font-size-sm); color: var(--text-secondary); }
 .row strong { color: var(--text-primary); font-family: var(--font-num), var(--font-sans); font-weight: var(--font-weight-semibold); }

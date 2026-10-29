@@ -15,5 +15,6 @@ export * from './Skeleton/Skeleton';
 export * from './Spinner/Spinner';
 export * from './EmptyState/EmptyState';
 export * from './ErrorState/ErrorState';
+export * from './feedback/SuccessFlash';
 export * from './icons/Icon';
 export * from './icons/CoinLogo';

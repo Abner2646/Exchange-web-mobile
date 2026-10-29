@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { LocaleProvider } from '@/shared/i18n';
 import { ThemeProvider } from '@/shared/theme';
+import { SuccessFlashProvider } from '@/shared/ui';
 
 export function makeQueryClient(): QueryClient {
   return new QueryClient({
@@ -23,7 +24,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   const tree = (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <LocaleProvider>{children}</LocaleProvider>
+        <LocaleProvider>
+          <SuccessFlashProvider>{children}</SuccessFlashProvider>
+        </LocaleProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

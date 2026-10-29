@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { parseInput, compare, multiply, divide, formatDisplay } from '@/shared/money';
 import { useTranslation } from '@/shared/i18n';
 import { useErrorTranslation } from '@/shared/i18n/errorCatalog';
-import { Button, Field, Select, CoinLogo } from '@/shared/ui';
+import { Button, Field, Select, CoinLogo, useSuccessFlash } from '@/shared/ui';
 import { ArrowDownIcon } from '@/shared/ui/icons/Icon';
 import { useMyBalances } from '@/features/wallet/queries';
 import { usePairs, useSwapQuote, useCheckLimit, useExecuteSwap } from '../queries';
@@ -26,6 +26,7 @@ function CoinSelect({ value, onChange, coins, label }: { value: string; onChange
 export default function SwapForm() {
   const { t, locale } = useTranslation();
   const { tError } = useErrorTranslation();
+  const { flash } = useSuccessFlash();
   const { data: pairs } = usePairs();
   const { data: balances } = useMyBalances();
   const execute = useExecuteSwap();
@@ -142,8 +143,11 @@ export default function SwapForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!canSubmit || baseAmount == null || !pair) return;
+    const paid = fromVal != null ? `${fmt(fromVal)} ${fromSymbol}` : '';
+    const received = toVal != null ? `${fmt(toVal)} ${toSymbol}` : '';
     try {
       await execute.mutateAsync({ pairId: pair.id, type, baseAmount, compartimento: compartment });
+      flash({ title: t('swap.success.flashTitle'), detail: t('swap.success.flashDetail', { paid, received }) });
       setFromText(''); setToText('');
     } catch { /* surfaced in the receipt below */ }
   }
@@ -221,27 +225,33 @@ export default function SwapForm() {
           <>
             <h2 className={styles.receiptTitle}>{t('swap.quote.title')}</h2>
             {!pair ? (
-              <p className={styles.label}>{t('swap.quote.empty')}</p>
+              <p className={styles.label}>{t('swap.quote.selectCoins')}</p>
             ) : pair.oraclePaused ? (
               <p role="alert" className={styles.paused}>{t('swap.form.paused')}</p>
-            ) : !baseOk ? (
-              <p className={styles.label}>{t('swap.quote.empty')}</p>
-            ) : quote.isFetching ? (
-              <p className={styles.label}>{t('swap.quote.loading')}</p>
-            ) : quote.error ? (
-              <p role="alert" className={styles.label}>{tError(quote.error.code, { requestId: quote.error.requestId ?? '' })}</p>
-            ) : quote.data ? (
+            ) : (
+              // Never empty: the rate + fee structure shows even at 0, with a live
+              // price preview; the quote refines the numbers once an amount is entered.
               <>
                 <div className={styles.receiveBig}>
                   <span className={styles.receiveLabel}>{t('swap.quote.youReceive')}</span>
-                  <span className={styles.receiveAmount}>{toVal != null ? fmt(toVal) : '—'} {toSymbol}</span>
+                  <span className={[styles.receiveAmount, toVal == null ? styles.muted : ''].filter(Boolean).join(' ')}>
+                    {toVal != null ? fmt(toVal) : '0'} {toSymbol}
+                  </span>
                 </div>
-                <div className={styles.row}><span>{t('swap.quote.youPay')}</span><strong>{fromVal != null ? fmt(fromVal) : '—'} {fromSymbol}</strong></div>
-                <div className={styles.row}><span>{t('swap.quote.price')}</span><span>{fmt(quote.data.calculo.precioEfectivo)} {quoteSym}</span></div>
-                <div className={styles.row}><span>{t('swap.quote.fee')}</span><span>{fmt(quote.data.calculo.feeAmount)} {quoteSym}</span></div>
-                <p className={styles.label}>{t('swap.quote.indicative')}</p>
+                <div className={styles.row}><span>{t('swap.quote.youPay')}</span><strong>{fromVal != null ? fmt(fromVal) : '0'} {fromSymbol}</strong></div>
+                <div className={styles.row}><span>{t('swap.quote.rate')}</span><span>1 {pair.baseSymbol} = {price ? fmt(price) : '—'} {pair.quoteSymbol}</span></div>
+                <div className={styles.row}><span>{t('swap.quote.fee')}</span><span>{quote.data ? `${fmt(quote.data.calculo.feeAmount)} ${quoteSym}` : `${pair.feePercent}%`}</span></div>
+                {quote.isFetching ? (
+                  <p className={styles.label}>{t('swap.quote.loading')}</p>
+                ) : quote.error ? (
+                  <p role="alert" className={styles.alert}>{tError(quote.error.code, { requestId: quote.error.requestId ?? '' })}</p>
+                ) : baseOk ? (
+                  <p className={styles.label}>{t('swap.quote.indicative')}</p>
+                ) : (
+                  <p className={styles.label}>{t('swap.quote.empty')}</p>
+                )}
               </>
-            ) : null}
+            )}
 
             {insufficient && <p role="alert" className={styles.alert}>{t('swap.form.insufficient')}</p>}
             {limitExceeded && <p role="alert" className={styles.alert}>{t('swap.form.limitExceeded')}</p>}

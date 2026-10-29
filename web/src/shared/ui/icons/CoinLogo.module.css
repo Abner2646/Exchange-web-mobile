@@ -1,26 +1,33 @@
 .logo {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-full);
-  background-color: var(--bg-tertiary);
   flex-shrink: 0;
   overflow: hidden;
 }
 
 .img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
+  transition: opacity 180ms ease;
 }
 
-/* Monogram fallback when the remote image fails to load. */
+/* Coloured monogram shown under the image — visible while loading or on failure. */
 .fallback {
-  font-size: 0.6em;
-  font-weight: var(--font-weight-semibold);
-  color: var(--text-tertiary);
-  letter-spacing: 0;
+  font-size: 0.38em;
+  font-weight: var(--font-weight-bold);
+  color: #fff;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
   line-height: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .img { transition: none; }
 }
