@@ -9,61 +9,126 @@
   gap: var(--spacing-md);
   color: #fff;
   cursor: pointer;
-  background: radial-gradient(circle at 50% 44%, #3b82f6 0%, #2563eb 55%, #1d4ed8 100%);
-  animation: flashIn 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 42%, #3b82f6 0%, #2563eb 52%, #1d4ed8 100%);
+  animation: flashIn 460ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .leaving {
-  animation: flashOut 320ms ease forwards;
+  animation: flashOut 360ms ease forwards;
 }
 
 @keyframes flashIn {
-  from { opacity: 0; clip-path: circle(0% at 50% 44%); }
-  to { opacity: 1; clip-path: circle(150% at 50% 44%); }
+  from { opacity: 0; clip-path: circle(0% at 50% 42%); }
+  to { opacity: 1; clip-path: circle(150% at 50% 42%); }
 }
 @keyframes flashOut {
   from { opacity: 1; }
   to { opacity: 0; }
 }
 
-.check { width: 104px; height: 104px; }
+/* Confetti burst from centre. */
+.confettiLayer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.confetti {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--size);
+  height: calc(var(--size) * 0.5);
+  border-radius: 2px;
+  opacity: 0;
+  animation: confettiBurst 1200ms var(--delay) cubic-bezier(0.15, 0.7, 0.3, 1) forwards;
+}
+@keyframes confettiBurst {
+  0% { transform: translate(-50%, -50%) scale(0) rotate(0); opacity: 1; }
+  12% { opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty) + 60px)) scale(1) rotate(var(--rot)); opacity: 0; }
+}
+
+/* Check badge with springing pop + expanding rings. */
+.badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 112px;
+  height: 112px;
+}
+.ring {
+  position: absolute;
+  width: 100px;
+  height: 100px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.55);
+  animation: ripple 1600ms ease-out 200ms infinite;
+}
+.ring2 { animation-delay: 900ms; }
+@keyframes ripple {
+  0% { transform: scale(0.6); opacity: 0.6; }
+  100% { transform: scale(2.1); opacity: 0; }
+}
+
+.check {
+  position: relative;
+  width: 104px;
+  height: 104px;
+  animation: pop 620ms cubic-bezier(0.2, 1.35, 0.4, 1) 120ms both;
+}
 .checkSvg { width: 100%; height: 100%; }
 .checkCircle {
-  fill: none;
-  stroke: rgba(255, 255, 255, 0.85);
+  fill: rgba(255, 255, 255, 0.12);
+  stroke: rgba(255, 255, 255, 0.9);
   stroke-width: 3;
   stroke-dasharray: 151;
   stroke-dashoffset: 151;
-  animation: drawCircle 440ms ease 140ms forwards;
+  animation: drawCircle 460ms ease 320ms forwards;
 }
 .checkMark {
   fill: none;
   stroke: #fff;
-  stroke-width: 4;
+  stroke-width: 4.5;
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-dasharray: 48;
   stroke-dashoffset: 48;
-  animation: drawMark 300ms ease 460ms forwards;
+  animation: drawMark 320ms ease 620ms forwards;
+}
+@keyframes pop {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
 }
 @keyframes drawCircle { to { stroke-dashoffset: 0; } }
 @keyframes drawMark { to { stroke-dashoffset: 0; } }
 
 .title {
   margin: 0;
-  font-size: 1.6rem;
+  font-size: 1.75rem;
   font-weight: var(--font-weight-bold);
   letter-spacing: var(--tracking-snug);
+  animation: riseIn 520ms ease 360ms both;
 }
 .detail {
   margin: 0;
-  font-size: 1rem;
-  opacity: 0.92;
+  font-size: 1.05rem;
+  opacity: 0.94;
   font-family: var(--font-num), var(--font-sans);
+  animation: riseIn 520ms ease 480ms both;
+}
+@keyframes riseIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .overlay { animation: fadeIn 200ms ease; clip-path: none; }
   .leaving { animation: fadeOut 200ms ease forwards; }
+  .confettiLayer { display: none; }
+  .ring { display: none; }
+  .check, .title, .detail { animation: none; }
   .checkCircle, .checkMark { animation: none; stroke-dashoffset: 0; }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }

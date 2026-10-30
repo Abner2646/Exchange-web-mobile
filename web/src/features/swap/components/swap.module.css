@@ -182,18 +182,6 @@
 .actions { margin-top: auto; padding-top: var(--spacing-md); }
 .actions > button { width: 100%; }
 
-/* Success comprobante (morphs in place of the live quote). */
-.receiptDone { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--spacing-xs); text-align: center; padding: var(--spacing-lg) 0; }
-.doneCheck {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 56px; height: 56px; border-radius: 999px;
-  background-color: var(--wash-success, rgba(34, 197, 94, 0.15));
-  color: var(--success);
-  font-size: 1.75rem;
-}
-.doneTitle { margin: var(--spacing-xs) 0 0; font-size: var(--font-size-md); font-weight: var(--font-weight-semibold); color: var(--success); }
-.doneLine { margin: 0; font-size: var(--font-size-sm); color: var(--text-secondary); font-family: var(--font-num), var(--font-sans); }
-
 /* Recent swaps table. */
 .table { width: 100%; border-collapse: collapse; margin-top: var(--spacing-md); }
 .table th, .table td { text-align: left; padding: var(--spacing-sm) var(--spacing-md); border-bottom: 1px solid var(--border-secondary); font-size: var(--font-size-sm); }

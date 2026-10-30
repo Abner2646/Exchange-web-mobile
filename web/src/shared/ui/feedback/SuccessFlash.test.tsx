@@ -22,7 +22,7 @@ describe('SuccessFlash', () => {
     expect(screen.getByText('Done!')).toBeInTheDocument();
     expect(screen.getByText('You swapped X for Y')).toBeInTheDocument();
 
-    act(() => { vi.advanceTimersByTime(1000 + 320); });
+    act(() => { vi.advanceTimersByTime(1000 + 400); });
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
@@ -33,7 +33,7 @@ describe('SuccessFlash', () => {
       </SuccessFlashProvider>,
     );
     act(() => { fireEvent.click(screen.getByText('go')); });
-    act(() => { fireEvent.click(screen.getByRole('alert')); vi.advanceTimersByTime(320); });
+    act(() => { fireEvent.click(screen.getByRole('alert')); vi.advanceTimersByTime(400); });
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 

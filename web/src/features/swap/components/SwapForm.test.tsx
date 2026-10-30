@@ -4,17 +4,17 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 const mutateAsync = vi.fn();
+const reset = vi.fn();
 vi.mock('../queries', () => ({
   usePairs: vi.fn(),
   useSwapQuote: vi.fn(),
-  useCheckLimit: vi.fn(() => ({ data: undefined, isError: false, error: null })),
-  useExecuteSwap: vi.fn(() => ({ mutateAsync, isPending: false, isError: false, isSuccess: false, error: null, data: undefined })),
+  useExecuteSwap: vi.fn(() => ({ mutateAsync, reset, isPending: false, isError: false, isSuccess: false, error: null, data: undefined })),
 }));
 vi.mock('@/features/wallet/queries', () => ({ useMyBalances: vi.fn() }));
 vi.mock('@/shared/i18n', () => ({ useTranslation: () => ({ t: (k: string) => k, locale: 'en' }) }));
 vi.mock('@/shared/i18n/errorCatalog', () => ({ useErrorTranslation: () => ({ tError: (c: string) => c }) }));
 
-import { usePairs, useSwapQuote, useExecuteSwap, useCheckLimit } from '../queries';
+import { usePairs, useSwapQuote, useExecuteSwap } from '../queries';
 import { useMyBalances } from '@/features/wallet/queries';
 import SwapForm from './SwapForm';
 
@@ -81,17 +81,5 @@ describe('SwapForm (money-path)', () => {
     await typeTo('0.5');
     expect(screen.getByRole('button', { name: 'swap.form.submit' })).toBeDisabled();
     expect(screen.getByText('swap.form.paused')).toBeInTheDocument();
-  });
-
-  it('shows remaining daily-limit advisory when check-limit succeeds and limit is not exceeded', async () => {
-    (useMyBalances as any).mockReturnValue({ data: balances('50000', 'q1') });
-    (useCheckLimit as any).mockReturnValue({
-      data: { canTransact: true, remainingLimit: 900, limit: 1000, dailyVolume: 100, requestedAmount: 50 },
-      isError: false,
-      error: null,
-    });
-    render(<SwapForm />);
-    await typeTo('0.5');
-    expect(screen.getByText('swap.form.limitRemaining')).toBeInTheDocument();
   });
 });

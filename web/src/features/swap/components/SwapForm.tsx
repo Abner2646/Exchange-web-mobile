@@ -7,7 +7,7 @@ import { useErrorTranslation } from '@/shared/i18n/errorCatalog';
 import { Button, Field, Select, CoinLogo, useSuccessFlash } from '@/shared/ui';
 import { ArrowDownIcon } from '@/shared/ui/icons/Icon';
 import { useMyBalances } from '@/features/wallet/queries';
-import { usePairs, useSwapQuote, useCheckLimit, useExecuteSwap } from '../queries';
+import { usePairs, useSwapQuote, useExecuteSwap } from '../queries';
 import type { SwapType, SwapCompartment } from '../types';
 import styles from './swap.module.css';
 
@@ -161,9 +161,6 @@ export default function SwapForm() {
   const requiredSpend = fromVal;
   const insufficient = availableFrom != null && requiredSpend != null ? compare(requiredSpend, availableFrom) > 0 : false;
 
-  const checkLimit = useCheckLimit(quote.data?.calculo.quoteAmount ?? '0', Boolean(quote.data) && baseOk);
-  const limitExceeded = checkLimit.isError && (checkLimit.error as { code?: string } | null)?.code === 'EXCHANGE_DAILY_LIMIT_EXCEEDED';
-
   const canSubmit =
     !!pair &&
     !pair.oraclePaused &&
@@ -195,7 +192,10 @@ export default function SwapForm() {
     try {
       await execute.mutateAsync({ pairId: pair.id, type, baseAmount, compartimento: compartment });
       flash({ title: t('swap.success.flashTitle'), detail: t('swap.success.flashDetail', { paid, received }) });
+      // Reset so the receipt returns to the live state and another swap can follow
+      // right away (the full-screen flash is the confirmation, not a stuck panel).
       setFromText(''); setToText('');
+      execute.reset();
     } catch { /* surfaced in the receipt below */ }
   }
 
@@ -265,63 +265,49 @@ export default function SwapForm() {
         </Field>
       </div>
 
-      {/* RIGHT — live receipt → result */}
+      {/* RIGHT — always-live receipt. It IS the review (the executed price can still
+          move, so there's no locked-price step); the full-screen flash confirms success. */}
       <aside className={styles.receipt}>
-        {execute.isSuccess && execute.data ? (
-          <div className={styles.receiptDone} role="status">
-            <div className={styles.doneCheck} aria-hidden="true">✓</div>
-            <p className={styles.doneTitle}>{t('swap.success.title')}</p>
-            <p className={styles.doneLine}>{t('swap.success.priceUsed', { price: execute.data.data.precioUsado })}</p>
-            <p className={styles.doneLine}>{t('swap.success.fee', { fee: execute.data.data.comisionCalculada })}</p>
-          </div>
+        <h2 className={styles.receiptTitle}>{t('swap.quote.title')}</h2>
+        {!pair ? (
+          <p className={styles.label}>{t('swap.quote.selectCoins')}</p>
+        ) : pair.oraclePaused ? (
+          <p role="alert" className={styles.paused}>{t('swap.form.paused')}</p>
         ) : (
+          // Never empty: the rate + fee structure shows even at 0, with a live price
+          // preview; the quote refines the numbers once an amount is entered.
           <>
-            <h2 className={styles.receiptTitle}>{t('swap.quote.title')}</h2>
-            {!pair ? (
-              <p className={styles.label}>{t('swap.quote.selectCoins')}</p>
-            ) : pair.oraclePaused ? (
-              <p role="alert" className={styles.paused}>{t('swap.form.paused')}</p>
-            ) : (
-              // Never empty: the rate + fee structure shows even at 0, with a live
-              // price preview; the quote refines the numbers once an amount is entered.
-              <>
-                <div className={styles.receiveBig}>
-                  <span className={styles.receiveLabel}>{t('swap.quote.youReceive')}</span>
-                  <span className={[styles.receiveAmount, toVal == null ? styles.muted : ''].filter(Boolean).join(' ')}>
-                    {toVal != null ? fmt(toVal) : '0'} {toSymbol}
-                  </span>
-                </div>
-                <div className={styles.row}><span>{t('swap.quote.youPay')}</span><strong>{fromVal != null ? fmt(fromVal) : '0'} {fromSymbol}</strong></div>
-                <div className={styles.row}><span>{t('swap.quote.rate')}</span><span>1 {pair.baseSymbol} = {price ? fmt(price) : '—'} {pair.quoteSymbol}</span></div>
-                <div className={styles.row}><span>{t('swap.quote.fee')}</span><span>{quote.data ? `${fmt(quote.data.calculo.feeAmount)} ${quoteSym}` : `${pair.feePercent}%`}</span></div>
-                {quote.isFetching ? (
-                  <p className={styles.label}>{t('swap.quote.loading')}</p>
-                ) : quote.error ? (
-                  <p role="alert" className={styles.alert}>{tError(quote.error.code, { requestId: quote.error.requestId ?? '' })}</p>
-                ) : baseOk ? (
-                  <p className={styles.label}>{t('swap.quote.indicative')}</p>
-                ) : (
-                  <p className={styles.label}>{t('swap.quote.empty')}</p>
-                )}
-              </>
-            )}
-
-            {insufficient && <p role="alert" className={styles.alert}>{t('swap.form.insufficient')}</p>}
-            {limitExceeded && <p role="alert" className={styles.alert}>{t('swap.form.limitExceeded')}</p>}
-            {checkLimit.data?.canTransact && !limitExceeded && (
-              <p className={styles.label}>{t('swap.form.limitRemaining', { remaining: String(checkLimit.data.remainingLimit) })}</p>
-            )}
-            {execute.isError && execute.error && (
-              <p role="alert" className={styles.alert}>
-                {tError((execute.error as { code?: string }).code ?? 'FALLBACK_UNKNOWN_ERROR', { requestId: (execute.error as { requestId?: string }).requestId ?? '' })}
-              </p>
-            )}
-
-            <div className={styles.actions}>
-              <Button type="submit" disabled={!canSubmit} loading={execute.isPending}>{t('swap.form.submit')}</Button>
+            <div className={styles.receiveBig}>
+              <span className={styles.receiveLabel}>{t('swap.quote.youReceive')}</span>
+              <span className={[styles.receiveAmount, toVal == null ? styles.muted : ''].filter(Boolean).join(' ')}>
+                {toVal != null ? fmt(toVal) : '0'} {toSymbol}
+              </span>
             </div>
+            <div className={styles.row}><span>{t('swap.quote.youPay')}</span><strong>{fromVal != null ? fmt(fromVal) : '0'} {fromSymbol}</strong></div>
+            <div className={styles.row}><span>{t('swap.quote.rate')}</span><span>1 {pair.baseSymbol} = {price ? fmt(price) : '—'} {pair.quoteSymbol}</span></div>
+            <div className={styles.row}><span>{t('swap.quote.fee')}</span><span>{quote.data ? `${fmt(quote.data.calculo.feeAmount)} ${quoteSym}` : `${pair.feePercent}%`}</span></div>
+            {quote.isFetching ? (
+              <p className={styles.label}>{t('swap.quote.loading')}</p>
+            ) : quote.error ? (
+              <p role="alert" className={styles.alert}>{tError(quote.error.code, { requestId: quote.error.requestId ?? '' })}</p>
+            ) : baseOk ? (
+              <p className={styles.label}>{t('swap.quote.indicative')}</p>
+            ) : (
+              <p className={styles.label}>{t('swap.quote.empty')}</p>
+            )}
           </>
         )}
+
+        {insufficient && <p role="alert" className={styles.alert}>{t('swap.form.insufficient')}</p>}
+        {execute.isError && execute.error && (
+          <p role="alert" className={styles.alert}>
+            {tError((execute.error as { code?: string }).code ?? 'FALLBACK_UNKNOWN_ERROR', { requestId: (execute.error as { requestId?: string }).requestId ?? '' })}
+          </p>
+        )}
+
+        <div className={styles.actions}>
+          <Button type="submit" disabled={!canSubmit} loading={execute.isPending}>{t('swap.form.submit')}</Button>
+        </div>
       </aside>
     </form>
   );

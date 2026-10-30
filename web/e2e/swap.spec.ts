@@ -56,11 +56,13 @@ test('swap buy: quote → execute with an Idempotency-Key and success', async ({
   // the To (BTC) field with 0.001 auto-computes the amount paid — Uniswap-style.
   await page.getByLabel('Amount to receive').fill('0.001');
 
-  const submit = page.getByRole('button', { name: 'Review & swap' });
+  const submit = page.getByRole('button', { name: 'Swap', exact: true });
   await expect(submit).toBeEnabled(); // waits for quote + sufficiency gates
   await submit.click();
 
-  await expect(page.getByText('Swap completed.')).toBeVisible();
+  // Success is confirmed by the full-screen flash (the in-panel done state was
+  // retired in favour of the shared SuccessFlash).
+  await expect(page.getByRole('alert').filter({ hasText: 'Done!' })).toBeVisible();
   // The POST to the bare /intercambioExchange endpoint is the execute (calculate and
   // check-limit are sub-paths captured by separate routes above).
   expect(exec.keys).toHaveLength(1);
