@@ -1,84 +1,107 @@
-# Prompt — próxima sesión (rediseño frontend, Fase B cont.)
+# Prompt de arranque — próxima sesión (rediseñar **Wallet**)
 
-> Pegá esto al arrancar. Supersede a `next-session-design-prompt.md` y
-> `next-session-redesign-prompt.md` (viejos, untracked).
+Pegá TODO este archivo como primer mensaje de la próxima sesión de Claude Code en
+este repo. Supersede a `next-session-design-prompt.md` y
+`next-session-redesign-prompt.md` (viejos).
 
-## Rol y contexto
+---
 
-Sos Claude Code en `crypto_exchange` (exchange custodial, audit-grade, EE.UU.;
+## Rol y objetivo
+
+Sos Claude Code en **crypto_exchange** (exchange custodial, audit-grade, EE.UU.;
 dueño: Abner). **Chat en español; código/commits/PRs en inglés**, Conventional
-Commits, **sin** atribución a Claude. Trabajás en la rama **`dev`** (local, el
-rediseño vive sin pushear). No tocar money-path ni backend.
+Commits **sin atribución Claude** ni "Generated with…". El backend es la **fuente
+de verdad** y **no se toca** sin aprobación explícita de Abner.
 
-Estás rehaciendo el frontend. Hay dos bases: **V1** = CRA original en
-`design-reference/legacy-cra/` (fuente de verdad **visual**), y **V2** = el Next
-actual en `web/` (en prod; fuente de verdad **técnica/segura**).
+**Objetivo de esta sesión: rediseñar la página de Wallet (`/wallet`) al estándar
+nuevo**, usando **Swap como implementación de referencia**. Wallet es **Caso B**
+(el dominio cambió vs la V1: ahora hay compartimentos **Funding + Spot**).
 
-## Lectura obligatoria antes de tocar nada
+### Lectura obligatoria antes de tocar nada
+1. `docs/frontend-rebuild/redesign-methodology.md` — proceso y regla de oro (A/B/C).
+2. `docs/frontend-rebuild/aesthetic-standard.md` — tokens/estética.
+3. `docs/frontend-rebuild/rebuild-status.md` — estado + roadmap + el "estándar nuevo".
+4. `docs/frontend-rebuild/lessons-swap-session.md` — errores a no repetir + gotchas.
+5. Referencia viva del estándar: `web/src/features/swap/components/` (SwapForm,
+   swap.module.css) y `web/src/shared/ui/feedback/SuccessFlash.tsx`.
 
-1. `docs/frontend-rebuild/redesign-methodology.md` — **el proceso y las reglas**
-   (incluye la disciplina de ops de Windows y los errores a no repetir).
-2. `docs/frontend-rebuild/aesthetic-standard.md` — la estética (tokens,
-   componentes, estados, a11y).
-3. Memorias: `frontend-v1-parity`, `frontend-aesthetic-standard`.
+### PASO 0 — disciplina de ramas
+`git fetch origin`; confirmá que estás en `dev` (el rediseño vive local, `dev`
+puede estar adelantada y sin pushear respecto de `origin`). Frontend sobre `dev`,
+**sin tocar money-path ni backend**. Commit por chunk.
 
-## Regla de oro (resumen)
+---
 
-- **Tech de la V2 SIEMPRE** (segura). **Visual de la V1 siempre que se pueda.**
-- **Features nuevos de la V2** = decisión de diseño con tokens.
-- **Conflicto visual-vs-tech** = lo decide Abner, con el trade-off explícito. No
-  asumir, no cruzar a lo técnico para calcar la V1.
-- **Excepción vigente (no revertir):** Google usa el flujo **redirect**
-  (`/auth/google`) con botón custom, no el widget idToken.
+## Qué YA está hecho (no rehacer)
+- Home `/`, Auth (login/register/verify-email/forgot-password/auth-success),
+  Navbar + Footer (en todas las páginas), tema dark + toggle.
+- **Swap `/swap`** rehecho a fondo: UI por monedas De/A con auto-cálculo estilo
+  Uniswap, recibo en vivo a la derecha (= el review), `SuccessFlash` azul al
+  ejecutar, selector de monedas **searchable + saldos + orden por saldo**, íconos
+  del catálogo completo, botón "Swap" (precio en vivo, sin lock), paneles
+  nunca-vacíos. **Es el molde a seguir.**
+- Sandbox `/lab` para probar el flash y los íconos.
 
-## Proceso por página
+## El estándar a aplicar en Wallet (lo que hace a una página "terminada")
+Ver `rebuild-status.md` §"estándar nuevo". En corto: tokens de estética; `Select`
+(nunca nativo) con `searchable`/`meta` + `CoinLogo`; **money string-math +
+redondeo a la precisión del backend antes de mandar**; `SuccessFlash` en todo
+botón que finaliza transacción; paneles nunca vacíos; copy honesta (no filtrar
+códigos, no prometer de más); `:focus-visible` + `prefers-reduced-motion`;
+**verificación en vivo con Playwright + screenshots** antes de decir "terminada".
 
-Leer la V1 → diffear vs V2 → aplicar SOLO lo visual sobre los componentes/tech de
-la V2 (primitivos `@/shared/ui`, tokens; inputs → `Input`) → features nuevos se
-diseñan → si algo exige tocar tech, **parar y preguntar / reportar bug** →
-verificar → dar la **lista de gaps** (no "listo" a secas).
+---
 
-## Estado al cerrar la sesión anterior
+## Trabajo concreto — Wallet
 
-Fase A ✅. `/` (Home) ✅. `/login` ✅ (visual V1 sobre tech V2: botón Google
-redirect idéntico a V1, placeholders, asteriscos de requerido, 2FA 6 dígitos,
-volver-al-login, sin punto azul).
+La feature ya existe (`web/src/features/wallet/`): `BalancesView`,
+`CompartmentTransferForm`, `WithdrawForm`, `DepositView`, `HistoryView`,
+`WalletTabs` (+ queries + tests). **Se rediseña, no se construye de cero.**
 
-**Pendiente (tu tarea):** aplicar paridad V1 a las otras 3 de auth, que hoy están
-restiladas genéricas pero sin mirar la V1:
-- `/register` → V1 `src/pages/Register.jsx` + `styles/Register.css`. Trae: botón
-  Google (el mismo `GoogleSignInButton`) + divisor, **confirmar contraseña**
-  (validación de coincidencia en cliente, SIN tocar el contrato de registro),
-  validación por campo, mensaje de términos, footer de login, descripciones,
-  placeholders, asteriscos.
-- `/verify-email` → repasar contra la V1.
-- `/forgot-password` → la V1 lo parte en 2 rutas (`/forgot-password` →
-  `/reset-password?email=`); revisar layout/copy (pero la tech de reset de la V2
-  es multi-step: **mantener la tech V2**, igualar solo el look).
+**Primero investigá el backend** (como hicimos con swap) ANTES de diseñar:
+- Endpoints de balances/transfer/withdraw/deposit (`backend/modules/balances/` y
+  `backend/modules/wallet*` / `withdrawal*`). Mirá: validaciones de monto y
+  **precisión de decimales** (redondeá en el front antes de mandar), compartimentos
+  válidos, y si el retiro pasa por **maker-checker** / tiene estados
+  (queued/pending). Reportá los hallazgos antes de tocar UI.
 
-Después: Fase C (wallet/swap/trading), Fase D (dashboard/profile/p2p/admin),
-Fase E (pase transversal a11y/responsive/copy).
+Alcance:
+1. **Balances** (Funding + Spot: disponible/bloqueado/pendiente) con `CoinLogo`,
+   cifras en `--font-num`, estados loading/empty/error.
+2. **Transferencia Funding↔Spot**: al éxito → `SuccessFlash`. Redondear monto.
+3. **Retiro** (solo desde Funding): al éxito → `SuccessFlash` (mensaje acorde al
+   estado real que devuelva el backend, ej. "en cola"). Redondear monto.
+4. **Depósito**: **cartel de "servicio no disponible en tu región"** y flujo
+   **deshabilitado** (decisión de Abner). No cablear depósito on-chain. Dejar el
+   componente listo para habilitarlo después, pero hoy bloqueado con el aviso.
+5. **Historial**: tabla/timeline con estética nueva.
 
-## Decisiones abiertas (preguntar si aplica)
+## Dev stack (para verificar en vivo)
+Postgres del compose (`app_database`:5432) + backend desde el código
+(`node server.js`:3001, con `backend/.env` local) + `next dev`:3000 (rewrite
+`/api`→:3001). Usuario de prueba `grgurichabner@gmail.com` (super_admin, email
+verificado) **ya fondeado con 2 BTC** y con **límite AML subido**. Faucet:
+`POST /api/balances/testnet-faucet {symbol,amount}` (credita al user del token).
+Para fondear a ese user en scripts, firmar JWT con `JWT_SECRET` desde `backend/`
+(ver `lessons-swap-session.md`). Oracle con dev-bypass.
 
-- **Copy casing**: V1 Title Case vs V2 sentence case (estándar §8). Sin decidir.
-- **Posible bug V2**: backend `loginStep1` lee `emailOrUsername` pero la V2 manda
-  `{ email }`. Reportado, no corregido. Decisión de Abner.
+## e2e (gotchas, ya conocidos)
+Route-stubbed contra `next dev`. **Stubeá TODO GET autenticado** que Wallet
+dispare (balances, history, deposit-address, etc.) o el 401 desmonta `(app)`.
+`gotoApp` ya está scopeado a la navbar primaria. En frío, la primera navegación a
+`/wallet` puede tardar a compilar (no es bug). `loginViaUI` usa token fake.
 
-## Gotchas de ops (Windows) — críticos
+## Cierre
+- Correr `npm run typecheck`, `npx vitest run`, y los e2e afectados
+  (`npx playwright test wallet.spec.ts` + full si tocaste algo compartido).
+- Verificar en el navegador (screenshots) cada estado antes de dar por hecho.
+- Commit(s) Conventional en inglés, sin atribución. Actualizar
+  `backend-contract-changes.md` si cambia algún contrato de cliente.
+- Al terminar: actualizar `rebuild-status.md` (marcar Wallet ✅) y dejar el prompt
+  de la **siguiente** página (Trading).
 
-- **Un solo dev server en :3000.** NUNCA `rm -rf .next` con el dev corriendo.
-- Matar procesos con **PowerShell** (`Stop-Process`), no `pkill` (no funciona).
-  Verificar con `Get-NetTCPConnection -LocalPort 3000`.
-- **No `cd` dentro de comandos** (el cwd persiste; corré desde `web/` con rutas
-  relativas o `git -C`).
-- `.next/types` stale tras borrar rutas → `rm -rf web/.next/types`.
-- vitest con `--pool=forks`; `next/font` ya tiene stub.
-- Local no proxya `/api` (sin rewrites): el backend en local necesita
-  `NEXT_PUBLIC_API_URL`; el look se revisa igual sin eso.
+---
 
-## Primer paso sugerido
-
-`git fetch origin` y confirmar rama/freshness. Levantar `cd web && npm run dev`
-(:3000). Arrancar por `/register` siguiendo el proceso por página. Verificar
-(typecheck + vitest + render + diff contra V1) y commitear por chunk.
+## Mini-roadmap (lo que falta)
+`Wallet (esta) → Trading → P2P → Profile → Admin`. Detalle y casos A/B/C en
+`docs/frontend-rebuild/rebuild-status.md`.
