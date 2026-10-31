@@ -8,7 +8,7 @@ export interface FlashOptions {
   title?: string;
   /** Secondary line, e.g. "Intercambiaste 0.001 BTC". */
   detail?: string;
-  /** Visible time before auto-dismiss (ms). Default 2400. */
+  /** Visible time before auto-dismiss (ms). Default 3400. */
   duration?: number;
 }
 
@@ -64,7 +64,7 @@ export function SuccessFlashProvider({ children }: { children: React.ReactNode }
     const t = window.setTimeout(() => {
       setState(null);
       setLeaving(false);
-    }, 360);
+    }, 500);
     timers.current.push(t);
   }, []);
 
@@ -73,7 +73,7 @@ export function SuccessFlashProvider({ children }: { children: React.ReactNode }
       clearTimers();
       setLeaving(false);
       setState(opts);
-      const t = window.setTimeout(dismiss, opts.duration ?? 2400);
+      const t = window.setTimeout(dismiss, opts.duration ?? 3400);
       timers.current.push(t);
     },
     [dismiss],

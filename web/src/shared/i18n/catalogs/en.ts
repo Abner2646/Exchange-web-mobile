@@ -156,7 +156,7 @@ export const en: Catalog = {
     'swap.form.limitExceeded': 'This amount exceeds your remaining daily limit.',
     'swap.form.limitRemaining': 'Remaining daily limit: {{remaining}}',
     'swap.quote.title': 'Quote',
-    'swap.quote.indicative': 'Indicative only — the executed price may differ (no quote lock yet).',
+    'swap.quote.indicative': 'Indicative price — the final price is set at execution.',
     'swap.quote.youPay': 'You pay',
     'swap.quote.youReceive': 'You receive',
     'swap.quote.fee': 'Fee',

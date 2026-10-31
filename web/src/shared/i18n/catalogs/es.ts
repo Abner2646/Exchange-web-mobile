@@ -156,7 +156,7 @@ export const es: Catalog = {
     'swap.form.limitExceeded': 'Este monto excede tu límite diario restante.',
     'swap.form.limitRemaining': 'Límite diario restante: {{remaining}}',
     'swap.quote.title': 'Cotización',
-    'swap.quote.indicative': 'Solo indicativa — el precio ejecutado puede diferir (todavía no hay bloqueo de cotización).',
+    'swap.quote.indicative': 'Precio indicativo — el precio final se calcula al ejecutar.',
     'swap.quote.youPay': 'Pagás',
     'swap.quote.youReceive': 'Recibís',
     'swap.quote.fee': 'Comisión',
