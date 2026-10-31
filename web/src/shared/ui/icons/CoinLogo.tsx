@@ -21,15 +21,15 @@ function monogramColor(symbol: string): string {
 export const CoinLogo: React.FC<CoinLogoProps> = ({ symbol, size = 28, className, style }) => {
   const sym = (symbol || '?').toUpperCase();
   const src = iconUrl(sym);
-  // Track load status per-src. Resetting on `src` change is what fixes the badge
-  // going blank when the symbol swaps (e.g. the swap flip reuses this instance):
-  // stale loaded/failed from the previous coin no longer leaks into the new one.
-  const [status, setStatus] = useState<'loading' | 'loaded' | 'failed'>('loading');
-  useEffect(() => setStatus('loading'), [src]);
+  const [failed, setFailed] = useState(false);
+  // Reset on symbol change so reusing this instance for another coin (e.g. the swap
+  // flip) re-attempts the new image instead of staying hidden by a stale failure.
+  useEffect(() => setFailed(false), [src]);
   const dimension = { width: size, height: size, fontSize: size } as CSSProperties;
 
-  // The coloured monogram is ALWAYS rendered underneath, so the badge is never an
-  // empty circle while the remote CDN image is loading or if it fails outright.
+  // The coloured monogram is ALWAYS rendered underneath; the CDN image simply paints
+  // over it once it loads (no onLoad gating — a cached image that loads before React
+  // attaches the handler would otherwise never reveal). On error we drop the <img>.
   return (
     <span
       className={[styles.logo, className].filter(Boolean).join(' ')}
@@ -37,20 +37,18 @@ export const CoinLogo: React.FC<CoinLogoProps> = ({ symbol, size = 28, className
       title={sym}
     >
       <span className={styles.fallback} aria-hidden="true">{sym.slice(0, 3)}</span>
-      {status !== 'failed' && (
+      {!failed && (
         // Remote CDN images; next/image isn't worth the config for coin logos.
         // eslint-disable-next-line @next/next/no-img-element
         <img
           key={src}
           className={styles.img}
-          style={{ opacity: status === 'loaded' ? 1 : 0 }}
           src={src}
           alt=""
           width={size}
           height={size}
           loading="lazy"
-          onLoad={() => setStatus('loaded')}
-          onError={() => setStatus('failed')}
+          onError={() => setFailed(true)}
         />
       )}
     </span>

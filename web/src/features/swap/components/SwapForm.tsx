@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { parseInput, compare, multiply, divide, formatDisplay } from '@/shared/money';
+import { parseInput, compare, multiply, divide, round, formatDisplay } from '@/shared/money';
 import { useTranslation } from '@/shared/i18n';
 import { useErrorTranslation } from '@/shared/i18n/errorCatalog';
 import { Button, Field, Select, CoinLogo, useSuccessFlash } from '@/shared/ui';
@@ -135,9 +135,17 @@ export default function SwapForm() {
   const drivenIsBase = (type === 'sell' && driver === 'from') || (type === 'buy' && driver === 'to');
   const baseAmount = useMemo(() => {
     if (!pair || !parsedDriven.ok) return null;
-    if (drivenIsBase) return parsedDriven.value;
-    if (!price || compare(price, '0') <= 0) return null;
-    try { return divide(parsedDriven.value, price); } catch { return null; }
+    let raw: string | null;
+    if (drivenIsBase) {
+      raw = parsedDriven.value;
+    } else if (price && compare(price, '0') > 0) {
+      try { raw = divide(parsedDriven.value, price); } catch { raw = null; }
+    } else {
+      raw = null;
+    }
+    // Clamp to 8 decimals: the backend rejects a baseAmount with more, and divide()
+    // yields ~18 (also guards a user typing >8 decimals into the base field).
+    return raw != null ? round(raw, 8) : null;
   }, [pair, parsedDriven, drivenIsBase, price]);
   const baseOk = baseAmount != null && compare(baseAmount, '0') > 0;
 
