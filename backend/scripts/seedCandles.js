@@ -37,7 +37,7 @@ async function main() {
   const base = Number(pair.lastPrice) > 0 ? Number(pair.lastPrice) : 65000;
   const intervals = ['1m', '5m', '15m', '30m', '1h', '4h', '1d'];
   let total = 0;
-  let finalClose = base;
+  let h1 = null; // keep the 1h series to derive the pair ticker
 
   for (const interval of intervals) {
     const ms = INTERVAL_MS[interval];
@@ -65,8 +65,24 @@ async function main() {
     }
     await PriceCandle.bulkCreate(rows);
     total += rows.length;
-    if (interval === '1h') finalClose = price;
+    if (interval === '1h') h1 = rows;
     console.log(`   • ${interval}: ${rows.length} velas`);
+  }
+
+  // Derive the pair ticker (last price / 24h change / 24h volume) from the 1h series,
+  // so the header shows real numbers instead of 0.00. Market-data only — no money-path.
+  if (h1 && h1.length > 1) {
+    const lastClose = Number(h1[h1.length - 1].close);
+    const ref = h1[Math.max(0, h1.length - 24)]; // ~24h ago
+    const refClose = Number(ref.close) || lastClose;
+    const change24h = refClose > 0 ? ((lastClose - refClose) / refClose) * 100 : 0;
+    const vol24h = h1.slice(-24).reduce((s, c) => s + Number(c.volume), 0);
+    await pair.update({
+      lastPrice: String(r8(lastClose)),
+      priceChange24h: String(Number(change24h.toFixed(2))),
+      volume24h: String(r8(vol24h)),
+    });
+    console.log(`   • ticker: last=${r8(lastClose)} 24h=${change24h.toFixed(2)}% vol=${r8(vol24h)}`);
   }
 
   console.log(`✅ ${total} velas sembradas para ${pair.symbol}. pairId=${pair.id}`);
