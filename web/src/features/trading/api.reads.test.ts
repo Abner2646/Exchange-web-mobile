@@ -35,13 +35,22 @@ describe('tradingApi reads', () => {
     expect(trades).toHaveLength(1);
   });
 
-  it('getChartData unwraps candles and converts time from ms to seconds (lightweight-charts)', async () => {
-    (apiClient.get as any).mockResolvedValue({ success: true, interval: '1h', candles: [
+  it('getChartData prefers real Binance.US klines and converts time ms→seconds', async () => {
+    (apiClient.get as any).mockResolvedValue({ success: true, source: 'binance', interval: '1h', candles: [
       { time: 1762077600000, open: 1, high: 2, low: 0.5, close: 1.5, volume: 10 },
     ] });
     const candles = await tradingApi.getChartData('p1', '1h');
-    expect(apiClient.get).toHaveBeenCalledWith('/trading/chart/p1?interval=1h');
+    expect(apiClient.get).toHaveBeenCalledWith('/trading/chart/p1/binance?interval=1h');
     expect(candles[0].time).toBe(1762077600); // ms / 1000
     expect(candles[0]).toMatchObject({ open: 1, close: 1.5, volume: 10 });
+  });
+
+  it('getChartData falls back to stored candles when Binance.US has none', async () => {
+    (apiClient.get as any)
+      .mockResolvedValueOnce({ success: true, source: 'binance', candles: [] }) // binance: empty
+      .mockResolvedValueOnce({ success: true, candles: [{ time: 1762077600000, open: 1, high: 2, low: 0.5, close: 1.5, volume: 9 }] });
+    const candles = await tradingApi.getChartData('p1', '1h');
+    expect(apiClient.get).toHaveBeenLastCalledWith('/trading/chart/p1?interval=1h');
+    expect(candles[0]).toMatchObject({ time: 1762077600, volume: 9 });
   });
 });

@@ -47,13 +47,21 @@ export const tradingApi = {
       Array.isArray(r) ? r : (r.trades ?? []),
     ),
 
-  // Candles for the lightweight-charts price chart. The backend sends `time` in
-  // milliseconds; lightweight-charts wants a UNIX timestamp in SECONDS → convert here.
-  getChartData: (tradingPairId: string, interval: ChartInterval) =>
-    apiClient.get<ChartEnvelope | Candle[]>(`/trading/chart/${tradingPairId}?interval=${interval}`).then((r) => {
-      const rows = Array.isArray(r) ? r : (r.candles ?? []);
-      return rows.map((c) => ({ ...c, time: Math.floor(c.time / 1000) }));
-    }),
+  // Candles for the lightweight-charts price chart. Prefer REAL market data (the
+  // backend proxies Binance.US klines) and fall back to our own stored candles for
+  // pairs Binance.US doesn't list. The backend sends `time` in milliseconds;
+  // lightweight-charts wants a UNIX timestamp in SECONDS → convert here.
+  getChartData: async (tradingPairId: string, interval: ChartInterval): Promise<Candle[]> => {
+    const toCandles = (r: ChartEnvelope | Candle[]): Candle[] =>
+      (Array.isArray(r) ? r : (r.candles ?? [])).map((c) => ({ ...c, time: Math.floor(c.time / 1000) }));
+    try {
+      const real = toCandles(await apiClient.get<ChartEnvelope | Candle[]>(`/trading/chart/${tradingPairId}/binance?interval=${interval}`));
+      if (real.length > 0) return real;
+    } catch {
+      // Binance.US doesn't list this symbol (or the fetch failed) — use our candles.
+    }
+    return toCandles(await apiClient.get<ChartEnvelope | Candle[]>(`/trading/chart/${tradingPairId}?interval=${interval}`));
+  },
 
   getActiveOrders: () =>
     apiClient.get<OrdersEnvelope | TradingOrder[]>('/trading/orders/active').then((r) =>

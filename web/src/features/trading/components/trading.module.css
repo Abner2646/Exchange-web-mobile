@@ -255,7 +255,16 @@
 .chipOn { color: var(--text-primary); border-color: var(--border-focus); }
 .chipDot { width: 8px; height: 8px; border-radius: var(--radius-full); flex-shrink: 0; }
 
-.chartWrap { position: relative; width: 100%; min-height: 480px; flex: 1; }
+/* Framed so the price (right) and time (bottom) axes are contained, not cut off. */
+.chartWrap {
+  position: relative;
+  width: 100%;
+  min-height: 480px;
+  flex: 1;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
 .chartCanvas { width: 100%; height: 480px; }
 @media (max-width: 860px) { .chartWrap, .chartCanvas { min-height: 360px; height: 360px; } }
 .chartOverlay {
