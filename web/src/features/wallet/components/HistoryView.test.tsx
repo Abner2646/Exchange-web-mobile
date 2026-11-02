@@ -24,14 +24,14 @@ describe('HistoryView', () => {
   it('renders a transaction row with its status', () => {
     setup();
     expect(screen.getByText(/pending/i)).toBeInTheDocument();
-    // "withdrawal" appears in BOTH the filter <option> ("Withdrawals") and the row <td>
-    // ("withdrawal"); require >= 2 so the assertion fails if the row cell is missing.
+    // "withdrawal" appears in BOTH the filter pill ("Withdrawals") and the row type
+    // label ("Withdrawal"); require >= 2 so the assertion fails if the row is missing.
     expect(screen.getAllByText(/withdrawal/i).length).toBeGreaterThanOrEqual(2);
   });
 
   it('changing the filter re-queries with a type param', () => {
     setup();
-    fireEvent.change(screen.getByLabelText(/Type|Tipo/i), { target: { value: 'deposit' } });
+    fireEvent.click(screen.getByRole('button', { name: /Deposits|Depósitos/i }));
     expect(useTransactionHistory).toHaveBeenLastCalledWith({ type: 'deposit' });
   });
 

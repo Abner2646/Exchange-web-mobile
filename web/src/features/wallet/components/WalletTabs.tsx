@@ -23,9 +23,13 @@ export default function WalletTabs() {
   ];
 
   return (
-    <section>
-      <h1>{t('wallet.title')}</h1>
-      <div className={styles.tabs} role="tablist">
+    <section className={styles.page}>
+      <header className={styles.header}>
+        <h1 className={styles.title}>{t('wallet.title')}</h1>
+        <p className={styles.subtitle}>{t('wallet.subtitle')}</p>
+      </header>
+
+      <div className={styles.tabs} role="tablist" aria-label={t('wallet.title')}>
         {tabs.map((tb) => (
           <button
             key={tb.id}
@@ -48,10 +52,10 @@ export default function WalletTabs() {
         aria-labelledby={`wallet-tab-${tab}`}
       >
         {tab === 'balances' && (
-          <>
+          <div className={styles.balancesLayout}>
             <BalancesView />
             <CompartmentTransferForm />
-          </>
+          </div>
         )}
         {tab === 'deposit' && <DepositView />}
         {tab === 'withdraw' && <WithdrawForm />}

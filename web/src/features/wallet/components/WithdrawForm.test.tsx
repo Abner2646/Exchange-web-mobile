@@ -1,6 +1,7 @@
 // web/src/features/wallet/components/WithdrawForm.test.tsx
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { LocaleProvider } from '@/shared/i18n';
 import WithdrawForm from './WithdrawForm';
 
@@ -15,7 +16,7 @@ vi.mock('../queries', () => ({
 const BALANCE = [{
   criptomonedaId: 'c1',
   compartments: { funding: { available: '5', blocked: '0', pending: '0' }, spot: { available: '0', blocked: '0' } },
-  crypto: { id: 'c1', symbol: 'BTC', network: 'bitcoin' },
+  crypto: { id: 'c1', symbol: 'BTC', network: 'bitcoin', decimals: 8 },
 }];
 
 beforeEach(() => {
@@ -28,13 +29,19 @@ function setup() {
   return render(<LocaleProvider><WithdrawForm /></LocaleProvider>);
 }
 
+// The asset picker uses the custom Select (button trigger + listbox).
+async function pickAsset(optionName: RegExp) {
+  await userEvent.click(screen.getByRole('button', { name: /Asset|Activo/i }));
+  await userEvent.click(screen.getByRole('option', { name: optionName }));
+}
+
 describe('WithdrawForm', () => {
   it('submits {cryptoId,amount,destinationAddress}', async () => {
     setup();
-    fireEvent.change(screen.getByLabelText(/Asset|Activo/i), { target: { value: 'c1' } });
-    fireEvent.change(screen.getByLabelText(/Amount|Monto/i), { target: { value: '1' } });
-    fireEvent.change(screen.getByLabelText(/address|Dirección/i), { target: { value: 'bc1dest' } });
-    fireEvent.click(screen.getByRole('button', { name: /Withdraw|Retirar/i }));
+    await pickAsset(/BTC/);
+    await userEvent.type(screen.getByLabelText(/Amount|Monto/i), '1');
+    await userEvent.type(screen.getByLabelText(/address|Dirección/i), 'bc1dest');
+    await userEvent.click(screen.getByRole('button', { name: /Withdraw|Retirar/i }));
     await waitFor(() => expect(mutateAsync).toHaveBeenCalledWith({ cryptoId: 'c1', amount: '1', destinationAddress: 'bc1dest' }));
   });
 
@@ -57,12 +64,12 @@ describe('WithdrawForm', () => {
     expect(alert.textContent?.length).toBeGreaterThan(0);
   });
 
-  it('disables submit when the amount exceeds the Funding available balance', () => {
+  it('disables submit when the amount exceeds the Funding available balance', async () => {
     setup();
-    fireEvent.change(screen.getByLabelText(/Asset|Activo/i), { target: { value: 'c1' } });
+    await pickAsset(/BTC/);
     // BALANCE funding.available is '5'; 6 exceeds it.
-    fireEvent.change(screen.getByLabelText(/Amount|Monto/i), { target: { value: '6' } });
-    fireEvent.change(screen.getByLabelText(/address|Dirección/i), { target: { value: 'bc1dest' } });
+    await userEvent.type(screen.getByLabelText(/Amount|Monto/i), '6');
+    await userEvent.type(screen.getByLabelText(/address|Dirección/i), 'bc1dest');
     expect(screen.getByRole('button', { name: /Withdraw|Retirar/i })).toBeDisabled();
     expect(screen.getByRole('alert')).toBeInTheDocument();
   });

@@ -33,7 +33,8 @@ describe('BalancesView', () => {
       ],
     });
     renderView();
-    expect(screen.getByText('BTC')).toBeInTheDocument();
+    // "BTC" appears twice now: the CoinLogo monogram fallback and the symbol label.
+    expect(screen.getAllByText('BTC').length).toBeGreaterThanOrEqual(1);
     // Funding available 300 and Spot available 200 both shown.
     expect(screen.getByText(/300/)).toBeInTheDocument();
     expect(screen.getByText(/200/)).toBeInTheDocument();

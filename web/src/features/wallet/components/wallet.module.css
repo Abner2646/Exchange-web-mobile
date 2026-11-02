@@ -1,26 +1,342 @@
-/* web/src/features/wallet/components/wallet.module.css */
-.panel { display: flex; flex-direction: column; gap: 1rem; }
-.row {
-  border: 1px solid var(--color-border, #2a2a2a);
-  border-radius: 8px;
-  padding: 1rem;
+/* Wallet — balances + compartment transfer + withdraw + deposit + history, rebuilt
+   on the global tokens (the swap standard). Caso B: the V1 had a single wallet;
+   this is designed around the Funding + Spot compartment model. */
+
+.page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--spacing-xl) var(--spacing-lg) var(--spacing-xxl);
+}
+
+/* Compact, left-aligned header: title + inline tagline (matches swap). */
+.header {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+.title {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--tracking-snug);
+  color: var(--text-primary);
+}
+.subtitle {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+}
+
+/* Segmented tab bar (pills). */
+.tabs {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  margin-bottom: var(--spacing-lg);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-full);
+  flex-wrap: wrap;
+}
+.tab {
+  padding: var(--spacing-xs) var(--spacing-md);
+  border: none;
+  border-radius: var(--radius-full);
+  background: none;
+  color: var(--text-tertiary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: color var(--motion-duration-fast) var(--motion-easing-ease),
+    background-color var(--motion-duration-fast) var(--motion-easing-ease);
+}
+.tab:hover { color: var(--text-secondary); }
+.tabActive { background-color: var(--brand-primary); color: var(--text-inverse); }
+.tabActive:hover { color: var(--text-inverse); }
+
+/* Two-column shell for the Balances tab: balances list + transfer aside.
+   Stacks on narrow screens. */
+.balancesLayout {
+  display: grid;
+  grid-template-columns: 1.3fr 0.7fr;
+  gap: var(--spacing-lg);
+  align-items: start;
+}
+.balancesLayout > * { min-width: 0; }
+@media (max-width: 760px) {
+  .balancesLayout { grid-template-columns: 1fr; }
+}
+
+/* ---- Balances ---- */
+.balanceList { display: flex; flex-direction: column; gap: var(--spacing-sm); }
+
+.balanceCard {
+  padding: var(--spacing-md);
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+}
+.coinHead {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+}
+.coinMeta { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.coinSym { font-weight: var(--font-weight-semibold); color: var(--text-primary); }
+.coinName {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.coinTotal {
+  margin-left: auto;
+  text-align: right;
+  font-family: var(--font-num), var(--font-sans);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.compartments {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-sm);
+}
+@media (max-width: 420px) {
+  .compartments { grid-template-columns: 1fr; }
+}
+.compartment {
+  padding: var(--spacing-sm);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-md);
+}
+.compartmentHead {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-xs);
+}
+.compRow {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  padding: 2px 0;
+}
+.compLabel { color: var(--text-tertiary); }
+.compValue {
+  font-family: var(--font-num), var(--font-sans);
+  color: var(--text-primary);
+}
+.compValue.muted { color: var(--text-tertiary); }
+.pendingHint {
+  margin-top: var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+}
+
+/* ---- Form card (transfer / withdraw / deposit) ---- */
+.card {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
 }
-.symbol { font-weight: 600; font-size: 1.1rem; }
-.compartments { display: flex; gap: 2rem; flex-wrap: wrap; }
-.compartment { display: flex; flex-direction: column; gap: 0.25rem; }
-.label { font-size: 0.8rem; opacity: 0.7; }
-.amount { font-variant-numeric: tabular-nums; }
-.pending { opacity: 0.8; }
-.hint { font-size: 0.8rem; opacity: 0.7; }
-.empty { opacity: 0.7; padding: 2rem 0; text-align: center; }
-.form { display: flex; flex-direction: column; gap: 1rem; max-width: 420px; }
-.actions { display: flex; gap: 0.75rem; }
+.formTitle {
+  margin: 0;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+.formNote { margin: 0; font-size: var(--font-size-sm); color: var(--text-tertiary); }
+
+/* Amount field with an inline "Máx" affordance (mirrors swap's balance button). */
+.fieldBlock { display: flex; flex-direction: column; gap: var(--spacing-xs); }
+.amountLabel {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-secondary);
+}
+.fieldHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--spacing-sm);
+}
+.maxBtn {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+}
+.maxBtn strong {
+  color: var(--brand-primary);
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-num), var(--font-sans);
+}
+.maxBtn:hover { color: var(--text-secondary); }
+
+.withdrawAside {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-lg);
+  align-items: start;
+}
+@media (max-width: 760px) { .withdrawAside { grid-template-columns: 1fr; } }
+
+.infoPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-lg);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-lg);
+}
+.infoPanelTitle {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+.infoRow {
+  display: flex;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+.infoRow svg { flex-shrink: 0; color: var(--text-tertiary); margin-top: 2px; }
+
+.actions { margin-top: var(--spacing-xs); }
+.actions > button { width: 100%; }
+
+.alert { color: var(--error); font-size: var(--font-size-sm); margin: 0; }
+.success { color: var(--success); font-size: var(--font-size-sm); margin: 0; }
+
+/* ---- Deposit — disabled region notice ---- */
+.noticeCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--spacing-sm);
+  max-width: 520px;
+  margin: 0 auto;
+  padding: var(--spacing-xl) var(--spacing-lg);
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+}
+.noticeIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-full);
+  background-color: var(--wash-warning);
+  color: var(--warning);
+}
+.noticeTitle {
+  margin: 0;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+.noticeBody { margin: 0; font-size: var(--font-size-sm); color: var(--text-secondary); max-width: 40ch; }
+
+/* ---- History ---- */
+.historyCard {
+  padding: var(--spacing-lg);
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+}
+.historyHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+.filterPills { display: inline-flex; gap: var(--spacing-xs); flex-wrap: wrap; }
+.pill {
+  padding: 4px var(--spacing-sm);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-full);
+  background: none;
+  color: var(--text-tertiary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: color var(--motion-duration-fast) var(--motion-easing-ease),
+    border-color var(--motion-duration-fast) var(--motion-easing-ease);
+}
+.pill:hover { color: var(--text-secondary); border-color: var(--border-focus); }
+.pillActive { color: var(--brand-primary); border-color: var(--brand-primary); background-color: var(--wash-brand); }
+
 .table { width: 100%; border-collapse: collapse; }
-.table th, .table td { text-align: left; padding: 0.5rem; border-bottom: 1px solid var(--color-border, #2a2a2a); }
-.tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
-.tab { padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; background: transparent; border: 1px solid var(--color-border, #2a2a2a); color: inherit; }
-.tabActive { background: var(--color-accent, #3b82f6); color: #fff; }
-.code { font-family: monospace; word-break: break-all; }
+.table th, .table td {
+  text-align: left;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-bottom: 1px solid var(--border-secondary);
+  font-size: var(--font-size-sm);
+}
+.table th {
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.05em;
+  font-weight: var(--font-weight-semibold);
+  background-color: var(--bg-secondary);
+}
+.table td { color: var(--text-secondary); }
+.table tbody tr:last-child td { border-bottom: none; }
+.amountCell { font-family: var(--font-num), var(--font-sans); color: var(--text-primary); }
+.typeCell { display: inline-flex; align-items: center; gap: var(--spacing-xs); }
+.confCell { font-family: var(--font-num), var(--font-sans); color: var(--text-tertiary); }
+.dateCell { color: var(--text-tertiary); white-space: nowrap; }
+
+@media (max-width: 560px) {
+  .colConfirmations, .colDate { display: none; }
+}
+
+/* ---- Skeleton rows ---- */
+.skelCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+}
+.skelRow { display: flex; align-items: center; gap: var(--spacing-sm); }
+
+/* ---- a11y ---- */
+.tab:focus-visible,
+.pill:focus-visible,
+.maxBtn:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab, .pill { transition: none; }
+}

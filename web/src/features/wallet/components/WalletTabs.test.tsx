@@ -22,6 +22,7 @@ describe('WalletTabs', () => {
     setup();
     expect(screen.getByText('You have no balances yet.')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('tab', { name: /Withdraw|Retirar/i }));
-    expect(screen.getByRole('heading', { name: /Withdraw|Retirar/i })).toBeInTheDocument();
+    // Exact match: the withdraw info panel also has a heading containing "withdraw".
+    expect(screen.getByRole('heading', { name: /^Withdraw$|^Retirar$/i })).toBeInTheDocument();
   });
 });
