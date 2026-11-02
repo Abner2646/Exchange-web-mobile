@@ -1,11 +1,204 @@
-.form { display: flex; flex-direction: column; gap: var(--space-3, 0.75rem); max-width: 28rem; }
-.row { display: flex; justify-content: space-between; gap: var(--space-2, 0.5rem); }
-.label { color: var(--color-text-muted, #666); font-size: 0.875rem; }
-.actions { margin-top: var(--space-3, 0.75rem); display: flex; gap: var(--space-2, 0.5rem); }
+/* Trading — spot terminal rebuilt on the global tokens (the swap/wallet standard).
+   Single pair selector drives the ticker, order book, recent trades and the order
+   form. Caso B/C: designed around the live order-book model. */
+
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--spacing-xl) var(--spacing-lg) var(--spacing-xxl);
+}
+
+/* Ticker header: title + pair picker + last price / 24h / volume. */
+.header {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+.title {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--tracking-snug);
+  color: var(--text-primary);
+}
+.subtitle { margin: 0; font-size: var(--font-size-sm); color: var(--text-tertiary); }
+
+.ticker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-md) var(--spacing-xl);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+}
+.pairPicker { min-width: 220px; }
+.tickerStat { display: flex; flex-direction: column; gap: 2px; }
+.tickerLabel { font-size: var(--font-size-xs); text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-tertiary); }
+.tickerValue { font-family: var(--font-num), var(--font-sans); font-weight: var(--font-weight-semibold); color: var(--text-primary); }
+.up { color: var(--success); }
+.down { color: var(--error); }
+.flat { color: var(--text-tertiary); }
+
+/* Main terminal grid: book + trades (left) · order form (right). */
+.terminal {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: var(--spacing-lg);
+  align-items: start;
+}
+.terminal > * { min-width: 0; }
+@media (max-width: 920px) {
+  .terminal { grid-template-columns: 1fr; }
+}
+.leftCol { display: flex; flex-direction: column; gap: var(--spacing-lg); }
+
+.panel {
+  padding: var(--spacing-md);
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+}
+.panelTitle {
+  margin: 0 0 var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+/* Order book. */
+.bookTable { width: 100%; border-collapse: collapse; }
+.bookTable th {
+  text-align: right;
+  padding: 4px var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: var(--font-weight-medium);
+  color: var(--text-tertiary);
+}
+.bookTable th:first-child { text-align: left; }
+.bookRow td {
+  position: relative;
+  text-align: right;
+  padding: 3px var(--spacing-sm);
+  font-family: var(--font-num), var(--font-sans);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.bookRow td:first-child { text-align: left; font-weight: var(--font-weight-semibold); }
+/* Cumulative-depth bar painted behind the row. */
+.depth { position: absolute; top: 0; bottom: 0; right: 0; z-index: 0; }
+.bookRow td > span { position: relative; z-index: 1; }
+.askPrice { color: var(--error); }
+.bidPrice { color: var(--success); }
+.askDepth { background-color: var(--wash-error); }
+.bidDepth { background-color: var(--wash-success); }
+
+.spreadRow {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  margin: var(--spacing-xs) 0;
+  border-top: 1px solid var(--border-secondary);
+  border-bottom: 1px solid var(--border-secondary);
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+}
+.spreadRow strong { font-family: var(--font-num), var(--font-sans); color: var(--text-secondary); }
+
+/* Recent trades + my orders tables. */
 .table { width: 100%; border-collapse: collapse; }
-.table th, .table td { text-align: right; padding: 0.3rem 0.5rem; border-bottom: 1px solid var(--color-border, #eee); font-variant-numeric: tabular-nums; }
-.table th:first-child, .table td:first-child { text-align: left; }
-.bid { color: var(--color-success, #0a0); }
-.ask { color: var(--color-danger, #b00); }
-.spread { color: var(--color-text-muted, #666); font-size: 0.8125rem; padding: 0.25rem 0; }
-.fundPrompt { border: 1px solid var(--color-border, #ddd); border-radius: 8px; padding: var(--space-2, 0.5rem); }
+.table th {
+  text-align: right;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-tertiary);
+}
+.table th:first-child { text-align: left; }
+.table td {
+  text-align: right;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-bottom: 1px solid var(--border-secondary);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+.table td:first-child { text-align: left; }
+.table tbody tr:last-child td { border-bottom: none; }
+.num { font-family: var(--font-num), var(--font-sans); color: var(--text-primary); }
+.buyText { color: var(--success); }
+.sellText { color: var(--error); }
+
+.myOrders { margin-top: var(--spacing-xl); }
+.cancelCell { text-align: right; }
+
+/* Order form. */
+.form { display: flex; flex-direction: column; gap: var(--spacing-md); }
+.segmented {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  padding: 3px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+}
+.seg {
+  padding: var(--spacing-sm);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-tertiary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: background-color var(--motion-duration-fast) var(--motion-easing-ease),
+    color var(--motion-duration-fast) var(--motion-easing-ease);
+}
+.seg:hover { color: var(--text-secondary); }
+.segBuy { background-color: var(--success); color: var(--color-base-white); }
+.segSell { background-color: var(--error); color: var(--color-base-white); }
+.segOn { background-color: var(--brand-primary); color: var(--color-base-white); }
+
+.fieldBlock { display: flex; flex-direction: column; gap: var(--spacing-xs); }
+.fieldHead { display: flex; justify-content: space-between; align-items: baseline; gap: var(--spacing-sm); }
+.fieldLabel { font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); }
+.maxBtn { border: none; background: none; padding: 0; cursor: pointer; font-size: var(--font-size-xs); color: var(--text-tertiary); }
+.maxBtn strong { color: var(--brand-primary); font-weight: var(--font-weight-semibold); font-family: var(--font-num), var(--font-sans); }
+.maxBtn:hover { color: var(--text-secondary); }
+
+.note { margin: 0; font-size: var(--font-size-xs); color: var(--text-tertiary); }
+.alert { margin: 0; font-size: var(--font-size-sm); color: var(--error); }
+.fundPrompt {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm);
+  background-color: var(--wash-error);
+  border: 1px solid var(--error);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+.fundPrompt a { color: var(--brand-primary); text-decoration: none; }
+.fundPrompt a:hover { text-decoration: underline; }
+.actions { margin-top: var(--spacing-xs); }
+.actions > button { width: 100%; }
+
+.formHint { padding: var(--spacing-xl) var(--spacing-md); text-align: center; color: var(--text-tertiary); font-size: var(--font-size-sm); }
+
+/* a11y */
+.seg:focus-visible, .maxBtn:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .seg { transition: none; } }
