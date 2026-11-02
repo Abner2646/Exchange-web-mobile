@@ -44,14 +44,22 @@ function BalanceCard({ entry }: { entry: BalanceEntry }) {
       <div className={styles.compartments}>
         <div className={styles.compartment}>
           <div className={styles.compartmentHead}>{t('wallet.balances.funding')}</div>
+          {/* Available is always shown. Blocked/Pending appear ONLY when non-zero — a
+              zero "Blocked" line would wrongly suggest funds can be frozen when nothing is. */}
           <Line label={t('wallet.balances.available')} value={entry.compartments.funding.available} fmt={fmt} />
-          <Line label={t('wallet.balances.blocked')} value={entry.compartments.funding.blocked} fmt={fmt} />
-          <Line label={t('wallet.balances.pending')} value={entry.compartments.funding.pending} fmt={fmt} />
+          {compare(entry.compartments.funding.blocked, '0') > 0 && (
+            <Line label={t('wallet.balances.blocked')} value={entry.compartments.funding.blocked} fmt={fmt} />
+          )}
+          {compare(entry.compartments.funding.pending, '0') > 0 && (
+            <Line label={t('wallet.balances.pending')} value={entry.compartments.funding.pending} fmt={fmt} />
+          )}
         </div>
         <div className={styles.compartment}>
           <div className={styles.compartmentHead}>{t('wallet.balances.spot')}</div>
           <Line label={t('wallet.balances.available')} value={entry.compartments.spot.available} fmt={fmt} />
-          <Line label={t('wallet.balances.blocked')} value={entry.compartments.spot.blocked} fmt={fmt} />
+          {compare(entry.compartments.spot.blocked, '0') > 0 && (
+            <Line label={t('wallet.balances.blocked')} value={entry.compartments.spot.blocked} fmt={fmt} />
+          )}
         </div>
       </div>
     </div>
@@ -108,12 +116,16 @@ export default function BalancesView() {
     );
   }
 
+  // Only explain "pending" when at least one asset actually has pending funds —
+  // otherwise the hint dangles with nothing on screen to explain.
+  const anyPending = entries.some((e) => compare(e.compartments.funding.pending, '0') > 0);
+
   return (
     <div className={styles.balanceList}>
       {entries.map((e) => (
         <BalanceCard key={e.criptomonedaId} entry={e} />
       ))}
-      <p className={styles.pendingHint}>{t('wallet.balances.pendingHint')}</p>
+      {anyPending && <p className={styles.pendingHint}>{t('wallet.balances.pendingHint')}</p>}
     </div>
   );
 }
