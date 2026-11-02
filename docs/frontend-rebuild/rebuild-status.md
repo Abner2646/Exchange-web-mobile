@@ -6,7 +6,7 @@
 > Lecciones y gotchas de la sesión de swap:
 > [`lessons-swap-session.md`](./lessons-swap-session.md).
 
-Última actualización: **2026-11-02** (fin de la sesión de wallet).
+Última actualización: **2026-11-02** (fin de la sesión de trading).
 
 ---
 
@@ -43,8 +43,8 @@ cuando cumple, además de la paridad V1 / tech V2:
 | — | Tema dark + toggle | global | — | ✅ hecho |
 | — | **Swap** | `/swap` | C→nuevo | ✅ **hecho a fondo** (referencia del estándar) |
 | 1 | **Wallet** (balances, transfer, retiro, **depósito**, historial) | `/wallet` | **B** | ✅ **hecho** (verificado Playwright+screenshots, 2026-11-02) |
-| 2 | **Trading** (order book, order form, trades) | `/trading` | B/C | ⬜ **PRÓXIMA** |
-| 3 | P2P (ofertas, crear oferta, transacciones) | `/p2p` | B | ⬜ pendiente |
+| 2 | **Trading** (order book, order form, trades) | `/trading` | B/C | ✅ **hecho** (terminal spot, selector único, verificado 2026-11-02) |
+| 3 | **P2P** (ofertas, crear oferta, transacciones) | `/p2p` | B | ⬜ **PRÓXIMA** |
 | 4 | Profile (cuenta, seguridad/2FA, KYC, notificaciones) | `/profile` | B | ⬜ pendiente |
 | 5 | Admin (panel super_admin) | `/admin` | C | ⬜ pendiente (menor prioridad) |
 
