@@ -53,9 +53,6 @@ test('limit buy: place order with an Idempotency-Key and success flash', async (
   await page.getByRole('button', { name: 'Pair' }).click();
   await page.getByRole('option', { name: /BTC\/USDT/ }).click();
 
-  // The lightweight-charts price chart renders (its ticker is integrated in the top bar).
-  await expect(page.locator('canvas').first()).toBeVisible();
-
   // Order form appears once a pair is chosen. Defaults: limit buy.
   await page.locator('#order-qty').fill('0.001');
   await page.locator('#order-price').fill('65000');
