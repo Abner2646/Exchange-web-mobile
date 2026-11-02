@@ -56,6 +56,17 @@ construirlas de cero.
 **Wallet → Trading → P2P → Profile → Admin.** Wallet primero porque es el core de
 dinero (y donde viven depósitos/retiros).
 
+### Páginas públicas del footer (hechas, básicas — 2026-11-02)
+Creadas al shell compartido `app/_content/ContentPage` (reading-width, tokens,
+navbar+footer del root layout): `/help`, `/academy`, `/status` (Recursos);
+`/privacy`, `/terms`, `/cookies`, `/aml` (Legal, **placeholder + aviso de borrador**,
+sin texto legal vinculante inventado); `/about`, `/news` (Empresa). Copy en español
+(como el home marketing; no usan el catálogo i18n). Link `/terminos-y-condiciones`
+del register reconciliado → `/terms`. **Omitidos a propósito:** `/blog` (decisión de
+Abner) y `/download-app` (el home ya tiene sección de descarga + QR, la navbar no lo
+linkea). Verificadas con `e2e/public-pages.spec.ts` + screenshots. Son páginas
+básicas: no pasaron por el estándar completo del rebuild (no son money-path).
+
 ---
 
 ## Decisiones de producto fijadas
