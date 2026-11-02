@@ -100,7 +100,7 @@ export default function OrderForm({ pairId }: { pairId: string }) {
   }
 
   return (
-    <form className={styles.form} onSubmit={handleSubmit} noValidate>
+    <form className={`${styles.panel} ${styles.form}`} onSubmit={handleSubmit} noValidate>
       <h2 className={styles.panelTitle}>{t('trading.form.title')}</h2>
 
       {!pairId ? (

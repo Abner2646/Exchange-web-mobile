@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 
+vi.mock('./PriceChart', () => ({ default: () => <div>chart-stub</div> }));
 vi.mock('./OrderForm', () => ({ default: () => <div>form-stub</div> }));
 vi.mock('./MyOrdersView', () => ({ default: () => <div>orders-stub</div> }));
 vi.mock('./OrderBookView', () => ({ OrderBookView: () => <div>book-stub</div> }));
@@ -11,12 +12,10 @@ vi.mock('@/shared/i18n', () => ({ useTranslation: () => ({ t: (k: string) => k, 
 import TradingWidget from './TradingWidget';
 
 describe('TradingWidget', () => {
-  it('renders the heading, pair picker, book, trades, form and orders (single pair selector)', () => {
+  it('composes the terminal panels (chart + book + trades + form + orders)', () => {
     render(<TradingWidget />);
-    expect(screen.getByRole('heading', { name: 'trading.title' })).toBeInTheDocument();
-    expect(screen.getByText('pair-stub')).toBeInTheDocument();
-    // The book/trades panels now always render (they own their empty state), driven by
-    // the single pair selector — no second selector in the form.
+    // The pro terminal always shows the book/trades/form columns next to the chart
+    // (single pair selector lives inside the chart panel).
     expect(screen.getByText('book-stub')).toBeInTheDocument();
     expect(screen.getByText('trades-stub')).toBeInTheDocument();
     expect(screen.getByText('form-stub')).toBeInTheDocument();

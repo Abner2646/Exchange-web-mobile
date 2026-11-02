@@ -4,10 +4,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   createChart, IChartApi, ISeriesApi, UTCTimestamp, ColorType, CrosshairMode,
 } from 'lightweight-charts';
+import React from 'react';
+import { formatDisplay, compare } from '@/shared/money';
 import { useTranslation } from '@/shared/i18n';
 import { useTheme } from '@/shared/theme';
 import { useChartData } from '../queries';
-import type { Candle, ChartInterval } from '../types';
+import type { Candle, ChartInterval, TradingPair } from '../types';
 import styles from './trading.module.css';
 
 const INTERVALS: ChartInterval[] = ['1m', '5m', '15m', '30m', '1h', '4h', '1d', '1w'];
@@ -72,8 +74,8 @@ function palette(dark: boolean) {
   };
 }
 
-export default function PriceChart({ pairId }: { pairId: string }) {
-  const { t } = useTranslation();
+export default function PriceChart({ pairId, pair, pairSelector }: { pairId: string; pair?: TradingPair; pairSelector?: React.ReactNode }) {
+  const { t, locale } = useTranslation();
   const { theme } = useTheme();
   const [interval, setIntervalState] = useState<ChartInterval>('1h');
   const [chartType, setChartType] = useState<ChartType>('candlestick');
@@ -100,7 +102,7 @@ export default function PriceChart({ pairId }: { pairId: string }) {
 
     const chart = createChart(el, {
       width: el.clientWidth,
-      height: 340,
+      height: el.clientHeight || 480,
       layout: { background: { type: ColorType.Solid, color: pal.bg }, textColor: pal.text },
       grid: { vertLines: { color: pal.grid }, horzLines: { color: pal.grid } },
       crosshair: { mode: CrosshairMode.Normal },
@@ -149,19 +151,43 @@ export default function PriceChart({ pairId }: { pairId: string }) {
     }
 
     chart.timeScale().fitContent();
-    const ro = new ResizeObserver(() => { if (chartRef.current && el.clientWidth > 0) chartRef.current.applyOptions({ width: el.clientWidth }); });
+    const ro = new ResizeObserver(() => { if (chartRef.current && el.clientWidth > 0) chartRef.current.applyOptions({ width: el.clientWidth, height: el.clientHeight || 480 }); });
     ro.observe(el);
     return () => { ro.disconnect(); chart.remove(); chartRef.current = null; indRef.current = []; };
   }, [candles, chartType, showVolume, indicators, theme]);
 
   const toggleInd = (k: IndKey) => setIndicators((p) => ({ ...p, [k]: !p[k] }));
 
-  if (!pairId) return null;
+  // 24h change tone + string (market display only).
+  const change = pair?.priceChange24h;
+  const changeTone = change == null ? styles.flat : compare(change, '0') > 0 ? styles.up : compare(change, '0') < 0 ? styles.down : styles.flat;
+  const changeStr = change == null ? '—' : `${compare(change, '0') > 0 ? '+' : ''}${formatDisplay(change, { locale, maxDecimals: 2 })}%`;
 
   return (
-    <section className={styles.panel}>
-      <div className={styles.chartHead}>
-        <h2 className={styles.panelTitle}>{t('trading.chart.title')}</h2>
+    <section className={`${styles.panel} ${styles.chartPanel}`}>
+      {/* Top bar: instrument (pair + ticker) on the left, chart controls on the right. */}
+      <div className={styles.chartTopBar}>
+        <div className={styles.chartInstrument}>
+          {pairSelector && <div className={styles.chartPairPicker}>{pairSelector}</div>}
+          {pair && (
+            <div className={styles.chartStats}>
+              <div className={styles.tickerStat}>
+                <span className={styles.tickerLabel}>{t('trading.ticker.last')}</span>
+                <span className={styles.tickerValue}>{pair.lastPrice ? formatDisplay(pair.lastPrice, { locale, maxDecimals: 8, stripTrailingZeros: true }) : '—'} {pair.quoteSymbol}</span>
+              </div>
+              <div className={styles.tickerStat}>
+                <span className={styles.tickerLabel}>{t('trading.ticker.change')}</span>
+                <span className={`${styles.tickerValue} ${changeTone}`}>{changeStr}</span>
+              </div>
+              {pair.volume24h != null && (
+                <div className={styles.tickerStat}>
+                  <span className={styles.tickerLabel}>{t('trading.ticker.volume')}</span>
+                  <span className={styles.tickerValue}>{formatDisplay(pair.volume24h, { locale, maxDecimals: 2 })} {pair.quoteSymbol}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
         <div className={styles.chartControls}>
           <div className={styles.intervalPills} role="group" aria-label={t('trading.chart.interval')}>
             {INTERVALS.map((iv) => (

@@ -15,7 +15,7 @@ export function RecentTradesView({ tradingPairId }: { tradingPairId: string }) {
     if (!tradingPairId) return <p className={styles.note}>{t('trading.selectPair')}</p>;
     if (isLoading) return <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} height={18} />)}</div>;
     if (isError) return <p role="alert" className={styles.alert}>{t('trading.trades.error')}</p>;
-    const rows = data ?? [];
+    const rows = (data ?? []).slice(0, 25);
     if (rows.length === 0) return <p className={styles.note}>{t('trading.trades.empty')}</p>;
     return (
       <table className={styles.table}>

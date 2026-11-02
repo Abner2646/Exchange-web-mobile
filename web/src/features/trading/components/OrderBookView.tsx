@@ -37,8 +37,8 @@ export function OrderBookView({ tradingPairId }: { tradingPairId: string }) {
       <>
         <table className={styles.bookTable}>
           <thead><tr><th>{t('trading.book.price')}</th><th>{t('trading.book.amount')}</th><th>{t('trading.book.total')}</th></tr></thead>
-          {/* Asks nearest the spread: reversed so the best (lowest) ask sits at the bottom. */}
-          <tbody>{rows([...data.asks].reverse(), styles.askPrice, styles.askDepth)}</tbody>
+          {/* Best 12 asks, reversed so the best (lowest) ask sits at the bottom by the spread. */}
+          <tbody>{rows([...data.asks].slice(0, 12).reverse(), styles.askPrice, styles.askDepth)}</tbody>
         </table>
         {spread != null && (
           <div className={styles.spreadRow}>
@@ -47,7 +47,7 @@ export function OrderBookView({ tradingPairId }: { tradingPairId: string }) {
           </div>
         )}
         <table className={styles.bookTable}>
-          <tbody>{rows(data.bids, styles.bidPrice, styles.bidDepth)}</tbody>
+          <tbody>{rows(data.bids.slice(0, 12), styles.bidPrice, styles.bidDepth)}</tbody>
         </table>
       </>
     );
