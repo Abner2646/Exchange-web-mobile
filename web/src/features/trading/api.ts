@@ -1,10 +1,11 @@
 import { apiClient } from '@/shared/api';
-import type { TradingPair, TradingPairDTO, OrderBook, RecentTrade, TradingOrder, PlaceOrderRequest, PlaceOrderResponse } from './types';
+import type { TradingPair, TradingPairDTO, OrderBook, RecentTrade, TradingOrder, PlaceOrderRequest, PlaceOrderResponse, Candle, ChartInterval } from './types';
 
 interface PairsEnvelope { success?: boolean; pairs?: TradingPairDTO[] }
 interface OrderBookEnvelope { success?: boolean; orderBook?: OrderBook }
 interface TradesEnvelope { success?: boolean; trades?: RecentTrade[] }
 interface OrdersEnvelope { success?: boolean; orders?: TradingOrder[]; total?: number }
+interface ChartEnvelope { success?: boolean; interval?: string; candles?: Candle[]; count?: number }
 
 function normalizePair(dto: TradingPairDTO): TradingPair | null {
   const parts = (dto.symbol ?? '').split('/');
@@ -45,6 +46,14 @@ export const tradingApi = {
     apiClient.get<TradesEnvelope | RecentTrade[]>(`/trading/trades/${tradingPairId}`).then((r) =>
       Array.isArray(r) ? r : (r.trades ?? []),
     ),
+
+  // Candles for the lightweight-charts price chart. The backend sends `time` in
+  // milliseconds; lightweight-charts wants a UNIX timestamp in SECONDS → convert here.
+  getChartData: (tradingPairId: string, interval: ChartInterval) =>
+    apiClient.get<ChartEnvelope | Candle[]>(`/trading/chart/${tradingPairId}?interval=${interval}`).then((r) => {
+      const rows = Array.isArray(r) ? r : (r.candles ?? []);
+      return rows.map((c) => ({ ...c, time: Math.floor(c.time / 1000) }));
+    }),
 
   getActiveOrders: () =>
     apiClient.get<OrdersEnvelope | TradingOrder[]>('/trading/orders/active').then((r) =>

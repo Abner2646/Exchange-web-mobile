@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { formatDisplay, compare } from '@/shared/money';
 import { useTranslation } from '@/shared/i18n';
 import { TradingPairSelect } from './TradingPairSelect';
@@ -10,6 +11,12 @@ import OrderForm from './OrderForm';
 import MyOrdersView from './MyOrdersView';
 import { usePairs } from '../queries';
 import styles from './trading.module.css';
+
+// lightweight-charts touches the DOM — load the chart client-side only (no SSR).
+const PriceChart = dynamic(() => import('./PriceChart'), {
+  ssr: false,
+  loading: () => <div className={styles.panel} style={{ minHeight: 380 }} />,
+});
 
 export default function TradingWidget() {
   const { t, locale } = useTranslation();
@@ -52,6 +59,8 @@ export default function TradingWidget() {
           </>
         )}
       </div>
+
+      {pairId && <div style={{ marginBottom: 'var(--spacing-lg)' }}><PriceChart pairId={pairId} /></div>}
 
       <div className={styles.terminal}>
         <div className={styles.leftCol}>

@@ -4,12 +4,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ApiError } from '@/shared/api';
 import { useIdempotencyKey } from '@/shared/api/idempotencyManager';
 import { tradingApi } from './api';
-import type { TradingPair, OrderBook, RecentTrade, TradingOrder, PlaceOrderRequest, PlaceOrderResponse } from './types';
+import type { TradingPair, OrderBook, RecentTrade, TradingOrder, PlaceOrderRequest, PlaceOrderResponse, Candle, ChartInterval } from './types';
 import { WALLET_BALANCES_KEY } from '@/features/wallet/queries';
 
 export const TRADING_PAIRS_KEY = ['trading', 'pairs'] as const;
 export const tradingBookKey = (id: string) => ['trading', 'orderbook', id] as const;
 export const tradingTradesKey = (id: string) => ['trading', 'recent-trades', id] as const;
+export const tradingChartKey = (id: string, interval: string) => ['trading', 'chart', id, interval] as const;
 export const TRADING_ORDERS_KEY = ['trading', 'orders'] as const;
 
 export function usePairs() {
@@ -37,6 +38,16 @@ export function useRecentTrades(tradingPairId: string, enabled: boolean) {
     enabled: enabled && Boolean(tradingPairId),
     refetchInterval: 10_000,
     staleTime: 5_000,
+  });
+}
+
+export function useChartData(tradingPairId: string, interval: ChartInterval, enabled: boolean) {
+  return useQuery<Candle[], ApiError>({
+    queryKey: tradingChartKey(tradingPairId, interval),
+    queryFn: () => tradingApi.getChartData(tradingPairId, interval),
+    enabled: enabled && Boolean(tradingPairId),
+    refetchInterval: 15_000,
+    staleTime: 10_000,
   });
 }
 

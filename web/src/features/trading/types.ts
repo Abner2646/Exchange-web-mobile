@@ -93,3 +93,16 @@ export interface PlaceOrderResponse {
   order: TradingOrder;
   message: string;
 }
+
+export type ChartInterval = '1m' | '5m' | '15m' | '30m' | '1h' | '4h' | '1d' | '1w';
+
+/** A candle for lightweight-charts. `time` is a UNIX timestamp in SECONDS
+ *  (the backend sends milliseconds; the api layer converts). Market display only. */
+export interface Candle {
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}

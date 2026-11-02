@@ -260,6 +260,13 @@ export const es: Catalog = {
     'trading.status.cancelled': 'Cancelada',
     'trading.status.expired': 'Expirada',
     'trading.status.rejected': 'Rechazada',
+    'trading.chart.title': 'Gráfico',
+    'trading.chart.interval': 'Intervalo',
+    'trading.chart.type': 'Tipo de gráfico',
+    'trading.chart.indicators': 'Indicadores',
+    'trading.chart.volume': 'Volumen',
+    'trading.chart.empty': 'Todavía no hay datos de gráfico para este par.',
+    'trading.chart.error': 'No pudimos cargar el gráfico.',
     // P2P
     'nav.p2p': 'P2P',
     'p2p.tab.browse': 'Ver ofertas',

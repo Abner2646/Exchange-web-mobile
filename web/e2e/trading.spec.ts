@@ -28,6 +28,12 @@ test('limit buy: place order with an Idempotency-Key and success flash', async (
     success: true,
     trades: [{ id: 't1', price: 65000, quantity: 0.5, side: 'buy', createdAt: '2026-11-02T10:00:00Z' }],
   })));
+  // Chart candles (backend sends time in ms; the api converts to seconds for lightweight-charts).
+  const candles = Array.from({ length: 12 }, (_, i) => {
+    const base = 64000 + i * 50;
+    return { time: 1762077600000 + i * 3600_000, open: base, high: base + 80, low: base - 60, close: base + 30, volume: 10 + i };
+  });
+  await page.route('**/api/trading/chart/**', (r) => r.fulfill(json({ success: true, interval: '1h', candles, count: candles.length })));
   await page.route('**/api/trading/orders/active', (r) => r.fulfill(json({ success: true, orders: [] })));
   await page.route('**/api/balances/my/balances', (r) => r.fulfill(json([
     {
@@ -46,6 +52,10 @@ test('limit buy: place order with an Idempotency-Key and success flash', async (
   // Single pair selector (custom Select) drives the whole terminal.
   await page.getByRole('button', { name: 'Pair' }).click();
   await page.getByRole('option', { name: /BTC\/USDT/ }).click();
+
+  // The lightweight-charts price chart renders once a pair is chosen.
+  await expect(page.getByRole('heading', { name: 'Chart' })).toBeVisible();
+  await expect(page.locator('canvas').first()).toBeVisible();
 
   // Order form appears once a pair is chosen. Defaults: limit buy.
   await page.locator('#order-qty').fill('0.001');

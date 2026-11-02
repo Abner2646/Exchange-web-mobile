@@ -34,4 +34,14 @@ describe('tradingApi reads', () => {
     expect(apiClient.get).toHaveBeenCalledWith('/trading/trades/p1');
     expect(trades).toHaveLength(1);
   });
+
+  it('getChartData unwraps candles and converts time from ms to seconds (lightweight-charts)', async () => {
+    (apiClient.get as any).mockResolvedValue({ success: true, interval: '1h', candles: [
+      { time: 1762077600000, open: 1, high: 2, low: 0.5, close: 1.5, volume: 10 },
+    ] });
+    const candles = await tradingApi.getChartData('p1', '1h');
+    expect(apiClient.get).toHaveBeenCalledWith('/trading/chart/p1?interval=1h');
+    expect(candles[0].time).toBe(1762077600); // ms / 1000
+    expect(candles[0]).toMatchObject({ open: 1, close: 1.5, volume: 10 });
+  });
 });
