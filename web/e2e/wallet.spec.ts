@@ -124,6 +124,16 @@ test.describe('wallet money flows', () => {
     await page.screenshot({ path: 'test-results/wallet-deposit.png' });
   });
 
+  test('navbar Deposit CTA deep-links into the wallet deposit tab', async ({ page }) => {
+    await stubWalletGets(page);
+    await loginViaUI(page);
+    // The prominent Deposit button lives in the navbar actions (authed only).
+    await page.getByRole('link', { name: 'Deposit' }).click();
+    await expect(page).toHaveURL(/\/wallet\?tab=deposit$/);
+    await expect(page.getByText('Deposits unavailable in your region')).toBeVisible();
+    await page.screenshot({ path: 'test-results/wallet-navbar-deposit.png' });
+  });
+
   test('history tab shows the transactions table with status badges', async ({ page }) => {
     await stubWalletGets(page);
     await loginViaUI(page);

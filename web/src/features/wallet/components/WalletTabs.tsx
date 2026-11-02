@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from '@/shared/i18n';
 import BalancesView from './BalancesView';
 import DepositView from './DepositView';
@@ -14,6 +14,14 @@ type Tab = 'balances' | 'deposit' | 'withdraw' | 'history';
 export default function WalletTabs() {
   const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>('balances');
+
+  // Deep-link support: the navbar "Deposit" CTA links to /wallet?tab=deposit. Read the
+  // param client-side after mount (no useSearchParams → no Suspense boundary needed, no
+  // SSR/hydration mismatch) and open that tab if it's a valid one.
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search).get('tab');
+    if (p === 'balances' || p === 'deposit' || p === 'withdraw' || p === 'history') setTab(p);
+  }, []);
 
   const tabs: { id: Tab; label: string }[] = [
     { id: 'balances', label: t('wallet.tab.balances') },

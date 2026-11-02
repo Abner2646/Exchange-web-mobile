@@ -193,6 +193,32 @@
 }
 .registerBtn:hover { background-color: var(--brand-secondary); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
 
+/* Deposit CTA — the prominent action in the bar (echoes the V1 gift button):
+   filled brand pill with an icon, sitting left of the theme toggle. */
+.depositBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  background-color: var(--brand-primary);
+  color: var(--text-inverse);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px var(--wash-brand);
+  transition: background-color var(--motion-duration-fast) var(--motion-easing-ease),
+    transform var(--motion-duration-fast) var(--motion-easing-ease),
+    box-shadow var(--motion-duration-fast) var(--motion-easing-ease);
+}
+.depositBtn:hover {
+  background-color: var(--brand-secondary);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+.depositBtn:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
+
 /* Mobile hamburger (hidden on desktop). */
 .hamburger {
   display: none;
@@ -235,10 +261,11 @@
 .drawerLink.active { color: var(--brand-primary); }
 .drawerDivider { height: 1px; background-color: var(--border-secondary); margin: var(--spacing-xs) 0; }
 .drawerRegister { color: var(--brand-primary); font-weight: var(--font-weight-semibold); }
+.drawerDeposit { color: var(--brand-primary); font-weight: var(--font-weight-semibold); }
 
 @media (prefers-reduced-motion: reduce) {
-  .logo, .link, .iconButton, .loginBtn, .registerBtn { transition: none; }
-  .registerBtn:hover { transform: none; }
+  .logo, .link, .iconButton, .loginBtn, .registerBtn, .depositBtn { transition: none; }
+  .registerBtn:hover, .depositBtn:hover { transform: none; }
 }
 
 /* Collapse to the hamburger on narrow viewports. */

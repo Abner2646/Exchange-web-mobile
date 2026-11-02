@@ -9,7 +9,7 @@ import { useCurrentUser, useLogout } from '@/features/auth/queries';
 import {
   SwapIcon, UsersIcon, ChartIcon, WalletIcon,
   BellIcon, UserIcon, ChevronDownIcon, LogoutIcon, MenuIcon, CloseIcon, ShieldIcon,
-  SunIcon, MoonIcon, IconProps,
+  SunIcon, MoonIcon, ArrowDownIcon, IconProps,
 } from '@/shared/ui/icons/Icon';
 import { isAdminRole } from '@/features/admin/roles';
 import { useTheme } from '@/shared/theme';
@@ -98,6 +98,11 @@ export const Navbar: React.FC = () => {
         </nav>
 
         <div className={styles.actions}>
+          {authed && (
+            <Link href="/wallet?tab=deposit" className={styles.depositBtn}>
+              <ArrowDownIcon size={16} />{t('nav.deposit')}
+            </Link>
+          )}
           <button type="button" className={styles.iconButton} aria-label={t('nav.theme')} onClick={toggleTheme}>
             {theme === 'dark' ? <SunIcon size={20} /> : <MoonIcon size={20} />}
           </button>
@@ -178,6 +183,7 @@ export const Navbar: React.FC = () => {
           </button>
           {authed ? (
             <>
+              <Link href="/wallet?tab=deposit" className={`${styles.drawerLink} ${styles.drawerDeposit}`}><ArrowDownIcon size={18} />{t('nav.deposit')}</Link>
               <Link href="/profile" className={styles.drawerLink}><UserIcon size={18} />{t('nav.profile')}</Link>
               {isAdminRole(user) && (
                 <Link href="/admin" className={styles.drawerLink}><ShieldIcon size={18} />{t('nav.admin')}</Link>

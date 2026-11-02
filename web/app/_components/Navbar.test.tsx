@@ -50,6 +50,7 @@ describe('Navbar', () => {
     expect(screen.getByRole('link', { name: /Swap/ })).toHaveAttribute('href', '/swap');
     // …auth-only links absent, no greeting.
     expect(screen.queryByRole('link', { name: /Wallet/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Deposit' })).not.toBeInTheDocument();
     expect(screen.queryByText(/^Hi,/)).not.toBeInTheDocument();
   });
 
@@ -59,6 +60,8 @@ describe('Navbar', () => {
     renderNav();
     expect(await screen.findByText('Hi, Neo')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Wallet/ })).toHaveAttribute('href', '/wallet');
+    // The prominent Deposit CTA deep-links to the wallet deposit tab.
+    expect(screen.getByRole('link', { name: 'Deposit' })).toHaveAttribute('href', '/wallet?tab=deposit');
     expect(screen.queryByRole('link', { name: 'Sign In' })).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: /Hi, Neo/ }));
