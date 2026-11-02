@@ -64,7 +64,8 @@ const bollinger = (d: Candle[], p = 20, mult = 2) => {
 
 function palette(dark: boolean) {
   return {
-    bg: dark ? '#1E2329' : '#FFFFFF',
+    // Match the page background (--bg-primary) so the chart blends flat, no card.
+    bg: dark ? '#0A0E13' : '#F7F8FA',
     text: dark ? '#B7BDC6' : '#3A4454',
     grid: dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
     border: dark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.10)',

@@ -32,16 +32,16 @@ export default function TradingWidget() {
   return (
     <section className={styles.page}>
       <div className={styles.terminal}>
+        <div className={styles.bookCol}>
+          <OrderBookView tradingPairId={pairId} />
+          <RecentTradesView tradingPairId={pairId} />
+        </div>
         <div className={styles.chartCol}>
           <PriceChart
             pairId={pairId}
             pair={pair}
             pairSelector={<TradingPairSelect value={pairId} onChange={setPairId} />}
           />
-        </div>
-        <div className={styles.bookCol}>
-          <OrderBookView tradingPairId={pairId} />
-          <RecentTradesView tradingPairId={pairId} />
         </div>
         <div className={styles.formCol}>
           <OrderForm pairId={pairId} />

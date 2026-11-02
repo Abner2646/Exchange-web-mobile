@@ -44,30 +44,31 @@
 .down { color: var(--error); }
 .flat { color: var(--text-tertiary); }
 
-/* Pro terminal grid (Binance-style): chart (big) · order book + trades · order form.
-   Everything on one row so nothing needs scrolling to reach. */
+/* Pro terminal grid (Binance-style): order book + trades (left) · chart (centered) ·
+   order form (right). Everything on one row so nothing needs scrolling to reach. */
 .terminal {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 260px 300px;
-  gap: var(--spacing-md);
+  grid-template-columns: 260px minmax(0, 1fr) 300px;
+  gap: var(--spacing-lg);
   align-items: stretch;
 }
 .terminal > * { min-width: 0; }
 @media (max-width: 1200px) {
-  .terminal { grid-template-columns: minmax(0, 1fr) 260px; }
+  .terminal { grid-template-columns: 260px minmax(0, 1fr); }
   .formCol { grid-column: 1 / -1; }
 }
 @media (max-width: 860px) {
   .terminal { grid-template-columns: 1fr; }
   .formCol { grid-column: auto; }
+  .chartCol { order: -1; } /* chart first on mobile */
 }
-.bookCol { display: flex; flex-direction: column; gap: var(--spacing-md); }
+.bookCol { display: flex; flex-direction: column; gap: var(--spacing-xl); }
 
+/* Flat: panels share the page background (no card look). Separation comes from the
+   grid gaps + the uppercase section titles, not from boxes. */
 .panel {
-  padding: var(--spacing-md);
-  background-color: var(--bg-elevated);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-lg);
+  padding: 0;
+  background-color: transparent;
 }
 .panelTitle {
   margin: 0 0 var(--spacing-sm);
