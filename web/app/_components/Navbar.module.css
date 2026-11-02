@@ -202,7 +202,9 @@
   padding: var(--spacing-sm) var(--spacing-md);
   border-radius: var(--radius-md);
   background-color: var(--brand-primary);
-  color: var(--text-inverse);
+  /* Always white on the brand-blue CTA — `--text-inverse` flips to dark in the dark
+     theme, which left the label dark on blue. White reads correctly in both themes. */
+  color: var(--color-base-white);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   text-decoration: none;
