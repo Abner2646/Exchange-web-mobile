@@ -5,7 +5,9 @@ const axios = require('axios');
 class PriceUpdaterService {
 
   constructor() {
-    this.binanceBaseUrl = 'https://api.binance.com/api/v3';
+    // Binance.com (api.binance.com) is geo-blocked in the US (HTTP 451), where this
+    // runs — default to Binance.US (same public API shape). Overridable via env.
+    this.binanceBaseUrl = process.env.BINANCE_API_BASE || 'https://api.binance.us/api/v3';
     this.priceCache = new Map(); // Cache para evitar consultas excesivas
     this.cacheDuration = 5000; // 5 segundos
   }

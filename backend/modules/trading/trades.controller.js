@@ -258,8 +258,9 @@ class TradesController {
 
       const binanceInterval = intervalMap[interval] || '1h';
 
-      // Consultar a Binance
-      const response = await axios.get('https://api.binance.com/api/v3/klines', {
+      // Consultar a Binance (Binance.US by default — api.binance.com is 451 in the US).
+      const binanceApiBase = process.env.BINANCE_API_BASE || 'https://api.binance.us/api/v3';
+      const response = await axios.get(`${binanceApiBase}/klines`, {
         params: {
           symbol: binanceSymbol,
           interval: binanceInterval,
