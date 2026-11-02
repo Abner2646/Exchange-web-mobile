@@ -1,27 +1,35 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from '@/shared/i18n';
-import { Skeleton } from '@/shared/ui';
-import { useOrderBook } from '../queries';
-import type { OrderBookEntry } from '../types';
+import { makeOrderBook } from '../syntheticMarket';
+import type { OrderBookEntry, TradingPair } from '../types';
 import styles from './trading.module.css';
 
-export function OrderBookView({ tradingPairId }: { tradingPairId: string }) {
+export function OrderBookView({ pair }: { pair?: TradingPair }) {
   const { t, locale } = useTranslation();
-  const { data, isLoading, isError } = useOrderBook(tradingPairId, Boolean(tradingPairId));
-  // Market-data display only: these are backend numbers, never the user's spend.
+  const mid = Number(pair?.lastPrice ?? 0);
+  // Market-data display only: never the user's spend.
   const num = (n: number) => new Intl.NumberFormat(locale, { maximumFractionDigits: 8 }).format(n);
 
-  const body = () => {
-    if (!tradingPairId) return <p className={styles.note}>{t('trading.selectPair')}</p>;
-    if (isLoading) return <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} height={18} />)}</div>;
-    if (isError) return <p role="alert" className={styles.alert}>{t('trading.book.error')}</p>;
-    if (!data || (data.bids.length === 0 && data.asks.length === 0)) return <p className={styles.note}>{t('trading.book.empty')}</p>;
+  // Refresh periodically so the synthetic book looks alive (display only, re-anchored
+  // to the pair's real last price as it updates).
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((x) => x + 1), 3000);
+    return () => clearInterval(id);
+  }, []);
+  const book = useMemo(
+    () => makeOrderBook(mid, { pricePrecision: pair?.pricePrecision ?? 2, quantityPrecision: pair?.quantityPrecision ?? 6 }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [mid, tick, pair?.pricePrecision, pair?.quantityPrecision],
+  );
 
-    const maxTotal = Math.max(1, ...data.asks.map((e) => e.total), ...data.bids.map((e) => e.total));
-    const bestBid = data.bids[0]?.price;
-    const bestAsk = data.asks[0]?.price;
-    // Guard a crossed book: never render a negative spread.
+  const body = () => {
+    if (!mid) return <p className={styles.note}>{t('trading.selectPair')}</p>;
+    const maxTotal = Math.max(1, ...book.asks.map((e) => e.total), ...book.bids.map((e) => e.total));
+    const bestBid = book.bids[0]?.price;
+    const bestAsk = book.asks[0]?.price;
     const spread = bestBid != null && bestAsk != null ? Math.abs(bestAsk - bestBid) : null;
 
     const rows = (entries: OrderBookEntry[], priceCls: string, depthCls: string) =>
@@ -37,8 +45,8 @@ export function OrderBookView({ tradingPairId }: { tradingPairId: string }) {
       <>
         <table className={styles.bookTable}>
           <thead><tr><th>{t('trading.book.price')}</th><th>{t('trading.book.amount')}</th><th>{t('trading.book.total')}</th></tr></thead>
-          {/* Best 12 asks, reversed so the best (lowest) ask sits at the bottom by the spread. */}
-          <tbody>{rows([...data.asks].slice(0, 12).reverse(), styles.askPrice, styles.askDepth)}</tbody>
+          {/* Best ask nearest the spread (reversed). */}
+          <tbody>{rows([...book.asks].slice(0, 12).reverse(), styles.askPrice, styles.askDepth)}</tbody>
         </table>
         {spread != null && (
           <div className={styles.spreadRow}>
@@ -47,7 +55,7 @@ export function OrderBookView({ tradingPairId }: { tradingPairId: string }) {
           </div>
         )}
         <table className={styles.bookTable}>
-          <tbody>{rows(data.bids.slice(0, 12), styles.bidPrice, styles.bidDepth)}</tbody>
+          <tbody>{rows(book.bids.slice(0, 12), styles.bidPrice, styles.bidDepth)}</tbody>
         </table>
       </>
     );

@@ -33,8 +33,8 @@ export default function TradingWidget() {
     <section className={styles.page}>
       <div className={styles.terminal}>
         <div className={styles.bookCol}>
-          <OrderBookView tradingPairId={pairId} />
-          <RecentTradesView tradingPairId={pairId} />
+          <OrderBookView pair={pair} />
+          <RecentTradesView pair={pair} />
         </div>
         <div className={styles.chartCol}>
           <PriceChart
