@@ -125,7 +125,7 @@ export const RegisterForm: React.FC = () => {
 
       <p className={styles.termsMessage}>
         {t('auth.register.terms')}
-        <a href="/terminos-y-condiciones">{t('auth.register.termsLink')}</a>
+        <a href="/terms">{t('auth.register.termsLink')}</a>
       </p>
 
       <p className={styles.footer}>
