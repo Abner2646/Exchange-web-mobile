@@ -87,6 +87,20 @@ From the `/code-review high` of the §B.1–B.3 gate diff. The two confirmed cor
 
 ---
 
+## D. Backend bugs found during the rebuild (DEFERRED — not touched, need a backend session)
+
+These are **real backend bugs** surfaced while rebuilding a page. Per the methodology the
+frontend sessions do **not** touch the backend; Abner decides whether/when to fix. Logged here
+so they are not lost.
+
+1. **🔴 Withdrawals are broken server-side — `validateWithdrawal` references an undeclared `balance`** (found 2026-11-02, wallet rebuild; **Abner's decision: do NOT fix now**).
+   - `backend/modules/wallets/blockchainTransaction.model.js` (~line 887): `validateWithdrawal` returns `{ valid: true, …, usuario, crypto, balance }`, but `balance` was never declared in scope — the `findOne` that defined it was removed in the ledger write-flip. Reading an undeclared identifier throws `ReferenceError`, caught by the function's own `try/catch`, which returns `{ valid: false, message: 'Error en validación: balance is not defined' }`.
+   - **Effect: every withdrawal fails with `400 WITHDRAWAL_VALIDATION_FAILED` — in production too** (`bitflow.community`). The withdraw path is dead until fixed.
+   - **Fix (when scheduled): one line** — drop `balance` from the returned object (and `fee`/`usuario`/`crypto` are the only fields callers use; `createWithdrawal` re-reads balances itself). It is **money-path → run `/code-review high effort`** and treat as a backend task, separate from the frontend redesign.
+   - **Frontend status:** the redesigned withdraw UI (Select + Max + rounding + honest "requested/under review" flash) is complete and verified against a **mocked** success in `e2e/wallet.spec.ts`. The live flow stays broken until the backend fix.
+
+---
+
 ## How to use this doc
 - Before the **S8 go-live flip**, section B must be fully green (that is the gate).
 - The **transversal front-polish/a11y pass** (sprint item, run when convenient) burns down section C.

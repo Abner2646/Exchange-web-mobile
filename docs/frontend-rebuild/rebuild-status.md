@@ -6,7 +6,7 @@
 > Lecciones y gotchas de la sesión de swap:
 > [`lessons-swap-session.md`](./lessons-swap-session.md).
 
-Última actualización: **2026-10-31** (fin de la sesión de swap).
+Última actualización: **2026-11-02** (fin de la sesión de wallet).
 
 ---
 
@@ -42,8 +42,8 @@ cuando cumple, además de la paridad V1 / tech V2:
 | — | Navbar + Footer (todas las páginas) | layout | — | ✅ hecho |
 | — | Tema dark + toggle | global | — | ✅ hecho |
 | — | **Swap** | `/swap` | C→nuevo | ✅ **hecho a fondo** (referencia del estándar) |
-| 1 | **Wallet** (balances, transfer, retiro, **depósito**, historial) | `/wallet` | **B** | ⬜ **PRÓXIMA** |
-| 2 | Trading (order book, order form, trades) | `/trading` | B/C | ⬜ pendiente |
+| 1 | **Wallet** (balances, transfer, retiro, **depósito**, historial) | `/wallet` | **B** | ✅ **hecho** (verificado Playwright+screenshots, 2026-11-02) |
+| 2 | **Trading** (order book, order form, trades) | `/trading` | B/C | ⬜ **PRÓXIMA** |
 | 3 | P2P (ofertas, crear oferta, transacciones) | `/p2p` | B | ⬜ pendiente |
 | 4 | Profile (cuenta, seguridad/2FA, KYC, notificaciones) | `/profile` | B | ⬜ pendiente |
 | 5 | Admin (panel super_admin) | `/admin` | C | ⬜ pendiente (menor prioridad) |
@@ -69,3 +69,21 @@ dinero (y donde viven depósitos/retiros).
 - **Límite diario de swap**: es un control **AML** (`users.daily_limit_usd`,
   default $1000). No se elimina del backend; para testear se sube el límite del
   usuario de prueba por DB. La UI no muestra el límite (sólo el error si se excede).
+
+### Wallet (sesión 2026-11-02)
+- **Retiro — estado real del backend**: NO es inmediato. La fila nace `pending` y
+  puede quedar en hold por AML S5 (denylist) o **Maker-Checker** (USD > umbral $5k,
+  techo $20k). Copy de éxito honesta = "solicitado, se procesa tras revisión" (flash
+  `wallet.withdraw.flashTitle`), **nunca "enviado"**. Redondeo a **8 decimales**
+  (Joi `precision(8)`, min `0.00000001`).
+- **Transfer Funding↔Spot**: redondeo a `crypto.decimals` (cap 8) antes de mandar;
+  `Idempotency-Key` ya cableado; éxito → `SuccessFlash`.
+- **🔴 Bug de backend DIFERIDO (money-path, decisión de Abner 2026-11-02 = no tocar):**
+  `validateWithdrawal` (`backend/modules/wallets/blockchainTransaction.model.js:~887`)
+  arma su retorno con `balance`, variable **no declarada** (el `findOne` se removió en
+  el write-flip) → `ReferenceError` atrapado → **todo retiro devuelve 400
+  `WITHDRAWAL_VALIDATION_FAILED` ("balance is not defined"), incluido en prod**. El UI
+  del retiro está rediseñado y verificado contra un retiro **mockeado** en e2e; el
+  retiro en vivo sigue roto hasta una sesión de backend aparte. Ver `known-issues.md` §D.
+- **Depósito**: deshabilitado (cartel región, `wallet.deposit.unavailable*`). El
+  `DepositView` ya no llama a `/deposit-address`; el flujo real queda en git history.
