@@ -51,18 +51,34 @@
   grid-template-columns: 260px minmax(0, 1fr) 300px;
   gap: var(--spacing-lg);
   align-items: stretch;
+  /* Fill roughly one screen so the book/trades end at the chart's bottom (scrolling
+     inside), instead of a page that scrolls forever. */
+  height: clamp(520px, calc(100vh - 150px), 780px);
 }
-.terminal > * { min-width: 0; }
+.terminal > * { min-width: 0; min-height: 0; }
 @media (max-width: 1200px) {
   .terminal { grid-template-columns: 260px minmax(0, 1fr); }
   .formCol { grid-column: 1 / -1; }
 }
 @media (max-width: 860px) {
-  .terminal { grid-template-columns: 1fr; }
+  .terminal { grid-template-columns: 1fr; height: auto; }
   .formCol { grid-column: auto; }
   .chartCol { order: -1; } /* chart first on mobile */
+  .bookCol > * { overflow: visible; } /* full lists when stacked */
 }
-.bookCol { display: flex; flex-direction: column; gap: var(--spacing-xl); }
+.chartCol { height: 100%; min-height: 0; }
+.bookCol { display: flex; flex-direction: column; gap: var(--spacing-md); height: 100%; min-height: 0; }
+/* Order book (taller) + recent trades each scroll inside the fixed-height column. */
+.bookCol > * { min-height: 0; overflow-y: auto; }
+.bookCol > *:first-child { flex: 1.5 1 0; }
+.bookCol > *:last-child { flex: 1 1 0; }
+.bookCol .panelTitle {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: var(--bg-primary);
+  padding-bottom: var(--spacing-xs);
+}
 
 /* Flat: panels share the page background (no card look). Separation comes from the
    grid gaps + the uppercase section titles, not from boxes. */
@@ -79,8 +95,12 @@
   color: var(--text-secondary);
 }
 
-/* Order book. */
-.bookTable { width: 100%; border-collapse: collapse; }
+/* Order book. table-layout: fixed → columns never overflow the narrow column. */
+.bookTable { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.bookTable th:nth-child(1), .bookRow td:nth-child(1) { width: 42%; }
+.bookTable th:nth-child(2), .bookRow td:nth-child(2) { width: 29%; }
+.bookTable th:nth-child(3), .bookRow td:nth-child(3) { width: 29%; }
+.bookRow td > span:last-child { overflow: hidden; text-overflow: ellipsis; display: inline-block; max-width: 100%; }
 .bookTable th {
   text-align: right;
   padding: 4px var(--spacing-sm);
@@ -207,7 +227,7 @@
 .formHint { padding: var(--spacing-xl) var(--spacing-md); text-align: center; color: var(--text-tertiary); font-size: var(--font-size-sm); }
 
 /* Price chart (lightweight-charts) — the ticker is integrated into its top bar. */
-.chartPanel { display: flex; flex-direction: column; }
+.chartPanel { display: flex; flex-direction: column; height: 100%; min-height: 0; }
 .chartTopBar {
   display: flex;
   align-items: center;
@@ -255,17 +275,18 @@
 .chipOn { color: var(--text-primary); border-color: var(--border-focus); }
 .chipDot { width: 8px; height: 8px; border-radius: var(--radius-full); flex-shrink: 0; }
 
-/* Framed so the price (right) and time (bottom) axes are contained, not cut off. */
+/* Framed so the price (right) and time (bottom) axes are contained, not cut off.
+   flex:1 → the chart fills the remaining column height (big chart). */
 .chartWrap {
   position: relative;
   width: 100%;
-  min-height: 480px;
+  min-height: 0;
   flex: 1;
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-md);
   overflow: hidden;
 }
-.chartCanvas { width: 100%; height: 480px; }
+.chartCanvas { width: 100%; height: 100%; }
 @media (max-width: 860px) { .chartWrap, .chartCanvas { min-height: 360px; height: 360px; } }
 .chartOverlay {
   position: absolute;

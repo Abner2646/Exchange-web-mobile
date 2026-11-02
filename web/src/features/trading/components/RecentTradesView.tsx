@@ -9,7 +9,9 @@ import styles from './trading.module.css';
 export function RecentTradesView({ pair }: { pair?: TradingPair }) {
   const { t, locale } = useTranslation();
   const mid = Number(pair?.lastPrice ?? 0);
-  const num = (n: number | string) => new Intl.NumberFormat(locale, { maximumFractionDigits: 8 }).format(Number(n));
+  const priceDp = mid >= 100 ? 2 : mid >= 1 ? 4 : 6;
+  const fmtP = (n: number | string) => new Intl.NumberFormat(locale, { minimumFractionDigits: priceDp, maximumFractionDigits: priceDp }).format(Number(n));
+  const fmtA = (n: number | string) => new Intl.NumberFormat(locale, { maximumFractionDigits: 4 }).format(Number(n));
   const time = (iso?: string) => (iso ? new Date(iso).toLocaleTimeString(locale) : '—');
 
   // Refresh so the tape looks alive (display only).
@@ -33,8 +35,8 @@ export function RecentTradesView({ pair }: { pair?: TradingPair }) {
         <tbody>
           {trades.map((tr) => (
             <tr key={tr.id}>
-              <td className={`${styles.num} ${tr.side === 'buy' ? styles.buyText : styles.sellText}`}>{num(tr.price)}</td>
-              <td className={styles.num}>{num(tr.quantity)}</td>
+              <td className={`${styles.num} ${tr.side === 'buy' ? styles.buyText : styles.sellText}`}>{fmtP(tr.price)}</td>
+              <td className={styles.num}>{fmtA(tr.quantity)}</td>
               <td>{time(tr.createdAt)}</td>
             </tr>
           ))}

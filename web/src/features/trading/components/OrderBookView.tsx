@@ -9,8 +9,12 @@ import styles from './trading.module.css';
 export function OrderBookView({ pair }: { pair?: TradingPair }) {
   const { t, locale } = useTranslation();
   const mid = Number(pair?.lastPrice ?? 0);
-  // Market-data display only: never the user's spend.
-  const num = (n: number) => new Intl.NumberFormat(locale, { maximumFractionDigits: 8 }).format(n);
+  // Display only (never the user's spend). Tight formatting so the 3 columns fit the
+  // narrow book column: price 2 dp for high-value assets, amount/total capped.
+  const priceDp = mid >= 100 ? 2 : mid >= 1 ? 4 : 6;
+  const fmtP = (n: number) => new Intl.NumberFormat(locale, { minimumFractionDigits: priceDp, maximumFractionDigits: priceDp }).format(n);
+  const fmtA = (n: number) => new Intl.NumberFormat(locale, { maximumFractionDigits: 4 }).format(n);
+  const fmtT = (n: number) => new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(n);
 
   // Refresh periodically so the synthetic book looks alive (display only, re-anchored
   // to the pair's real last price as it updates).
@@ -35,9 +39,9 @@ export function OrderBookView({ pair }: { pair?: TradingPair }) {
     const rows = (entries: OrderBookEntry[], priceCls: string, depthCls: string) =>
       entries.map((e, i) => (
         <tr className={styles.bookRow} key={`${priceCls}-${i}`}>
-          <td><span className={styles.depth + ' ' + depthCls} style={{ width: `${Math.min(100, (e.total / maxTotal) * 100)}%` }} /><span className={priceCls}>{num(e.price)}</span></td>
-          <td><span>{num(e.quantity)}</span></td>
-          <td><span>{num(e.total)}</span></td>
+          <td><span className={styles.depth + ' ' + depthCls} style={{ width: `${Math.min(100, (e.total / maxTotal) * 100)}%` }} /><span className={priceCls}>{fmtP(e.price)}</span></td>
+          <td><span>{fmtA(e.quantity)}</span></td>
+          <td><span>{fmtT(e.total)}</span></td>
         </tr>
       ));
 
@@ -51,7 +55,7 @@ export function OrderBookView({ pair }: { pair?: TradingPair }) {
         {spread != null && (
           <div className={styles.spreadRow}>
             <span>{t('trading.book.spread')}</span>
-            <strong>{num(spread)}</strong>
+            <strong>{fmtP(spread)}</strong>
           </div>
         )}
         <table className={styles.bookTable}>
