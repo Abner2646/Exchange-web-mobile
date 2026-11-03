@@ -45,7 +45,7 @@ cuando cumple, además de la paridad V1 / tech V2:
 | 1 | **Wallet** (balances, transfer, retiro, **depósito**, historial) | `/wallet` | **B** | ✅ **hecho** (verificado Playwright+screenshots, 2026-11-02) |
 | 2 | **Trading** (order book, order form, trades) | `/trading` | B/C | ✅ **hecho** (terminal spot, selector único, verificado 2026-11-02) |
 | 3 | **P2P** (ofertas, crear oferta, transacciones) | `/p2p` | B | ✅ **hecho** (marketplace + stepper de estado, verificado Playwright+screenshots 2026-11-02) |
-| 4 | Profile (cuenta, seguridad/2FA, KYC, notificaciones) | `/profile` | B | ⏸️ **DIFERIDA** (Abner, 2026-11-03: saltar, no profundizar por ahora) |
+| 4 | **Profile** (cuenta, seguridad/2FA, KYC, notificaciones) | `/profile` | B/C | ✅ **hecho** (4 tabs al estándar, 2FA TOTP Caso C con secret-in-state preservado, verificado 2026-11-03) |
 | 5 | **Admin** (panel super_admin) | `/admin` | C | ✅ **hecho** (6 paneles al estándar, verificado Playwright+screenshots 2026-11-03) |
 
 Todas las páginas de la 1 a la 5 ya tienen **feature V2 funcional** (componentes +
@@ -209,3 +209,35 @@ dejar el prompt de **Admin** (la última antes de la 2ª pasada del Home).
   money-path; CoinGecko da más data (7d%, cap, volumen, imágenes). No se unificó.
 - `Number()` en el total USD de la cartera es una **estimación de display** (precio
   en vivo × balance, nunca se manda al backend) — sancionado como el recibo del swap.
+
+### Profile (sesión 2026-11-03)
+- **Caso B (cuenta) + Caso C (2FA TOTP, sin V1).** 4 tabs (Account · Security ·
+  Notifications · Verification) al chrome estándar (header + pills); tabs
+  single-card (account/notif/kyc) y el multi-card de Security con wrappers `.card`
+  consistentes (fix §C4). Solo-visual, sin tocar wiring/authz.
+- **Seguridad preservada EXACTA** (TwoFactorSettings): el `secret`/`qr` del TOTP
+  viven solo en component state y se limpian en enable-success (`enrollComplete`);
+  `confirmNewPassword` nunca va al wire; el endpoint de profile update devuelve un
+  `token` que NO se pasa a `setToken`.
+- **Estándar aplicado:** `Select` custom para el locale (antes `<select>` nativo);
+  `Field`/`Input` en todos los forms; `Badge` para estados (2FA email on/off,
+  KYC verified/level, tipo de notificación, unread); `SuccessFlash` en cambio de
+  contraseña, confirmar cambio de email y enable/disable TOTP; skeleton(`role=status`)/
+  `EmptyState`/`ErrorState`; cast `error as` eliminado. Unit 628/628 + screenshots.
+
+### Home + Footer → catálogo i18n (sesión 2026-11-03)
+- **Hallazgo:** la app es **Spanish-first pero adaptativa al navegador**
+  (`LocaleContext`: default `es` para el primer paint, luego adopta
+  `navigator.language`). Las páginas i18n ya renderizaban inglés para un navegador
+  en inglés, pero el **Home** (hero + secciones) y el **Footer** (chrome compartido)
+  estaban **hardcodeados en español** → se veían en español en TODAS las páginas.
+- **Fix:** se ruteó Home + Footer por `useTranslation` (keys `home.*`/`footer.*` en
+  en+es) para que **adapten como el resto** (inglés en navegador en, español en es).
+  Footer pasó a client component; `page.tsx` sigue server y las secciones
+  download/FAQ/features se movieron a un client `HomeExtras`. Verificado con
+  screenshots en ambos locales. (Nombres de marca como Swap/P2P/Wallet/Blog no se
+  traducen.) **Gotcha de tests:** jsdom `navigator.language`='en-US' → los tests
+  del Home corren en **'en'** (asertar textos en inglés + envolver en `LocaleProvider`).
+- Pendiente opcional: las **páginas públicas del footer** (`/help`, `/terms`, etc.)
+  siguen en español hardcodeado (son placeholder/básicas); i18n-ificarlas si Abner
+  quiere consistencia total.
