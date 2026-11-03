@@ -71,8 +71,11 @@ The mutation/query error is already typed `ApiError`, so `(error as { code?: str
 - `TradingPairDTO`/`TradingPair` field duplication (intersection type).
 
 ### C6. Admin (Slice 7) — from per-task + final `/code-review` (all Minor; 0 Critical/Important)
-- **Empty-state copy renders a heading/column i18n key instead of a dedicated empty message** (most visible): `AmlOps` denylist (`admin.aml.denylist.list.heading`) + cases (`admin.aml.cases.list.heading`); `AuditViewer` (`admin.audit.col.eventType`). Add `*.list.empty` / `admin.audit.empty` keys (en/es) and use them.
-- `UsersAdmin` `colSpan={isSuperAdmin ? 1 : 0}` emits an invalid `colSpan=0` for plain admins → use `1` or drop the cell.
+> **Admin redesigned to the standard 2026-11-03** — the visual items below are fixed; the remaining (non-visual / behavioural) ones are kept.
+- ~~**Empty-state copy renders a heading/column i18n key**~~ (FIXED): `AmlOps` denylist/cases now use `admin.aml.denylist.empty` / `admin.aml.cases.empty`; `AuditViewer` uses `admin.audit.empty` (all added en/es via `EmptyState`).
+- ~~`UsersAdmin` `colSpan={isSuperAdmin ? 1 : 0}` emits an invalid `colSpan=0`~~ (FIXED): the mutation error now renders in its own row with `colSpan={totalCols}`.
+- ~~Native `<select>`~~ (FIXED): AmlOps cases filter + BusinessConfig type are now the custom `Select`.
+- ~~`error as {...}` casts~~ (FIXED in all admin panels) + ~~`admin.module.css` on legacy `--color-*`/`--space-*`~~ (FIXED: migrated to standard tokens) + ~~`common.cancel`/`common.confirm` hardcoded fallbacks in UsersAdmin~~ (FIXED: `common.confirm` added, fallbacks dropped).
 - `GovernanceInbox` uses one shared approve/reject mutation instance for the whole list → `anyPending` disables every row's buttons during any single action (false-busy at scale; fine for a short inbox). Consider per-row mutation state.
 - `api.ts` `getConfig`/`getCases`/`getAudit` query-param values are not `encodeURIComponent`'d (safe for current values; inconsistent with `searchUsers`).
 - `es` catalog: `admin.readiness` "enrollados/enrollar" → rioplatense "enrolados/enrolar".

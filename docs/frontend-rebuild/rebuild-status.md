@@ -45,8 +45,8 @@ cuando cumple, además de la paridad V1 / tech V2:
 | 1 | **Wallet** (balances, transfer, retiro, **depósito**, historial) | `/wallet` | **B** | ✅ **hecho** (verificado Playwright+screenshots, 2026-11-02) |
 | 2 | **Trading** (order book, order form, trades) | `/trading` | B/C | ✅ **hecho** (terminal spot, selector único, verificado 2026-11-02) |
 | 3 | **P2P** (ofertas, crear oferta, transacciones) | `/p2p` | B | ✅ **hecho** (marketplace + stepper de estado, verificado Playwright+screenshots 2026-11-02) |
-| 4 | Profile (cuenta, seguridad/2FA, KYC, notificaciones) | `/profile` | B | ⬜ **PRÓXIMA** |
-| 5 | Admin (panel super_admin) | `/admin` | C | ⬜ pendiente (menor prioridad) |
+| 4 | Profile (cuenta, seguridad/2FA, KYC, notificaciones) | `/profile` | B | ⏸️ **DIFERIDA** (Abner, 2026-11-03: saltar, no profundizar por ahora) |
+| 5 | **Admin** (panel super_admin) | `/admin` | C | ✅ **hecho** (6 paneles al estándar, verificado Playwright+screenshots 2026-11-03) |
 
 Todas las páginas de la 1 a la 5 ya tienen **feature V2 funcional** (componentes +
 queries + tests); lo que falta es **rediseñarlas** al estándar de arriba, no
@@ -161,3 +161,30 @@ estado para KYC; estados loading(skeleton)/empty/error; `KycStatusCard` ya arreg
 e2e afectados (si hay profile spec) + verificación en navegador con screenshots.
 Commits Conventional en inglés sin atribución. Al terminar: marcar Profile ✅ acá y
 dejar el prompt de **Admin** (la última antes de la 2ª pasada del Home).
+
+### Admin (sesión 2026-11-03)
+- **Caso C — panel super_admin interno, sin V1.** 5 tabs (Governance · Users ·
+  Config · AML · Audit) al chrome estándar (header + pills). Superficie
+  **seguridad/money-path** (Maker-Checker, AML, audit hash-chained): el rediseño
+  es **100% visual**, sin tocar wiring/authz. Respetada la nota de seguridad del
+  endpoint de users (devuelve el `token` del usuario target → NUNCA `setToken`).
+- **Estándar aplicado:** tokens nuevos (antes `--color-*`/`--space-*`); `Badge`
+  para estados (readiness ready/notReady, case open/resolved, user role/active/kyc,
+  AML ON/OFF, operadores enrolled/pending); `Select` custom para el filtro de casos
+  AML y el type del config (antes `<select>` nativo); `Input`/`Field` en todos los
+  forms; `SuccessFlash` en approve/reject governance y resolve de casos AML;
+  estados loading(skeleton+`role=status`)/empty(`EmptyState`)/error(`ErrorState`);
+  tablas estándar con `tableWrap` (scroll horizontal en Users).
+- **Bugs §C6 arreglados:** empty-states que renderizaban la **key del heading**
+  (AmlOps denylist/cases → `admin.aml.*.empty`; AuditViewer → `admin.audit.empty`);
+  `colSpan=0` inválido en UsersAdmin (el error ahora va en una fila propia con
+  `colSpan={totalCols}`); `<select>` nativos → `Select` custom; casts `error as
+  {...}` eliminados en los 4 paneles; `admin.module.css` migrado a tokens.
+- **Gotcha e2e (shared, ya conocido de P2P):** el home dispara `GET
+  /api/balances/my/balances`; sin stub → 401 → `notifyUnauthorized` limpia el token
+  → navbar deslogueada (y el link **Admin vive en el dropdown de usuario**, no en la
+  navbar primaria). Stubear balances en specs que lleguen a páginas autenticadas.
+- Unit 623/623 + typecheck + screenshots de los 6 estados (incl. diálogo
+  maker-checker TOTP). Pendiente de i18n: los labels de `User statistics` muestran
+  las keys crudas del backend (`totalUsers`…) en MAYÚSCULA — cosmético, no i18n'd
+  (stats son backend-driven); aceptable para herramienta interna.
