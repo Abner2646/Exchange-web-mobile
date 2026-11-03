@@ -24,9 +24,20 @@ vi.mock('@/shared/money', () => ({
   formatDisplay: (v: string) => v,
 }));
 
+// Standard primitives — lightweight stubs so we assert text/roles, not styling.
 vi.mock('@/shared/ui', () => ({
   Button: ({ children, onClick, type, ...rest }: React.ButtonHTMLAttributes<HTMLButtonElement> & { children: React.ReactNode }) => (
     <button type={type} onClick={onClick} {...rest}>{children}</button>
+  ),
+  Badge: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
+  // Render nothing so the coin logo text doesn't pollute accessible names of filter pills.
+  CoinLogo: () => null,
+  Skeleton: () => <span />,
+  EmptyState: ({ title, message }: { title: string; message?: React.ReactNode }) => (
+    <div><p>{title}</p>{message ? <p>{message}</p> : null}</div>
+  ),
+  ErrorState: ({ title, message }: { title: string; message?: React.ReactNode }) => (
+    <div role="alert"><p>{title}</p>{message ? <p>{message}</p> : null}</div>
   ),
 }));
 
@@ -73,14 +84,14 @@ describe('OffersList', () => {
     onSelectOffer.mockReset();
   });
 
-  it('shows loading state', () => {
+  it('shows loading state (skeleton status region)', () => {
     (useActiveOffers as any).mockReturnValue({ data: undefined, isLoading: true, isError: false });
     render(<OffersList onSelectOffer={onSelectOffer} />);
-    expect(screen.getByText('common.loading')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toBeInTheDocument();
   });
 
   it('shows error state when query errors', () => {
-    (useActiveOffers as any).mockReturnValue({ data: undefined, isLoading: false, isError: true, error: {} });
+    (useActiveOffers as any).mockReturnValue({ data: undefined, isLoading: false, isError: true, error: {}, refetch: vi.fn() });
     render(<OffersList onSelectOffer={onSelectOffer} />);
     expect(screen.getByRole('alert')).toBeInTheDocument();
     expect(screen.getByRole('alert').textContent).toContain('p2p.offers.error');
@@ -97,7 +108,7 @@ describe('OffersList', () => {
     (useActiveOffers as any).mockReturnValue({ data: [SELL_OFFER], isLoading: false, isError: false });
     render(<OffersList onSelectOffer={onSelectOffer} />);
 
-    // symbol resolved from catalog — appears in both the filter option and the table cell
+    // symbol resolved from catalog — appears in the filter pill and the table cell
     expect(screen.getAllByText('BTC').length).toBeGreaterThanOrEqual(1);
     // price cell contains "65000 USD"
     expect(screen.getByText(/65000/)).toBeInTheDocument();
@@ -106,7 +117,6 @@ describe('OffersList', () => {
   });
 
   it('clicking the accept button calls onSelectOffer with the offer', async () => {
-    // Default tab is 'sell', SELL_OFFER is immediately visible
     (useActiveOffers as any).mockReturnValue({ data: [SELL_OFFER], isLoading: false, isError: false });
     render(<OffersList onSelectOffer={onSelectOffer} />);
 
@@ -131,7 +141,7 @@ describe('OffersList', () => {
     expect(screen.queryByText('Zelle')).not.toBeInTheDocument();
   });
 
-  it('crypto filter narrows visible offers', async () => {
+  it('crypto filter pill narrows visible offers', async () => {
     const offer2: Offer = {
       ...SELL_OFFER,
       id: 'o3',
@@ -145,9 +155,8 @@ describe('OffersList', () => {
     expect(screen.getByText('Zelle')).toBeInTheDocument();
     expect(screen.getByText('PayPal')).toBeInTheDocument();
 
-    // Select crypto filter for c1
-    const select = screen.getByLabelText('p2p.offers.filterByCrypto');
-    await userEvent.selectOptions(select, 'c1');
+    // Click the BTC (c1) filter pill
+    await userEvent.click(screen.getByRole('button', { name: 'BTC' }));
     expect(screen.getByText('Zelle')).toBeInTheDocument();
     expect(screen.queryByText('PayPal')).not.toBeInTheDocument();
   });
@@ -160,8 +169,7 @@ describe('OffersList', () => {
     };
     (useActiveOffers as any).mockReturnValue({ data: [unknownOffer], isLoading: false, isError: false });
     render(<OffersList onSelectOffer={onSelectOffer} />);
-    // Default tab is 'sell' — visible immediately; fallback: first 8 chars of id
-    // 'unknown-' appears in the filter option AND the table cell
+    // fallback: first 8 chars of id — appears in the filter pill AND the table cell
     expect(screen.getAllByText('unknown-').length).toBeGreaterThanOrEqual(1);
   });
 });

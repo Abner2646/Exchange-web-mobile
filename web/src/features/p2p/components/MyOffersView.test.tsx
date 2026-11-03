@@ -138,10 +138,10 @@ beforeEach(() => {
 // ─── Render states ─────────────────────────────────────────────────────────────
 
 describe('MyOffersView — render states', () => {
-  it('shows loading state', () => {
+  it('shows loading state (skeleton status region)', () => {
     (useMyOffers as any).mockReturnValue({ data: undefined, isLoading: true, isError: false });
     render(<MyOffersView />);
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toBeInTheDocument();
   });
 
   it('shows error state with role="alert"', () => {
@@ -160,10 +160,11 @@ describe('MyOffersView — render states', () => {
 
   it('renders both active and inactive offers', () => {
     render(<MyOffersView />);
-    // Active offer: BTC (resolved symbol), type=sell, active indicator
-    expect(screen.getByText('BTC')).toBeInTheDocument();
+    // Active offer: BTC (resolved symbol), type=sell, active indicator.
+    // CoinLogo renders a monogram too, so the symbol can appear more than once.
+    expect(screen.getAllByText('BTC').length).toBeGreaterThanOrEqual(1);
     // Inactive offer: ETH (resolved symbol), type=buy
-    expect(screen.getByText('ETH')).toBeInTheDocument();
+    expect(screen.getAllByText('ETH').length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows active status indicator for active offer', () => {

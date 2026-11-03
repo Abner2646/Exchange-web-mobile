@@ -100,11 +100,13 @@ beforeEach(() => {
 
 // ---- helpers ----
 
-function fillForm(amount: string, pmValue = 'pm1') {
+function fillForm(amount: string, pmName = 'Bank') {
   const amountInput = screen.getByLabelText(/amount/i);
   fireEvent.change(amountInput, { target: { value: amount } });
-  const select = screen.getByLabelText(/select a payment method/i);
-  fireEvent.change(select, { target: { value: pmValue } });
+  // Drive the custom Select (never a native <select>): open the listbox, pick the option.
+  const trigger = screen.getByRole('button', { name: /select a payment method/i });
+  fireEvent.click(trigger);
+  fireEvent.click(screen.getByRole('option', { name: pmName }));
 }
 
 // ---- tests ----

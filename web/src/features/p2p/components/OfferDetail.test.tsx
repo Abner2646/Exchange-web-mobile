@@ -34,6 +34,8 @@ vi.mock('@/shared/ui', () => ({
       {children}
     </button>
   ),
+  Badge: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
+  CoinLogo: () => null,
 }));
 
 import { OfferDetail } from './OfferDetail';

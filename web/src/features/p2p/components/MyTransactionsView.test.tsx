@@ -82,10 +82,10 @@ describe('MyTransactionsView', () => {
     onSelect.mockReset();
   });
 
-  it('shows loading state', () => {
+  it('shows loading state (skeleton status region)', () => {
     (useMyTransactions as any).mockReturnValue({ data: undefined, isLoading: true, isError: false });
     render(<MyTransactionsView onSelect={onSelect} />);
-    expect(screen.getByText('common.loading')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toBeInTheDocument();
   });
 
   it('shows error state', () => {
@@ -127,8 +127,8 @@ describe('MyTransactionsView', () => {
     (useMyTransactions as any).mockReturnValue({ data: RESPONSE_TWO, isLoading: false, isError: false });
     render(<MyTransactionsView onSelect={onSelect} />);
 
-    // crypto symbol
-    expect(screen.getByText('ETH')).toBeInTheDocument();
+    // crypto symbol (CoinLogo monogram + symbol cell → may appear more than once)
+    expect(screen.getAllByText('ETH').length).toBeGreaterThanOrEqual(1);
     // status badge
     expect(screen.getByText('p2p.status.completed')).toBeInTheDocument();
     // role chip: seller

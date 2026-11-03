@@ -33,14 +33,21 @@ export function P2PPage() {
   }
 
   return (
-    <section>
-      <div className={styles.tabs} role="tablist">
+    <section className={styles.page}>
+      <header className={styles.header}>
+        <h1 className={styles.title}>{t('p2p.title')}</h1>
+        <p className={styles.subtitle}>{t('p2p.subtitle')}</p>
+      </header>
+
+      <div className={styles.tabs} role="tablist" aria-label={t('p2p.title')}>
         {TABS.map((tab) => (
           <button
             key={tab}
             type="button"
             role="tab"
+            id={`p2p-tab-${tab}`}
             aria-selected={activeTab === tab}
+            aria-controls={`p2p-panel-${tab}`}
             onClick={() => setActiveTab(tab)}
             className={`${styles.tab}${activeTab === tab ? ` ${styles.tabActive}` : ''}`}
           >
@@ -49,38 +56,40 @@ export function P2PPage() {
         ))}
       </div>
 
-      {activeTab === 'browse' && (
-        <div>
-          <OffersList onSelectOffer={(offer) => setSelectedOffer(offer)} />
-          {selectedOffer && (
-            <div className={styles.panel}>
-              <OfferDetail offer={selectedOffer} />
-              <AcceptOfferForm offer={selectedOffer} onDone={goToTransaction} />
-            </div>
-          )}
-        </div>
-      )}
+      <div role="tabpanel" id={`p2p-panel-${activeTab}`} aria-labelledby={`p2p-tab-${activeTab}`}>
+        {activeTab === 'browse' && (
+          <div>
+            <OffersList onSelectOffer={(offer) => setSelectedOffer(offer)} />
+            {selectedOffer && (
+              <div className={styles.card}>
+                <OfferDetail offer={selectedOffer} />
+                <AcceptOfferForm offer={selectedOffer} onDone={goToTransaction} />
+              </div>
+            )}
+          </div>
+        )}
 
-      {activeTab === 'myTransactions' && (
-        <div>
-          <MyTransactionsView onSelect={(tx) => setSelectedTx(tx)} />
-          {selectedTx && (
-            <div className={styles.panel}>
-              <TransactionDetail
-                tx={selectedTx}
-                currentUserId={currentUserId}
-                onChanged={(tx) => setSelectedTx(tx)}
-              />
-            </div>
-          )}
-        </div>
-      )}
+        {activeTab === 'myTransactions' && (
+          <div>
+            <MyTransactionsView onSelect={(tx) => setSelectedTx(tx)} />
+            {selectedTx && (
+              <div className={styles.card}>
+                <TransactionDetail
+                  tx={selectedTx}
+                  currentUserId={currentUserId}
+                  onChanged={(tx) => setSelectedTx(tx)}
+                />
+              </div>
+            )}
+          </div>
+        )}
 
-      {activeTab === 'myOffers' && <MyOffersView />}
+        {activeTab === 'myOffers' && <MyOffersView />}
 
-      {activeTab === 'create' && (
-        <CreateOfferForm onCreated={() => setActiveTab('myOffers')} />
-      )}
+        {activeTab === 'create' && (
+          <CreateOfferForm onCreated={() => setActiveTab('myOffers')} />
+        )}
+      </div>
     </section>
   );
 }

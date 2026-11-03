@@ -1,62 +1,367 @@
-.panel { display: flex; flex-direction: column; gap: var(--space-3, 0.75rem); }
+/* P2P — marketplace of user offers + accept/release transaction flow, rebuilt on
+   the global tokens (the swap/wallet/trading standard). Caso B: a marketplace
+   between users (browse offers · my transactions · my offers · create offer). */
 
-/* Tab toggle */
-.tabs { display: flex; gap: var(--space-1, 0.25rem); border-bottom: 1px solid var(--color-border, #eee); padding-bottom: var(--space-1, 0.25rem); }
-.tab { background: none; border: none; cursor: pointer; padding: 0.375rem 0.75rem; border-radius: 4px 4px 0 0; font-size: 0.9375rem; color: var(--color-text-muted, #666); }
-.tab:hover { background: var(--color-surface-hover, #f5f5f5); }
-.tabActive { color: var(--color-primary, #0060df); border-bottom: 2px solid var(--color-primary, #0060df); font-weight: 600; }
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: var(--spacing-xl) var(--spacing-lg) var(--spacing-xxl);
+}
 
-/* Crypto filter */
-.filterRow { display: flex; align-items: center; gap: var(--space-2, 0.5rem); }
-.filterLabel { font-size: 0.875rem; color: var(--color-text-muted, #666); }
-.filterSelect { font-size: 0.875rem; padding: 0.25rem 0.5rem; border: 1px solid var(--color-border, #ddd); border-radius: 4px; }
+/* Compact, left-aligned header: title + inline tagline (matches wallet/trading). */
+.header {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+.title {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--tracking-snug);
+  color: var(--text-primary);
+}
+.subtitle { margin: 0; font-size: var(--font-size-sm); color: var(--text-tertiary); }
 
-/* State messages */
-.label { color: var(--color-text-muted, #666); font-size: 0.875rem; }
-.empty { color: var(--color-text-muted, #666); font-size: 0.9375rem; padding: var(--space-3, 0.75rem) 0; }
-.error { color: var(--color-danger, #b00); padding: var(--space-2, 0.5rem) 0; }
+/* Segmented pill tab bar (matches wallet). */
+.tabs {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  margin-bottom: var(--spacing-lg);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-full);
+  flex-wrap: wrap;
+}
+.tab {
+  padding: var(--spacing-xs) var(--spacing-md);
+  border: none;
+  border-radius: var(--radius-full);
+  background: none;
+  color: var(--text-tertiary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: color var(--motion-duration-fast) var(--motion-easing-ease),
+    background-color var(--motion-duration-fast) var(--motion-easing-ease);
+}
+.tab:hover { color: var(--text-secondary); }
+.tabActive { background-color: var(--brand-primary); color: var(--text-inverse); }
+.tabActive:hover { color: var(--text-inverse); }
 
-/* Offers table */
+/* ---- Marketplace toolbar: buy/sell segmented toggle + crypto filter pills ---- */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+.segmented {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+}
+.seg {
+  padding: var(--spacing-xs) var(--spacing-lg);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-tertiary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: color var(--motion-duration-fast) var(--motion-easing-ease),
+    background-color var(--motion-duration-fast) var(--motion-easing-ease);
+}
+.seg:hover { color: var(--text-secondary); }
+.segBuy { background-color: var(--success); color: var(--color-base-white); }
+.segBuy:hover { color: var(--color-base-white); }
+.segSell { background-color: var(--error); color: var(--color-base-white); }
+.segSell:hover { color: var(--color-base-white); }
+
+.filterPills { display: inline-flex; gap: var(--spacing-xs); flex-wrap: wrap; }
+.filterLabel {
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-tertiary);
+  align-self: center;
+  margin-right: var(--spacing-xs);
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: 4px var(--spacing-sm);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-full);
+  background: none;
+  color: var(--text-tertiary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: color var(--motion-duration-fast) var(--motion-easing-ease),
+    border-color var(--motion-duration-fast) var(--motion-easing-ease);
+}
+.pill:hover { color: var(--text-secondary); border-color: var(--border-focus); }
+.pillActive { color: var(--brand-primary); border-color: var(--brand-primary); background-color: var(--wash-brand); }
+
+/* ---- Offers / transactions table ---- */
 .table { width: 100%; border-collapse: collapse; }
-.table th, .table td { text-align: left; padding: 0.375rem 0.5rem; border-bottom: 1px solid var(--color-border, #eee); font-size: 0.875rem; vertical-align: middle; }
-.table th { color: var(--color-text-muted, #666); font-weight: 600; font-size: 0.8125rem; }
-.table td:last-child { text-align: right; }
-.table th:last-child { text-align: right; }
+.table th, .table td {
+  text-align: left;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-bottom: 1px solid var(--border-secondary);
+  font-size: var(--font-size-sm);
+  vertical-align: middle;
+}
+.table th {
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.05em;
+  font-weight: var(--font-weight-semibold);
+  background-color: var(--bg-secondary);
+}
+.table td { color: var(--text-secondary); }
+.table tbody tr:last-child td { border-bottom: none; }
+.table td:last-child, .table th:last-child { text-align: right; }
 
-/* Type badge */
-.typeBuy { color: var(--color-success, #0a0); font-weight: 600; }
-.typeSell { color: var(--color-danger, #b00); font-weight: 600; }
+.num { font-family: var(--font-num), var(--font-sans); color: var(--text-primary); }
+.muted { color: var(--text-tertiary); }
+.range { font-family: var(--font-num), var(--font-sans); font-size: var(--font-size-sm); color: var(--text-secondary); white-space: nowrap; }
+.coinCell { display: inline-flex; align-items: center; gap: var(--spacing-sm); }
+.coinSym { font-weight: var(--font-weight-semibold); color: var(--text-primary); }
+.methodsCell { color: var(--text-tertiary); font-size: var(--font-size-xs); }
+.dateCell { color: var(--text-tertiary); white-space: nowrap; }
 
-/* Price / range cells */
-.price { font-variant-numeric: tabular-nums; }
-.range { font-variant-numeric: tabular-nums; font-size: 0.8125rem; color: var(--color-text-muted, #555); }
+@media (max-width: 640px) {
+  .colMethods, .colCounterparty, .colDate { display: none; }
+}
 
-/* My Transactions row — full-width clickable button inside a td */
+/* ---- Card (offer detail + forms) ---- */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  margin-top: var(--spacing-lg);
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+}
+.cardTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin: 0;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+/* key/value detail rows */
+.detailRow {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  font-size: var(--font-size-sm);
+  padding: 2px 0;
+}
+.detailLabel { color: var(--text-tertiary); }
+.detailValue { color: var(--text-primary); text-align: right; word-break: break-word; }
+.detailValue.money { font-family: var(--font-num), var(--font-sans); }
+
+/* ---- Form ---- */
+.form { display: flex; flex-direction: column; gap: var(--spacing-md); }
+.fieldBlock { display: flex; flex-direction: column; gap: var(--spacing-xs); }
+.fieldHead { display: flex; justify-content: space-between; align-items: baseline; gap: var(--spacing-sm); }
+.fieldLabel { font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--text-secondary); }
+.fieldHint { font-size: var(--font-size-xs); color: var(--text-tertiary); }
+
+/* Buy/Sell segmented inside the create form (role=radiogroup) */
+.typeToggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  padding: 3px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+}
+.typeOpt {
+  padding: var(--spacing-sm);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-tertiary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: color var(--motion-duration-fast) var(--motion-easing-ease),
+    background-color var(--motion-duration-fast) var(--motion-easing-ease);
+}
+.typeOpt:hover { color: var(--text-secondary); }
+.typeOptOn { background-color: var(--brand-primary); color: var(--text-inverse); }
+.typeOptOn:hover { color: var(--text-inverse); }
+
+/* Payment-method multi-select → toggle chips (accessible, no native multi-select) */
+.chips { display: flex; flex-wrap: wrap; gap: var(--spacing-xs); }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-full);
+  background: none;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: color var(--motion-duration-fast) var(--motion-easing-ease),
+    border-color var(--motion-duration-fast) var(--motion-easing-ease),
+    background-color var(--motion-duration-fast) var(--motion-easing-ease);
+}
+.chip:hover { border-color: var(--border-focus); }
+.chipOn { color: var(--brand-primary); border-color: var(--brand-primary); background-color: var(--wash-brand); }
+
+/* Receipt-style disclosure (accept form) */
+.receipt {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-md);
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-md);
+}
+.receiptRow { display: flex; justify-content: space-between; gap: var(--spacing-sm); font-size: var(--font-size-sm); }
+.receiptLabel { color: var(--text-tertiary); }
+.receiptValue { font-family: var(--font-num), var(--font-sans); color: var(--text-primary); }
+.receiptValue.plain { font-family: var(--font-sans); word-break: break-word; text-align: right; }
+
+.note { margin: 0; font-size: var(--font-size-xs); color: var(--text-tertiary); }
+.alert { margin: 0; font-size: var(--font-size-sm); color: var(--error); }
+.actions { margin-top: var(--spacing-xs); display: flex; gap: var(--spacing-sm); flex-wrap: wrap; }
+.actions > button { flex: 1; min-width: 140px; }
+
+/* ---- Transaction state stepper ---- */
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+.summary .num { color: var(--text-primary); }
+.roleHint { margin: 0; font-size: var(--font-size-sm); color: var(--text-tertiary); }
+
+.stepper {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+}
+.step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex: 1;
+  text-align: center;
+  position: relative;
+}
+.stepDot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-full);
+  border: 2px solid var(--border-primary);
+  background-color: var(--bg-secondary);
+  color: var(--text-tertiary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  z-index: 1;
+}
+.stepLabel { font-size: var(--font-size-xs); color: var(--text-tertiary); max-width: 12ch; }
+/* connector line to the next step (behind the dots) */
+.step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 13px;
+  left: 50%;
+  width: 100%;
+  height: 2px;
+  background-color: var(--border-primary);
+  z-index: 0;
+}
+.stepDone .stepDot { border-color: var(--success); background-color: var(--success); color: var(--color-base-white); }
+.stepDone:not(:last-child)::after { background-color: var(--success); }
+.stepDone .stepLabel { color: var(--text-secondary); }
+.stepCurrent .stepDot { border-color: var(--brand-primary); background-color: var(--brand-primary); color: var(--text-inverse); }
+.stepCurrent .stepLabel { color: var(--text-primary); font-weight: var(--font-weight-semibold); }
+.stepCancelled .stepDot { border-color: var(--error); background-color: var(--error); color: var(--color-base-white); }
+.stepCancelled .stepLabel { color: var(--error); }
+
+/* ---- My transactions: clickable row cards ---- */
+.txList { display: flex; flex-direction: column; gap: var(--spacing-xs); }
 .txRow {
   display: flex;
   align-items: center;
-  gap: 0;
+  gap: var(--spacing-md);
   width: 100%;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
   text-align: left;
-  font-size: 0.875rem;
-  color: inherit;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: border-color var(--motion-duration-fast) var(--motion-easing-ease),
+    transform var(--motion-duration-fast) var(--motion-easing-ease);
 }
-.txRow:hover { background: var(--color-surface-hover, #f5f5f5); }
-.txPending { background: var(--color-warning-bg, #fff8e1); }
-.txPending:hover { background: var(--color-warning-bg-hover, #fff3cd); }
-.txCell { flex: 1; padding: 0.375rem 0.5rem; border-bottom: 1px solid var(--color-border, #eee); }
-.txStatus { font-weight: 600; }
-.txRole {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.125rem 0.5rem;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  background: var(--color-surface-2, #f0f0f0);
-  color: var(--color-text-muted, #555);
+.txRow:hover { border-color: var(--border-focus); transform: translateY(-1px); }
+.txPending { border-left: 3px solid var(--warning); }
+.txCoin { display: inline-flex; align-items: center; gap: var(--spacing-sm); min-width: 120px; }
+.txCoin .coinSym { color: var(--text-primary); }
+.txAmount { font-family: var(--font-num), var(--font-sans); color: var(--text-primary); min-width: 120px; }
+.txFiat { font-family: var(--font-num), var(--font-sans); color: var(--text-tertiary); min-width: 110px; }
+.txMeta { margin-left: auto; display: inline-flex; align-items: center; gap: var(--spacing-sm); flex-wrap: wrap; justify-content: flex-end; }
+.txCounterparty { color: var(--text-secondary); }
+.txRow:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
+@media (max-width: 640px) {
+  .txFiat, .txCounterparty, .txDate { display: none; }
+}
+.txDate { color: var(--text-tertiary); white-space: nowrap; }
+
+/* ---- Skeleton rows ---- */
+.skelRow { display: flex; align-items: center; gap: var(--spacing-md); padding: var(--spacing-sm) var(--spacing-md); }
+.skelRow > *:last-child { margin-left: auto; }
+
+/* ---- a11y ---- */
+.tab:focus-visible,
+.seg:focus-visible,
+.pill:focus-visible,
+.chip:focus-visible,
+.typeOpt:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tab, .seg, .pill, .chip, .typeOpt { transition: none; }
 }

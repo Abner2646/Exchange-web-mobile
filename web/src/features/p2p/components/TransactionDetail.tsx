@@ -4,21 +4,21 @@ import { useMemo, useState } from 'react';
 import { formatDisplay } from '@/shared/money';
 import { useTranslation } from '@/shared/i18n';
 import { useErrorTranslation } from '@/shared/i18n/errorCatalog';
-import { Button, Dialog } from '@/shared/ui';
+import type { ApiError } from '@/shared/api';
+import { Badge, Button, Dialog, useSuccessFlash } from '@/shared/ui';
 import {
   useConfirmPayment,
   useCompleteTransaction,
   useCancelTransaction,
   useCryptoCatalog,
 } from '../queries';
-import type { Transaction } from '../types';
+import type { Transaction, TxStatus } from '../types';
 import styles from './p2p.module.css';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 type PendingAction = 'confirmPayment' | 'complete' | 'cancel' | null;
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// The happy-path state machine (cancelled is an off-path terminal state).
+const STEPS: TxStatus[] = ['initiated', 'payment_confirmed', 'completed'];
 
 export function TransactionDetail({
   tx,
@@ -31,51 +31,40 @@ export function TransactionDetail({
 }) {
   const { t, locale } = useTranslation();
   const { tError } = useErrorTranslation();
+  const { flash } = useSuccessFlash();
 
-  // ── Role ──────────────────────────────────────────────────────────────────
-  // Computed from the live tx prop — never trust a stale caller to gate actions.
+  // Role — computed from the live tx prop; never trust a stale caller to gate actions.
   const isBuyer = tx.buyerId === currentUserId;
   const isSeller = tx.sellerId === currentUserId;
 
-  // ── Mutation hooks ────────────────────────────────────────────────────────
   const confirmPayment = useConfirmPayment();
   const completeTransaction = useCompleteTransaction();
   const cancelTransaction = useCancelTransaction();
 
-  // Any mutation in-flight → lock all buttons (no double-fire).
   const anyPending =
     confirmPayment.isPending || completeTransaction.isPending || cancelTransaction.isPending;
 
-  // ── Action visibility (exact gating matrix) ───────────────────────────────
+  // Action visibility (exact gating matrix).
   const showConfirmPayment = isBuyer && tx.status === 'initiated';
   const showComplete = isSeller && tx.status === 'payment_confirmed';
   const showCancel =
-    (isBuyer || isSeller) &&
-    (tx.status === 'initiated' || tx.status === 'payment_confirmed');
+    (isBuyer || isSeller) && (tx.status === 'initiated' || tx.status === 'payment_confirmed');
 
-  // ── Dialog state ──────────────────────────────────────────────────────────
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
 
-  function openDialog(action: PendingAction) {
-    setPendingAction(action);
-  }
-
-  function closeDialog() {
-    setPendingAction(null);
-  }
-
-  // ── Confirmed action handler ──────────────────────────────────────────────
   async function handleConfirmed() {
     if (!pendingAction) return;
     const action = pendingAction;
-    closeDialog();
+    setPendingAction(null);
 
     try {
       let updated: Transaction;
       if (action === 'confirmPayment') {
         updated = await confirmPayment.mutateAsync(tx.id);
+        flash({ title: t('p2p.action.flashConfirmTitle'), detail: t('p2p.action.flashConfirmDetail') });
       } else if (action === 'complete') {
         updated = await completeTransaction.mutateAsync(tx.id);
+        flash({ title: t('p2p.action.flashReleaseTitle'), detail: t('p2p.action.flashReleaseDetail') });
       } else {
         updated = await cancelTransaction.mutateAsync(tx.id);
       }
@@ -85,139 +74,114 @@ export function TransactionDetail({
     }
   }
 
-  // ── Crypto symbol resolution ──────────────────────────────────────────────
   const { data: cryptos } = useCryptoCatalog();
   const symbol = useMemo(() => {
     const found = (cryptos ?? []).find((c) => c.id === tx.cryptoId);
     return found?.symbol ?? tx.crypto?.symbol ?? tx.cryptoId.slice(0, 8);
   }, [cryptos, tx.cryptoId, tx.crypto]);
 
-  // ── Money display (formatDisplay only — no numeric ops) ───────────────────
-  const cryptoDisplay = formatDisplay(tx.amount, {
-    locale,
-    maxDecimals: 8,
-    stripTrailingZeros: true,
-  });
-  const fiatDisplay = formatDisplay(tx.fiatAmount, {
-    locale,
-    maxDecimals: 2,
-    stripTrailingZeros: false,
-  });
+  const cryptoDisplay = formatDisplay(tx.amount, { locale, maxDecimals: 8, stripTrailingZeros: true });
+  const fiatDisplay = formatDisplay(tx.fiatAmount, { locale, maxDecimals: 2, stripTrailingZeros: false });
 
-  // ── Active error (first non-null from any mutation) ───────────────────────
-  const activeError =
-    (confirmPayment.isError && confirmPayment.error) ||
-    (completeTransaction.isError && completeTransaction.error) ||
-    (cancelTransaction.isError && cancelTransaction.error) ||
-    null;
+  const activeError: ApiError | null =
+    confirmPayment.error ?? completeTransaction.error ?? cancelTransaction.error ?? null;
 
-  // ── Dialog prompt text ────────────────────────────────────────────────────
   const dialogTitle = pendingAction
-    ? {
-        confirmPayment: t('p2p.action.confirmPayment'),
-        complete: t('p2p.action.complete'),
-        cancel: t('p2p.action.cancel'),
-      }[pendingAction]
+    ? { confirmPayment: t('p2p.action.confirmPayment'), complete: t('p2p.action.complete'), cancel: t('p2p.action.cancel') }[pendingAction]
     : '';
-
   const dialogPrompt = pendingAction
-    ? {
-        confirmPayment: t('p2p.action.confirmPaymentPrompt'),
-        complete: t('p2p.action.completePrompt'),
-        cancel: t('p2p.action.cancelPrompt'),
-      }[pendingAction]
+    ? { confirmPayment: t('p2p.action.confirmPaymentPrompt'), complete: t('p2p.action.completePrompt'), cancel: t('p2p.action.cancelPrompt') }[pendingAction]
     : '';
 
-  // ─── Render ───────────────────────────────────────────────────────────────
+  const cancelled = tx.status === 'cancelled';
+  const currentIndex = STEPS.indexOf(tx.status);
+
   return (
-    <section className={styles.panel}>
-      {/* ── State-machine progress ── */}
-      <div className={styles.txStatus} aria-label="transaction status">
-        <span>{t(`p2p.status.${tx.status}`)}</span>
+    <section className={styles.form}>
+      {/* State stepper */}
+      <div className={styles.stepper} aria-label={t('p2p.detail.statusLabel')}>
+        {STEPS.map((step, i) => {
+          const done = !cancelled && i < currentIndex;
+          const current = !cancelled && i === currentIndex;
+          const cls = [
+            styles.step,
+            done ? styles.stepDone : '',
+            current ? styles.stepCurrent : '',
+            cancelled && i === 0 ? styles.stepCancelled : '',
+          ]
+            .filter(Boolean)
+            .join(' ');
+          return (
+            <div key={step} className={cls}>
+              <span className={styles.stepDot}>{cancelled && i === 0 ? '×' : i + 1}</span>
+              <span className={styles.stepLabel}>{t(`p2p.status.${step}`)}</span>
+            </div>
+          );
+        })}
       </div>
 
-      {/* ── Money summary ── */}
-      <div className={styles.label}>
-        <span>
-          {cryptoDisplay} {symbol}
-        </span>
-        {' · '}
-        <span>
-          {fiatDisplay} {tx.fiatCurrency}
-        </span>
+      {/* Current status + money summary */}
+      <div className={styles.summary}>
+        <Badge tone={cancelled ? 'neutral' : statusTone(tx.status)}>
+          {t(`p2p.status.${tx.status}`)}
+        </Badge>
+        <span className={styles.num}>{cryptoDisplay} {symbol}</span>
+        <span>·</span>
+        <span className={styles.num}>{fiatDisplay} {tx.fiatCurrency}</span>
       </div>
 
-      {/* ── Role hint ── */}
-      {isBuyer && (
-        <p className={styles.label}>{t('p2p.action.roleHintBuyer')}</p>
-      )}
-      {isSeller && (
-        <p className={styles.label}>{t('p2p.action.roleHintSeller')}</p>
-      )}
+      {/* Role hint */}
+      {isBuyer && <p className={styles.roleHint}>{t('p2p.action.roleHintBuyer')}</p>}
+      {isSeller && <p className={styles.roleHint}>{t('p2p.action.roleHintSeller')}</p>}
 
-      {/* ── Mutation error ── */}
+      {/* Mutation error */}
       {activeError && (
-        <p role="alert" className={styles.error}>
-          {tError(
-            (activeError as { code?: string }).code ?? 'FALLBACK_UNKNOWN_ERROR',
-            { requestId: (activeError as { requestId?: string }).requestId ?? '' },
-          )}
+        <p role="alert" className={styles.alert}>
+          {tError(activeError.code ?? 'FALLBACK_UNKNOWN_ERROR', { requestId: activeError.requestId ?? '' })}
         </p>
       )}
 
-      {/* ── Action buttons ── */}
+      {/* Action buttons */}
       {(showConfirmPayment || showComplete || showCancel) && (
         <div className={styles.actions}>
           {showConfirmPayment && (
-            <Button
-              onClick={() => openDialog('confirmPayment')}
-              disabled={anyPending}
-              loading={confirmPayment.isPending}
-            >
+            <Button onClick={() => setPendingAction('confirmPayment')} disabled={anyPending} loading={confirmPayment.isPending}>
               {t('p2p.action.confirmPayment')}
             </Button>
           )}
-
           {showComplete && (
-            <Button
-              onClick={() => openDialog('complete')}
-              disabled={anyPending}
-              loading={completeTransaction.isPending}
-            >
+            <Button onClick={() => setPendingAction('complete')} disabled={anyPending} loading={completeTransaction.isPending}>
               {t('p2p.action.complete')}
             </Button>
           )}
-
           {showCancel && (
-            <Button
-              variant="danger"
-              onClick={() => openDialog('cancel')}
-              disabled={anyPending}
-              loading={cancelTransaction.isPending}
-            >
+            <Button variant="danger" onClick={() => setPendingAction('cancel')} disabled={anyPending} loading={cancelTransaction.isPending}>
               {t('p2p.action.cancel')}
             </Button>
           )}
         </div>
       )}
 
-      {/* ── Confirm Dialog ── */}
-      <Dialog
-        isOpen={pendingAction !== null}
-        onClose={closeDialog}
-        title={dialogTitle}
-        closeOnClickOutside={false}
-      >
+      {/* Confirm Dialog */}
+      <Dialog isOpen={pendingAction !== null} onClose={() => setPendingAction(null)} title={dialogTitle} closeOnClickOutside={false}>
         <p>{dialogPrompt}</p>
         <div className={styles.actions}>
           <Button onClick={handleConfirmed} loading={anyPending} disabled={anyPending}>
             {t('common.submit')}
           </Button>
-          <Button variant="secondary" onClick={closeDialog} disabled={anyPending}>
+          <Button variant="secondary" onClick={() => setPendingAction(null)} disabled={anyPending}>
             {t('common.cancel')}
           </Button>
         </div>
       </Dialog>
     </section>
   );
+}
+
+// Badge tone for the live status (completed=success, payment_confirmed=brand, initiated=warning).
+function statusTone(status: TxStatus): 'brand' | 'success' | 'warning' | 'neutral' {
+  if (status === 'completed') return 'success';
+  if (status === 'payment_confirmed') return 'brand';
+  if (status === 'initiated') return 'warning';
+  return 'neutral';
 }

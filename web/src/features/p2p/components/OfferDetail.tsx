@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { formatDisplay } from '@/shared/money';
 import { useTranslation } from '@/shared/i18n';
-import { Button } from '@/shared/ui';
+import { Badge, Button, CoinLogo } from '@/shared/ui';
 import { useCryptoCatalog } from '../queries';
 import type { Offer } from '../types';
 import styles from './p2p.module.css';
@@ -24,71 +24,55 @@ export function OfferDetail({
     return map;
   }, [cryptos]);
 
-  const resolveSymbol = (cryptoId: string): string =>
-    symbolMap.get(cryptoId) ?? cryptoId.slice(0, 8);
-
-  const symbol = resolveSymbol(offer.cryptoId);
+  const symbol = symbolMap.get(offer.cryptoId) ?? offer.cryptoId.slice(0, 8);
+  const fmt = (v: string) => formatDisplay(v, { locale, maxDecimals: 8, stripTrailingZeros: true });
 
   return (
-    <section className={styles.panel}>
-      {/* Type badge */}
-      <div>
-        <span className={offer.type === 'buy' ? styles.typeBuy : styles.typeSell}>
+    <section className={styles.form}>
+      {/* Header: coin + type badge */}
+      <div className={styles.cardTitle}>
+        <CoinLogo symbol={symbol} size={28} />
+        <span className={styles.coinSym}>{symbol}</span>
+        <Badge tone={offer.type === 'buy' ? 'success' : 'error'}>
           {t(offer.type === 'buy' ? 'p2p.offers.typeBuy' : 'p2p.offers.typeSell')}
-        </span>
-        {' '}
-        <span>{symbol}</span>
+        </Badge>
       </div>
 
-      {/* Price */}
       <div>
-        <span className={styles.label}>{t('p2p.offers.price')}: </span>
-        <span className={styles.price}>
-          {formatDisplay(offer.unitPrice, { locale, maxDecimals: 8, stripTrailingZeros: true })}{' '}
-          {offer.fiatCurrency}
-        </span>
-      </div>
-
-      {/* Amount range */}
-      <div>
-        <span className={styles.label}>{t('p2p.offers.range')}: </span>
-        <span className={styles.range}>
-          {formatDisplay(offer.minAmount, { locale, maxDecimals: 8, stripTrailingZeros: true })}
-          {'–'}
-          {formatDisplay(offer.maxAmount, { locale, maxDecimals: 8, stripTrailingZeros: true })}
-          {' '}
-          {symbol}
-        </span>
-      </div>
-
-      {/* Payment methods */}
-      <div>
-        <span className={styles.label}>{t('p2p.offers.paymentMethods')}: </span>
-        <span>{offer.paymentMethods.map((pm) => pm.name).join(', ')}</span>
-      </div>
-
-      {/* Additional terms */}
-      {offer.additionalTerms && (
-        <div>
-          <span className={styles.label}>{t('p2p.offers.terms')}: </span>
-          <span>{offer.additionalTerms}</span>
+        <div className={styles.detailRow}>
+          <span className={styles.detailLabel}>{t('p2p.offers.price')}</span>
+          <span className={`${styles.detailValue} ${styles.money}`}>
+            {fmt(offer.unitPrice)} {offer.fiatCurrency}
+          </span>
         </div>
-      )}
-
-      {/* Seller's fiat-receive address — only for sell offers */}
-      {offer.type === 'sell' && offer.direccionFiat && (
-        <div>
-          <span className={styles.label}>{t('p2p.detail.sellerAddress')}: </span>
-          <span>{offer.direccionFiat}</span>
+        <div className={styles.detailRow}>
+          <span className={styles.detailLabel}>{t('p2p.offers.range')}</span>
+          <span className={`${styles.detailValue} ${styles.money}`}>
+            {fmt(offer.minAmount)}–{fmt(offer.maxAmount)} {symbol}
+          </span>
         </div>
-      )}
+        <div className={styles.detailRow}>
+          <span className={styles.detailLabel}>{t('p2p.offers.paymentMethods')}</span>
+          <span className={styles.detailValue}>
+            {offer.paymentMethods.map((pm) => pm.name).join(', ')}
+          </span>
+        </div>
+        {offer.additionalTerms && (
+          <div className={styles.detailRow}>
+            <span className={styles.detailLabel}>{t('p2p.offers.terms')}</span>
+            <span className={styles.detailValue}>{offer.additionalTerms}</span>
+          </div>
+        )}
+        {offer.type === 'sell' && offer.direccionFiat && (
+          <div className={styles.detailRow}>
+            <span className={styles.detailLabel}>{t('p2p.detail.sellerAddress')}</span>
+            <span className={styles.detailValue}>{offer.direccionFiat}</span>
+          </div>
+        )}
+      </div>
 
-      {/* Inactive note */}
-      {!offer.active && (
-        <p className={styles.error}>{t('p2p.detail.inactive')}</p>
-      )}
+      {!offer.active && <p className={styles.alert}>{t('p2p.detail.inactive')}</p>}
 
-      {/* Accept button */}
       {onAccept && (
         <Button
           type="button"

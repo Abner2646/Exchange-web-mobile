@@ -3,14 +3,14 @@
 import { useMemo, useState } from 'react';
 import { formatDisplay } from '@/shared/money';
 import { useTranslation } from '@/shared/i18n';
-import { Button } from '@/shared/ui';
+import { Badge, Button, CoinLogo, EmptyState, ErrorState, Skeleton } from '@/shared/ui';
 import { useActiveOffers, useCryptoCatalog } from '../queries';
 import type { Offer, OfferType } from '../types';
 import styles from './p2p.module.css';
 
 export function OffersList({ onSelectOffer }: { onSelectOffer: (offer: Offer) => void }) {
   const { t, locale } = useTranslation();
-  const { data: offers, isLoading, isError } = useActiveOffers();
+  const { data: offers, isLoading, isError, refetch } = useActiveOffers();
   const { data: cryptos } = useCryptoCatalog();
 
   const [activeTab, setActiveTab] = useState<OfferType>('sell');
@@ -28,7 +28,7 @@ export function OffersList({ onSelectOffer }: { onSelectOffer: (offer: Offer) =>
 
   const allOffers = offers ?? [];
 
-  // Collect unique cryptoIds across ALL offers for the filter select (not tab-filtered)
+  // Collect unique cryptoIds across ALL offers for the filter pills (not tab-filtered)
   const cryptoOptions = useMemo(() => {
     const seen = new Set<string>();
     const opts: { id: string; label: string }[] = [];
@@ -44,106 +44,132 @@ export function OffersList({ onSelectOffer }: { onSelectOffer: (offer: Offer) =>
   }, [allOffers, symbolMap]);
 
   const filtered = allOffers.filter(
-    (o) =>
-      o.type === activeTab &&
-      (cryptoFilter === '' || o.cryptoId === cryptoFilter),
+    (o) => o.type === activeTab && (cryptoFilter === '' || o.cryptoId === cryptoFilter),
   );
 
+  const fmt = (v: string) => formatDisplay(v, { locale, maxDecimals: 8, stripTrailingZeros: true });
+
   // --- Render states ---
-  if (isLoading) return <p className={styles.label}>{t('common.loading')}</p>;
+  if (isLoading) {
+    return (
+      <div role="status" aria-label={t('common.loading')}>
+        {[0, 1, 2].map((i) => (
+          <div key={i} className={styles.skelRow}>
+            <Skeleton variant="circle" width={24} height={24} />
+            <Skeleton variant="text" width="30%" />
+            <Skeleton variant="text" width={80} />
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   if (isError) {
     return (
-      <p role="alert" className={styles.error}>
-        {t('p2p.offers.error')}
-      </p>
+      <ErrorState
+        title={t('p2p.offers.error')}
+        onRetry={() => refetch()}
+        retryLabel={t('common.retry')}
+      />
     );
   }
 
   return (
-    <section className={styles.panel}>
-      {/* Buy / sell tab toggle */}
-      <div className={styles.tabs} role="tablist">
-        {(['sell', 'buy'] as OfferType[]).map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            role="tab"
-            aria-selected={activeTab === tab}
-            onClick={() => setActiveTab(tab)}
-            className={`${styles.tab}${activeTab === tab ? ` ${styles.tabActive}` : ''}`}
-          >
-            {t(tab === 'buy' ? 'p2p.offers.typeBuy' : 'p2p.offers.typeSell')}
-          </button>
-        ))}
-      </div>
-
-      {/* Crypto filter */}
-      <div className={styles.filterRow}>
-        <label htmlFor="p2p-crypto-filter" className={styles.filterLabel}>
-          {t('p2p.offers.filterByCrypto')}
-        </label>
-        <select
-          id="p2p-crypto-filter"
-          className={styles.filterSelect}
-          value={cryptoFilter}
-          onChange={(e) => setCryptoFilter(e.target.value)}
-        >
-          <option value="">{t('p2p.offers.tabAll')}</option>
-          {cryptoOptions.map((opt) => (
-            <option key={opt.id} value={opt.id}>
-              {opt.label}
-            </option>
+    <section>
+      {/* Buy / sell segmented toggle + crypto filter pills */}
+      <div className={styles.toolbar}>
+        <div className={styles.segmented} role="tablist" aria-label={t('p2p.offers.filterByType')}>
+          {(['sell', 'buy'] as OfferType[]).map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab}
+              onClick={() => setActiveTab(tab)}
+              className={`${styles.seg}${
+                activeTab === tab ? ` ${tab === 'buy' ? styles.segBuy : styles.segSell}` : ''
+              }`}
+            >
+              {t(tab === 'buy' ? 'p2p.offers.typeBuy' : 'p2p.offers.typeSell')}
+            </button>
           ))}
-        </select>
+        </div>
+
+        {cryptoOptions.length > 0 && (
+          <div className={styles.filterPills}>
+            <span className={styles.filterLabel}>{t('p2p.offers.filterByCrypto')}</span>
+            <button
+              type="button"
+              aria-pressed={cryptoFilter === ''}
+              onClick={() => setCryptoFilter('')}
+              className={`${styles.pill}${cryptoFilter === '' ? ` ${styles.pillActive}` : ''}`}
+            >
+              {t('p2p.offers.tabAll')}
+            </button>
+            {cryptoOptions.map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                aria-pressed={cryptoFilter === opt.id}
+                onClick={() => setCryptoFilter(opt.id)}
+                className={`${styles.pill}${cryptoFilter === opt.id ? ` ${styles.pillActive}` : ''}`}
+              >
+                <CoinLogo symbol={opt.label} size={16} />
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Content */}
       {filtered.length === 0 ? (
-        <p className={styles.empty}>{t('p2p.offers.empty')}</p>
+        <EmptyState title={t('p2p.offers.empty')} message={t('p2p.offers.emptyHint')} />
       ) : (
         <table className={styles.table}>
           <thead>
             <tr>
-              <th>{t('p2p.offers.typeBuy')}/{t('p2p.offers.typeSell')}</th>
+              <th>{t('p2p.offers.type')}</th>
               <th>{t('p2p.offers.asset')}</th>
               <th>{t('p2p.offers.price')}</th>
               <th>{t('p2p.offers.range')}</th>
-              <th>{t('p2p.offers.paymentMethods')}</th>
+              <th className={styles.colMethods}>{t('p2p.offers.paymentMethods')}</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map((offer) => (
-              <tr key={offer.id}>
-                <td>
-                  <span className={offer.type === 'buy' ? styles.typeBuy : styles.typeSell}>
-                    {t(offer.type === 'buy' ? 'p2p.offers.typeBuy' : 'p2p.offers.typeSell')}
-                  </span>
-                </td>
-                <td>{resolveSymbol(offer.cryptoId)}</td>
-                <td className={styles.price}>
-                  {formatDisplay(offer.unitPrice, { locale, maxDecimals: 8, stripTrailingZeros: true })}{' '}
-                  {offer.fiatCurrency}
-                </td>
-                <td className={styles.range}>
-                  {formatDisplay(offer.minAmount, { locale, maxDecimals: 8, stripTrailingZeros: true })}
-                  {'–'}
-                  {formatDisplay(offer.maxAmount, { locale, maxDecimals: 8, stripTrailingZeros: true })}
-                </td>
-                <td>{offer.paymentMethods.map((pm) => pm.name).join(', ')}</td>
-                <td>
-                  <Button
-                    type="button"
-                    variant="primary"
-                    size="small"
-                    onClick={() => onSelectOffer(offer)}
-                  >
-                    {t('p2p.offers.accept')}
-                  </Button>
-                </td>
-              </tr>
-            ))}
+            {filtered.map((offer) => {
+              const symbol = resolveSymbol(offer.cryptoId);
+              return (
+                <tr key={offer.id}>
+                  <td>
+                    <Badge tone={offer.type === 'buy' ? 'success' : 'error'}>
+                      {t(offer.type === 'buy' ? 'p2p.offers.typeBuy' : 'p2p.offers.typeSell')}
+                    </Badge>
+                  </td>
+                  <td>
+                    <span className={styles.coinCell}>
+                      <CoinLogo symbol={symbol} size={22} />
+                      <span className={styles.coinSym}>{symbol}</span>
+                    </span>
+                  </td>
+                  <td className={styles.num}>
+                    {fmt(offer.unitPrice)} {offer.fiatCurrency}
+                  </td>
+                  <td className={styles.range}>
+                    {fmt(offer.minAmount)}–{fmt(offer.maxAmount)} {symbol}
+                  </td>
+                  <td className={styles.methodsCell}>
+                    {offer.paymentMethods.map((pm) => pm.name).join(', ')}
+                  </td>
+                  <td>
+                    <Button type="button" variant="primary" size="small" onClick={() => onSelectOffer(offer)}>
+                      {t('p2p.offers.accept')}
+                    </Button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}

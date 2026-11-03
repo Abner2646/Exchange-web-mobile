@@ -1,10 +1,10 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { parseInput, compare, gt } from '@/shared/money';
+import { parseInput, compare, gt, round } from '@/shared/money';
 import { useTranslation } from '@/shared/i18n';
 import { useErrorTranslation } from '@/shared/i18n/errorCatalog';
-import { Button, Field } from '@/shared/ui';
+import { Button, Field, Input, Select, Textarea, useSuccessFlash } from '@/shared/ui';
 import { useCreateOffer, useCryptoCatalog, usePaymentMethods } from '../queries';
 import type { Offer, OfferType } from '../types';
 import styles from './p2p.module.css';
@@ -12,6 +12,7 @@ import styles from './p2p.module.css';
 export function CreateOfferForm({ onCreated }: { onCreated: (offer: Offer) => void }) {
   const { t, locale } = useTranslation();
   const { tError } = useErrorTranslation();
+  const { flash } = useSuccessFlash();
   const { data: cryptos } = useCryptoCatalog();
   const { data: methods } = usePaymentMethods();
   const mutation = useCreateOffer();
@@ -43,7 +44,6 @@ export function CreateOfferForm({ onCreated }: { onCreated: (offer: Offer) => vo
   const methodsOk = metodosPagoIds.length >= 1;
   const direccionFiatOk = type === 'buy' || direccionFiat.trim().length > 0;
 
-  // ---- Submit disabled predicate ----
   const canSubmit =
     Boolean(cryptoId) &&
     minOk &&
@@ -55,27 +55,34 @@ export function CreateOfferForm({ onCreated }: { onCreated: (offer: Offer) => vo
     direccionFiatOk &&
     !mutation.isPending;
 
-  // ---- Handlers ----
-  function handleMethodsChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    const selected = Array.from(e.target.selectedOptions).map((o) => o.value);
-    setMetodosPagoIds(selected);
+  const activeMethods = (methods ?? []).filter((m) => m.active);
+  const cryptoOptions = (cryptos ?? []).map((c) => ({
+    value: c.id,
+    label: `${c.symbol} — ${c.name}`,
+    text: `${c.symbol} ${c.name}`,
+  }));
+
+  function toggleMethod(id: string) {
+    setMetodosPagoIds((prev) => (prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id]));
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!canSubmit || !parsedMin.ok || !parsedMax.ok || !parsedPrice.ok) return;
     try {
+      // Round to the precision the backend keeps: amounts DECIMAL(18,8), price DECIMAL(10,4).
       const offer = await mutation.mutateAsync({
         type,
         cryptoId,
-        minAmount: parsedMin.value,
-        maxAmount: parsedMax.value,
-        unitPrice: parsedPrice.value,
+        minAmount: round(parsedMin.value, 8),
+        maxAmount: round(parsedMax.value, 8),
+        unitPrice: round(parsedPrice.value, 4),
         fiatCurrency: fiatCurrency.trim().toUpperCase(),
         ...(additionalTerms.trim() ? { additionalTerms: additionalTerms.trim() } : {}),
         metodosPagoIds,
         ...(type === 'sell' ? { direccionFiat: direccionFiat.trim() } : {}),
       });
+      flash({ title: t('p2p.create.flashTitle'), detail: t('p2p.create.flashDetail') });
       onCreated(offer);
     } catch {
       // error surfaced via mutation.isError / mutation.error below
@@ -83,158 +90,103 @@ export function CreateOfferForm({ onCreated }: { onCreated: (offer: Offer) => vo
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate>
-      {/* Offer type */}
-      <fieldset style={{ border: 'none', padding: 0, margin: '0 0 0.75rem' }}>
-        <legend style={{ fontSize: '0.875rem', color: 'var(--color-text-muted, #666)', marginBottom: '0.25rem' }}>
-          {/* No i18n label needed — the radio labels speak for themselves */}
-        </legend>
-        <label style={{ marginRight: '1rem' }}>
-          <input
-            type="radio"
-            name="offer-type"
-            value="buy"
-            checked={type === 'buy'}
-            onChange={() => setType('buy')}
-          />
-          {' '}{t('p2p.create.typeBuy')}
-        </label>
-        <label>
-          <input
-            type="radio"
-            name="offer-type"
-            value="sell"
-            checked={type === 'sell'}
-            onChange={() => setType('sell')}
-          />
-          {' '}{t('p2p.create.typeSell')}
-        </label>
+    <form className={styles.form} onSubmit={handleSubmit} noValidate>
+      {/* Offer type — segmented radio group with an accessible group name (fixes empty legend) */}
+      <fieldset className={styles.fieldBlock} style={{ border: 'none', padding: 0, margin: 0 }}>
+        <legend className={styles.fieldLabel}>{t('p2p.create.typeLegend')}</legend>
+        <div className={styles.typeToggle} role="radiogroup" aria-label={t('p2p.create.typeLegend')}>
+          {(['buy', 'sell'] as OfferType[]).map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              role="radio"
+              value={opt}
+              aria-checked={type === opt}
+              onClick={() => setType(opt)}
+              className={`${styles.typeOpt}${type === opt ? ` ${styles.typeOptOn}` : ''}`}
+            >
+              {t(opt === 'buy' ? 'p2p.create.typeBuy' : 'p2p.create.typeSell')}
+            </button>
+          ))}
+        </div>
       </fieldset>
 
-      {/* Crypto select */}
-      <Field label={t('p2p.create.crypto')}>
-        <select
-          id="create-offer-crypto"
-          value={cryptoId}
-          onChange={(e) => setCryptoId(e.target.value)}
-        >
-          <option value=""></option>
-          {(cryptos ?? []).map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.symbol} — {c.name}
-            </option>
-          ))}
-        </select>
-      </Field>
+      {/* Crypto — custom Select (searchable) */}
+      <div className={styles.fieldBlock}>
+        <span className={styles.fieldLabel} id="create-offer-crypto-label">{t('p2p.create.crypto')}</span>
+        <Select
+          options={cryptoOptions}
+          value={cryptoId || null}
+          onChange={setCryptoId}
+          searchable
+          placeholder={t('p2p.create.cryptoPlaceholder')}
+          aria-label={t('p2p.create.crypto')}
+          aria-labelledby="create-offer-crypto-label"
+        />
+      </div>
 
-      {/* Min amount */}
       <Field label={t('p2p.create.min')}>
-        <input
-          id="create-offer-min"
-          inputMode="decimal"
-          value={rawMin}
-          onChange={(e) => setRawMin(e.target.value)}
-          autoComplete="off"
-        />
+        <Input id="create-offer-min" inputMode="decimal" value={rawMin} onChange={(e) => setRawMin(e.target.value)} autoComplete="off" placeholder="0" />
       </Field>
 
-      {/* Max amount */}
       <Field label={t('p2p.create.max')}>
-        <input
-          id="create-offer-max"
-          inputMode="decimal"
-          value={rawMax}
-          onChange={(e) => setRawMax(e.target.value)}
-          autoComplete="off"
-        />
+        <Input id="create-offer-max" inputMode="decimal" value={rawMax} onChange={(e) => setRawMax(e.target.value)} autoComplete="off" placeholder="0" />
       </Field>
 
-      {/* Min > max advisory */}
-      {minGtMax && (
-        <p role="alert" className={styles.error}>
-          {t('p2p.create.minGtMax')}
-        </p>
-      )}
+      {minGtMax && <p role="alert" className={styles.alert}>{t('p2p.create.minGtMax')}</p>}
 
-      {/* Unit price */}
       <Field label={t('p2p.create.unitPrice')}>
-        <input
-          id="create-offer-price"
-          inputMode="decimal"
-          value={rawPrice}
-          onChange={(e) => setRawPrice(e.target.value)}
-          autoComplete="off"
-        />
+        <Input id="create-offer-price" inputMode="decimal" value={rawPrice} onChange={(e) => setRawPrice(e.target.value)} autoComplete="off" placeholder="0" />
       </Field>
 
-      {/* Fiat currency */}
       <Field label={t('p2p.create.fiatCurrency')}>
-        <input
-          id="create-offer-fiat"
-          value={fiatCurrency}
-          onChange={(e) => setFiatCurrency(e.target.value)}
-          maxLength={3}
-          autoComplete="off"
-        />
+        <Input id="create-offer-fiat" value={fiatCurrency} onChange={(e) => setFiatCurrency(e.target.value)} maxLength={3} autoComplete="off" placeholder="USD" />
       </Field>
 
-      {/* Payment methods multi-select */}
-      <Field label={t('p2p.create.paymentMethods')}>
-        <select
-          id="create-offer-methods"
-          multiple
-          value={metodosPagoIds}
-          onChange={handleMethodsChange}
-          size={Math.min((methods ?? []).filter((m) => m.active).length || 3, 5)}
-        >
-          {(methods ?? [])
-            .filter((m) => m.active)
-            .map((m) => (
-              <option key={m.id} value={m.id}>
+      {/* Payment methods — toggle chips (multi-select, no native multi-select) */}
+      <div className={styles.fieldBlock}>
+        <span className={styles.fieldLabel} id="create-offer-methods-label">{t('p2p.create.paymentMethods')}</span>
+        <div className={styles.chips} role="group" aria-labelledby="create-offer-methods-label">
+          {activeMethods.map((m) => {
+            const on = metodosPagoIds.includes(m.id);
+            return (
+              <button
+                key={m.id}
+                type="button"
+                aria-pressed={on}
+                onClick={() => toggleMethod(m.id)}
+                className={`${styles.chip}${on ? ` ${styles.chipOn}` : ''}`}
+              >
                 {m.name}
-              </option>
-            ))}
-        </select>
-      </Field>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Direccion fiat — required and shown ONLY for sell */}
       {type === 'sell' && (
-        <Field
-          label={t('p2p.create.direccionFiat')}
-          helpText={t('p2p.create.direccionFiatHelp')}
-        >
-          <input
-            id="create-offer-direccion"
-            value={direccionFiat}
-            onChange={(e) => setDireccionFiat(e.target.value)}
-            autoComplete="off"
-          />
+        <Field label={t('p2p.create.direccionFiat')} helpText={t('p2p.create.direccionFiatHelp')}>
+          <Input id="create-offer-direccion" value={direccionFiat} onChange={(e) => setDireccionFiat(e.target.value)} autoComplete="off" />
         </Field>
       )}
 
       {/* Additional terms (optional) */}
       <Field label={t('p2p.create.terms')}>
-        <textarea
-          id="create-offer-terms"
-          value={additionalTerms}
-          onChange={(e) => setAdditionalTerms(e.target.value)}
-          rows={3}
-        />
+        <Textarea id="create-offer-terms" value={additionalTerms} onChange={(e) => setAdditionalTerms(e.target.value)} rows={3} />
       </Field>
 
-      {/* Mutation error */}
       {mutation.isError && mutation.error != null && (
-        <p role="alert" className={styles.error}>
-          {tError(
-            (mutation.error as { code?: string }).code ?? 'FALLBACK_UNKNOWN_ERROR',
-            { requestId: (mutation.error as { requestId?: string }).requestId ?? '' },
-          )}
+        <p role="alert" className={styles.alert}>
+          {tError(mutation.error.code ?? 'FALLBACK_UNKNOWN_ERROR', { requestId: mutation.error.requestId ?? '' })}
         </p>
       )}
 
-      <Button type="submit" disabled={!canSubmit} loading={mutation.isPending}>
-        {t('p2p.create.submit')}
-      </Button>
+      <div className={styles.actions}>
+        <Button type="submit" disabled={!canSubmit} loading={mutation.isPending}>
+          {t('p2p.create.submit')}
+        </Button>
+      </div>
     </form>
   );
 }
