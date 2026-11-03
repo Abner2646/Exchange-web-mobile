@@ -6,7 +6,7 @@
 > Lecciones y gotchas de la sesión de swap:
 > [`lessons-swap-session.md`](./lessons-swap-session.md).
 
-Última actualización: **2026-11-02** (fin de la sesión de trading).
+Última actualización: **2026-11-02** (fin de la sesión de P2P).
 
 ---
 
@@ -44,8 +44,8 @@ cuando cumple, además de la paridad V1 / tech V2:
 | — | **Swap** | `/swap` | C→nuevo | ✅ **hecho a fondo** (referencia del estándar) |
 | 1 | **Wallet** (balances, transfer, retiro, **depósito**, historial) | `/wallet` | **B** | ✅ **hecho** (verificado Playwright+screenshots, 2026-11-02) |
 | 2 | **Trading** (order book, order form, trades) | `/trading` | B/C | ✅ **hecho** (terminal spot, selector único, verificado 2026-11-02) |
-| 3 | **P2P** (ofertas, crear oferta, transacciones) | `/p2p` | B | ⬜ **PRÓXIMA** |
-| 4 | Profile (cuenta, seguridad/2FA, KYC, notificaciones) | `/profile` | B | ⬜ pendiente |
+| 3 | **P2P** (ofertas, crear oferta, transacciones) | `/p2p` | B | ✅ **hecho** (marketplace + stepper de estado, verificado Playwright+screenshots 2026-11-02) |
+| 4 | Profile (cuenta, seguridad/2FA, KYC, notificaciones) | `/profile` | B | ⬜ **PRÓXIMA** |
 | 5 | Admin (panel super_admin) | `/admin` | C | ⬜ pendiente (menor prioridad) |
 
 Todas las páginas de la 1 a la 5 ya tienen **feature V2 funcional** (componentes +
@@ -98,3 +98,66 @@ básicas: no pasaron por el estándar completo del rebuild (no son money-path).
   retiro en vivo sigue roto hasta una sesión de backend aparte. Ver `known-issues.md` §D.
 - **Depósito**: deshabilitado (cartel región, `wallet.deposit.unavailable*`). El
   `DepositView` ya no llama a `/deposit-address`; el flujo real queda en git history.
+
+### P2P (sesión 2026-11-02)
+- **Caso B — marketplace entre usuarios.** 4 tabs: Browse · My Transactions ·
+  My Offers · Create Offer. Chrome = header + pills (molde wallet).
+- **Backend es la fuente de verdad** (sin tocar): rutas en español `/ofertaP2P/*`
+  y `/transaccionP2P/*`. Máquina de estados real = `initiated → payment_confirmed →
+  completed` (+ `cancelled` desde initiated/payment_confirmed). El enum DB tiene
+  `crypto_locked` pero **nunca se asigna** (muerto). `POST /transaccionP2P` =
+  money-path con **Idempotency-Key obligatorio** (dedup backend autoritativo).
+- **Precisión monetaria (redondeo pre-envío):** oferta `minAmount`/`maxAmount` =
+  `DECIMAL(18,8)` → **round(8)**; `unitPrice` = `DECIMAL(10,4)` → **round(4)**
+  (el CreateOfferForm viejo NO redondeaba el precio → corregido); `amount` de
+  aceptar = `DECIMAL(18,8)` → round(8). `fiatAmount` lo calcula el backend.
+- **Estándar aplicado:** `Select` custom para método de pago (aceptar) y activo
+  (crear); **chips toggle** para métodos de pago multi (no hay multi-select en el
+  `Select`); filtro de activo por **pills** + toggle Buy/Sell segmentado; `CoinLogo`
+  + `Badge` de tipo/estado; `SuccessFlash` en aceptar/crear/confirmar-pago/liberar;
+  estados loading(skeleton)/empty/error con primitivos; **stepper de estado** en el
+  detalle de transacción; `<legend>` del fieldset buy/sell con nombre accesible
+  (fix §C2); casts `error as {...}` eliminados en P2P (fix §C1).
+- **Decisiones:** tab por defecto = **Sell** (se mantiene; es product choice, no
+  bug — invertir la semántica del filtro era riesgo innecesario). Columna única
+  **Type** (badge) en vez del header "Buy/Sell" concatenado.
+- **Gotcha e2e (arreglado, compartido):** `loginViaUI` stubeaba el login con
+  `{ user: { username } }` **sin `id`** → el `useLogin` siembra la cache del user
+  con eso y `staleTime` evita el refetch a `/me` → `currentUser.id` quedaba
+  `undefined` y el gating buyer/seller del detalle no mostraba botones. El backend
+  real devuelve el user completo en el login; se alineó el stub (`support.ts`) a
+  devolver el user completo. Afecta a TODOS los specs que usan `loginViaUI`
+  (verificado: p2p/wallet/swap/trading verdes).
+
+---
+
+## Próxima página — Profile (prompt de arranque)
+
+Rediseñar `/profile` al estándar nuevo (molde Swap/Wallet/Trading/P2P). Es **Caso B**
+(cuenta del usuario con datos del backend). La feature ya existe en
+`web/src/features/profile/` (cuenta, seguridad/2FA TOTP, cambio de email/contraseña,
+KYC, notificaciones) + queries + tests — se **rediseña**, no se construye.
+
+**Lectura obligatoria antes de tocar:** `redesign-methodology.md`,
+`aesthetic-standard.md`, este `rebuild-status.md` (el "estándar nuevo"),
+`lessons-swap-session.md`, y `known-issues.md` (§C1 casts `error as`, §C2 a11y de
+tabs/`useFormError`, §C4 Profile: `ProfileTabs` sin `styles.panel` wrapper, §C6
+patrones de admin si aplica). Mirar la referencia viva en
+`web/src/features/{swap,wallet,trading,p2p}/components/`.
+
+**Investigar el backend ANTES de diseñar** (como siempre): endpoints de perfil,
+seguridad (2FA TOTP enroll/verify/disable — ojo con el flujo de operator-MFA y el
+`requireOperatorMFA`), cambio de email/contraseña (validaciones, pasos), KYC
+(estados/niveles), notificaciones (marcar leído, contador). **2FA = Caso C** (no hay
+V1). Reportar hallazgos antes de tocar UI.
+
+**Alcance tentativo:** tabs al estándar (header + pills, con `styles.panel` wrapper
+consistente); forms con `Field`/`Input`/`Select` custom + `SuccessFlash` en las
+acciones que finalizan (cambio de email/contraseña, enroll/disable 2FA); badges de
+estado para KYC; estados loading(skeleton)/empty/error; `KycStatusCard` ya arreglado
+(error text, no "Loading…") — mantener; consolidar `error as {...}` casts (§C1).
+
+**Cierre:** `npm run typecheck`, `npx vitest run --pool=forks src/features/profile`,
+e2e afectados (si hay profile spec) + verificación en navegador con screenshots.
+Commits Conventional en inglés sin atribución. Al terminar: marcar Profile ✅ acá y
+dejar el prompt de **Admin** (la última antes de la 2ª pasada del Home).

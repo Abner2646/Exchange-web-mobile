@@ -40,11 +40,11 @@ These were caught during per-task review, not in production. Documented so the p
 Grouped by theme; none block a merge. Pull these into the dedicated polish pass (and the a11y refactor to a shared `useFormError()` + per-field `aria-describedby`).
 
 ### C1. Recurring code smell — unnecessary `error as { code?: string }` casts
-The mutation/query error is already typed `ApiError`, so `(error as { code?: string }).code` / `(error as { requestId?: string }).requestId` casts are redundant. Present in: swap SwapForm, trading OrderForm (fixed there), P2P AcceptOfferForm, P2P TransactionDetail, P2P MyOffersView, profile TwoFactorSettings (`activeError`). ChangePasswordForm/EmailChangeForm/KycStatusCard already do it right (`mutation.error.code`, no cast). **Consolidate**: drop the casts, or extract a shared `errorMessage(err: ApiError)` helper.
+The mutation/query error is already typed `ApiError`, so `(error as { code?: string }).code` / `(error as { requestId?: string }).requestId` casts are redundant. Present in: swap SwapForm, profile TwoFactorSettings (`activeError`). ~~trading OrderForm~~ (fixed), ~~P2P AcceptOfferForm / TransactionDetail / MyOffersView / CreateOfferForm~~ (fixed in the P2P redesign 2026-11-02 — all use `mutation.error.code` / typed `ApiError | null` now). ChangePasswordForm/EmailChangeForm/KycStatusCard already do it right (`mutation.error.code`, no cast). **Consolidate** the remaining two, or extract a shared `errorMessage(err: ApiError)` helper.
 
 ### C2. a11y
-- Tabs (wallet WalletTabs, p2p P2PTabs, profile ProfileTabs): no roving-tabindex arrow-key nav (buttons are Tab+Enter focusable — acceptable, but not ARIA-ideal).
-- CreateOfferForm: empty `<legend>` on the buy/sell fieldset (no announced group name).
+- Tabs (wallet WalletTabs, profile ProfileTabs): no roving-tabindex arrow-key nav (buttons are Tab+Enter focusable — acceptable, but not ARIA-ideal). ~~p2p P2PTabs~~ (P2P tabs kept as plain `role=tab` buttons; the segmented buy/sell toggle in OffersList is a `radiogroup`/`tablist` — acceptable).
+- ~~CreateOfferForm: empty `<legend>` on the buy/sell fieldset~~ (FIXED 2026-11-02: the fieldset has a real `<legend>` = `p2p.create.typeLegend` + `role=radiogroup` with `aria-label`).
 - Shared `useFormError()` + per-field `aria-describedby` refactor (go-live a11y item).
 
 ### C3. Test hygiene / coverage gaps
@@ -62,7 +62,7 @@ The mutation/query error is already typed `ApiError`, so `(error as { code?: str
 ### C4. UX / cosmetic
 - Swap: pair-level `oraclePaused` shows empty-quote text, not an explicit paused message (mitigated by the PairSelect pause marker + disabled submit + the 503-from-execute panel); SwapHistory renders a raw ISO date (no shared formatDate util); `check-limit` fires per quote keystroke.
 - Trading: RecentTradesView collapses error→empty (weaker than OrderBook); OrderBookView can render a negative spread on a crossed book (needs `Math.abs`/guard); two pair selectors (widget vs form — documented MVP trade-off); duplicate order-book table header; orderbook poll cadence 5s vs 10s; dead `parsedQty.ok` branch in the sell path; client 8-decimal cap vs pair precision (conservative, server authoritative).
-- P2P: OffersList hardcoded en-dash range separator + empty-state rendered below the tab/filter chrome (cosmetic) + default tab = `sell` (product choice); MyTransactionsView `new Date()` in render (SSR — mitigated by `'use client'`) + reuses `wallet.history.type` for the role column (semantics); TransactionDetail status is a single label, not a visual stepper (MVP ok); MyOffers "Buy/Sell" header should be a single `type` key.
+- ~~P2P~~ (REDESIGNED 2026-11-02 to the standard): ~~empty-state rendered below the tab/filter chrome~~ (now `EmptyState` primitive); ~~reuses `wallet.history.type` for the role column~~ (own `p2p.myTx.buyer/seller` Badge); ~~TransactionDetail status is a single label~~ (now a visual **stepper**); ~~MyOffers/OffersList "Buy/Sell" header~~ (now a single **`p2p.offers.type`** column with a Badge). Still present (benign): OffersList uses a literal `–` range separator; default browse tab = `sell` (kept — product choice); MyTransactionsView `new Date()` in render (fine — `'use client'`).
 - Profile: ProfileTabs single-component panels lack the `styles.panel` wrapper (spacing inconsistency vs the security tab).
 - `es` catalog: `profile.notifications.type.exchange` = `'Exchange'` (product-name autonym — acceptable).
 
