@@ -33,7 +33,7 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({ labelKey
         </svg>
         {t(labelKey)}
       </button>
-      <div className={styles.divider}><span>o</span></div>
+      <div className={styles.divider}><span>{t('auth.divider.or')}</span></div>
     </>
   );
 };

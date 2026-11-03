@@ -13,17 +13,17 @@
 
 .card {
   width: 100%;
-  max-width: 460px;
+  max-width: 440px;
   background-color: var(--bg-elevated);
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
-  padding: var(--spacing-xxl);
+  padding: var(--spacing-xl);
   text-align: center;
 }
 
 @media (max-width: 480px) {
   .card {
-    padding: var(--spacing-xl) var(--spacing-lg);
+    padding: var(--spacing-lg);
   }
 }

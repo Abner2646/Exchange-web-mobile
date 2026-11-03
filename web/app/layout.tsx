@@ -29,6 +29,11 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://bitflow.community'),
   title: { default: 'BitFlow', template: '%s · BitFlow' },
   description: 'BitFlow — custodial crypto exchange.',
+  icons: {
+    icon: '/images/Logo1.png',
+    shortcut: '/images/Logo1.png',
+    apple: '/images/Logo1.png',
+  },
   robots: process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production'
     ? { index: true, follow: true }
     : { index: false, follow: false },

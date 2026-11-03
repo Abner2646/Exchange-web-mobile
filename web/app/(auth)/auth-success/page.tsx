@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { session } from '@/shared/api';
+import { useTranslation } from '@/shared/i18n';
 import { Spinner } from '@/shared/ui';
 
 // Google OAuth callback landing. The backend redirects here with ?token=… after
@@ -10,6 +11,7 @@ import { Spinner } from '@/shared/ui';
 // the token and move on; useCurrentUser then hydrates the user from /user/me.
 export default function AuthSuccessPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
@@ -25,9 +27,9 @@ export default function AuthSuccessPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-      <Spinner size={32} label="Iniciando sesión" />
+      <Spinner size={32} label={t('auth.authSuccess.loading')} />
       <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
-        {failed ? 'No pudimos completar el acceso. Te llevamos al login…' : 'Iniciando sesión…'}
+        {failed ? t('auth.authSuccess.failed') : t('auth.authSuccess.loading')}
       </p>
     </div>
   );
