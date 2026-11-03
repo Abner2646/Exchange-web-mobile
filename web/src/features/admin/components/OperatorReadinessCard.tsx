@@ -1,32 +1,24 @@
 'use client';
 
 import { useTranslation } from '@/shared/i18n';
+import { Badge, ErrorState, Skeleton } from '@/shared/ui';
 import { useReadiness } from '../queries';
 import type { OperatorSummary } from '../types';
 import styles from './admin.module.css';
 
-// ── OperatorList ──────────────────────────────────────────────────────────────
-
-interface OperatorListProps {
-  operators: OperatorSummary[];
-  badge: string;
-}
-
-function OperatorList({ operators, badge }: OperatorListProps) {
+function OperatorList({ operators, badge, tone }: { operators: OperatorSummary[]; badge: string; tone: 'success' | 'warning' }) {
   return (
     <ul className={styles.operatorList}>
       {operators.map((op) => (
         <li key={op.id} className={styles.operatorItem}>
           <span className={styles.operatorEmail}>{op.email}</span>
           <span className={styles.operatorRole}>{op.role}</span>
-          <span className={styles.operatorBadge}>{badge}</span>
+          <Badge tone={tone}>{badge}</Badge>
         </li>
       ))}
     </ul>
   );
 }
-
-// ── OperatorReadinessCard ─────────────────────────────────────────────────────
 
 export function OperatorReadinessCard() {
   const { t } = useTranslation();
@@ -34,18 +26,19 @@ export function OperatorReadinessCard() {
 
   if (isLoading) {
     return (
-      <div className={styles.readinessCard}>
-        <p className={styles.loadingState}>{t('common.loading')}</p>
+      <div className={styles.card}>
+        <div role="status" aria-label={t('common.loading')} className={styles.skelRow}>
+          <Skeleton variant="text" width={90} height={24} />
+          <Skeleton variant="text" width="50%" />
+        </div>
       </div>
     );
   }
 
   if (isError || !data) {
     return (
-      <div className={styles.readinessCard}>
-        <p role="alert" className={styles.fetchError}>
-          {t('common.error')}
-        </p>
+      <div className={styles.card}>
+        <ErrorState title={t('common.error')} />
       </div>
     );
   }
@@ -53,39 +46,34 @@ export function OperatorReadinessCard() {
   const { ready, operatorCount, enrolledCount, minEnrolled, enrolled, pending, reasons } = data;
 
   return (
-    <div className={styles.readinessCard}>
-      {/* Badge */}
-      <div className={styles.readinessBadgeRow}>
-        <span
-          className={ready ? styles.readinessBadgeReady : styles.readinessBadgeNotReady}
-        >
+    <div className={styles.card}>
+      <h2 className={styles.sectionTitle}>{t('admin.readiness.heading')}</h2>
+
+      <div>
+        <Badge tone={ready ? 'success' : 'error'}>
           {ready ? t('admin.readiness.ready') : t('admin.readiness.notReady')}
-        </span>
+        </Badge>
       </div>
 
-      {/* Counts */}
       <dl className={styles.readinessCounts}>
-        <div className={styles.readinessCountItem}>
-          <dt className={styles.metaLabel}>{t('admin.readiness.operatorCount.label')}</dt>
-          <dd>{operatorCount}</dd>
+        <div className={styles.countItem}>
+          <dt className={styles.countLabel}>{t('admin.readiness.operatorCount.label')}</dt>
+          <dd className={styles.countValue}>{operatorCount}</dd>
         </div>
-        <div className={styles.readinessCountItem}>
-          <dt className={styles.metaLabel}>{t('admin.readiness.enrolledCount.label')}</dt>
-          <dd>{enrolledCount}</dd>
+        <div className={styles.countItem}>
+          <dt className={styles.countLabel}>{t('admin.readiness.enrolledCount.label')}</dt>
+          <dd className={styles.countValue}>{enrolledCount}</dd>
         </div>
-        <div className={styles.readinessCountItem}>
-          <dt className={styles.metaLabel}>{t('admin.readiness.minEnrolled.label')}</dt>
-          <dd>{minEnrolled}</dd>
+        <div className={styles.countItem}>
+          <dt className={styles.countLabel}>{t('admin.readiness.minEnrolled.label')}</dt>
+          <dd className={styles.countValue}>{minEnrolled}</dd>
         </div>
       </dl>
 
-      {/* Reasons (only when not ready) */}
       {!ready && reasons.length > 0 && (
-        <div className={styles.readinessReasons}>
-          <h3 className={styles.readinessSectionHeading}>
-            {t('admin.readiness.reasons.heading')}
-          </h3>
-          <ul className={styles.readinessReasonList}>
+        <div className={styles.section}>
+          <h3 className={styles.sectionTitle}>{t('admin.readiness.reasons.heading')}</h3>
+          <ul className={styles.reasonList}>
             {reasons.map((r, i) => (
               <li key={i}>{r}</li>
             ))}
@@ -93,23 +81,17 @@ export function OperatorReadinessCard() {
         </div>
       )}
 
-      {/* Enrolled operators */}
       {enrolled.length > 0 && (
-        <div className={styles.readinessSection}>
-          <h3 className={styles.readinessSectionHeading}>
-            {t('admin.readiness.enrolled.heading')}
-          </h3>
-          <OperatorList operators={enrolled} badge="enrolled" />
+        <div className={styles.section}>
+          <h3 className={styles.sectionTitle}>{t('admin.readiness.enrolled.heading')}</h3>
+          <OperatorList operators={enrolled} badge={t('admin.readiness.enrolledBadge')} tone="success" />
         </div>
       )}
 
-      {/* Pending enrollment */}
       {pending.length > 0 && (
-        <div className={styles.readinessSection}>
-          <h3 className={styles.readinessSectionHeading}>
-            {t('admin.readiness.pending.heading')}
-          </h3>
-          <OperatorList operators={pending} badge="pending" />
+        <div className={styles.section}>
+          <h3 className={styles.sectionTitle}>{t('admin.readiness.pending.heading')}</h3>
+          <OperatorList operators={pending} badge={t('admin.readiness.pendingBadge')} tone="warning" />
         </div>
       )}
     </div>

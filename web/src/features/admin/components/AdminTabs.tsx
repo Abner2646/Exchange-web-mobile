@@ -18,14 +18,21 @@ export function AdminPage() {
   const [activeTab, setActiveTab] = useState<Tab>('governance');
 
   return (
-    <section>
-      <div className={styles.tabs} role="tablist">
+    <section className={styles.page}>
+      <header className={styles.header}>
+        <h1 className={styles.title}>{t('admin.title')}</h1>
+        <p className={styles.subtitle}>{t('admin.subtitle')}</p>
+      </header>
+
+      <div className={styles.tabs} role="tablist" aria-label={t('admin.title')}>
         {TABS.map((tab) => (
           <button
             key={tab}
             type="button"
             role="tab"
+            id={`admin-tab-${tab}`}
             aria-selected={activeTab === tab}
+            aria-controls={`admin-panel-${tab}`}
             onClick={() => setActiveTab(tab)}
             className={`${styles.tab}${activeTab === tab ? ` ${styles.tabActive}` : ''}`}
           >
@@ -34,20 +41,22 @@ export function AdminPage() {
         ))}
       </div>
 
-      {activeTab === 'governance' && (
-        <div className={styles.panel}>
-          <GovernanceInbox />
-          <OperatorReadinessCard />
-        </div>
-      )}
+      <div role="tabpanel" id={`admin-panel-${activeTab}`} aria-labelledby={`admin-tab-${activeTab}`}>
+        {activeTab === 'governance' && (
+          <div className={styles.panel}>
+            <GovernanceInbox />
+            <OperatorReadinessCard />
+          </div>
+        )}
 
-      {activeTab === 'users' && <UsersAdmin />}
+        {activeTab === 'users' && <UsersAdmin />}
 
-      {activeTab === 'config' && <BusinessConfigEditor />}
+        {activeTab === 'config' && <BusinessConfigEditor />}
 
-      {activeTab === 'aml' && <AmlOps />}
+        {activeTab === 'aml' && <AmlOps />}
 
-      {activeTab === 'audit' && <AuditViewer />}
+        {activeTab === 'audit' && <AuditViewer />}
+      </div>
     </section>
   );
 }

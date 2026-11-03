@@ -3,25 +3,17 @@
 import { useState } from 'react';
 import { useTranslation } from '@/shared/i18n';
 import { useErrorTranslation } from '@/shared/i18n/errorCatalog';
-import { Button } from '@/shared/ui';
+import { Button, Field, Input, Select, EmptyState, ErrorState, Skeleton } from '@/shared/ui';
 import { useConfig, useUpsertConfig } from '../queries';
 import type { BusinessConfigItem } from '../types';
 import styles from './admin.module.css';
-
-// ── Valid types ───────────────────────────────────────────────────────────────
 
 const VALID_TYPES = ['string', 'number', 'boolean', 'json'] as const;
 type ConfigType = (typeof VALID_TYPES)[number];
 
 // ── EditRow ───────────────────────────────────────────────────────────────────
 
-interface EditRowProps {
-  item: BusinessConfigItem;
-  onCancel: () => void;
-  upsertMutation: ReturnType<typeof useUpsertConfig>;
-}
-
-function EditRow({ item, onCancel, upsertMutation }: EditRowProps) {
+function EditRow({ item, onCancel, upsertMutation }: { item: BusinessConfigItem; onCancel: () => void; upsertMutation: ReturnType<typeof useUpsertConfig> }) {
   const { t } = useTranslation();
   const { tError } = useErrorTranslation();
 
@@ -33,99 +25,54 @@ function EditRow({ item, onCancel, upsertMutation }: EditRowProps) {
   const [editDescription, setEditDescription] = useState(item.description ?? '');
 
   const isValueValid = editValue.trim().length > 0;
-  const isTypeValid = VALID_TYPES.includes(editType);
-  const canSave = isValueValid && isTypeValid && !upsertMutation.isPending;
+  const canSave = isValueValid && VALID_TYPES.includes(editType) && !upsertMutation.isPending;
 
   function handleSave() {
     if (!canSave) return;
-    upsertMutation.mutate(
-      {
-        key: item.key,
-        body: {
-          // value is ALWAYS sent as a string — never coerced to number
-          value: editValue,
-          type: editType,
-          ...(editCategory.trim() ? { category: editCategory.trim() } : {}),
-          ...(editDescription.trim() ? { description: editDescription.trim() } : {}),
-        },
+    upsertMutation.mutate({
+      key: item.key,
+      body: {
+        // value is ALWAYS sent as a string — never coerced to number
+        value: editValue,
+        type: editType,
+        ...(editCategory.trim() ? { category: editCategory.trim() } : {}),
+        ...(editDescription.trim() ? { description: editDescription.trim() } : {}),
       },
-      {
-        onSuccess: () => {
-          // Keep edit open so saved indicator is visible; parent will re-render
-        },
-      },
-    );
+    });
   }
 
   return (
     <>
-      <td className={styles.configValue}>
-        <input
-          id={`config-value-${item.key}`}
-          type="text"
-          className={styles.configEditInput}
-          value={editValue}
-          onChange={(e) => setEditValue(e.target.value)}
-          aria-label={t('admin.config.col.value')}
-        />
+      <td>
+        <Input id={`config-value-${item.key}`} type="text" className={styles.mono} value={editValue} onChange={(e) => setEditValue(e.target.value)} aria-label={t('admin.config.col.value')} />
       </td>
       <td>
-        <select
-          className={styles.configTypeSelect}
+        <Select
+          options={VALID_TYPES.map((tp) => ({ value: tp, label: tp }))}
           value={editType}
-          onChange={(e) => setEditType(e.target.value as ConfigType)}
+          onChange={(v) => setEditType(v as ConfigType)}
           aria-label={t('admin.config.col.type')}
-        >
-          {VALID_TYPES.map((tp) => (
-            <option key={tp} value={tp}>
-              {tp}
-            </option>
-          ))}
-        </select>
-      </td>
-      <td>
-        <input
-          type="text"
-          className={styles.configCategoryInput}
-          value={editCategory}
-          onChange={(e) => setEditCategory(e.target.value)}
-          aria-label={t('admin.config.col.category')}
         />
       </td>
       <td>
-        <input
-          type="text"
-          className={styles.configCategoryInput}
-          value={editDescription}
-          onChange={(e) => setEditDescription(e.target.value)}
-          aria-label={t('admin.config.col.description')}
-        />
+        <Input type="text" value={editCategory} onChange={(e) => setEditCategory(e.target.value)} aria-label={t('admin.config.col.category')} />
       </td>
       <td>
-        <div className={styles.configActions}>
-          <Button
-            onClick={handleSave}
-            disabled={!canSave}
-            loading={upsertMutation.isPending}
-          >
+        <Input type="text" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} aria-label={t('admin.config.col.description')} />
+      </td>
+      <td>
+        <div className={styles.cellActions}>
+          <Button size="small" onClick={handleSave} disabled={!canSave} loading={upsertMutation.isPending}>
             {t('admin.config.save')}
           </Button>
-          <Button variant="secondary" onClick={onCancel} disabled={upsertMutation.isPending}>
+          <Button size="small" variant="secondary" onClick={onCancel} disabled={upsertMutation.isPending}>
             {t('common.cancel')}
           </Button>
         </div>
-        {upsertMutation.isSuccess && (
-          <p className={styles.configSaved}>{t('admin.config.saved')}</p>
-        )}
+        {upsertMutation.isSuccess && <p className={styles.success}>{t('admin.config.saved')}</p>}
         {upsertMutation.isError && upsertMutation.error != null && (
-          <p role="alert" className={styles.configError}>
-            {tError(
-              (upsertMutation.error as { code?: string }).code ?? 'FALLBACK_UNKNOWN_ERROR',
-              {
-                requestId:
-                  (upsertMutation.error as { requestId?: string }).requestId ?? '',
-              },
-            )}
+          <p role="alert" className={styles.alert}>
+            {tError(upsertMutation.error.code ?? 'FALLBACK_UNKNOWN_ERROR', { requestId: upsertMutation.error.requestId ?? '' })}
           </p>
         )}
       </td>
@@ -135,39 +82,28 @@ function EditRow({ item, onCancel, upsertMutation }: EditRowProps) {
 
 // ── ConfigRow ─────────────────────────────────────────────────────────────────
 
-interface ConfigRowProps {
-  item: BusinessConfigItem;
-  upsertMutation: ReturnType<typeof useUpsertConfig>;
-}
-
-function ConfigRow({ item, upsertMutation }: ConfigRowProps) {
+function ConfigRow({ item, upsertMutation }: { item: BusinessConfigItem; upsertMutation: ReturnType<typeof useUpsertConfig> }) {
   const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
 
   if (editing) {
     return (
       <tr>
-        <td>{item.key}</td>
-        <EditRow
-          item={item}
-          onCancel={() => setEditing(false)}
-          upsertMutation={upsertMutation}
-        />
+        <td className={styles.mono}>{item.key}</td>
+        <EditRow item={item} onCancel={() => setEditing(false)} upsertMutation={upsertMutation} />
       </tr>
     );
   }
 
   return (
     <tr>
-      <td>{item.key}</td>
-      <td className={styles.configValue}>{item.value}</td>
+      <td className={styles.mono}>{item.key}</td>
+      <td className={styles.mono}>{item.value}</td>
       <td>{item.type ?? '—'}</td>
       <td>{item.category ?? '—'}</td>
       <td>{item.description ?? '—'}</td>
       <td>
-        <Button onClick={() => setEditing(true)}>
-          {t('common.edit')}
-        </Button>
+        <Button size="small" variant="secondary" onClick={() => setEditing(true)}>{t('common.edit')}</Button>
       </td>
     </tr>
   );
@@ -179,65 +115,55 @@ export function BusinessConfigEditor() {
   const { t } = useTranslation();
   const [categoryFilter, setCategoryFilter] = useState('');
 
-  // Pass undefined when empty so the hook lists all configs
   const category = categoryFilter.trim() || undefined;
-  const { data, isLoading, isError } = useConfig(category);
+  const { data, isLoading, isError, refetch } = useConfig(category);
   const upsertMutation = useUpsertConfig();
 
   if (isLoading) {
     return (
-      <div className={styles.configEditor}>
-        <p className={styles.loadingState}>{t('common.loading')}</p>
+      <div role="status" aria-label={t('common.loading')} className={styles.skelRow}>
+        <Skeleton variant="text" width="60%" />
       </div>
     );
   }
 
   if (isError) {
-    return (
-      <div className={styles.configEditor}>
-        <p role="alert" className={styles.fetchError}>
-          {t('common.error')}
-        </p>
-      </div>
-    );
+    return <ErrorState title={t('common.error')} onRetry={() => refetch()} retryLabel={t('common.retry')} />;
   }
 
   const items = data?.data ?? [];
 
   return (
-    <div className={styles.configEditor}>
-      {/* Category filter */}
-      <div className={styles.configFilterBar}>
-        <label htmlFor="config-category-filter">
-          {t('admin.config.categoryFilter.label')}
-        </label>
-        <input
-          id="config-category-filter"
-          type="text"
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-          className={styles.configCategoryInput}
-        />
+    <div className={styles.section}>
+      <div className={styles.filterBar}>
+        <Field label={t('admin.config.categoryFilter.label')}>
+          <Input id="config-category-filter" type="text" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} autoComplete="off" />
+        </Field>
       </div>
 
-      {/* Config table */}
-      <table className={styles.configTable}>
-        <thead>
-          <tr>
-            <th>{t('admin.config.col.key')}</th>
-            <th>{t('admin.config.col.value')}</th>
-            <th>{t('admin.config.col.type')}</th>
-            <th>{t('admin.config.col.category')}</th>
-            <th>{t('admin.config.col.description')}</th>
-            <th>{/* actions */}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((item) => (
-            <ConfigRow key={item.key} item={item} upsertMutation={upsertMutation} />
-          ))}
-        </tbody>
-      </table>
+      {items.length === 0 ? (
+        <EmptyState title={t('admin.config.empty')} />
+      ) : (
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>{t('admin.config.col.key')}</th>
+                <th>{t('admin.config.col.value')}</th>
+                <th>{t('admin.config.col.type')}</th>
+                <th>{t('admin.config.col.category')}</th>
+                <th>{t('admin.config.col.description')}</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <ConfigRow key={item.key} item={item} upsertMutation={upsertMutation} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

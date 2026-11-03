@@ -125,7 +125,7 @@ describe('GovernanceInbox — loading state', () => {
       error: null,
     });
     setup();
-    expect(screen.getByText(/Loading\.\.\./i)).toBeInTheDocument();
+    expect(screen.getByRole('status')).toBeInTheDocument();
   });
 });
 

@@ -141,7 +141,7 @@ describe('AmlOps — config toggles', () => {
   it('renders loading state for AML config', () => {
     useAmlConfigMock.mockReturnValue({ data: undefined, isLoading: true, isError: false, error: null });
     setup();
-    expect(screen.getByText(/Loading\.\.\./i)).toBeInTheDocument();
+    expect(screen.getAllByRole('status').length).toBeGreaterThan(0);
   });
 });
 
@@ -304,8 +304,9 @@ describe('AmlOps — cases', () => {
 
   it('status filter passes the status value to useCases', () => {
     setup();
-    const filterSelect = screen.getByLabelText(/Filter by status/i);
-    fireEvent.change(filterSelect, { target: { value: 'open' } });
+    // Custom Select (never a native <select>): open the listbox and pick the option.
+    fireEvent.click(screen.getByRole('button', { name: /Filter by status/i }));
+    fireEvent.click(screen.getByRole('option', { name: 'open' }));
     expect(useCasesMock).toHaveBeenCalledWith('open');
   });
 

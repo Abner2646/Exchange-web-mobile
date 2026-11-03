@@ -70,7 +70,7 @@ describe('OperatorReadinessCard — loading state', () => {
   it('shows loading indicator while isLoading', () => {
     useReadinessMock.mockReturnValue({ data: undefined, isLoading: true, isError: false });
     setup();
-    expect(screen.getByText(/Loading\.\.\./i)).toBeInTheDocument();
+    expect(screen.getByRole('status')).toBeInTheDocument();
   });
 });
 

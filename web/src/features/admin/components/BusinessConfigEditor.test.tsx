@@ -96,7 +96,7 @@ describe('BusinessConfigEditor — loading state', () => {
       error: null,
     });
     setup();
-    expect(screen.getByText(/Loading\.\.\./i)).toBeInTheDocument();
+    expect(screen.getByRole('status')).toBeInTheDocument();
   });
 });
 
@@ -162,7 +162,6 @@ describe('BusinessConfigEditor — inline edit and save', () => {
           type: 'number',
         }),
       }),
-      expect.anything(),
     );
   });
 

@@ -69,7 +69,7 @@ describe('AuditViewer — loading state', () => {
   it('shows loading indicator while isLoading', () => {
     useAuditMock.mockReturnValue({ data: undefined, isLoading: true, isError: false });
     setup();
-    expect(screen.getByText(/Loading\.\.\./i)).toBeInTheDocument();
+    expect(screen.getByRole('status')).toBeInTheDocument();
   });
 });
 
