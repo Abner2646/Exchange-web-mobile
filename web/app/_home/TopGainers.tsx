@@ -1,9 +1,11 @@
 'use client';
 
+import { useTranslation } from '@/shared/i18n';
 import { useMarkets, formatPrice, formatPct } from './coingecko';
 import styles from '../marketing.module.css';
 
 export function TopGainers() {
+  const { t } = useTranslation();
   const { data, isLoading } = useMarkets();
   const gainers = (data ?? [])
     .filter((c) => (c.price_change_percentage_24h ?? 0) > 0)
@@ -15,7 +17,7 @@ export function TopGainers() {
       <div className={styles.gainersCard}>
         <div className={styles.gainersHeader}>
           <svg className={styles.gainersIcon} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 5l7 8h-4v6h-6v-6H5l7-8z" /></svg>
-          <h3>Top Ganadores (24hs)</h3>
+          <h3>{t('home.gainers.title')}</h3>
         </div>
         <div className={styles.gainersList}>
           {isLoading &&

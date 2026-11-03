@@ -1,28 +1,8 @@
-import Link from 'next/link';
-import styles from './Footer.module.css';
+'use client';
 
-const PRODUCT = [
-  { label: 'Trading Spot', href: '/trading' },
-  { label: 'Swap', href: '/swap' },
-  { label: 'P2P', href: '/p2p' },
-  { label: 'Wallet', href: '/wallet' },
-];
-const RESOURCES = [
-  { label: 'Centro de ayuda', href: '/help' },
-  { label: 'Blog', href: '/blog' },
-  { label: 'Academia', href: '/academy' },
-  { label: 'Estado del sistema', href: '/status' },
-];
-const LEGAL = [
-  { label: 'Política de privacidad', href: '/privacy' },
-  { label: 'Términos de servicio', href: '/terms' },
-  { label: 'Política de cookies', href: '/cookies' },
-  { label: 'Política AML', href: '/aml' },
-];
-const COMPANY = [
-  { label: 'Sobre nosotros', href: '/about' },
-  { label: 'Noticias', href: '/news' },
-];
+import Link from 'next/link';
+import { useTranslation } from '@/shared/i18n';
+import styles from './Footer.module.css';
 
 function Column({ title, links }: { title: string; links: { label: string; href: string }[] }) {
   return (
@@ -30,7 +10,7 @@ function Column({ title, links }: { title: string; links: { label: string; href:
       <h4 className={styles.sectionTitle}>{title}</h4>
       <ul className={styles.links}>
         {links.map((l) => (
-          <li key={l.label}><Link href={l.href} className={styles.link}>{l.label}</Link></li>
+          <li key={l.href}><Link href={l.href} className={styles.link}>{l.label}</Link></li>
         ))}
       </ul>
     </div>
@@ -38,7 +18,33 @@ function Column({ title, links }: { title: string; links: { label: string; href:
 }
 
 export function Footer() {
+  const { t } = useTranslation();
   const year = new Date().getFullYear();
+
+  // Proper nouns (Trading Spot, Swap, P2P, Wallet, Blog) are brand names — not translated.
+  const PRODUCT = [
+    { label: 'Trading Spot', href: '/trading' },
+    { label: 'Swap', href: '/swap' },
+    { label: 'P2P', href: '/p2p' },
+    { label: 'Wallet', href: '/wallet' },
+  ];
+  const RESOURCES = [
+    { label: t('footer.link.help'), href: '/help' },
+    { label: 'Blog', href: '/blog' },
+    { label: t('footer.link.academy'), href: '/academy' },
+    { label: t('footer.link.status'), href: '/status' },
+  ];
+  const LEGAL = [
+    { label: t('footer.link.privacy'), href: '/privacy' },
+    { label: t('footer.link.terms'), href: '/terms' },
+    { label: t('footer.link.cookies'), href: '/cookies' },
+    { label: t('footer.link.aml'), href: '/aml' },
+  ];
+  const COMPANY = [
+    { label: t('footer.link.about'), href: '/about' },
+    { label: t('footer.link.news'), href: '/news' },
+  ];
+
   return (
     <footer className={styles.footer}>
       <div className={styles.container}>
@@ -48,7 +54,7 @@ export function Footer() {
               <span className={styles.logo}>BitFlow</span>
               <span className={styles.badge}>Exchange</span>
             </div>
-            <p className={styles.description}>Plataforma de trading avanzada. Simple. Seguro. Confiable.</p>
+            <p className={styles.description}>{t('footer.tagline')}</p>
             <div className={styles.social}>
               <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className={styles.socialLink} aria-label="Twitter">
                 <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className={styles.socialIcon}><path d="M23.643 4.937c-.835.37-1.732.62-2.675.733.962-.576 1.7-1.49 2.048-2.578-.9.534-1.897.922-2.958 1.13-.85-.904-2.06-1.47-3.4-1.47-2.572 0-4.658 2.086-4.658 4.66 0 .364.042.718.12 1.06-3.873-.195-7.304-2.05-9.602-4.868-.4.69-.63 1.49-.63 2.342 0 1.616.823 3.043 2.072 3.878-.764-.025-1.482-.234-2.11-.583v.06c0 2.257 1.605 4.14 3.737 4.568-.392.106-.803.162-1.227.162-.3 0-.593-.028-.877-.082.593 1.85 2.313 3.198 4.352 3.234-1.595 1.25-3.604 1.995-5.786 1.995-.376 0-.747-.022-1.112-.065 2.062 1.323 4.51 2.093 7.14 2.093 8.57 0 13.255-7.098 13.255-13.254 0-.2-.005-.402-.014-.602.91-.658 1.7-1.477 2.323-2.41z" /></svg>
@@ -62,14 +68,14 @@ export function Footer() {
             </div>
           </div>
 
-          <Column title="Producto" links={PRODUCT} />
-          <Column title="Recursos" links={RESOURCES} />
-          <Column title="Legal" links={LEGAL} />
-          <Column title="Empresa" links={COMPANY} />
+          <Column title={t('footer.col.product')} links={PRODUCT} />
+          <Column title={t('footer.col.resources')} links={RESOURCES} />
+          <Column title={t('footer.col.legal')} links={LEGAL} />
+          <Column title={t('footer.col.company')} links={COMPANY} />
         </div>
 
         <div className={styles.bottom}>
-          <p className={styles.copyright}>© {year} BitFlow — exchange de criptomonedas custodial. Activos de mainnet en custodia.</p>
+          <p className={styles.copyright}>{t('footer.copyright', { year })}</p>
         </div>
       </div>
     </footer>

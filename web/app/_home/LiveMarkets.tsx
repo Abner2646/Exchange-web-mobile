@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useTranslation } from '@/shared/i18n';
 import { useMarkets, formatPrice, formatCompact, formatPct } from './coingecko';
 import styles from '../marketing.module.css';
 
@@ -11,22 +12,23 @@ function Pct({ v }: { v: number | null }) {
 }
 
 export function LiveMarkets() {
+  const { t } = useTranslation();
   const { data, isLoading, isError, refetch } = useMarkets();
   const coins = (data ?? []).slice(0, 10);
 
   return (
     <section className={styles.section} id="markets">
-      <h2 className={styles.sectionTitle}>Mercados Populares</h2>
+      <h2 className={styles.sectionTitle}>{t('home.markets.title')}</h2>
       <div className={styles.tableWrap}>
         <table className={styles.table}>
           <thead>
             <tr>
-              <th>Moneda</th>
-              <th className={styles.thCenter}>Precio</th>
-              <th className={styles.thCenter}>24h %</th>
-              <th className={styles.thCenter}>7d %</th>
-              <th className={styles.thHideSm} style={{ textAlign: 'right' }}>Volumen 24h</th>
-              <th className={styles.thHideSm} style={{ textAlign: 'right' }}>Cap. de mercado</th>
+              <th>{t('home.markets.col.coin')}</th>
+              <th className={styles.thCenter}>{t('home.markets.col.price')}</th>
+              <th className={styles.thCenter}>{t('home.markets.col.change24h')}</th>
+              <th className={styles.thCenter}>{t('home.markets.col.change7d')}</th>
+              <th className={styles.thHideSm} style={{ textAlign: 'right' }}>{t('home.markets.col.volume')}</th>
+              <th className={styles.thHideSm} style={{ textAlign: 'right' }}>{t('home.markets.col.marketCap')}</th>
             </tr>
           </thead>
           <tbody>
@@ -70,13 +72,13 @@ export function LiveMarkets() {
         </table>
         {isError && (
           <div className={styles.marketsError} role="alert">
-            <p>No pudimos cargar los mercados. Probá de nuevo.</p>
-            <button type="button" onClick={() => refetch()} className={styles.marketsRetry}>Reintentar</button>
+            <p>{t('home.markets.error')}</p>
+            <button type="button" onClick={() => refetch()} className={styles.marketsRetry}>{t('common.retry')}</button>
           </div>
         )}
       </div>
       <div className={styles.marketsMore}>
-        <Link href="/trading" className={styles.marketsMoreLink}>Ver todos los mercados →</Link>
+        <Link href="/trading" className={styles.marketsMoreLink}>{t('home.markets.viewAll')}</Link>
       </div>
     </section>
   );

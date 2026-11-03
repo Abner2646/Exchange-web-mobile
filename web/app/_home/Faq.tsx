@@ -1,8 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslation } from '@/shared/i18n';
 import baseStyles from '../marketing.module.css';
-import { FAQS } from './data';
+
+const FAQ_COUNT = 6;
 
 /* Accordion shared by the Home and every design variant. Each variant passes
    its own CSS-module object via `styles`; the class-name contract is:
@@ -26,14 +28,20 @@ function Chevron({ open, styles }: { open: boolean; styles: FaqStyles }) {
 }
 
 export default function Faq({ styles = baseStyles }: { styles?: FaqStyles }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState<number | null>(null);
+
+  const faqs = Array.from({ length: FAQ_COUNT }, (_, i) => ({
+    q: t(`home.faq${i + 1}.q`),
+    a: t(`home.faq${i + 1}.a`),
+  }));
 
   return (
     <div className={styles.faqContainer}>
-      {FAQS.map((f, i) => {
+      {faqs.map((f, i) => {
         const isOpen = open === i;
         return (
-          <div key={f.q} className={styles.faqItem}>
+          <div key={i} className={styles.faqItem}>
             <button
               type="button"
               className={`${styles.faqQuestion} ${isOpen ? styles.faqActive : ''}`}

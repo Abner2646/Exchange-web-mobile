@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { session } from '@/shared/api';
+import { useTranslation } from '@/shared/i18n';
 import { useCurrentUser } from '@/features/auth/queries';
 import { useMyBalances } from '@/features/wallet/queries';
 import { useMarkets } from './coingecko';
@@ -19,24 +20,23 @@ function trimAmount(s: string): string {
 const usd = (n: number) => '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 function MarketingHero() {
+  const { t } = useTranslation();
   return (
     <div className={styles.heroContent}>
       <h1 className={styles.title}>
-        Tu plataforma definitiva para trading de <span className={styles.titleAccent}>criptomonedas</span>
+        {t('home.hero.titleLead')} <span className={styles.titleAccent}>{t('home.hero.titleAccent')}</span>
       </h1>
-      <p className={styles.subtitle}>
-        Opera con más de 200 activos digitales de forma segura, rápida y confiable. Únete a miles de
-        traders que ya confían en nosotros.
-      </p>
+      <p className={styles.subtitle}>{t('home.hero.subtitle')}</p>
       <div className={styles.actions}>
-        <Link href="/register" className={styles.ctaPrimary}>Empezar ahora</Link>
-        <a href="#markets" className={styles.ctaSecondary}>Ver mercados</a>
+        <Link href="/register" className={styles.ctaPrimary}>{t('home.hero.ctaPrimary')}</Link>
+        <a href="#markets" className={styles.ctaSecondary}>{t('home.hero.ctaSecondary')}</a>
       </div>
     </div>
   );
 }
 
 function DashboardHero({ name }: { name: string }) {
+  const { t } = useTranslation();
   const { data: balances, isLoading, isError, refetch } = useMyBalances();
   const { data: markets, isError: marketsError } = useMarkets();
 
@@ -62,29 +62,29 @@ function DashboardHero({ name }: { name: string }) {
   return (
     <div className={styles.heroContent}>
       <h1 className={styles.title}>
-        Hola de nuevo, <span className={styles.titleAccent}>{name || 'trader'}</span>
+        {t('home.dashboard.greeting')} <span className={styles.titleAccent}>{name || t('home.dashboard.traderFallback')}</span>
       </h1>
 
       <div className={styles.portfolioCard}>
-        <div className={styles.portfolioLabel}>Valor estimado de tu cartera</div>
+        <div className={styles.portfolioLabel}>{t('home.dashboard.portfolioLabel')}</div>
         {isLoading ? (
           <span className={styles.skel} style={{ width: 200, height: 34, display: 'block' }} />
         ) : isError ? (
           <div className={styles.marketsError} role="alert">
-            <p>No pudimos cargar tus balances.</p>
-            <button type="button" className={styles.marketsRetry} onClick={() => refetch()}>Reintentar</button>
+            <p>{t('home.dashboard.balanceError')}</p>
+            <button type="button" className={styles.marketsRetry} onClick={() => refetch()}>{t('common.retry')}</button>
           </div>
         ) : holdings.length === 0 ? (
           <>
             <div className={styles.portfolioTotal}>{usd(0)}</div>
-            <p className={styles.portfolioEmpty}>Todavía no tenés fondos. Hacé tu primer depósito para empezar.</p>
+            <p className={styles.portfolioEmpty}>{t('home.dashboard.empty')}</p>
           </>
         ) : (
           <>
             <div className={styles.portfolioTotal}>{pricesAvailable ? usd(total) : '—'}</div>
             {!pricesAvailable && (
               <p className={styles.portfolioEmpty}>
-                {marketsError ? 'No pudimos cargar los precios en vivo.' : 'Cargando precios en vivo…'}
+                {marketsError ? t('home.dashboard.pricesUnavailable') : t('home.dashboard.pricesLoading')}
               </p>
             )}
             <ul className={styles.portfolioList}>
@@ -101,8 +101,8 @@ function DashboardHero({ name }: { name: string }) {
       </div>
 
       <div className={styles.actions}>
-        <Link href="/wallet" className={styles.ctaPrimary}>Mi billetera</Link>
-        <Link href="/swap" className={styles.ctaSecondary}>Intercambiar</Link>
+        <Link href="/wallet" className={styles.ctaPrimary}>{t('home.dashboard.actionWallet')}</Link>
+        <Link href="/swap" className={styles.ctaSecondary}>{t('home.dashboard.actionSwap')}</Link>
       </div>
     </div>
   );

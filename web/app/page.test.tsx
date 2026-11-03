@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { QueryClientProvider } from '@tanstack/react-query';
+import { LocaleProvider } from '@/shared/i18n';
 import { makeQueryClient } from '@/app/providers';
 import Home, { metadata } from './page';
 
@@ -13,13 +14,18 @@ beforeEach(() => {
 
 function renderHome() {
   const qc = makeQueryClient();
-  return render(<QueryClientProvider client={qc}><Home /></QueryClientProvider>);
+  return render(
+    <QueryClientProvider client={qc}>
+      <LocaleProvider><Home /></LocaleProvider>
+    </QueryClientProvider>,
+  );
 }
 
 describe('public home', () => {
   it('renders the marketing headline', () => {
     renderHome();
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/criptomonedas/i);
+    // jsdom navigator.language is en-US → the app adopts English after mount.
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/crypto trading/i);
   });
 
   it('offers a register call to action (hero)', () => {
