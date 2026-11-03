@@ -45,7 +45,9 @@ test('accept a sell offer: POST /transaccionP2P carries an Idempotency-Key', asy
 
   // Accept form (acceptor is BUYER for a sell offer → no balance gate).
   await page.locator('#accept-amount').fill('1');
-  await page.locator('#accept-payment-method').selectOption('pm1');
+  // Payment method is the custom Select (never a native <select>): open + pick.
+  await page.getByRole('button', { name: 'Select a payment method' }).click();
+  await page.getByRole('option', { name: 'Bank transfer' }).click();
   await page.getByRole('button', { name: 'Accept offer' }).click();
 
   // onDone jumps to My transactions → the accept form is gone.

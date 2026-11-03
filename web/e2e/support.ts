@@ -27,7 +27,10 @@ export const VERIFIED_USER = {
  * pages afterwards with gotoApp() (a nav-link click = SPA navigation, no reload).
  */
 export async function loginViaUI(page: Page, user: Record<string, unknown> = VERIFIED_USER) {
-  await page.route('**/api/user/login', (r) => r.fulfill(json({ user: { username: user.username }, token: 'e2e-jwt' })));
+  // The real backend returns the full user on login (seeded into the user-query
+  // cache by useLogin). Mirror that so currentUser carries id/emailVerified — P2P
+  // tx-detail gating (buyer/seller) depends on currentUser.id.
+  await page.route('**/api/user/login', (r) => r.fulfill(json({ user, token: 'e2e-jwt' })));
   await page.route('**/api/user/me', (r) => r.fulfill(json(user)));
   await page.goto('/login');
   await page.getByLabel('Email').fill('a@b.co');
