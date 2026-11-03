@@ -181,7 +181,7 @@ describe('NotificationsView', () => {
   it('shows loading state', () => {
     useNotificationsMock.mockReturnValue({ data: undefined, isLoading: true, isError: false });
     setup();
-    expect(screen.getByText(/loading|cargando/i)).toBeInTheDocument();
+    expect(screen.getByRole('status')).toBeInTheDocument();
   });
 
   // (10) Empty state

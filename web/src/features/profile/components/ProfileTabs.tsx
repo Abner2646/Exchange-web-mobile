@@ -18,14 +18,21 @@ export function ProfilePage() {
   const [activeTab, setActiveTab] = useState<Tab>('account');
 
   return (
-    <section>
-      <div className={styles.tabs} role="tablist">
+    <section className={styles.page}>
+      <header className={styles.header}>
+        <h1 className={styles.title}>{t('profile.title')}</h1>
+        <p className={styles.subtitle}>{t('profile.subtitle')}</p>
+      </header>
+
+      <div className={styles.tabs} role="tablist" aria-label={t('profile.title')}>
         {TABS.map((tab) => (
           <button
             key={tab}
             type="button"
             role="tab"
+            id={`profile-tab-${tab}`}
             aria-selected={activeTab === tab}
+            aria-controls={`profile-panel-${tab}`}
             onClick={() => setActiveTab(tab)}
             className={`${styles.tab}${activeTab === tab ? ` ${styles.tabActive}` : ''}`}
           >
@@ -34,25 +41,21 @@ export function ProfilePage() {
         ))}
       </div>
 
-      {activeTab === 'account' && <ProfileForm />}
+      <div role="tabpanel" id={`profile-panel-${activeTab}`} aria-labelledby={`profile-tab-${activeTab}`}>
+        {activeTab === 'account' && <ProfileForm />}
 
-      {activeTab === 'security' && (
-        <div className={styles.panel}>
-          <section>
+        {activeTab === 'security' && (
+          <div className={styles.panel}>
             <ChangePasswordForm />
-          </section>
-          <section>
             <EmailChangeForm />
-          </section>
-          <section>
             <TwoFactorSettings />
-          </section>
-        </div>
-      )}
+          </div>
+        )}
 
-      {activeTab === 'notifications' && <NotificationsView />}
+        {activeTab === 'notifications' && <NotificationsView />}
 
-      {activeTab === 'kyc' && <KycStatusCard />}
+        {activeTab === 'kyc' && <KycStatusCard />}
+      </div>
     </section>
   );
 }

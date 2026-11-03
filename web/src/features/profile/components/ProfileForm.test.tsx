@@ -125,8 +125,9 @@ describe('ProfileForm', () => {
     });
     setup();
 
-    const localeSelect = screen.getByLabelText(/Language|Idioma/i) as HTMLSelectElement;
-    fireEvent.change(localeSelect, { target: { value: 'es' } });
+    // Custom Select (never a native <select>): open the listbox and pick Español.
+    fireEvent.click(screen.getByRole('button', { name: /Language|Idioma/i }));
+    fireEvent.click(screen.getByRole('option', { name: /Español/i }));
     fireEvent.click(screen.getByRole('button', { name: /Save|Guardar/i }));
 
     await waitFor(() => expect(setLocaleMock).toHaveBeenCalledWith('es'));

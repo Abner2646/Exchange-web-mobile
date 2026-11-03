@@ -1,6 +1,7 @@
 'use client';
 
 import { useTranslation } from '@/shared/i18n';
+import { Badge, Button, EmptyState, ErrorState, Skeleton } from '@/shared/ui';
 import {
   useNotifications,
   useUnreadCount,
@@ -9,15 +10,23 @@ import {
   useMarkUnread,
   useDeleteRead,
 } from '../queries';
-import type { AppNotification } from '../types';
+import type { AppNotification, NotificationType } from '../types';
 import styles from './profile.module.css';
 
-// Resolve unread count from either { count } shape or bare number
 function resolveCount(data: { count: number } | number | undefined): number {
   if (data === undefined || data === null) return 0;
   if (typeof data === 'number') return data;
   return data.count ?? 0;
 }
+
+const TYPE_TONE: Record<NotificationType, 'brand' | 'success' | 'warning' | 'neutral'> = {
+  security: 'brand',
+  transaction: 'success',
+  kyc: 'warning',
+  system: 'neutral',
+  p2p: 'neutral',
+  exchange: 'neutral',
+};
 
 export function NotificationsView() {
   const { t, locale } = useTranslation();
@@ -28,13 +37,24 @@ export function NotificationsView() {
   const markUnread = useMarkUnread();
   const deleteRead = useDeleteRead();
 
-  if (isLoading) return <p>{t('common.loading')}</p>;
+  if (isLoading) {
+    return (
+      <div className={styles.card} role="status" aria-label={t('common.loading')}>
+        {[0, 1, 2].map((i) => (
+          <div key={i} className={styles.skelRow}>
+            <Skeleton variant="text" width="40%" />
+            <Skeleton variant="text" width={80} />
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   if (isError) {
     return (
-      <p role="alert" className={styles.error}>
-        {t('profile.notifications.error')}
-      </p>
+      <div className={styles.card}>
+        <ErrorState title={t('profile.notifications.error')} />
+      </div>
     );
   }
 
@@ -42,73 +62,49 @@ export function NotificationsView() {
   const unreadCount = resolveCount(unreadData);
 
   return (
-    <section className={styles.form}>
-      {/* Header row: badge + bulk actions */}
+    <section className={styles.card}>
       <div className={styles.notifHeader}>
-        <span className={styles.notifBadge}>
+        <Badge tone={unreadCount > 0 ? 'brand' : 'neutral'}>
           {t('profile.notifications.unreadBadge', { count: unreadCount })}
-        </span>
-        <button
-          type="button"
-          onClick={() => markAllRead.mutate()}
-          disabled={markAllRead.isPending}
-        >
+        </Badge>
+        <span className={styles.spacer} />
+        <Button size="small" variant="secondary" onClick={() => markAllRead.mutate()} disabled={markAllRead.isPending}>
           {t('profile.notifications.markAllRead')}
-        </button>
-        <button
-          type="button"
-          onClick={() => deleteRead.mutate()}
-          disabled={deleteRead.isPending}
-        >
+        </Button>
+        <Button size="small" variant="secondary" onClick={() => deleteRead.mutate()} disabled={deleteRead.isPending}>
           {t('profile.notifications.deleteRead')}
-        </button>
+        </Button>
       </div>
 
       {items.length === 0 ? (
-        <p>{t('profile.notifications.empty')}</p>
+        <EmptyState title={t('profile.notifications.empty')} />
       ) : (
         <ul className={styles.notifList}>
           {items.map((n) => {
             const isUnread = !n.read;
-            const dateStr = new Date(
-              n.created_at ?? n.sentAt ?? Date.now(),
-            ).toLocaleDateString(locale);
+            const dateStr = new Date(n.created_at ?? n.sentAt ?? Date.now()).toLocaleDateString(locale);
 
             return (
               <li
                 key={n.id}
                 data-testid={`notification-${n.id}`}
-                className={[styles.notifItem, isUnread ? styles.notifItemUnread : '']
-                  .filter(Boolean)
-                  .join(' ')}
+                className={isUnread ? styles.notifItemUnread : styles.notifItem}
               >
                 <div className={styles.notifItemHeader}>
-                  <span className={styles.notifTypeLabel}>
-                    {t(`profile.notifications.type.${n.type}`)}
-                  </span>
+                  <Badge tone={TYPE_TONE[n.type] ?? 'neutral'}>{t(`profile.notifications.type.${n.type}`)}</Badge>
                   <span className={styles.notifDate}>{dateStr}</span>
                 </div>
                 <p className={styles.notifTitle}>{n.title}</p>
                 <p className={styles.notifMessage}>{n.message}</p>
                 <div className={styles.notifItemActions}>
                   {isUnread ? (
-                    <button
-                      type="button"
-                      data-action="mark-read"
-                      onClick={() => markRead.mutate(n.id)}
-                      disabled={markRead.isPending}
-                    >
+                    <Button size="small" variant="secondary" data-action="mark-read" onClick={() => markRead.mutate(n.id)} disabled={markRead.isPending}>
                       {t('profile.notifications.markRead')}
-                    </button>
+                    </Button>
                   ) : (
-                    <button
-                      type="button"
-                      data-action="mark-unread"
-                      onClick={() => markUnread.mutate(n.id)}
-                      disabled={markUnread.isPending}
-                    >
+                    <Button size="small" variant="secondary" data-action="mark-unread" onClick={() => markUnread.mutate(n.id)} disabled={markUnread.isPending}>
                       {t('profile.notifications.markUnread')}
-                    </button>
+                    </Button>
                   )}
                 </div>
               </li>

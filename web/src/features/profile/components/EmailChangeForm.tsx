@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useTranslation } from '@/shared/i18n';
 import { useErrorTranslation } from '@/shared/i18n/errorCatalog';
-import { Button, Field } from '@/shared/ui';
+import { Button, Field, Input, useSuccessFlash } from '@/shared/ui';
 import { useRequestEmailChange, useConfirmEmailChange } from '../queries';
 import styles from './profile.module.css';
 
@@ -12,17 +12,16 @@ type Step = 'request' | 'confirm' | 'done';
 export function EmailChangeForm() {
   const { t } = useTranslation();
   const { tError } = useErrorTranslation();
+  const { flash } = useSuccessFlash();
   const requestMutation = useRequestEmailChange();
   const confirmMutation = useConfirmEmailChange();
 
-  // Two-step state — nuevoEmail and codigo live ONLY in React state,
-  // NEVER in URL/localStorage/sessionStorage.
+  // Two-step state — nuevoEmail and codigo live ONLY in React state, never in URL/storage.
   const [step, setStep] = useState<Step>('request');
   const [nuevoEmail, setNuevoEmail] = useState('');
   const [passwordActual, setPasswordActual] = useState('');
   const [codigo, setCodigo] = useState('');
 
-  // ── Step: request ──────────────────────────────────────────────────────────
   function handleRequestSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (requestMutation.isPending) return;
@@ -30,7 +29,6 @@ export function EmailChangeForm() {
       { nuevoEmail, passwordActual },
       {
         onSuccess: () => {
-          // Clear password from memory; keep nuevoEmail only for display purposes (not persisted)
           setPasswordActual('');
           setStep('confirm');
         },
@@ -38,7 +36,6 @@ export function EmailChangeForm() {
     );
   }
 
-  // ── Step: confirm ──────────────────────────────────────────────────────────
   function handleConfirmSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (confirmMutation.isPending) return;
@@ -46,6 +43,7 @@ export function EmailChangeForm() {
       { codigo },
       {
         onSuccess: () => {
+          flash({ title: t('profile.emailChange.success') });
           setCodigo('');
           setStep('done');
         },
@@ -53,47 +51,33 @@ export function EmailChangeForm() {
     );
   }
 
-  // ── Step: done (success) ───────────────────────────────────────────────────
   if (step === 'done') {
     return (
-      <div className={styles.form}>
+      <div className={styles.card}>
+        <h2 className={styles.cardTitle}>{t('profile.emailChange.heading')}</h2>
         <p role="status" className={styles.success}>
-          {t('profile.emailChange.success')}
-          {' '}
-          {t('profile.emailChange.withdrawalCooldownWarning')}
+          {t('profile.emailChange.success')} {t('profile.emailChange.withdrawalCooldownWarning')}
         </p>
       </div>
     );
   }
 
-  // ── Step: confirm ──────────────────────────────────────────────────────────
   if (step === 'confirm') {
     return (
-      <form className={styles.form} onSubmit={handleConfirmSubmit} noValidate>
+      <form className={styles.card} onSubmit={handleConfirmSubmit} noValidate>
+        <h2 className={styles.cardTitle}>{t('profile.emailChange.heading')}</h2>
         <Field label={t('profile.emailChange.code.label')}>
-          <input
-            id="email-change-code"
-            type="text"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            value={codigo}
-            onChange={(e) => setCodigo(e.target.value)}
-          />
+          <Input id="email-change-code" type="text" inputMode="numeric" autoComplete="one-time-code" value={codigo} onChange={(e) => setCodigo(e.target.value)} />
         </Field>
 
-        {/* Error */}
         {confirmMutation.isError && confirmMutation.error != null && (
-          <p role="alert" className={styles.error}>
+          <p role="alert" className={styles.alert}>
             {tError(confirmMutation.error.code, { requestId: confirmMutation.error.requestId ?? '' })}
           </p>
         )}
 
         <div className={styles.actions}>
-          <Button
-            type="submit"
-            disabled={confirmMutation.isPending}
-            loading={confirmMutation.isPending}
-          >
+          <Button type="submit" disabled={confirmMutation.isPending} loading={confirmMutation.isPending}>
             {t('profile.emailChange.confirmSubmit')}
           </Button>
         </div>
@@ -101,47 +85,27 @@ export function EmailChangeForm() {
     );
   }
 
-  // ── Step: request (initial) ────────────────────────────────────────────────
   return (
-    <form className={styles.form} onSubmit={handleRequestSubmit} noValidate>
-      {/* Withdrawal-cooldown warning — shown BEFORE confirming */}
-      <p className={styles.warning}>
-        {t('profile.emailChange.withdrawalCooldownWarning')}
-      </p>
+    <form className={styles.card} onSubmit={handleRequestSubmit} noValidate>
+      <h2 className={styles.cardTitle}>{t('profile.emailChange.heading')}</h2>
+      <p className={styles.warning}>{t('profile.emailChange.withdrawalCooldownWarning')}</p>
 
       <Field label={t('profile.emailChange.newEmail.label')}>
-        <input
-          id="email-change-new-email"
-          type="email"
-          autoComplete="email"
-          value={nuevoEmail}
-          onChange={(e) => setNuevoEmail(e.target.value)}
-        />
+        <Input id="email-change-new-email" type="email" autoComplete="email" value={nuevoEmail} onChange={(e) => setNuevoEmail(e.target.value)} />
       </Field>
 
       <Field label={t('profile.emailChange.currentPassword.label')}>
-        <input
-          id="email-change-password"
-          type="password"
-          autoComplete="current-password"
-          value={passwordActual}
-          onChange={(e) => setPasswordActual(e.target.value)}
-        />
+        <Input id="email-change-password" type="password" autoComplete="current-password" value={passwordActual} onChange={(e) => setPasswordActual(e.target.value)} />
       </Field>
 
-      {/* Error */}
       {requestMutation.isError && requestMutation.error != null && (
-        <p role="alert" className={styles.error}>
+        <p role="alert" className={styles.alert}>
           {tError(requestMutation.error.code, { requestId: requestMutation.error.requestId ?? '' })}
         </p>
       )}
 
       <div className={styles.actions}>
-        <Button
-          type="submit"
-          disabled={requestMutation.isPending}
-          loading={requestMutation.isPending}
-        >
+        <Button type="submit" disabled={requestMutation.isPending} loading={requestMutation.isPending}>
           {t('profile.emailChange.requestSubmit')}
         </Button>
       </div>

@@ -3,66 +3,40 @@
 import { useState } from 'react';
 import { useTranslation } from '@/shared/i18n';
 import { useErrorTranslation } from '@/shared/i18n/errorCatalog';
-import { Button, Field, Dialog } from '@/shared/ui';
+import type { ApiError } from '@/shared/api';
+import { Badge, Button, Field, Input, Dialog, useSuccessFlash } from '@/shared/ui';
 import { useCurrentUser } from '@/features/auth/queries';
 import { useToggle2FA, useTotpSetup, useTotpEnable, useTotpDisable } from '../queries';
 import styles from './profile.module.css';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
 /** Enrollment state: secret/qr live ONLY here — never written to storage. */
-type EnrollState = {
-  otpauthUri: string;
-  secret: string;
-  qr: string;
-} | null;
-
-// ── Component ─────────────────────────────────────────────────────────────────
+type EnrollState = { otpauthUri: string; secret: string; qr: string } | null;
 
 export function TwoFactorSettings() {
   const { t } = useTranslation();
   const { tError } = useErrorTranslation();
+  const { flash } = useSuccessFlash();
 
   const { data: user } = useCurrentUser();
 
-  // ── Mutation hooks ────────────────────────────────────────────────────────
   const toggle2FA = useToggle2FA();
   const totpSetup = useTotpSetup();
   const totpEnable = useTotpEnable();
   const totpDisable = useTotpDisable();
 
-  // ── Local state (SECURITY: secret/qr/codigo ONLY in component state) ─────
-  // Enrollment data: populated after setup resolves; cleared on enable success.
+  // SECURITY: secret/qr/codigo ONLY in component state.
   const [enrollState, setEnrollState] = useState<EnrollState>(null);
-  // Enrollment code input
   const [enrollCodigo, setEnrollCodigo] = useState('');
-  // Tracks whether enrollment was completed this render cycle; suppresses QR
-  // display after enable success (before the user cache invalidates totpEnabled).
   const [enrollComplete, setEnrollComplete] = useState(false);
-  // Disable-dialog visibility + its code input
   const [disableDialogOpen, setDisableDialogOpen] = useState(false);
   const [disableCodigo, setDisableCodigo] = useState('');
 
-  // When the user is still loading, render nothing
   if (!user) return null;
 
-  // ── Derived ───────────────────────────────────────────────────────────────
-  const anyPending =
-    toggle2FA.isPending ||
-    totpSetup.isPending ||
-    totpEnable.isPending ||
-    totpDisable.isPending;
+  const anyPending = toggle2FA.isPending || totpSetup.isPending || totpEnable.isPending || totpDisable.isPending;
 
-  // After useTotpSetup succeeds, use its data (or local enrollState after
-  // the mutation data is superseded).  We update enrollState in the onSuccess
-  // path via the mutate callback, but the mutation's own `.data` field is the
-  // canonical source during the same render cycle.
-  // enrollComplete suppresses the QR after enable success (before user cache
-  // invalidation flips totpEnabled).  Security: this also ensures secret/qr
-  // are no longer displayed once the user successfully enrolled.
+  // enrollComplete suppresses the QR after enable success (before the user cache flips totpEnabled).
   const setupData = enrollComplete ? null : (totpSetup.data ?? enrollState);
-
-  // ── Handlers ─────────────────────────────────────────────────────────────
 
   function handleToggle2FA() {
     toggle2FA.mutate();
@@ -72,8 +46,7 @@ export function TwoFactorSettings() {
     setEnrollComplete(false);
     totpSetup.mutate(undefined, {
       onSuccess: (data) => {
-        // Store in component state so it persists if the mutation resets.
-        // Security: never written to localStorage/sessionStorage.
+        // Security: kept in component state only — never localStorage/sessionStorage.
         setEnrollState({ otpauthUri: data.otpauthUri, secret: data.secret, qr: data.qr });
         setEnrollCodigo('');
       },
@@ -85,10 +58,10 @@ export function TwoFactorSettings() {
       { codigo: enrollCodigo },
       {
         onSuccess: () => {
+          flash({ title: t('profile.twofa.enabledFlash') });
           // Security: clear enrollment secrets from state immediately on success.
           setEnrollState(null);
           setEnrollCodigo('');
-          // Suppress QR display before user cache invalidation arrives.
           setEnrollComplete(true);
         },
       },
@@ -99,7 +72,6 @@ export function TwoFactorSettings() {
     setDisableCodigo('');
     setDisableDialogOpen(true);
   }
-
   function closeDisableDialog() {
     setDisableCodigo('');
     setDisableDialogOpen(false);
@@ -110,154 +82,94 @@ export function TwoFactorSettings() {
       { codigo: disableCodigo },
       {
         onSuccess: () => {
+          flash({ title: t('profile.twofa.disabledFlash') });
           closeDisableDialog();
         },
       },
     );
   }
 
-  // ── Active error (first non-null) ─────────────────────────────────────────
-  const activeError =
-    (toggle2FA.isError && toggle2FA.error) ||
-    (totpSetup.isError && totpSetup.error) ||
-    (totpEnable.isError && totpEnable.error) ||
-    (totpDisable.isError && totpDisable.error) ||
-    null;
+  const activeError: ApiError | null =
+    toggle2FA.error ?? totpSetup.error ?? totpEnable.error ?? totpDisable.error ?? null;
 
-  // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <section className={styles.form}>
-      {/* ── Shared error banner ── */}
+    <section className={styles.card}>
+      <h2 className={styles.cardTitle}>{t('profile.twofa.heading')}</h2>
+
       {activeError && (
-        <p role="alert" className={styles.error}>
-          {tError(
-            (activeError as { code?: string }).code ?? 'FALLBACK_UNKNOWN_ERROR',
-            { requestId: (activeError as { requestId?: string }).requestId ?? '' },
-          )}
+        <p role="alert" className={styles.alert}>
+          {tError(activeError.code ?? 'FALLBACK_UNKNOWN_ERROR', { requestId: activeError.requestId ?? '' })}
         </p>
       )}
 
-      {/* ══ Email 2FA section ════════════════════════════════════════════════ */}
-      <div className={styles.section}>
-        <p className={styles.label}>
-          {t('profile.twofa.emailLabel')}
-          {': '}
-          <strong>
-            {user.twoFactorEnabled
-              ? t('profile.twofa.emailOn')
-              : t('profile.twofa.emailOff')}
-          </strong>
-        </p>
-
-        <Button
-          onClick={handleToggle2FA}
-          disabled={anyPending}
-          loading={toggle2FA.isPending}
-        >
-          {user.twoFactorEnabled
-            ? t('profile.twofa.emailDisable')
-            : t('profile.twofa.emailEnable')}
-        </Button>
+      {/* ══ Email 2FA ══ */}
+      <div className={styles.fieldBlock}>
+        <div className={styles.statusRow}>
+          <span className={styles.statusLabel}>{t('profile.twofa.emailLabel')}</span>
+          <Badge tone={user.twoFactorEnabled ? 'success' : 'neutral'}>
+            {user.twoFactorEnabled ? t('profile.twofa.emailOn') : t('profile.twofa.emailOff')}
+          </Badge>
+        </div>
+        <div className={styles.actions}>
+          <Button variant="secondary" onClick={handleToggle2FA} disabled={anyPending} loading={toggle2FA.isPending}>
+            {user.twoFactorEnabled ? t('profile.twofa.emailDisable') : t('profile.twofa.emailEnable')}
+          </Button>
+        </div>
       </div>
 
-      {/* ══ TOTP (authenticator app) section ═════════════════════════════════ */}
-      <div className={styles.section}>
-        <p className={styles.label}>
-          {t('profile.twofa.totpSection')}
-          {': '}
-          <strong>
-            {user.totpEnabled
-              ? t('profile.twofa.totpEnabled')
-              : t('profile.twofa.totpDisabled')}
-          </strong>
-        </p>
+      {/* ══ TOTP (authenticator app) ══ */}
+      <div className={styles.fieldBlock}>
+        <div className={styles.statusRow}>
+          <span className={styles.statusLabel}>{t('profile.twofa.totpSection')}</span>
+          <Badge tone={user.totpEnabled ? 'success' : 'neutral'}>
+            {user.totpEnabled ? t('profile.twofa.totpEnabled') : t('profile.twofa.totpDisabled')}
+          </Badge>
+        </div>
 
-        {/* ── Not enrolled: show Enroll flow ── */}
         {!user.totpEnabled && (
           <>
-            {/* Show QR + secret only after setup resolves */}
             {setupData ? (
-              <div>
-                {/* QR code — security: PNG data URL, shown once */}
-                <p>{t('profile.twofa.totpScanQr')}</p>
-                <img src={setupData.qr} alt={t('profile.twofa.totpScanQr')} />
+              <div className={styles.totpEnroll}>
+                <p className={styles.note}>{t('profile.twofa.totpScanQr')}</p>
+                {/* QR — security: PNG data URL, shown once, never persisted */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img className={styles.totpQr} src={setupData.qr} alt={t('profile.twofa.totpScanQr')} />
+                <p className={styles.totpSecret}>{t('profile.twofa.totpSecretInstructions', { secret: setupData.secret })}</p>
 
-                {/* Secret — shown once for manual entry; never persisted */}
-                <p>
-                  {t('profile.twofa.totpSecretInstructions', {
-                    secret: setupData.secret,
-                  })}
-                </p>
-
-                {/* Verification code input */}
                 <Field label={t('profile.twofa.totpCodeLabel')}>
-                  <input
-                    id="totp-enroll-codigo"
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    value={enrollCodigo}
-                    onChange={(e) => setEnrollCodigo(e.target.value)}
-                  />
+                  <Input id="totp-enroll-codigo" type="text" inputMode="numeric" autoComplete="one-time-code" value={enrollCodigo} onChange={(e) => setEnrollCodigo(e.target.value)} />
                 </Field>
 
-                <Button
-                  onClick={handleEnableTotp}
-                  disabled={anyPending || enrollCodigo.length === 0}
-                  loading={totpEnable.isPending}
-                >
-                  {t('profile.twofa.totpEnableSubmit')}
-                </Button>
+                <div className={styles.actions}>
+                  <Button onClick={handleEnableTotp} disabled={anyPending || enrollCodigo.length === 0} loading={totpEnable.isPending}>
+                    {t('profile.twofa.totpEnableSubmit')}
+                  </Button>
+                </div>
               </div>
             ) : (
-              /* No setup data yet — show Enroll CTA */
-              <Button
-                onClick={handleEnroll}
-                disabled={anyPending}
-                loading={totpSetup.isPending}
-              >
-                {t('profile.twofa.totpEnrollCta')}
-              </Button>
+              <div className={styles.actions}>
+                <Button onClick={handleEnroll} disabled={anyPending} loading={totpSetup.isPending}>
+                  {t('profile.twofa.totpEnrollCta')}
+                </Button>
+              </div>
             )}
           </>
         )}
 
-        {/* ── Enrolled: show Disable button + confirm Dialog ── */}
         {user.totpEnabled && (
           <>
-            <Button
-              variant="danger"
-              onClick={openDisableDialog}
-              disabled={anyPending}
-              loading={totpDisable.isPending}
-            >
-              {t('profile.twofa.totpDisableSubmit')}
-            </Button>
+            <div className={styles.actions}>
+              <Button variant="danger" onClick={openDisableDialog} disabled={anyPending} loading={totpDisable.isPending}>
+                {t('profile.twofa.totpDisableSubmit')}
+              </Button>
+            </div>
 
-            <Dialog
-              isOpen={disableDialogOpen}
-              onClose={closeDisableDialog}
-              title={t('profile.twofa.totpDisableSubmit')}
-              closeOnClickOutside={false}
-            >
-              {/* Verification code input inside Dialog */}
+            <Dialog isOpen={disableDialogOpen} onClose={closeDisableDialog} title={t('profile.twofa.totpDisableSubmit')} closeOnClickOutside={false}>
               <Field label={t('profile.twofa.totpCodeLabel')}>
-                <input
-                  id="totp-disable-codigo"
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  value={disableCodigo}
-                  onChange={(e) => setDisableCodigo(e.target.value)}
-                />
+                <Input id="totp-disable-codigo" type="text" inputMode="numeric" autoComplete="one-time-code" value={disableCodigo} onChange={(e) => setDisableCodigo(e.target.value)} />
               </Field>
-
               <div className={styles.actions}>
-                <Button
-                  onClick={handleDisableTotp}
-                  disabled={anyPending || disableCodigo.length === 0}
-                  loading={totpDisable.isPending}
-                >
+                <Button onClick={handleDisableTotp} disabled={anyPending || disableCodigo.length === 0} loading={totpDisable.isPending}>
                   {t('profile.twofa.totpDisableSubmit')}
                 </Button>
                 <Button variant="secondary" onClick={closeDisableDialog} disabled={anyPending}>

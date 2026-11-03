@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useTranslation, useLocale } from '@/shared/i18n';
 import { useErrorTranslation } from '@/shared/i18n/errorCatalog';
-import { Button, Field } from '@/shared/ui';
+import { Button, Field, Input, Select } from '@/shared/ui';
 import { useCurrentUser } from '@/features/auth/queries';
 import { useUpdateProfile } from '../queries';
 import styles from './profile.module.css';
@@ -20,7 +20,6 @@ export function ProfileForm() {
   const [state, setState] = useState(user?.state ?? '');
   const [locale, setLocaleField] = useState(user?.locale ?? appLocale);
 
-  // Guard: user not yet loaded
   if (!user) return null;
 
   function handleSubmit(e: React.FormEvent) {
@@ -29,101 +28,59 @@ export function ProfileForm() {
       { displayName, country, state, locale },
       {
         onSuccess: () => {
-          if (locale !== appLocale) {
-            setLocale(locale);
-          }
+          if (locale !== appLocale) setLocale(locale);
         },
       },
     );
   }
 
+  const localeOptions = [
+    { value: 'en', label: t('profile.account.localeEn') },
+    { value: 'es', label: t('profile.account.localeEs') },
+  ];
+
   return (
-    <form className={styles.form} onSubmit={handleSubmit} noValidate>
-      {/* Username — read-only */}
+    <form className={styles.card} onSubmit={handleSubmit} noValidate>
       <Field label={t('profile.account.username.label')}>
-        <input
-          id="profile-username"
-          type="text"
-          value={user.username}
-          disabled
-          readOnly
-          autoComplete="username"
-        />
+        <Input id="profile-username" type="text" value={user.username} disabled readOnly autoComplete="username" />
       </Field>
       <p className={styles.readOnlyNote}>{t('profile.account.username.readOnlyNote')}</p>
 
-      {/* Email — read-only (changes on Security tab) */}
       <Field label={t('auth.field.email')}>
-        <input
-          id="profile-email"
-          type="email"
-          value={user.email}
-          disabled
-          readOnly
-          autoComplete="email"
-        />
+        <Input id="profile-email" type="email" value={user.email} disabled readOnly autoComplete="email" />
       </Field>
 
-      {/* Display name */}
-      <Field
-        label={t('profile.account.displayName.label')}
-        helpText={t('profile.account.displayName.helpText')}
-      >
-        <input
-          id="profile-displayName"
-          type="text"
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
-          autoComplete="name"
-        />
+      <Field label={t('profile.account.displayName.label')} helpText={t('profile.account.displayName.helpText')}>
+        <Input id="profile-displayName" type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} autoComplete="name" />
       </Field>
 
-      {/* Country */}
       <Field label={t('profile.account.country.label')}>
-        <input
-          id="profile-country"
-          type="text"
-          value={country}
-          onChange={(e) => setCountry(e.target.value)}
-          autoComplete="country"
-        />
+        <Input id="profile-country" type="text" value={country} onChange={(e) => setCountry(e.target.value)} autoComplete="country" />
       </Field>
 
-      {/* State / Province */}
       <Field label={t('profile.account.state.label')}>
-        <input
-          id="profile-state"
-          type="text"
-          value={state}
-          onChange={(e) => setState(e.target.value)}
-          autoComplete="address-level1"
-        />
+        <Input id="profile-state" type="text" value={state} onChange={(e) => setState(e.target.value)} autoComplete="address-level1" />
       </Field>
 
-      {/* Locale — select over supported locales */}
-      <Field label={t('profile.account.locale.label')}>
-        <select
-          id="profile-locale"
+      <div className={styles.fieldBlock}>
+        <span className={styles.fieldLabel} id="profile-locale-label">{t('profile.account.locale.label')}</span>
+        <Select
+          options={localeOptions}
           value={locale}
-          onChange={(e) => setLocaleField(e.target.value)}
-        >
-          <option value="en">{t('profile.account.localeEn')}</option>
-          <option value="es">{t('profile.account.localeEs')}</option>
-        </select>
-      </Field>
+          onChange={setLocaleField}
+          aria-label={t('profile.account.locale.label')}
+          aria-labelledby="profile-locale-label"
+        />
+      </div>
 
-      {/* Error */}
       {mutation.isError && mutation.error != null && (
-        <p role="alert" className={styles.error}>
+        <p role="alert" className={styles.alert}>
           {tError(mutation.error.code, { requestId: mutation.error.requestId ?? '' })}
         </p>
       )}
 
-      {/* Success */}
       {mutation.isSuccess && (
-        <p role="status" className={styles.success}>
-          {t('profile.account.saved')}
-        </p>
+        <p role="status" className={styles.success}>{t('profile.account.saved')}</p>
       )}
 
       <div className={styles.actions}>

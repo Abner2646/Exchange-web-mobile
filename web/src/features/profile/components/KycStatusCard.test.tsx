@@ -140,8 +140,8 @@ describe('KycStatusCard', () => {
     });
     setup();
 
-    // Loading text
-    expect(screen.getByText(/loading|cargando/i)).toBeInTheDocument();
+    // Skeleton loading in a status region
+    expect(screen.getByRole('status')).toBeInTheDocument();
   });
 
   // ── (5) Error state (query error) ────────────────────────────────────────
