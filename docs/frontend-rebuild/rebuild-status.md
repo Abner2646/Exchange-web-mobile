@@ -37,7 +37,7 @@ cuando cumple, además de la paridad V1 / tech V2:
 
 | # | Página | Ruta | Caso | Estado |
 |---|--------|------|------|--------|
-| — | Home | `/` | — | ✅ hecho (referencia estética inicial) |
+| — | Home | `/` | —/B | ✅ hecho (estética inicial **+ 2ª pasada Caso B: dashboard logueado con cartera en vivo**, verificado 2026-11-03) |
 | — | Auth (login/register/verify-email/forgot-password/auth-success) | `/(auth)/*` | A | ✅ hecho (paridad visual V1) |
 | — | Navbar + Footer (todas las páginas) | layout | — | ✅ hecho |
 | — | Tema dark + toggle | global | — | ✅ hecho |
@@ -188,3 +188,24 @@ dejar el prompt de **Admin** (la última antes de la 2ª pasada del Home).
   maker-checker TOTP). Pendiente de i18n: los labels de `User statistics` muestran
   las keys crudas del backend (`totalUsers`…) en MAYÚSCULA — cosmético, no i18n'd
   (stats son backend-driven); aceptable para herramienta interna.
+
+### Home — 2ª pasada (sesión 2026-11-03)
+- **Caso B — modo logueado con datos en vivo.** Ya estaba implementado (quedó de la
+  sesión de Wallet, sin marcar): `HomeHero` alterna `MarketingHero` (deslogueado) vs
+  `DashboardHero` (logueado). El dashboard muestra **cartera en vivo** =
+  `availableBalance` (funding+spot, string del backend) × precio **CoinGecko**
+  (`_home/coingecko.ts`, display-only, nunca money-path), top holdings, `LiveMarkets`
+  (tabla) + `TopGainers`, acciones rápidas (Mi billetera / Intercambiar). Todo sobre
+  tokens del estándar.
+- **Lo que agregó esta pasada:** (1) **cobertura de test** del estado logueado
+  (`_home/HomeHero.test.tsx`: marketing vs dashboard, cartera, empty, error+retry,
+  precios caídos) — antes `page.test.tsx` solo cubría el marketing; (2) **honestidad
+  con precios caídos** — si CoinGecko no devuelve precios, el total muestra **"—"** +
+  nota ("No pudimos cargar los precios en vivo."/"Cargando…") y cada holding "—",
+  en vez de un **$0.00 engañoso** (que parecía "sin fondos"). Verificado con
+  screenshots (happy path + prices-down).
+- **Nota:** el Home usa **CoinGecko** para mercados; Trading usa **Binance.US** (vía
+  backend). Dos fuentes de precio display-only — divergen un poco pero ninguna es
+  money-path; CoinGecko da más data (7d%, cap, volumen, imágenes). No se unificó.
+- `Number()` en el total USD de la cartera es una **estimación de display** (precio
+  en vivo × balance, nunca se manda al backend) — sancionado como el recibo del swap.

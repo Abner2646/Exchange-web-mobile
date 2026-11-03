@@ -38,12 +38,15 @@ function MarketingHero() {
 
 function DashboardHero({ name }: { name: string }) {
   const { data: balances, isLoading, isError, refetch } = useMyBalances();
-  const { data: markets } = useMarkets();
+  const { data: markets, isError: marketsError } = useMarkets();
 
   const priceBySymbol = new Map<string, number>();
   (markets ?? []).forEach((c) => {
     if (c.symbol && c.current_price != null) priceBySymbol.set(c.symbol.toLowerCase(), c.current_price);
   });
+  // Live USD values depend on CoinGecko. If it hasn't returned any prices we must
+  // NOT render a misleading "$0.00" total — show the holdings without USD + a note.
+  const pricesAvailable = priceBySymbol.size > 0;
 
   const holdings = (balances ?? [])
     .map((b) => {
@@ -71,22 +74,28 @@ function DashboardHero({ name }: { name: string }) {
             <p>No pudimos cargar tus balances.</p>
             <button type="button" className={styles.marketsRetry} onClick={() => refetch()}>Reintentar</button>
           </div>
+        ) : holdings.length === 0 ? (
+          <>
+            <div className={styles.portfolioTotal}>{usd(0)}</div>
+            <p className={styles.portfolioEmpty}>Todavía no tenés fondos. Hacé tu primer depósito para empezar.</p>
+          </>
         ) : (
           <>
-            <div className={styles.portfolioTotal}>{usd(total)}</div>
-            {holdings.length === 0 ? (
-              <p className={styles.portfolioEmpty}>Todavía no tenés fondos. Hacé tu primer depósito para empezar.</p>
-            ) : (
-              <ul className={styles.portfolioList}>
-                {holdings.slice(0, 4).map((h) => (
-                  <li key={h.symbol} className={styles.portfolioItem}>
-                    <span className={styles.portfolioSym}>{h.symbol}</span>
-                    <span className={styles.portfolioAmt}>{trimAmount(h.raw)}</span>
-                    <span className={styles.portfolioUsd}>{usd(h.usdValue)}</span>
-                  </li>
-                ))}
-              </ul>
+            <div className={styles.portfolioTotal}>{pricesAvailable ? usd(total) : '—'}</div>
+            {!pricesAvailable && (
+              <p className={styles.portfolioEmpty}>
+                {marketsError ? 'No pudimos cargar los precios en vivo.' : 'Cargando precios en vivo…'}
+              </p>
             )}
+            <ul className={styles.portfolioList}>
+              {holdings.slice(0, 4).map((h) => (
+                <li key={h.symbol} className={styles.portfolioItem}>
+                  <span className={styles.portfolioSym}>{h.symbol}</span>
+                  <span className={styles.portfolioAmt}>{trimAmount(h.raw)}</span>
+                  <span className={styles.portfolioUsd}>{pricesAvailable ? usd(h.usdValue) : '—'}</span>
+                </li>
+              ))}
+            </ul>
           </>
         )}
       </div>
