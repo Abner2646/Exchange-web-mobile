@@ -83,12 +83,17 @@ export const adminApi = {
   },
 
   // Users
+  // The backend wraps the list as { users: [...] } (not a bare array) — unwrap so the
+  // query always yields AdminUser[] (a raw object here makes UsersAdmin's .filter/.map
+  // throw and crashes the whole admin page via the error boundary).
   async listUsers() {
-    return apiClient.get<AdminUser[]>('/user');
+    const r = await apiClient.get<AdminUser[] | { users?: AdminUser[] }>('/user');
+    return Array.isArray(r) ? r : (r?.users ?? []);
   },
 
   async searchUsers(q: string) {
-    return apiClient.get<AdminUser[]>(`/user/search?q=${encodeURIComponent(q)}`);
+    const r = await apiClient.get<AdminUser[] | { users?: AdminUser[] }>(`/user/search?q=${encodeURIComponent(q)}`);
+    return Array.isArray(r) ? r : (r?.users ?? []);
   },
 
   async updateUserStatus(userId: string, body: UpdateUserStatusRequest) {
@@ -115,8 +120,21 @@ export const adminApi = {
     return apiClient.delete<void>(`/user/${userId}`);
   },
 
-  async getUserStats() {
-    return apiClient.get<UserStatsResponse>('/user/admin/stats');
+  // The backend returns grouped rows [{ role, kycVerified, active, country, total }].
+  // Flatten them into a label→count summary the stats grid can render (an array here
+  // would render as "[object Object]" chips).
+  async getUserStats(): Promise<UserStatsResponse> {
+    const r = await apiClient.get<UserStatsResponse | Array<Record<string, unknown>>>('/user/admin/stats');
+    if (!Array.isArray(r)) return r;
+    const out: Record<string, number> = { total: 0 };
+    for (const row of r) {
+      const n = Number(row.total) || 0;
+      out.total += n;
+      if (row.role) out[`role:${row.role}`] = (out[`role:${String(row.role)}`] ?? 0) + n;
+      if (row.kycVerified) out.kycVerified = (out.kycVerified ?? 0) + n;
+      if (row.active) out.active = (out.active ?? 0) + n;
+    }
+    return out;
   },
 
   // Audit
