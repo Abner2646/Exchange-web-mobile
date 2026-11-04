@@ -76,6 +76,17 @@ export function Footer() {
 
         <div className={styles.bottom}>
           <p className={styles.copyright}>{t('footer.copyright', { year })}</p>
+          <a
+            href="https://www.norvex.dev/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.credit}
+            aria-label="Developed by Norvex"
+          >
+            <span className={styles.creditText}>{t('footer.developedBy')}</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/norvex.png" alt="Norvex" className={styles.creditLogo} width={88} height={24} />
+          </a>
         </div>
       </div>
     </footer>

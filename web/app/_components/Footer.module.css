@@ -81,11 +81,42 @@
 
 /* Bottom bar. */
 .bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
   margin-top: var(--spacing-xl);
   padding-top: var(--spacing-lg);
   border-top: 1px solid var(--border-secondary);
 }
 .copyright { margin: 0; font-size: var(--font-size-xs); color: var(--text-tertiary); }
+
+/* "Developed by NORVEX" credit. The Norvex wordmark is dark, so the logo sits on a
+   light chip to read against the dark footer. */
+.credit {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  text-decoration: none;
+  color: var(--text-tertiary);
+}
+.creditText { font-size: var(--font-size-xs); color: var(--text-tertiary); }
+.creditLogo {
+  height: 24px;
+  width: auto;
+  display: block;
+  padding: 4px 8px;
+  border-radius: var(--radius-md);
+  background-color: var(--color-base-white);
+  transition: transform var(--motion-duration-fast) var(--motion-easing-ease);
+}
+.credit:hover .creditText { color: var(--text-secondary); }
+.credit:hover .creditLogo { transform: translateY(-1px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .creditLogo { transition: none; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .socialLink, .link { transition: none; }

@@ -158,6 +158,7 @@ export const es: Catalog = {
     'footer.link.about': 'Sobre nosotros',
     'footer.link.news': 'Noticias',
     'footer.copyright': '© {{year}} BitFlow — exchange de criptomonedas custodial. Activos de mainnet en custodia.',
+    'footer.developedBy': 'Desarrollado por',
     'wallet.title': 'Billetera',
     'wallet.tab.balances': 'Balances',
     'wallet.tab.deposit': 'Depositar',

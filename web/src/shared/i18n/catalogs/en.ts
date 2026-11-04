@@ -158,6 +158,7 @@ export const en: Catalog = {
     'footer.link.about': 'About Us',
     'footer.link.news': 'News',
     'footer.copyright': '© {{year}} BitFlow — custodial crypto exchange. Mainnet assets in custody.',
+    'footer.developedBy': 'Developed by',
     'wallet.title': 'Wallet',
     'wallet.tab.balances': 'Balances',
     'wallet.tab.deposit': 'Deposit',
