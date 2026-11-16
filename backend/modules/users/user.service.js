@@ -64,7 +64,11 @@ class UserService {
       googleId: profile.id,
       email: profile.emails[0].value,
       username: profile.displayName || profile.emails[0].value.split('@')[0],
-      country: 'AR',
+      // Google's OAuth profile does not reliably carry a country, so leave it
+      // unset (null = unknown) rather than fabricating one — the user fills it in
+      // from their profile later. (Previously hardcoded to 'AR', which stored a
+      // false location for every Google signup regardless of where they were.)
+      country: null,
       role: 'normal',
       passwordHash: null,
       emailVerified: true, // ⭐ CRÍTICO: Google ya verificó el email
