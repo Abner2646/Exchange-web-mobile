@@ -1,4 +1,5 @@
 import { apiClient } from '@/shared/api';
+import { getFirstTouch } from '@/shared/analytics/firstTouch';
 import type {
   RegisterRequest, RegisterResponse,
   VerifyEmailRequest, VerifyEmailResponse,
@@ -9,8 +10,9 @@ import type {
 } from './types';
 
 export const authApi = {
+  // Attach first-touch attribution so the backend records how this user found us.
   register: (data: RegisterRequest) =>
-    apiClient.post<RegisterResponse>('/user/register', data),
+    apiClient.post<RegisterResponse>('/user/register', { ...data, firstTouch: getFirstTouch() }),
 
   verifyEmail: (data: VerifyEmailRequest) =>
     apiClient.post<VerifyEmailResponse>('/user/verify-email', data),

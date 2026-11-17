@@ -123,6 +123,11 @@ export const adminApi = {
   // The backend returns grouped rows [{ role, kycVerified, active, country, total }].
   // Flatten them into a label→count summary the stats grid can render (an array here
   // would render as "[object Object]" chips).
+  // Signup intelligence (IP, device, acquisition, real geolocation + activity) for one user.
+  async getUserIntel(userId: string) {
+    return apiClient.get<import('./types').UserIntel>(`/user/${userId}/signup-info`);
+  },
+
   async getUserStats(): Promise<UserStatsResponse> {
     const r = await apiClient.get<UserStatsResponse | Array<Record<string, unknown>>>('/user/admin/stats');
     if (!Array.isArray(r)) return r;

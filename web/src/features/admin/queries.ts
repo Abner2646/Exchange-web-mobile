@@ -93,6 +93,17 @@ export function useUsers() {
   });
 }
 
+export const ADMIN_USER_INTEL_KEY = ['admin', 'userIntel'] as const;
+
+export function useUserIntel(userId: string | null) {
+  return useQuery<import('./types').UserIntel, ApiError>({
+    queryKey: [...ADMIN_USER_INTEL_KEY, userId],
+    queryFn: () => adminApi.getUserIntel(userId as string),
+    enabled: !!userId,
+    staleTime: 60_000,
+  });
+}
+
 export function useAudit(params?: AuditQueryParams) {
   return useQuery<AuditListResponse, ApiError>({
     queryKey: [...ADMIN_AUDIT_KEY, params],

@@ -18,6 +18,7 @@ import {
   useUserStats,
 } from '../queries';
 import type { AdminUser } from '../types';
+import { UserIntelDialog } from './UserIntelDialog';
 import styles from './admin.module.css';
 
 // ── DeleteConfirmDialog ────────────────────────────────────────────────────────
@@ -37,7 +38,7 @@ function DeleteConfirmDialog({ user, onConfirm, onClose, isPending }: { user: Ad
 
 // ── UserRow ────────────────────────────────────────────────────────────────────
 
-function UserRow({ user, isSuperAdmin, totalCols, onDeleteClick }: { user: AdminUser; isSuperAdmin: boolean; totalCols: number; onDeleteClick: (user: AdminUser) => void }) {
+function UserRow({ user, isSuperAdmin, totalCols, onDeleteClick, onInspect }: { user: AdminUser; isSuperAdmin: boolean; totalCols: number; onDeleteClick: (user: AdminUser) => void; onInspect: (user: AdminUser) => void }) {
   const { t } = useTranslation();
   const { tError } = useErrorTranslation();
 
@@ -64,7 +65,11 @@ function UserRow({ user, isSuperAdmin, totalCols, onDeleteClick }: { user: Admin
   return (
     <>
       <tr>
-        <td className={styles.mono}>{user.username}</td>
+        <td>
+          <button type="button" className={styles.inspectBtn} onClick={() => onInspect(user)} title="Ver ficha del usuario (registro, IP, origen, ubicación)">
+            {user.username}
+          </button>
+        </td>
         <td>{user.email}</td>
         <td>
           <span className={styles.cellActions}>
@@ -172,6 +177,7 @@ export function UsersAdmin() {
 
   const [searchQ, setSearchQ] = useState('');
   const [pendingDelete, setPendingDelete] = useState<AdminUser | null>(null);
+  const [intelUserId, setIntelUserId] = useState<string | null>(null);
 
   const totalCols = 7 + (isSuperAdmin ? 1 : 0);
 
@@ -228,7 +234,7 @@ export function UsersAdmin() {
             </thead>
             <tbody>
               {filteredUsers.map((user) => (
-                <UserRow key={user.id} user={user} isSuperAdmin={isSuperAdmin} totalCols={totalCols} onDeleteClick={setPendingDelete} />
+                <UserRow key={user.id} user={user} isSuperAdmin={isSuperAdmin} totalCols={totalCols} onDeleteClick={setPendingDelete} onInspect={(u) => setIntelUserId(u.id)} />
               ))}
             </tbody>
           </table>
@@ -238,6 +244,8 @@ export function UsersAdmin() {
       {isSuperAdmin && (
         <DeleteConfirmDialog user={pendingDelete} onConfirm={handleDeleteConfirm} onClose={() => setPendingDelete(null)} isPending={deleteMutation.isPending} />
       )}
+
+      <UserIntelDialog userId={intelUserId} onClose={() => setIntelUserId(null)} />
     </section>
   );
 }

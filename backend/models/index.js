@@ -20,6 +20,7 @@ const transaccionBlockchainModel = require('../modules/wallets/blockchainTransac
 const transaccionP2PModel = require('../modules/p2p/p2pTransaction.model');
 const transferModel = require('../modules/balances/transfer.model')
 const userModel = require('../modules/users/user.model');
+const userSignupInfoModel = require('../modules/users/userSignupInfo.entity');
 const valoracionModel = require('../modules/p2p/rating.model');
 const walletMaestraModel = require('../modules/wallets/masterWallet.model');
 
@@ -76,6 +77,7 @@ const BlockchainTransaction = transaccionBlockchainModel(sequelize);
 const P2PTransaction = transaccionP2PModel(sequelize);
 const Transfer = transferModel(sequelize);
 const User = userModel(sequelize);
+const UserSignupInfo = userSignupInfoModel(sequelize);
 const Rating = valoracionModel(sequelize);
 const MasterWallet = walletMaestraModel(sequelize);
 
@@ -115,6 +117,10 @@ const BusinessConfig = initBusinessConfig(sequelize);
 // User puede tener muchas direcciones de depósito
 // Mismo bug (Críticos #9), y encima asimétrico: el belongsTo ya se había
 // corregido a userId pero el hasMany inverso se había quedado en usuarioId.
+// 1:1 signup intelligence (IP, device, acquisition, real geolocation) — see userSignupInfo.entity.js
+User.hasOne(UserSignupInfo, { foreignKey: 'userId', as: 'signupInfo' });
+UserSignupInfo.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
 User.hasMany(DepositAddress, { foreignKey: 'userId', as: 'depositAddresses' });
 DepositAddress.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
@@ -358,4 +364,5 @@ module.exports = {
   LedgerMovement,
   LedgerBalance,
   BusinessConfig,
+  UserSignupInfo,
 };

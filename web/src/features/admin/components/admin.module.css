@@ -209,6 +209,41 @@
 .note { margin: 0; font-size: var(--font-size-xs); color: var(--text-tertiary); }
 .skelRow { display: flex; align-items: center; gap: var(--spacing-md); padding: var(--spacing-sm) var(--spacing-md); }
 
+/* Clickable username → opens the user's forensic card. */
+.inspectBtn {
+  background: none; border: none; padding: 0; cursor: pointer; text-align: left;
+  font-family: var(--font-num, var(--font-sans)); font-size: var(--font-size-sm);
+  color: var(--brand-primary); font-weight: var(--font-weight-medium);
+}
+.inspectBtn:hover { text-decoration: underline; }
+.inspectBtn:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; border-radius: var(--radius-sm); }
+
+/* ── User intel / forensics dialog ───────────────────────────────────────────── */
+.intelWrap { display: flex; flex-direction: column; gap: var(--spacing-md); }
+.intelHeader {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-md);
+  padding-bottom: var(--spacing-md); border-bottom: 1px solid var(--border-secondary); flex-wrap: wrap;
+}
+.intelName { font-size: var(--font-size-md); font-weight: var(--font-weight-semibold); color: var(--text-primary); }
+.intelSub { font-size: var(--font-size-sm); color: var(--text-tertiary); }
+.intelFlags { display: flex; flex-wrap: wrap; gap: var(--spacing-xs); }
+.intelGrid {
+  display: grid; gap: var(--spacing-md);
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+.intelCard {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: var(--spacing-md); background-color: var(--bg-secondary);
+  border: 1px solid var(--border-primary); border-radius: var(--radius-md);
+}
+.intelCardTitle {
+  margin: 0 0 var(--spacing-xs); font-size: var(--font-size-xs); text-transform: uppercase;
+  letter-spacing: 0.05em; color: var(--text-tertiary); font-weight: var(--font-weight-semibold);
+}
+.intelRow { display: flex; align-items: baseline; justify-content: space-between; gap: var(--spacing-md); padding: 3px 0; }
+.intelLabel { font-size: var(--font-size-sm); color: var(--text-tertiary); flex-shrink: 0; }
+.intelValue { font-size: var(--font-size-sm); color: var(--text-primary); text-align: right; word-break: break-word; }
+
 /* ── a11y ─────────────────────────────────────────────────────────────────── */
 .tab:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .tab { transition: none; } }

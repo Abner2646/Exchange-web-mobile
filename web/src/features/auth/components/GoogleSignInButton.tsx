@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useTranslation } from '@/shared/i18n';
+import { getFirstTouchB64 } from '@/shared/analytics/firstTouch';
 import styles from './authForm.module.css';
 
 // V1-faithful custom button on the backend's redirect OAuth flow (GET
@@ -19,7 +20,11 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({ labelKey
   const { t } = useTranslation();
 
   const onClick = () => {
-    window.location.assign(`${API_BASE}/auth/google`);
+    // Carry first-touch attribution through the OAuth round-trip so a Google signup is
+    // attributed to its ORIGINAL source (search/referral/direct), not accounts.google.com.
+    const ft = getFirstTouchB64();
+    const url = ft ? `${API_BASE}/auth/google?ft=${encodeURIComponent(ft)}` : `${API_BASE}/auth/google`;
+    window.location.assign(url);
   };
 
   return (

@@ -210,6 +210,10 @@ const registerUsuario = async (req, res) => {
     
     await transaction.commit();
 
+    // Persist signup intelligence (IP, device, acquisition source, real geolocation) as
+    // user data — best-effort, AFTER commit so it never blocks or rolls back the registration.
+    require('./signupIntel.service').captureSignup({ userId: user.id, method: 'password', req, firstTouch: req.body.firstTouch });
+
     res.status(201).json({
       message: 'Usuario registrado exitosamente. Por favor verifica tu email.',
       user: {
@@ -303,6 +307,11 @@ const loginWithGoogle = async (req, res) => {
     }
 
     await transaction.commit();
+
+    // Signup intelligence for new Google accounts (best-effort, non-blocking).
+    if (result.isNewUser) {
+      require('./signupIntel.service').captureSignup({ userId: result.id, method: 'google', req, firstTouch: req.body.firstTouch });
+    }
 
     const usuario = await User.findByPk(result.id);
     const token = usuario.generateUpdatedJWT();
@@ -708,10 +717,71 @@ const updateUsuarioRole = async (req, res) => {
   try {
     const { id } = req.params;
     const { role } = req.body;
+
+    // Security invariants (owner decision — hardcoded, not configurable):
+    //  1) super_admin is NEVER grantable from the panel. Elevation to super_admin is
+    //     done ONLY via a direct SQL statement on the DB.
+    //  2) An operator cannot change their OWN role (no self-demotion, no locking
+    //     yourself out of admin).
+    //  3) An existing super_admin's role cannot be altered from the panel (SQL-managed).
+    if (role === 'super_admin') {
+      return res.status(403).json({ error: 'No se puede asignar super_admin desde el panel: se hace únicamente por SQL directo en la base.' });
+    }
+    if (String(req.user.id) === String(id)) {
+      return res.status(403).json({ error: 'No podés cambiar tu propio rol.' });
+    }
+    const target = await User.findByPk(id, { attributes: ['id', 'role'] });
+    if (!target) {
+      return res.status(404).json({ error: 'Usuario no encontrado.' });
+    }
+    if (target.role === 'super_admin') {
+      return res.status(403).json({ error: 'No se puede modificar el rol de un super_admin desde el panel.' });
+    }
+
     const { user, token } = await User.updateRole(id, role);
     res.json({ user, token });
   } catch (error) {
     res.status(400).json({ error: error.message });
+  }
+};
+
+// Signup intelligence for one user (admin): the persisted signup-info row (IP, device,
+// acquisition, real geolocation) + declared country + activity signals, so an operator
+// can judge real-vs-fake from one friendly view.
+const getUserIntel = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { User, UserSignupInfo, DepositAddress, Swap, Order, P2POffer } = require('../../models');
+
+    const user = await User.findByPk(id, {
+      attributes: ['id', 'email', 'username', 'role', 'country', 'emailVerified', 'googleId',
+        'kycVerified', 'active', 'twoFactorEnabled', 'lastLoginAt', 'createdAt', 'updatedAt'],
+    });
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    const signup = await UserSignupInfo.findOne({ where: { userId: id } });
+
+    const count = (M, where) => (M && M.count ? M.count({ where }).catch(() => null) : Promise.resolve(null));
+    const [depositAddresses, swaps, orders, p2pOffers] = await Promise.all([
+      count(DepositAddress, { userId: id }),
+      count(Swap, { userId: id }),
+      count(Order, { userId: id }),
+      count(P2POffer, { userId: id }),
+    ]);
+
+    res.json({
+      user: {
+        id: user.id, email: user.email, username: user.username, role: user.role,
+        emailVerified: user.emailVerified, method: user.googleId ? 'google' : 'password',
+        kycVerified: user.kycVerified, active: user.active, twoFactorEnabled: user.twoFactorEnabled,
+        lastLoginAt: user.lastLoginAt, createdAt: user.createdAt,
+      },
+      declaredCountry: user.country || null,
+      signup: signup || null,
+      activity: { depositAddresses, swaps, orders, p2pOffers },
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 };
 
@@ -1147,6 +1217,7 @@ module.exports = {
   completeUserInitialization,
   
   // Métodos de administración (admin/super_admin)
+  getUserIntel,
   updateUsuarioStatus,
   updateUsuarioRole,
   updateUsuarioKYC,

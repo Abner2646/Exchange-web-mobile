@@ -577,10 +577,21 @@ router.delete('/:id',
 // =====================================================================
 
 /**
+ * GET /:id/signup-info
+ * Signup intelligence (IP, device, how they found us, real geolocation + activity) for
+ * a user — lets operators tell real users from bots/fakes (admin).
+ */
+router.get('/:id/signup-info',
+  authenticateToken,
+  isAdmin,
+  userController.getUserIntel
+);
+
+/**
  * PATCH /:id/status
  * Actualizar estado de usuario (admin)
  */
-router.patch('/:id/status', 
+router.patch('/:id/status',
   authenticateToken,
   isAdmin,
   userController.updateUsuarioStatus

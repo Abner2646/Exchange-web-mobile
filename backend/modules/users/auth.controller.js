@@ -21,10 +21,18 @@ class AuthController {
       { expiresIn: '7d' }
     );
     
-    const redirectUrl = req.user.isNewUser 
+    // Capture signup intelligence for brand-new Google accounts (best-effort, non-blocking).
+    // First-touch attribution travels in the OAuth `state` (base64 JSON) set at /auth/google.
+    if (req.user.isNewUser) {
+      let firstTouch;
+      try { if (req.query.state) firstTouch = JSON.parse(Buffer.from(String(req.query.state), 'base64').toString('utf8')); } catch (e) { /* ignore malformed state */ }
+      require('./signupIntel.service').captureSignup({ userId: req.user.id, method: 'google', req, firstTouch });
+    }
+
+    const redirectUrl = req.user.isNewUser
       ? `${process.env.FRONTEND_URL}/auth-success?token=${token}&new=true`
       : `${process.env.FRONTEND_URL}/auth-success?token=${token}`;
-      
+
     res.redirect(redirectUrl);
   }
 

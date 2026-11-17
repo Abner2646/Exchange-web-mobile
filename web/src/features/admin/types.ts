@@ -144,6 +144,62 @@ export interface UserStatsResponse {
   [key: string]: unknown;
 }
 
+// ── Signup intelligence (per-user forensics) ───────────────────────────────────
+
+export interface UserSignupInfo {
+  id: string;
+  userId: string;
+  method: string | null; // 'google' | 'password'
+  signupIp: string | null;
+  userAgent: string | null;
+  browser: string | null;
+  os: string | null;
+  deviceType: string | null; // mobile | tablet | desktop | bot | unknown
+  isBot: boolean | null;
+  referer: string | null;
+  landingPath: string | null;
+  utmSource: string | null;
+  utmMedium: string | null;
+  utmCampaign: string | null;
+  acquisitionSource: string | null; // search | direct | referral | campaign | social | oauth | ...
+  acquisitionDetail: string | null;
+  ipCountryCode: string | null;
+  ipCountry: string | null;
+  ipRegion: string | null;
+  ipCity: string | null;
+  ipIsp: string | null;
+  ipAsn: string | null;
+  ipIsProxyVpn: boolean | null;
+  ipIsHosting: boolean | null;
+  geoResolvedAt: string | null;
+  geoError: string | null;
+  createdAt?: string;
+}
+
+export interface UserIntel {
+  user: {
+    id: string;
+    email: string;
+    username: string;
+    role: string;
+    emailVerified: boolean;
+    method: string; // 'google' | 'password'
+    kycVerified: boolean;
+    active: boolean;
+    twoFactorEnabled: boolean;
+    lastLoginAt: string | null;
+    createdAt: string;
+  };
+  declaredCountry: string | null;
+  signup: UserSignupInfo | null;
+  activity: {
+    depositAddresses: number | null;
+    swaps: number | null;
+    orders: number | null;
+    p2pOffers: number | null;
+  };
+}
+
 export interface AuditRow {
   id: number;
   eventId: string;

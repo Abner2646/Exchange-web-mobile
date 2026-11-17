@@ -31,6 +31,8 @@ vi.mock('../queries', () => ({
   useUpdateUserRole: () => useUpdateUserRoleMock(),
   useDeleteUser: () => useDeleteUserMock(),
   useUserStats: () => useUserStatsMock(),
+  // The forensic drawer (closed by default in these tests) reads this hook.
+  useUserIntel: () => ({ data: undefined, isLoading: false, isError: false, error: null }),
 }));
 
 vi.mock('@/features/auth/queries', () => ({
