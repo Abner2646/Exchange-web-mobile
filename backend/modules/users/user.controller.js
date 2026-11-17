@@ -753,9 +753,11 @@ const getUserIntel = async (req, res) => {
     const { id } = req.params;
     const { User, UserSignupInfo, DepositAddress, Swap, Order, P2POffer } = require('../../models');
 
+    // NOTE: the User model renames its timestamp attributes to created_at/updated_at
+    // (see user.entity.js timestamps config), so request those — not createdAt/updatedAt.
     const user = await User.findByPk(id, {
       attributes: ['id', 'email', 'username', 'role', 'country', 'emailVerified', 'googleId',
-        'kycVerified', 'active', 'twoFactorEnabled', 'lastLoginAt', 'createdAt', 'updatedAt'],
+        'kycVerified', 'active', 'twoFactorEnabled', 'lastLoginAt', 'created_at'],
     });
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
 
@@ -774,7 +776,7 @@ const getUserIntel = async (req, res) => {
         id: user.id, email: user.email, username: user.username, role: user.role,
         emailVerified: user.emailVerified, method: user.googleId ? 'google' : 'password',
         kycVerified: user.kycVerified, active: user.active, twoFactorEnabled: user.twoFactorEnabled,
-        lastLoginAt: user.lastLoginAt, createdAt: user.createdAt,
+        lastLoginAt: user.lastLoginAt, createdAt: user.get('created_at'),
       },
       declaredCountry: user.country || null,
       signup: signup || null,
