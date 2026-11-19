@@ -96,6 +96,18 @@ function createUserModel(sequelize) {
   User.createWithPassword = async (data) => {
     const { email, username, password, country, ...otherData } = data;
 
+    // SECURITY (mass-assignment / privilege escalation): the registration body is
+    // attacker-controlled. Strip every privilege/trust/money field so a request like
+    // { role:'super_admin', emailVerified:true, kycVerified:true, dailyLimitUsd:'1e9' }
+    // can NEVER set them — and the server-controlled values below always win.
+    const FORBIDDEN = [
+      'role', 'emailVerified', 'passwordHash', 'id', 'kycVerified', 'kycData',
+      'dailyLimitUsd', 'dailyLimit', 'active', 'totpSecret', 'totpEnabled',
+      'twoFactorEnabled', 'googleId', 'averageRating', 'totalRatings',
+      'lastLoginAt', 'lastLogoutAt', 'createdAt', 'updatedAt', 'created_at', 'updated_at',
+    ];
+    for (const k of FORBIDDEN) delete otherData[k];
+
     const existingUser = await User.findOne({
       where: {
         [Op.or]: [
@@ -121,13 +133,13 @@ function createUserModel(sequelize) {
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
     const userData = {
+      ...otherData, // benign profile fields only (FORBIDDEN keys already stripped above)
       email: email.toLowerCase(),
       username: username.toLowerCase(),
       passwordHash,
       country,
       role,
       emailVerified: false,
-      ...otherData
     };
 
     const newUser = await User.create(userData);
