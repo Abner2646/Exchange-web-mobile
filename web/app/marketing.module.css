@@ -563,6 +563,35 @@
   padding-top: var(--spacing-sm);
   border-top: 1px solid var(--border-secondary);
 }
+.portfolioItem { gap: var(--spacing-sm); }
+.portfolioMeta { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.portfolioValues { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
 .portfolioSym { font-weight: var(--font-weight-semibold); color: var(--text-primary); }
-.portfolioAmt { font-family: var(--font-num), var(--font-sans); color: var(--text-secondary); font-size: var(--font-size-sm); }
+.portfolioAmt { font-family: var(--font-num), var(--font-sans); color: var(--text-tertiary); font-size: var(--font-size-xs); }
 .portfolioUsd { font-family: var(--font-num), var(--font-sans); color: var(--text-primary); font-weight: var(--font-weight-medium); }
+.portfolioValues .positive, .portfolioValues .negative, .portfolioValues .neutral {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+/* 24h portfolio P&L under the total (green/red). */
+.portfolioChange {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+  font-family: var(--font-num), var(--font-sans);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.portfolioEmptyCta { display: inline-block; margin-top: var(--spacing-md); }
+.portfolioViewAll {
+  display: inline-block;
+  margin-top: var(--spacing-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--brand-primary);
+  text-decoration: none;
+}
+.portfolioViewAll:hover { text-decoration: underline; }

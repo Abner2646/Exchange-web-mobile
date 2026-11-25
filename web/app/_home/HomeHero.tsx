@@ -6,7 +6,8 @@ import { session } from '@/shared/api';
 import { useTranslation } from '@/shared/i18n';
 import { useCurrentUser } from '@/features/auth/queries';
 import { useMyBalances } from '@/features/wallet/queries';
-import { useMarkets } from './coingecko';
+import { CoinLogo } from '@/shared/ui';
+import { useMarkets, formatPct } from './coingecko';
 import { TopGainers } from './TopGainers';
 import styles from '../marketing.module.css';
 
@@ -35,14 +36,24 @@ function MarketingHero() {
   );
 }
 
+function Pct({ v }: { v: number | null }) {
+  const { text, sign } = formatPct(v);
+  const cls = sign === 'pos' ? styles.positive : sign === 'neg' ? styles.negative : styles.neutral;
+  return <span className={cls}>{text}</span>;
+}
+
 function DashboardHero({ name }: { name: string }) {
   const { t } = useTranslation();
   const { data: balances, isLoading, isError, refetch } = useMyBalances();
   const { data: markets, isError: marketsError } = useMarkets();
 
   const priceBySymbol = new Map<string, number>();
+  const change24hBySymbol = new Map<string, number>();
   (markets ?? []).forEach((c) => {
-    if (c.symbol && c.current_price != null) priceBySymbol.set(c.symbol.toLowerCase(), c.current_price);
+    if (!c.symbol) return;
+    const key = c.symbol.toLowerCase();
+    if (c.current_price != null) priceBySymbol.set(key, c.current_price);
+    if (c.price_change_percentage_24h != null) change24hBySymbol.set(key, c.price_change_percentage_24h);
   });
   // Live USD values depend on CoinGecko. If it hasn't returned any prices we must
   // NOT render a misleading "$0.00" total — show the holdings without USD + a note.
@@ -52,12 +63,25 @@ function DashboardHero({ name }: { name: string }) {
     .map((b) => {
       const sym = b.crypto?.symbol ?? '';
       const amount = Number(b.availableBalance ?? '0');
-      const price = priceBySymbol.get(sym.toLowerCase()) ?? 0;
-      return { symbol: sym.toUpperCase(), raw: b.availableBalance ?? '0', amount, usdValue: amount * price };
+      const key = sym.toLowerCase();
+      const price = priceBySymbol.get(key) ?? 0;
+      return {
+        symbol: sym.toUpperCase(),
+        raw: b.availableBalance ?? '0',
+        amount,
+        usdValue: amount * price,
+        change24h: change24hBySymbol.get(key) ?? null,
+      };
     })
     .filter((h) => h.amount > 0)
     .sort((a, b) => b.usdValue - a.usdValue);
   const total = holdings.reduce((s, h) => s + h.usdValue, 0);
+
+  // Portfolio's 24h P&L: value now vs value 24h ago (price_24h_ago = price / (1 + pct/100)),
+  // summed across holdings. The % is the weighted change over the 24h-ago total.
+  const value24hAgo = holdings.reduce((s, h) => s + h.usdValue / (1 + (h.change24h ?? 0) / 100), 0);
+  const changeUsd = total - value24hAgo;
+  const changePct = value24hAgo > 0 ? (changeUsd / value24hAgo) * 100 : 0;
 
   return (
     <div className={styles.heroContent}>
@@ -78,10 +102,16 @@ function DashboardHero({ name }: { name: string }) {
           <>
             <div className={styles.portfolioTotal}>{usd(0)}</div>
             <p className={styles.portfolioEmpty}>{t('home.dashboard.empty')}</p>
+            <Link href="/swap" className={`${styles.ctaPrimary} ${styles.portfolioEmptyCta}`}>{t('home.dashboard.emptyCta')}</Link>
           </>
         ) : (
           <>
             <div className={styles.portfolioTotal}>{pricesAvailable ? usd(total) : '—'}</div>
+            {pricesAvailable && total > 0 && (
+              <div className={`${styles.portfolioChange} ${changeUsd >= 0 ? styles.positive : styles.negative}`}>
+                {changeUsd >= 0 ? '+' : '−'}{usd(Math.abs(changeUsd))} (<Pct v={changePct} />) {t('home.dashboard.today')}
+              </div>
+            )}
             {!pricesAvailable && (
               <p className={styles.portfolioEmpty}>
                 {marketsError ? t('home.dashboard.pricesUnavailable') : t('home.dashboard.pricesLoading')}
@@ -90,19 +120,31 @@ function DashboardHero({ name }: { name: string }) {
             <ul className={styles.portfolioList}>
               {holdings.slice(0, 4).map((h) => (
                 <li key={h.symbol} className={styles.portfolioItem}>
-                  <span className={styles.portfolioSym}>{h.symbol}</span>
-                  <span className={styles.portfolioAmt}>{trimAmount(h.raw)}</span>
-                  <span className={styles.portfolioUsd}>{pricesAvailable ? usd(h.usdValue) : '—'}</span>
+                  <CoinLogo symbol={h.symbol} size={30} />
+                  <div className={styles.portfolioMeta}>
+                    <span className={styles.portfolioSym}>{h.symbol}</span>
+                    <span className={styles.portfolioAmt}>{trimAmount(h.raw)}</span>
+                  </div>
+                  <div className={styles.portfolioValues}>
+                    <span className={styles.portfolioUsd}>{pricesAvailable ? usd(h.usdValue) : '—'}</span>
+                    {pricesAvailable && h.change24h != null && <Pct v={h.change24h} />}
+                  </div>
                 </li>
               ))}
             </ul>
+            {holdings.length > 4 && (
+              <Link href="/wallet" className={styles.portfolioViewAll}>
+                {t('home.dashboard.viewAll', { count: holdings.length })}
+              </Link>
+            )}
           </>
         )}
       </div>
 
       <div className={styles.actions}>
-        <Link href="/wallet" className={styles.ctaPrimary}>{t('home.dashboard.actionWallet')}</Link>
-        <Link href="/swap" className={styles.ctaSecondary}>{t('home.dashboard.actionSwap')}</Link>
+        <Link href="/swap" className={styles.ctaPrimary}>{t('home.dashboard.actionSwap')}</Link>
+        <Link href="/trading" className={styles.ctaSecondary}>{t('home.dashboard.actionTrade')}</Link>
+        <Link href="/wallet" className={styles.ctaSecondary}>{t('home.dashboard.actionDeposit')}</Link>
       </div>
     </div>
   );
