@@ -28,6 +28,11 @@ const COINGECKO_ICONS: Record<string, string> = {
   WBTC: 'https://coin-images.coingecko.com/coins/images/7598/large/wrapped_bitcoin_wbtc.png',
 };
 
+/** Our pinned, reliable CDN URL for a KNOWN catalog coin, or null if we don't have one. */
+export function knownIconUrl(symbol: string): string | null {
+  return COINGECKO_ICONS[(symbol || '').toUpperCase()] ?? null;
+}
+
 export function iconUrl(symbol: string): string {
   const key = (symbol || '').toUpperCase();
   return (

@@ -238,7 +238,9 @@
   background: var(--bg-elevated);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-primary);
-  overflow: hidden;
+  /* Safety net: if the table is ever wider than its container, scroll instead of
+     clipping the price column off-screen (the mobile bug). */
+  overflow-x: auto;
 }
 .table {
   width: 100%;
@@ -478,6 +480,14 @@
   .subtitle { font-size: 1rem; }
   .numCell, .thHideSm { display: none; }
   .trustGrid { grid-template-columns: 1fr; }
+  /* Markets table fits the phone with just Coin · Price · 24h (7d/volume/cap hidden):
+     tighten the coin column and cell padding so the price never clips off-screen. */
+  .coinCell { min-width: 0; }
+  .coinName { display: none; }
+  .table th, .table td { padding: var(--spacing-sm) var(--spacing-xs); }
+  .coinInfo { gap: var(--spacing-xs); }
+  .priceCell { font-size: 0.875rem; }
+  .changeCell { font-size: 0.875rem; }
 }
 
 /* Live-data states (markets table + gainers). */

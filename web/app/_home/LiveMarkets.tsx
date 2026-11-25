@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useTranslation } from '@/shared/i18n';
+import { CoinLogo } from '@/shared/ui';
 import { useMarkets, formatPrice, formatCompact, formatPct } from './coingecko';
 import styles from '../marketing.module.css';
 
@@ -26,7 +27,7 @@ export function LiveMarkets() {
               <th>{t('home.markets.col.coin')}</th>
               <th className={styles.thCenter}>{t('home.markets.col.price')}</th>
               <th className={styles.thCenter}>{t('home.markets.col.change24h')}</th>
-              <th className={styles.thCenter}>{t('home.markets.col.change7d')}</th>
+              <th className={`${styles.thCenter} ${styles.thHideSm}`}>{t('home.markets.col.change7d')}</th>
               <th className={styles.thHideSm} style={{ textAlign: 'right' }}>{t('home.markets.col.volume')}</th>
               <th className={styles.thHideSm} style={{ textAlign: 'right' }}>{t('home.markets.col.marketCap')}</th>
             </tr>
@@ -43,7 +44,7 @@ export function LiveMarkets() {
                   </td>
                   <td className={styles.priceCell}><span className={styles.skel} style={{ width: 64, height: 14, marginLeft: 'auto' }} /></td>
                   <td className={styles.changeCell}><span className={styles.skel} style={{ width: 48, height: 14, margin: '0 auto' }} /></td>
-                  <td className={styles.changeCell}><span className={styles.skel} style={{ width: 48, height: 14, margin: '0 auto' }} /></td>
+                  <td className={`${styles.changeCell} ${styles.thHideSm}`}><span className={styles.skel} style={{ width: 48, height: 14, margin: '0 auto' }} /></td>
                   <td className={`${styles.numCell} ${styles.thHideSm}`}><span className={styles.skel} style={{ width: 70, height: 14, marginLeft: 'auto' }} /></td>
                   <td className={`${styles.numCell} ${styles.thHideSm}`}><span className={styles.skel} style={{ width: 80, height: 14, marginLeft: 'auto' }} /></td>
                 </tr>
@@ -53,8 +54,7 @@ export function LiveMarkets() {
                 <tr key={c.id} className={styles.row}>
                   <td className={styles.coinCell}>
                     <div className={styles.coinInfo}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img className={styles.coinIcon} src={c.image || ''} alt="" width={30} height={30} loading="lazy" />
+                      <CoinLogo symbol={c.symbol} src={c.image || undefined} size={30} />
                       <div>
                         <div className={styles.coinSymbol}>{(c.symbol || '').toUpperCase()}</div>
                         <div className={styles.coinName}>{c.name}</div>
@@ -63,7 +63,7 @@ export function LiveMarkets() {
                   </td>
                   <td className={styles.priceCell}>{formatPrice(c.current_price)}</td>
                   <td className={styles.changeCell}><Pct v={c.price_change_percentage_24h} /></td>
-                  <td className={styles.changeCell}><Pct v={c.price_change_percentage_7d_in_currency} /></td>
+                  <td className={`${styles.changeCell} ${styles.thHideSm}`}><Pct v={c.price_change_percentage_7d_in_currency} /></td>
                   <td className={`${styles.numCell} ${styles.thHideSm}`}>{formatCompact(c.total_volume)}</td>
                   <td className={`${styles.numCell} ${styles.thHideSm}`}>{formatCompact(c.market_cap)}</td>
                 </tr>

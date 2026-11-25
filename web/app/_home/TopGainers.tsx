@@ -1,6 +1,7 @@
 'use client';
 
 import { useTranslation } from '@/shared/i18n';
+import { CoinLogo } from '@/shared/ui';
 import { useMarkets, formatPrice, formatPct } from './coingecko';
 import styles from '../marketing.module.css';
 
@@ -30,8 +31,7 @@ export function TopGainers() {
           {!isLoading &&
             gainers.map((c) => (
               <div key={c.id} className={styles.gainersItem}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img className={styles.coinIcon} src={c.image || ''} alt="" width={28} height={28} loading="lazy" />
+                <CoinLogo symbol={c.symbol} src={c.image || undefined} size={28} />
                 <div className={styles.gainersInfo}>
                   <span className={styles.gainersSymbol}>{(c.symbol || '').toUpperCase()}</span>
                   <span className={styles.gainersPrice}>{formatPrice(c.current_price)}</span>
