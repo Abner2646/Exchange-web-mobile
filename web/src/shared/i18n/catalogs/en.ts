@@ -120,6 +120,7 @@ export const en: Catalog = {
     'home.markets.error': "We couldn't load the markets. Please try again.",
     'home.markets.viewAll': 'View all markets →',
     'home.gainers.title': 'Top Gainers (24h)',
+    'home.gainers.viewAll': 'View all markets →',
     'home.download.title': 'Trade from anywhere.',
     'home.download.subtitle': 'Your favorite exchange, in your pocket.',
     'home.download.notAvailable': 'Mobile app not available in your region',

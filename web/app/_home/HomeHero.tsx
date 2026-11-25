@@ -42,7 +42,7 @@ function Pct({ v }: { v: number | null }) {
   return <span className={cls}>{text}</span>;
 }
 
-function DashboardHero({ name }: { name: string }) {
+function DashboardHero() {
   const { t } = useTranslation();
   const { data: balances, isLoading, isError, refetch } = useMyBalances();
   const { data: markets, isError: marketsError } = useMarkets();
@@ -84,11 +84,7 @@ function DashboardHero({ name }: { name: string }) {
   const changePct = value24hAgo > 0 ? (changeUsd / value24hAgo) * 100 : 0;
 
   return (
-    <div className={styles.heroContent}>
-      <h1 className={styles.title}>
-        {t('home.dashboard.greeting')} <span className={styles.titleAccent}>{name || t('home.dashboard.traderFallback')}</span>
-      </h1>
-
+    <div className={styles.heroCol}>
       <div className={styles.portfolioCard}>
         <div className={styles.portfolioLabel}>{t('home.dashboard.portfolioLabel')}</div>
         {isLoading ? (
@@ -160,9 +156,28 @@ export function HomeHero() {
   const { data: user } = useCurrentUser();
   const name = cap(user?.displayName || user?.username || '');
 
+  const { t } = useTranslation();
+
+  // Signed in: greeting spans full width, then two top-aligned columns (portfolio + quick
+  // actions | Top Gainers) that stretch to equal height — a balanced dashboard grid.
+  if (authed) {
+    return (
+      <section className={styles.heroDash}>
+        <h1 className={styles.title}>
+          {t('home.dashboard.greeting')} <span className={styles.titleAccent}>{name || t('home.dashboard.traderFallback')}</span>
+        </h1>
+        <div className={styles.heroRow}>
+          <DashboardHero />
+          <TopGainers />
+        </div>
+      </section>
+    );
+  }
+
+  // Signed out: the marketing hero (unchanged two-column row).
   return (
     <section className={styles.hero}>
-      {authed ? <DashboardHero name={name} /> : <MarketingHero />}
+      <MarketingHero />
       <TopGainers />
     </section>
   );

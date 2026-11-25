@@ -86,6 +86,50 @@
   max-width: 700px;
 }
 
+/* Signed-in dashboard hero (Option B): greeting full-width on top, then two top-aligned,
+   equal-height columns — [portfolio + quick actions] | [Top Gainers]. */
+.heroDash {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: var(--spacing-xxl) var(--spacing-xl);
+}
+.heroDash .title { margin-bottom: 0; }
+.heroRow {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch; /* both columns share the same height */
+  justify-content: space-between;
+  gap: var(--spacing-xxl);
+}
+.heroCol {
+  flex: 1;
+  max-width: 700px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+.heroCol .portfolioCard { margin: 0; }
+/* The Top Gainers card fills the left column's height; its list grows so the footer pins
+   to the bottom (both cards end level). */
+.heroRow .gainersSection { padding-top: 0; display: flex; }
+.heroRow .gainersCard { flex: 1; display: flex; flex-direction: column; }
+.heroRow .gainersList { flex: 1; }
+.gainersFooter {
+  display: block;
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-xs) var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--brand-primary);
+  text-decoration: none;
+  text-align: center;
+  border-top: 1px solid var(--border-secondary);
+}
+.gainersFooter:hover { color: var(--brand-secondary); }
+
 .title {
   font-size: 4.1rem;
   font-weight: 700;
@@ -471,6 +515,9 @@
 @media (max-width: 1100px) {
   .hero { flex-direction: column; min-height: auto; }
   .gainersSection { flex: 1 1 auto; width: 100%; max-width: 460px; }
+  /* Option B dashboard: stack the two columns on narrow screens. */
+  .heroRow { flex-direction: column; align-items: stretch; }
+  .heroCol { max-width: none; }
   .title { font-size: 3rem; }
   .trustGrid { grid-template-columns: repeat(2, 1fr); }
   .downloadInner { flex-direction: column; text-align: center; }

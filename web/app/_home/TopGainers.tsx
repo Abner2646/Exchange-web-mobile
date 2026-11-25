@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useTranslation } from '@/shared/i18n';
 import { CoinLogo } from '@/shared/ui';
 import { useMarkets, formatPrice, formatPct } from './coingecko';
@@ -11,7 +12,7 @@ export function TopGainers() {
   const gainers = (data ?? [])
     .filter((c) => (c.price_change_percentage_24h ?? 0) > 0)
     .sort((a, b) => (b.price_change_percentage_24h ?? 0) - (a.price_change_percentage_24h ?? 0))
-    .slice(0, 5);
+    .slice(0, 6);
 
   return (
     <aside className={styles.gainersSection}>
@@ -22,7 +23,7 @@ export function TopGainers() {
         </div>
         <div className={styles.gainersList}>
           {isLoading &&
-            Array.from({ length: 5 }).map((_, i) => (
+            Array.from({ length: 6 }).map((_, i) => (
               <div key={`sk-${i}`} className={styles.gainersItem}>
                 <span className={styles.skel} style={{ width: 28, height: 28, borderRadius: '50%' }} />
                 <span className={styles.skel} style={{ width: 70, height: 14 }} />
@@ -40,6 +41,7 @@ export function TopGainers() {
               </div>
             ))}
         </div>
+        <Link href="/trading" className={styles.gainersFooter}>{t('home.gainers.viewAll')}</Link>
       </div>
     </aside>
   );

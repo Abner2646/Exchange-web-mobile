@@ -120,6 +120,7 @@ export const es: Catalog = {
     'home.markets.error': 'No pudimos cargar los mercados. Probá de nuevo.',
     'home.markets.viewAll': 'Ver todos los mercados →',
     'home.gainers.title': 'Top Ganadores (24hs)',
+    'home.gainers.viewAll': 'Ver todos los mercados →',
     'home.download.title': 'Opera desde cualquier lugar.',
     'home.download.subtitle': 'Tu exchange favorito, en tu bolsillo.',
     'home.download.notAvailable': 'App móvil no disponible en tu región',
