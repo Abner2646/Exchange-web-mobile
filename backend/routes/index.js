@@ -30,6 +30,7 @@ const auditRoutes = require('../modules/audit/audit.routes.js')
 
 // Honeypot ("Mirage") deception guard — mounted FIRST below. No-op unless HONEYPOT_ENABLED.
 const honeypotGuard = require('../modules/honeypot/honeypotGuard.middleware')
+const honeypotRoutes = require('../modules/honeypot/honeypot.routes.js')
 
 // Wire the large-withdrawal dual-control executor + compensator into the Maker-Checker engine at
 // boot: a checker's approval of a `large_withdrawal_release` action releases the held withdrawal,
@@ -72,6 +73,7 @@ router.use('/launchpad', launchpadRoutes)
 router.use('/kyc', kycRoutes)
 router.use('/governance', governanceRoutes)
 router.use('/audit', auditRoutes)
+router.use('/honeypot', honeypotRoutes)
 router.use('/user', userRoutes)
 // Fix 2026-08-19 (AUDITORIA_BACKEND.md Altos #11): estaba comentada pese a
 // que el modelo/controller ya estaban completos y activos en

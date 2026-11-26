@@ -29,13 +29,14 @@ describe('AdminPage (AdminTabs)', () => {
     expect(tablist).toBeInTheDocument();
 
     const tabs = screen.getAllByRole('tab');
-    expect(tabs).toHaveLength(5);
+    expect(tabs).toHaveLength(6);
 
     expect(screen.getByRole('tab', { name: /governance/i })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /users/i })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /config/i })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /aml/i })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /audit/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /honeypot/i })).toBeInTheDocument();
   });
 
   // ── (2) Governance tab is active by default ───────────────────────────────

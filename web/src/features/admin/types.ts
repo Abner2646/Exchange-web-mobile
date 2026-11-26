@@ -229,3 +229,42 @@ export interface AuditQueryParams {
   limit?: number;
   beforeId?: number;
 }
+
+// ── Honeypot ("Mirage") intelligence ───────────────────────────────────────────
+
+export interface HoneypotSession {
+  id: string;
+  ip: string | null;
+  markedUserId: string | null;
+  trigger: string; // honeytoken | risk_score | fake_exploit
+  riskScore: number | null;
+  reason: string | null;
+  userAgent: string | null;
+  ipCountry: string | null;
+  ipIsp: string | null;
+  eventCount: number;
+  active: boolean;
+  firstSeenAt: string | null;
+  lastSeenAt: string | null;
+}
+
+export interface HoneypotEvent {
+  id: string;
+  sessionId: string | null;
+  ip: string | null;
+  userAgent: string | null;
+  method: string | null;
+  path: string | null;
+  query: unknown;
+  body: unknown;
+  headers: unknown;
+  action: string | null;
+  statusServed: number | null;
+  createdAt: string;
+}
+
+export interface HoneypotStats {
+  totals: { sessions: number; events: number };
+  byTrigger: { trigger: string; n: number }[];
+  topActions: { action: string; n: number }[];
+}

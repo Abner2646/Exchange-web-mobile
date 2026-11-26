@@ -162,4 +162,15 @@ export const adminApi = {
   async verifyAudit() {
     return apiClient.get<AuditVerifyResult>('/audit/verify');
   },
+
+  // Honeypot ("Mirage") intelligence — captured attacker sessions/events.
+  async getHoneypotStats() {
+    return apiClient.get<import('./types').HoneypotStats>('/honeypot/stats');
+  },
+  async getHoneypotSessions() {
+    return apiClient.get<{ sessions: import('./types').HoneypotSession[] }>('/honeypot/sessions');
+  },
+  async getHoneypotEvents(sessionId: string) {
+    return apiClient.get<{ events: import('./types').HoneypotEvent[] }>(`/honeypot/sessions/${sessionId}/events`);
+  },
 };

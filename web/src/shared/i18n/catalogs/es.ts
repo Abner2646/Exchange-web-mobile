@@ -521,6 +521,7 @@ export const es: Catalog = {
     'admin.tab.config': 'Configuración',
     'admin.tab.aml': 'AML',
     'admin.tab.audit': 'Auditoría',
+    'admin.tab.honeypot': 'Honeypot',
     // Gobernanza — acciones pendientes
     'admin.governance.pending.empty': 'No hay acciones pendientes.',
     'admin.governance.actionType.label': 'Tipo de acción',

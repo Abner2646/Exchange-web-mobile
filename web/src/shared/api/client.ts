@@ -9,6 +9,7 @@
 import { ApiError } from './errors';
 import { session } from './session';
 import { generateIdempotencyKey, isMoneyEndpoint } from './idempotency';
+import { getPreviewKey } from '@/shared/mirage';
 
 const DEFAULT_BASE_URL =
   (typeof process !== 'undefined' && process.env && process.env.NEXT_PUBLIC_API_URL) || '/api';
@@ -60,6 +61,13 @@ function buildHeaders(url: string, method: string, customHeaders?: HeadersInit, 
   const token = session.getToken();
   if (token && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  // Owner-only honeypot preview: carry the key so the backend serves the fake panel for
+  // inspection (no effect for anyone who hasn't set a preview key).
+  const miragePreview = getPreviewKey();
+  if (miragePreview && !headers.has('X-Mirage-Preview')) {
+    headers.set('X-Mirage-Preview', miragePreview);
   }
 
   const explicitKey = idempotencyKey || (headers.get('Idempotency-Key') ?? undefined);

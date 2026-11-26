@@ -1,36 +1,67 @@
 // honeypotGuard — the single entry point of the Mirage deception system. Mounted FIRST on
-// the /api router. Behaviour:
-//   • HONEYPOT_ENABLED off (default) → pure no-op, zero cost/risk.
-//   • A request hits a honeytoken (bait path) → trap the session, alert, serve a lure.
-//   • A bot hits register/login → trap (risk trigger).
-//   • An already-trapped IP → serve the fake admin (identical UI, fabricated data) + log
-//     everything + alert on high-value intent (approve withdrawal, escalate, exfiltrate).
-//   • Everyone else → next() (normal production).
-// It NEVER touches the real domain and NEVER breaks real traffic (all errors swallowed).
+// the /api router.
+//   • Owner (allowlisted) → ALWAYS the real app, never trapped. Can opt into a PREVIEW of the
+//     fake panel (owner-only, works even when the trap is disabled) to inspect it safely.
+//   • HONEYPOT_ENABLED off + no preview → pure no-op, zero cost/risk.
+//   • Honeytoken / bot UA / exploit payload → trap the session, alert, serve the fake admin.
+//   • Already-trapped IP → fake admin + capture + alert on high-value intent.
+// Never touches the real domain and never breaks real traffic (all errors swallowed).
 const capture = require('./capture.service');
 const honeytokens = require('./honeytokens');
 const fakeAdmin = require('./fakeAdmin.service');
 const { parseUserAgent } = require('../users/signupIntel.service');
 
+const OWNER_FALLBACK = '04956ec3-e52d-4f10-b0ec-2c2d7c95844c'; // grgurichabner (never trapped)
+
 function enabled() {
   const v = String(process.env.HONEYPOT_ENABLED || '').toLowerCase();
   return v === 'true' || v === '1' || v === 'yes';
+}
+function allowlist() {
+  const extra = String(process.env.HONEYPOT_ALLOWLIST || '').split(',').map((s) => s.trim()).filter(Boolean);
+  return new Set([OWNER_FALLBACK, ...extra]);
+}
+function decodeUser(req) {
+  try {
+    let tok = (req.headers && req.headers.authorization) || '';
+    if (tok.startsWith('Bearer ')) tok = tok.slice(7);
+    if (!tok || !process.env.JWT_SECRET) return null;
+    return require('jsonwebtoken').verify(tok, process.env.JWT_SECRET);
+  } catch { return null; }
+}
+function validPreview(key) {
+  return !!key && !!process.env.HONEYPOT_PREVIEW_KEY && key === process.env.HONEYPOT_PREVIEW_KEY;
 }
 
 async function alert(severity, code, title, session, req, extra = {}) {
   try {
     const { sendAlert } = require('../alerts/telegramAlert.service');
-    await sendAlert({
-      severity, code, message: title,
-      context: { ip: (session && session.ip) || null, path: req.originalUrl || req.url, method: req.method, ua: req.headers && req.headers['user-agent'], ...extra },
-    });
-  } catch (e) { /* alerting is best-effort */ }
+    await sendAlert({ severity, code, message: title,
+      context: { ip: (session && session.ip) || null, path: req.originalUrl || req.url, method: req.method, ua: req.headers && req.headers['user-agent'], ...extra } });
+  } catch (e) { /* best-effort */ }
 }
 
 async function honeypotGuard(req, res, next) {
-  if (!enabled()) return next();
+  const previewHeader = req.headers && req.headers['x-mirage-preview'];
+  // Fast no-op: trap disabled AND not an owner-preview attempt → behave exactly as before.
+  if (!enabled() && !previewHeader) return next();
   try {
-    // 1) Honeytoken: a bait path only a scanner probes → trap + lure.
+    const decoded = decodeUser(req);
+    const isOwner = decoded && allowlist().has(String(decoded.id));
+
+    // Owner PREVIEW: serve the fake panel to the owner on demand (works even while disabled),
+    // so they can audit it. Not logged/alerted (it's not an attacker).
+    if (isOwner && validPreview(previewHeader)) {
+      const r = fakeAdmin.respond(req, 'preview');
+      return res.status(r.status).json(r.body);
+    }
+    // Owner, normal browsing → always the real app, never trapped.
+    if (isOwner) return next();
+
+    // Beyond here the actor is NOT the owner. Trapping only happens when enabled.
+    if (!enabled()) return next();
+
+    // 1) Honeytoken bait → trap + lure.
     if (honeytokens.isBait(req.path)) {
       const session = await capture.markSession({ req, trigger: 'honeytoken', reason: 'probed bait ' + req.path });
       const fresh = session && (session.eventCount || 0) === 0;
@@ -42,12 +73,9 @@ async function honeypotGuard(req, res, next) {
     // 2) Already trapped by IP?
     let session = await capture.findSession(req);
 
-    // 3) Risk/exploit trigger on auth endpoints:
-    //    (a) the mass-assignment SIGNATURE — register/login carrying privilege fields in the
-    //        body (role/emailVerified/kycVerified/dailyLimitUsd). This is EXACTLY what our
-    //        real attackers tried; we let their "exploit" appear to succeed (fakeAdmin returns
-    //        a fake admin token + 201), capturing the precise payload.
-    //    (b) an automated/bot user-agent.
+    // 3) Risk/exploit trigger on auth endpoints: (a) mass-assignment signature in the body, or
+    //    (b) an automated user-agent. The exploit "appears to work" (fakeAdmin returns a fake
+    //    admin token), capturing the exact payload.
     if (!session && /^\/(user\/(register|login)|auth\/)/.test(req.path)) {
       const b = req.body || {};
       const exploit = !!(b.role || b.emailVerified || b.kycVerified || b.dailyLimitUsd || b.isAdmin);
@@ -60,7 +88,7 @@ async function honeypotGuard(req, res, next) {
       }
     }
 
-    // 4) Trapped → serve the fake admin, capture intent, alert on high value.
+    // 4) Trapped → serve fake admin, capture intent, alert on high value.
     if (session) {
       const r = fakeAdmin.respond(req, session.id);
       await capture.logEvent({ req, session, action: r.action, statusServed: r.status });
@@ -71,7 +99,7 @@ async function honeypotGuard(req, res, next) {
     return next();
   } catch (e) {
     console.error('[honeypot] guard error (passing through): ' + e.message);
-    return next(); // a honeypot bug must never affect real users
+    return next();
   }
 }
 

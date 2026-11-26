@@ -104,6 +104,33 @@ export function useUserIntel(userId: string | null) {
   });
 }
 
+export const ADMIN_HONEYPOT_KEY = ['admin', 'honeypot'] as const;
+
+export function useHoneypotStats() {
+  return useQuery<import('./types').HoneypotStats, ApiError>({
+    queryKey: [...ADMIN_HONEYPOT_KEY, 'stats'],
+    queryFn: () => adminApi.getHoneypotStats(),
+    staleTime: 20_000,
+  });
+}
+
+export function useHoneypotSessions() {
+  return useQuery<import('./types').HoneypotSession[], ApiError>({
+    queryKey: [...ADMIN_HONEYPOT_KEY, 'sessions'],
+    queryFn: () => adminApi.getHoneypotSessions().then((r) => r.sessions ?? []),
+    staleTime: 15_000,
+  });
+}
+
+export function useHoneypotEvents(sessionId: string | null) {
+  return useQuery<import('./types').HoneypotEvent[], ApiError>({
+    queryKey: [...ADMIN_HONEYPOT_KEY, 'events', sessionId],
+    queryFn: () => adminApi.getHoneypotEvents(sessionId as string).then((r) => r.events ?? []),
+    enabled: !!sessionId,
+    staleTime: 15_000,
+  });
+}
+
 export function useAudit(params?: AuditQueryParams) {
   return useQuery<AuditListResponse, ApiError>({
     queryKey: [...ADMIN_AUDIT_KEY, params],
