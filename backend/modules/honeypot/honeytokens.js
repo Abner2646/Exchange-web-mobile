@@ -25,12 +25,12 @@ function serveBait(req, res) {
   }
   // The exact paths our real attackers guessed (see forensics) — each returns tempting,
   // shape-correct fake data so they keep digging into the trap.
-  if (/users/.test(p)) return res.status(200).json({ users: fake.fakeUsers() });
+  if (/users/.test(p)) return res.status(200).json(fake.fakeUserPage({}, { limit: 50 }));
   if (/withdraw|payout/.test(p)) return res.status(200).json(fake.fakeGovernancePending());
   if (/dashboard|stats|metric|overview/.test(p)) {
-    // Coherent with the admin panel's user list (a small-but-real exchange), so the numbers
-    // never contradict the stats a trapped attacker sees inside.
-    return res.status(200).json({ users: fake.fakeUsers().length, pendingWithdrawals: 2, volume24hUsd: '184250.00', custodyBalanceUsd: '742180.00', hotWalletBtc: '3.84120000', hotWalletUsdt: '128400.00' });
+    // Coherent with the admin panel's user count/stats (a ~1289-user exchange), so the numbers
+    // never contradict what a trapped attacker sees inside.
+    return res.status(200).json({ users: fake.fakeUserCount(), pendingWithdrawals: 2, volume24hUsd: '842190.00', custodyBalanceUsd: '4218500.00', hotWalletBtc: '7.41203000', hotWalletUsdt: '318400.00' });
   }
   if (/blocks|blocklist|denylist/.test(p)) return res.status(200).json(fake.fakeDenylist());
   if (/transfer/.test(p)) return res.status(200).json({ transfers: [], canTransfer: true, endpoint: '/admin/transfer/execute' });

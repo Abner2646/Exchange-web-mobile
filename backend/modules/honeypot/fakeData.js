@@ -38,23 +38,31 @@ function btcAddress(seed) {
 function ethAddress(seed) { return '0x' + crypto.createHash('sha256').update('eth:' + seed).digest('hex').slice(0, 40); }
 
 // ── People ───────────────────────────────────────────────────────────────────
-const FIRST = ['liam', 'noah', 'olivia', 'emma', 'ava', 'sophia', 'lucas', 'mateo', 'santiago', 'camila', 'wei', 'yan', 'chen', 'arjun', 'priya', 'aditya', 'ahmed', 'fatima', 'youssef', 'ivan', 'natalia', 'dmitri', 'hiroshi', 'yuki', 'kwame', 'amara', 'lucas', 'thiago', 'isabella', 'mohamed', 'sofia', 'daniel', 'ethan', 'mia', 'james', 'maria'];
-const LAST = ['garcia', 'martinez', 'lopez', 'silva', 'santos', 'kim', 'park', 'chen', 'wang', 'li', 'patel', 'sharma', 'khan', 'ali', 'nguyen', 'tran', 'muller', 'rossi', 'dubois', 'ivanov', 'petrov', 'yamamoto', 'tanaka', 'okafor', 'mensah', 'cohen', 'levi', 'smith', 'brown', 'jones', 'oliveira', 'costa'];
-const FREE_DOMAINS = ['gmail.com', 'gmail.com', 'gmail.com', 'outlook.com', 'hotmail.com', 'icloud.com', 'yahoo.com', 'proton.me'];
-const COUNTRIES = ['US', 'US', 'US', 'US', 'GB', 'GB', 'CA', 'DE', 'FR', 'BR', 'IN', 'IN', 'NG', 'JP', 'AU', 'ES', 'MX', 'AR', 'TR', 'ID'];
+// Broad, international pools so a 1289-row user base has natural variety (no obvious repeats).
+const FIRST = ['liam', 'noah', 'olivia', 'emma', 'ava', 'sophia', 'lucas', 'mateo', 'santiago', 'camila', 'wei', 'yan', 'chen', 'arjun', 'priya', 'aditya', 'ahmed', 'fatima', 'youssef', 'ivan', 'natalia', 'dmitri', 'hiroshi', 'yuki', 'kwame', 'amara', 'thiago', 'isabella', 'mohamed', 'sofia', 'daniel', 'ethan', 'mia', 'james', 'maria', 'michael', 'david', 'sarah', 'jessica', 'ryan', 'kevin', 'brian', 'laura', 'emily', 'tyler', 'austin', 'hannah', 'grace', 'nathan', 'jordan', 'carlos', 'diego', 'lucia', 'valentina', 'andres', 'gabriel', 'felipe', 'rafael', 'bruno', 'leonardo', 'min', 'jin', 'hao', 'feng', 'mei', 'ananya', 'rohan', 'kiran', 'vikram', 'neha', 'omar', 'layla', 'hassan', 'zainab', 'oleksandr', 'kateryna', 'sergei', 'anastasia', 'viktor', 'marco', 'giulia', 'luca', 'pierre', 'camille', 'lukas', 'anna', 'jan', 'eva', 'tomasz', 'chidi', 'ngozi', 'tunde', 'kofi', 'abena', 'haruto', 'sakura', 'ren', 'ji-woo', 'seo-yeon', 'budi', 'siti', 'nguyen', 'minh'];
+const LAST = ['garcia', 'martinez', 'lopez', 'silva', 'santos', 'kim', 'park', 'chen', 'wang', 'li', 'patel', 'sharma', 'khan', 'ali', 'nguyen', 'tran', 'muller', 'rossi', 'dubois', 'ivanov', 'petrov', 'yamamoto', 'tanaka', 'okafor', 'mensah', 'cohen', 'levi', 'smith', 'brown', 'jones', 'oliveira', 'costa', 'williams', 'johnson', 'miller', 'davis', 'wilson', 'anderson', 'taylor', 'thomas', 'moore', 'jackson', 'white', 'harris', 'clark', 'lewis', 'walker', 'hall', 'young', 'king', 'wright', 'hill', 'green', 'baker', 'nelson', 'carter', 'mitchell', 'perez', 'roberts', 'gomez', 'fernandez', 'rodriguez', 'gonzalez', 'ramirez', 'torres', 'flores', 'rivera', 'morales', 'ortiz', 'gupta', 'singh', 'kumar', 'reddy', 'das', 'bose', 'kovalenko', 'shevchenko', 'novak', 'kowalski', 'schmidt', 'fischer', 'weber', 'meyer', 'bauer', 'hoffmann', 'bernard', 'martin', 'moreau', 'ferrari', 'russo', 'bianchi', 'eze', 'adeyemi', 'mwangi', 'sato', 'suzuki', 'takahashi', 'lee', 'cho', 'jung', 'wong', 'lim'];
+// Breach-style domain long tail: free providers dominate, gmail most common, plus legacy ones.
+const FREE_DOMAINS = ['gmail.com', 'gmail.com', 'gmail.com', 'yahoo.com', 'yahoo.com', 'hotmail.com', 'hotmail.com', 'outlook.com', 'outlook.com', 'icloud.com', 'aol.com', 'proton.me', 'protonmail.com', 'live.com', 'mail.com', 'gmx.com', 'yandex.com', 'zoho.com'];
+const COUNTRIES = ['US', 'US', 'US', 'US', 'US', 'GB', 'GB', 'CA', 'CA', 'DE', 'FR', 'BR', 'BR', 'IN', 'IN', 'IN', 'NG', 'JP', 'AU', 'ES', 'MX', 'AR', 'TR', 'ID', 'IT', 'NL', 'PH', 'VN', 'KR', 'UA'];
 
 function googleId(r) { return (BigInt(100000000000000000000n) + BigInt(Math.floor(r() * 9e19))).toString(); }
 
+const NICK = ['crypto', 'hodl', 'moon', 'satoshi', 'degen', 'ape', 'whale', 'diamond', 'bull', 'ser', 'gm', 'wagmi', 'ngmi', 'lambo', 'rekt', 'fomo', 'alpha', 'chad', 'king', 'pro', 'trader', 'btc', 'eth', 'sol', 'x', 'the', 'mr', 'its'];
 function makeUser(seed, role) {
   const r = rng('u:' + seed);
   const fn = FIRST[Math.floor(r() * FIRST.length)];
   const ln = LAST[Math.floor(r() * LAST.length)];
   const google = r() < 0.9; // ~90% created with Google
   const n = Math.floor(r() * 9900) + 10;
+  const nick = r() < 0.2; // ~20% use a crypto-style handle (very common in breach dumps)
   const uStyle = Math.floor(r() * 5);
-  const username = [`${fn}${ln}`, `${fn}.${ln}`, `${fn}_${ln}`, `${fn}${ln}${n % 1000}`, `${fn}${n}`][uStyle];
+  const username = nick
+    ? [`${NICK[Math.floor(r() * NICK.length)]}_${fn}${n % 100}`, `${fn}${NICK[Math.floor(r() * NICK.length)]}`, `${NICK[Math.floor(r() * NICK.length)]}${ln}${n % 1000}`, `x${fn}x`][Math.floor(r() * 4)]
+    : [`${fn}${ln}`, `${fn}.${ln}`, `${fn}_${ln}`, `${fn}${ln}${n % 1000}`, `${fn}${n}`][uStyle];
   const domain = google ? (r() < 0.9 ? 'gmail.com' : 'googlemail.com') : FREE_DOMAINS[Math.floor(r() * FREE_DOMAINS.length)];
-  const email = `${fn}.${ln}${r() < 0.4 ? n : ''}@${domain}`;
+  // Breach reality: the email local-part is often the username itself.
+  const local = r() < 0.5 ? username : `${fn}.${ln}${r() < 0.4 ? n : ''}`;
+  const email = `${local}@${domain}`;
   const hasLimit = r() < 0.18;
   const limit = hasLimit ? [2500, 5000, 10000, 25000, 50000][Math.floor(r() * 5)] : 1000;
   const nRatings = r() < 0.45 ? Math.floor(r() * 60) : 0;
@@ -72,7 +80,9 @@ function makeUser(seed, role) {
   };
 }
 
-// ctx = { seed, identity:{email,username}|null }
+// Simulated exchange size. The user base reads ~1289 accounts (stable, coherent with stats).
+const TARGET_USERS = 1289;
+
 // ctx = { seed, identity:{email,username}|null, ownAccounts:[...] }
 //   ownAccounts = the attacker's OWN real accounts (same signup IP), fetched live by the guard.
 //   identity    = the account they're currently "logged in" as (captured at register/login).
@@ -85,7 +95,6 @@ function fakeUsers(ctx = {}) {
   const identity = ctx.identity || null;
   const primaryEmail = (identity && identity.email) || (own[0] && own[0].email) || null;
   const r = rng('list:' + seed);
-  const n = 46 + Math.floor(r() * 34); // 46–80 fabricated
   const seen = new Set();
   const users = [];
   const push = (u) => {
@@ -112,13 +121,43 @@ function fakeUsers(ctx = {}) {
   }
   // 2) Their OTHER real accounts (same IP), exactly as they are.
   for (const u of own) push(u);
-  // 3) Fabricated padding (a believable user base).
-  const needSuper = !primaryEmail;
-  for (let i = 0; i < n; i++) {
-    const role = needSuper && i === 0 ? 'super_admin' : i < 4 ? 'admin' : 'normal';
-    push(makeUser(seed + ':' + i, role));
+  // 3) Fabricated padding until the base reads ~TARGET_USERS. The loop keeps generating until
+  //    enough UNIQUE emails land (push de-dupes), so the count is exact despite collisions.
+  let i = 0;
+  while (users.length < TARGET_USERS && i < TARGET_USERS * 4) {
+    push(makeUser(seed + ':' + i, 'normal'));
+    i += 1;
+  }
+  // Operators are OLD accounts → seed them DEEP in the list (never on page 1, which is newest),
+  // so "sorted by newest" looks right. The attacker's own super_admin stays at the top.
+  const r2 = rng('ops:' + seed);
+  const opCount = 6 + Math.floor(r2() * 4); // 6–9 operators
+  for (let k = 0; k < opCount; k += 1) {
+    const idx = Math.floor(users.length * 0.45 + r2() * users.length * 0.5);
+    if (users[idx] && users[idx].role === 'normal') users[idx].role = !primaryEmail && k === 0 ? 'super_admin' : 'admin';
   }
   return users;
+}
+
+// The admin list endpoint PAGINATES (real shape: { users, total, page, limit, totalPages },
+// default limit 20). Mirror it exactly so an attacker inspecting the JSON sees total=1289 and
+// a page of rows, and the real UI (which requests no params) shows page 1. Their own account,
+// being newest, sits at the top of page 1.
+function fakeUserPage(ctx = {}, query = {}) {
+  const all = fakeUsers(ctx);
+  const page = Math.max(1, parseInt(query.page, 10) || 1);
+  const limit = Math.min(Math.max(parseInt(query.limit, 10) || 20, 1), 200);
+  const offset = (page - 1) * limit;
+  return { users: all.slice(offset, offset + limit), total: all.length, page, limit, totalPages: Math.ceil(all.length / limit) };
+}
+
+function fakeUserCount() { return TARGET_USERS; }
+
+// A single fabricated user (for mutation responses that echo "the affected user") — avoids
+// generating the whole 1289-row list just to grab one sample.
+function fakeSampleUser(ctx = {}, i = 2) {
+  const u = makeUser((ctx.seed || 'static') + ':s' + i, 'normal');
+  return { ...u, dailyLimitUsd: String(u.dailyLimitUsd), averageRating: String(u.averageRating) };
 }
 
 function fakeMe(ctx = {}) {
@@ -209,21 +248,44 @@ function fakeCases(ctx = {}) {
     { id: uuidFrom('case1:' + seed), status: 'open', userId: uuidFrom('user:' + seed + ':13'), riskScore: 70 + Math.floor(r() * 25), created_at: new Date(Date.now() - (1 + r() * 3) * 864e5).toISOString() },
   ];
 }
-function fakeAudit(ctx = {}) {
-  const seed = ctx.seed || 'static';
-  const r = rng('audit:' + seed);
-  const types = ['WithdrawalRequested', 'TradeExecuted', 'DepositConfirmed', 'SwapExecuted', 'AdminBalanceUpdate', 'P2PTransactionCompleted'];
-  const rows = Array.from({ length: 12 }).map((_, i) => ({
-    id: 24000 - i, eventId: uuidFrom('ev:' + seed + ':' + i),
-    eventType: types[Math.floor(r() * types.length)],
-    aggregateId: uuidFrom('agg:' + seed + ':' + i),
-    occurredAt: new Date(Date.now() - i * (18 + Math.floor(r() * 40)) * 6e4).toISOString(),
-    hash: crypto.createHash('sha256').update('hp:' + seed + ':' + i).digest('hex'),
-    prevHash: crypto.createHash('sha256').update('hp:' + seed + ':' + (i + 1)).digest('hex'),
-  }));
-  return { rows, nextBeforeId: rows[rows.length - 1].id };
+// The audit log is a GLOBAL exchange artifact (same stream for everyone), so it's keyed off a
+// deep virtual id space — not a per-session seed — to feel like a busy 1289-user exchange with
+// constant money activity. Cursor (beforeId) + eventType filter are honored so "load more" and
+// the type filter in the real UI both work against the fabricated stream.
+const AUDIT_LATEST_ID = 48217;
+const AUDIT_TYPES = [['TradeExecuted', 34], ['SwapExecuted', 22], ['DepositConfirmed', 18], ['WithdrawalRequested', 12], ['P2PTransactionCompleted', 9], ['WithdrawalCompleted', 3], ['AdminBalanceUpdate', 2]];
+function hashInt(s, slice) { return parseInt(crypto.createHash('md5').update(s).digest('hex').slice(0, slice), 16); }
+function auditTypeFor(id) {
+  const h = hashInt('atype:' + id, 8) % 100;
+  let acc = 0;
+  for (const [t, w] of AUDIT_TYPES) { acc += w; if (h < acc) return t; }
+  return 'TradeExecuted';
 }
-const fakeAuditVerify = () => ({ ok: true, brokenAtSeq: null, checked: 23988 });
+function fakeAudit(ctx = {}, query = {}) {
+  const limit = Math.min(Math.max(parseInt(query.limit, 10) || 25, 1), 100);
+  const filter = query.eventType || null;
+  let id = query.beforeId ? Math.min(parseInt(query.beforeId, 10) || AUDIT_LATEST_ID, AUDIT_LATEST_ID) - 1 : AUDIT_LATEST_ID;
+  const rows = [];
+  while (rows.length < limit && id > 1) {
+    const type = auditTypeFor(id);
+    if (!filter || type === filter) {
+      const secondsAgo = (AUDIT_LATEST_ID - id) * 210 + (hashInt('t:' + id, 4) % 120); // ~3.5 min apart, monotonic
+      rows.push({
+        id,
+        eventId: uuidFrom('ev:' + id),
+        eventType: type,
+        aggregateId: uuidFrom('agg:' + id),
+        occurredAt: new Date(Date.now() - secondsAgo * 1000).toISOString(),
+        hash: crypto.createHash('sha256').update('hp:audit:' + id).digest('hex'),
+        prevHash: crypto.createHash('sha256').update('hp:audit:' + (id - 1)).digest('hex'),
+      });
+    }
+    id -= 1;
+  }
+  const nextBeforeId = rows.length === limit && id > 1 ? rows[rows.length - 1].id : null;
+  return { rows, nextBeforeId };
+}
+const fakeAuditVerify = () => ({ ok: true, brokenAtSeq: null, checked: AUDIT_LATEST_ID });
 
 // Opaque honeypot token (NOT signed with the real JWT_SECRET; the guard keys off IP/identity).
 function fakeAdminToken(sessionId) {
@@ -234,7 +296,7 @@ function fakeAdminToken(sessionId) {
 }
 
 module.exports = {
-  fakeUsers, fakeMe, fakeStats, fakeGovernancePending, fakeReadiness, fakeConfig,
-  fakeAmlConfig, fakeDenylist, fakeCases, fakeAudit, fakeAuditVerify, fakeAdminToken,
-  uuidFrom, btcAddress, ethAddress,
+  fakeUsers, fakeUserPage, fakeUserCount, fakeSampleUser, fakeMe, fakeStats, fakeGovernancePending,
+  fakeReadiness, fakeConfig, fakeAmlConfig, fakeDenylist, fakeCases, fakeAudit,
+  fakeAuditVerify, fakeAdminToken, uuidFrom, btcAddress, ethAddress,
 };
