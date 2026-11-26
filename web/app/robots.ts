@@ -8,7 +8,7 @@ export default function robots(): MetadataRoute.Robots {
     return { rules: { userAgent: '*', disallow: '/' } };
   }
   return {
-    rules: { userAgent: '*', allow: '/', disallow: ['/wallet', '/swap', '/trading', '/p2p', '/profile', '/admin', '/referrals'] },
+    rules: { userAgent: '*', allow: '/', disallow: ['/wallet', '/swap', '/trading', '/p2p', '/profile', '/admin', '/referrals', '/sentinel'] },
     sitemap: 'https://bitflow.community/sitemap.xml',
     host: 'https://bitflow.community',
   };

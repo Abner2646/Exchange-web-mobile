@@ -9,11 +9,10 @@ import { UsersAdmin } from './UsersAdmin';
 import { BusinessConfigEditor } from './BusinessConfigEditor';
 import { AmlOps } from './AmlOps';
 import { AuditViewer } from './AuditViewer';
-import { HoneypotView } from './HoneypotView';
 import styles from './admin.module.css';
 
-type Tab = 'governance' | 'users' | 'config' | 'aml' | 'audit' | 'honeypot';
-const TABS: Tab[] = ['governance', 'users', 'config', 'aml', 'audit', 'honeypot'];
+type Tab = 'governance' | 'users' | 'config' | 'aml' | 'audit';
+const TABS: Tab[] = ['governance', 'users', 'config', 'aml', 'audit'];
 
 export function AdminPage() {
   const { t } = useTranslation();
@@ -75,8 +74,6 @@ export function AdminPage() {
         {activeTab === 'aml' && <AmlOps />}
 
         {activeTab === 'audit' && <AuditViewer />}
-
-        {activeTab === 'honeypot' && <HoneypotView />}
       </div>
     </section>
   );
