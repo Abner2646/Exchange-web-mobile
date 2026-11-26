@@ -262,6 +262,16 @@
 }
 .miragePreviewExit:hover { background-color: var(--warning); color: var(--text-inverse); }
 
+/* Owner-only shortcut into the fake panel. Rendered ONLY in the real panel for the owner
+   (gated by owner email + not-preview), so it never shows inside Mirage or to an attacker. */
+.mirageEnter {
+  margin-left: auto; align-self: center; flex-shrink: 0;
+  padding: 4px 12px; border: 1px dashed var(--warning); border-radius: var(--radius-full);
+  background: none; color: var(--text-tertiary); font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold); cursor: pointer;
+}
+.mirageEnter:hover { border-style: solid; color: var(--text-primary); background-color: var(--wash-warning); }
+
 .cardDesc { margin: 0 0 var(--spacing-xs); font-size: var(--font-size-sm); color: var(--text-tertiary); }
 
 .hpEventList { list-style: none; margin: var(--spacing-sm) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--spacing-sm); }

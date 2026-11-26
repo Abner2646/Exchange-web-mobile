@@ -14,6 +14,7 @@ import styles from './admin.module.css';
 
 type Tab = 'governance' | 'users' | 'config' | 'aml' | 'audit';
 const TABS: Tab[] = ['governance', 'users', 'config', 'aml', 'audit'];
+const OWNER_EMAIL = 'grgurichabner@gmail.com';
 
 export function AdminPage() {
   const { t } = useTranslation();
@@ -34,6 +35,12 @@ export function AdminPage() {
   }, []);
 
   const exitPreview = () => { setPreviewKey(null); window.location.replace('/admin'); };
+  const enterPreview = () => { setPreviewKey('on'); window.location.replace('/admin'); };
+
+  // Owner-only shortcut into the fake panel. Gated by the owner's real email (an attacker's
+  // fake /user/me carries THEIR email, not the owner's) AND hidden while already in preview,
+  // so it can never render inside Mirage or for a trapped attacker.
+  const isOwner = user?.email === OWNER_EMAIL;
 
   return (
     <section className={styles.page}>
@@ -46,6 +53,16 @@ export function AdminPage() {
       <header className={styles.header}>
         <h1 className={styles.title}>{t('admin.title')}</h1>
         <p className={styles.subtitle}>{t('admin.subtitle')}</p>
+        {isOwner && !preview && (
+          <button
+            type="button"
+            onClick={enterPreview}
+            className={styles.mirageEnter}
+            title="Vista previa del panel falso (Mirage) — solo vos ves este botón"
+          >
+            🍯 Ver panel falso
+          </button>
+        )}
       </header>
 
       <div className={styles.tabs} role="tablist" aria-label={t('admin.title')}>
