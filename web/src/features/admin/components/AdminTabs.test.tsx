@@ -10,6 +10,8 @@ vi.mock('./UsersAdmin', () => ({ UsersAdmin: () => <div>stub-UsersAdmin</div> })
 vi.mock('./BusinessConfigEditor', () => ({ BusinessConfigEditor: () => <div>stub-BusinessConfigEditor</div> }));
 vi.mock('./AmlOps', () => ({ AmlOps: () => <div>stub-AmlOps</div> }));
 vi.mock('./AuditViewer', () => ({ AuditViewer: () => <div>stub-AuditViewer</div> }));
+// AdminPage reads the current user (for the owner-only Mirage watermark marker).
+vi.mock('@/features/auth/queries', () => ({ useCurrentUser: () => ({ data: undefined, isLoading: false }) }));
 
 import { AdminPage } from './AdminTabs';
 

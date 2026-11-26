@@ -52,6 +52,11 @@ async function honeypotGuard(req, res, next) {
     // logged/alerted (it's not an attacker).
     if (isOwner && previewHeader) {
       const r = fakeAdmin.respond(req, 'preview');
+      // Mark ONLY the owner's preview /user/me so the UI shows the watermark. This marker is
+      // added exclusively in this owner-gated branch — a non-owner (attacker) who sends the
+      // header falls through to the trap below and NEVER receives it, so the "fake panel"
+      // banner can never leak to them. The watermark is a backend decision, not a client flag.
+      if (r.body && typeof r.body === 'object' && /\/user\/me$/.test(req.path)) r.body.__mirage = true;
       return res.status(r.status).json(r.body);
     }
     // Owner, normal browsing → always the real app, never trapped.

@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useTranslation } from '@/shared/i18n';
-import { setPreviewKey, isPreview } from '@/shared/mirage';
+import { useCurrentUser } from '@/features/auth/queries';
+import { setPreviewKey } from '@/shared/mirage';
 import { GovernanceInbox } from './GovernanceInbox';
 import { OperatorReadinessCard } from './OperatorReadinessCard';
 import { UsersAdmin } from './UsersAdmin';
@@ -17,14 +18,19 @@ const TABS: Tab[] = ['governance', 'users', 'config', 'aml', 'audit'];
 export function AdminPage() {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<Tab>('governance');
-  const [preview, setPreview] = useState(false);
+  const { data: user } = useCurrentUser();
 
-  // Owner-only Mirage preview: opening /admin?mirage=<key> stores the key and reloads clean,
-  // so every admin API call carries the preview header and the backend serves the FAKE panel.
+  // The watermark is driven by a BACKEND marker on /user/me (`__mirage`) that the guard adds
+  // ONLY in the owner-gated preview branch. An attacker who sets ?mirage=… sends the header
+  // but, not being the owner, is served the normal trap response WITHOUT the marker — so the
+  // banner can never leak to them. It is never a client-only decision.
+  const preview = !!(user as unknown as { __mirage?: boolean })?.__mirage;
+
+  // Opening /admin?mirage=<anything> stores the key and reloads clean, so admin API calls
+  // carry the preview header and (for the owner) the backend serves the FAKE panel.
   useEffect(() => {
     const key = new URLSearchParams(window.location.search).get('mirage');
-    if (key) { setPreviewKey(key); window.location.replace('/admin'); return; }
-    setPreview(isPreview());
+    if (key) { setPreviewKey(key); window.location.replace('/admin'); }
   }, []);
 
   const exitPreview = () => { setPreviewKey(null); window.location.replace('/admin'); };
