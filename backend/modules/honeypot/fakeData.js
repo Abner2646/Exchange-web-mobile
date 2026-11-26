@@ -73,32 +73,59 @@ function makeUser(seed, role) {
 }
 
 // ctx = { seed, identity:{email,username}|null }
+// ctx = { seed, identity:{email,username}|null, ownAccounts:[...] }
+//   ownAccounts = the attacker's OWN real accounts (same signup IP), fetched live by the guard.
+//   identity    = the account they're currently "logged in" as (captured at register/login).
+// The list = their own accounts (real + just-created) ∪ fabricated padding, de-duped by email.
+// Their primary account shows as super_admin (consistent with /user/me). No other real customer
+// is ever read — only the attacker's own rows.
 function fakeUsers(ctx = {}) {
   const seed = ctx.seed || 'static';
+  const own = Array.isArray(ctx.ownAccounts) ? ctx.ownAccounts : [];
+  const identity = ctx.identity || null;
+  const primaryEmail = (identity && identity.email) || (own[0] && own[0].email) || null;
   const r = rng('list:' + seed);
-  const n = 46 + Math.floor(r() * 34); // 46–80
+  const n = 46 + Math.floor(r() * 34); // 46–80 fabricated
+  const seen = new Set();
   const users = [];
-  // The attacker's OWN account, mirrored from captured identity (no real-DB read, no PII leak).
-  if (ctx.identity && ctx.identity.email) {
-    users.push({
-      id: uuidFrom('self:' + ctx.identity.email),
-      username: ctx.identity.username || ctx.identity.email.split('@')[0],
-      email: ctx.identity.email, role: 'super_admin', active: true, kycVerified: false,
-      dailyLimitUsd: '1000.00', averageRating: '0.00', totalRatings: 0, country: null,
-      googleId: /@(gmail|googlemail)\./i.test(ctx.identity.email) ? googleId(r) : null,
+  const push = (u) => {
+    const e = String(u.email || '').toLowerCase();
+    if (!e || seen.has(e)) return;
+    seen.add(e);
+    users.push({ ...u, dailyLimitUsd: String(u.dailyLimitUsd), averageRating: String(u.averageRating), totalRatings: u.totalRatings || 0 });
+  };
+
+  // 1) The account they're logged in as → super_admin, their own email (matches /user/me).
+  if (primaryEmail) {
+    const base = own.find((u) => String(u.email || '').toLowerCase() === primaryEmail.toLowerCase());
+    push({
+      id: (base && base.id) || uuidFrom('self:' + primaryEmail),
+      username: (identity && identity.username) || (base && base.username) || primaryEmail.split('@')[0],
+      email: primaryEmail, role: 'super_admin', active: true,
+      kycVerified: base ? !!base.kycVerified : false,
+      dailyLimitUsd: base && base.dailyLimitUsd != null ? base.dailyLimitUsd : '1000.00',
+      averageRating: base && base.averageRating != null ? base.averageRating : '0.00',
+      totalRatings: (base && base.totalRatings) || 0,
+      country: (base && base.country) || null,
+      googleId: /@(gmail|googlemail)\./i.test(primaryEmail) ? (base && base.googleId) || googleId(r) : base ? base.googleId : null,
     });
   }
+  // 2) Their OTHER real accounts (same IP), exactly as they are.
+  for (const u of own) push(u);
+  // 3) Fabricated padding (a believable user base).
+  const needSuper = !primaryEmail;
   for (let i = 0; i < n; i++) {
-    const role = i === 0 ? 'super_admin' : i < 4 ? 'admin' : 'normal';
-    users.push(makeUser(seed + ':' + i, role));
+    const role = needSuper && i === 0 ? 'super_admin' : i < 4 ? 'admin' : 'normal';
+    push(makeUser(seed + ':' + i, role));
   }
   return users;
 }
 
 function fakeMe(ctx = {}) {
-  const id = ctx.identity || {};
-  const email = id.email || 'operator@bitflow.community';
-  const username = id.username || (id.email ? id.email.split('@')[0] : 'operator');
+  const own = Array.isArray(ctx.ownAccounts) ? ctx.ownAccounts : [];
+  const identity = ctx.identity || null;
+  const email = (identity && identity.email) || (own[0] && own[0].email) || 'operator@bitflow.community';
+  const username = (identity && identity.username) || (own[0] && own[0].username) || email.split('@')[0];
   return {
     id: uuidFrom('self:' + email), email, username, role: 'super_admin',
     emailVerified: true, kycVerified: true, active: true, twoFactorEnabled: true,

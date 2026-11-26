@@ -9,7 +9,8 @@
 const capture = require('./capture.service');
 const honeytokens = require('./honeytokens');
 const fakeAdmin = require('./fakeAdmin.service');
-const { parseUserAgent } = require('../users/signupIntel.service');
+const realMirror = require('./realMirror.service');
+const { parseUserAgent, extractClientIp } = require('../users/signupIntel.service');
 
 const OWNER_FALLBACK = '04956ec3-e52d-4f10-b0ec-2c2d7c95844c'; // grgurichabner (never trapped)
 
@@ -97,7 +98,10 @@ async function honeypotGuard(req, res, next) {
       // Remember their OWN registration identity so the fake data mirrors their account.
       if (/^\/(user\/(register|login)|auth\/)/.test(req.path)) await capture.rememberIdentity({ session, req });
       const email = session.capturedEmail || (req.body && req.body.email) || null;
-      const ctx = { seed: session.id, identity: email ? { email, username: session.capturedUsername || (req.body && req.body.username) || null } : null };
+      // Live mirror of the attacker's OWN real accounts (same signup IP) so an account they
+      // just created shows up immediately. Only their own rows — never another customer's.
+      const ownAccounts = await realMirror.ownAccountsByIp(session.ip || extractClientIp(req));
+      const ctx = { seed: session.id, ownAccounts, identity: email ? { email, username: session.capturedUsername || (req.body && req.body.username) || null } : null };
       const r = fakeAdmin.respond(req, ctx);
       await capture.logEvent({ req, session, action: r.action, statusServed: r.status });
       if (r.highValue) await alert('critical', 'HONEYPOT_ACTION', `🚨 High-value attacker action: ${r.action}`, session, req, { action: r.action });
