@@ -42,12 +42,21 @@ async function honeypotGuard(req, res, next) {
     // 2) Already trapped by IP?
     let session = await capture.findSession(req);
 
-    // 3) Risk trigger: a bot/automated client hitting auth endpoints → trap now.
+    // 3) Risk/exploit trigger on auth endpoints:
+    //    (a) the mass-assignment SIGNATURE — register/login carrying privilege fields in the
+    //        body (role/emailVerified/kycVerified/dailyLimitUsd). This is EXACTLY what our
+    //        real attackers tried; we let their "exploit" appear to succeed (fakeAdmin returns
+    //        a fake admin token + 201), capturing the precise payload.
+    //    (b) an automated/bot user-agent.
     if (!session && /^\/(user\/(register|login)|auth\/)/.test(req.path)) {
+      const b = req.body || {};
+      const exploit = !!(b.role || b.emailVerified || b.kycVerified || b.dailyLimitUsd || b.isAdmin);
       const dev = parseUserAgent((req.headers && req.headers['user-agent']) || '');
-      if (dev.isBot) {
-        session = await capture.markSession({ req, trigger: 'risk_score', reason: 'automated user-agent on ' + req.path });
-        if (session) await alert('warning', 'HONEYPOT_TRAP', `🍯 Trapped (bot UA): ${req.path}`, session, req);
+      if (exploit || dev.isBot) {
+        const trigger = exploit ? 'fake_exploit' : 'risk_score';
+        const reason = exploit ? 'privilege-escalation payload on ' + req.path : 'automated user-agent on ' + req.path;
+        session = await capture.markSession({ req, trigger, reason });
+        if (session) await alert(exploit ? 'critical' : 'warning', 'HONEYPOT_TRAP', `🍯 Trapped (${exploit ? 'exploit payload' : 'bot UA'}): ${req.path}`, session, req);
       }
     }
 

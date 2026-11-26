@@ -23,14 +23,18 @@ function serveBait(req, res) {
       'NODE_ENV=production\nDB_HOST=10.0.1.42\nDB_USER=bitflow_admin\nADMIN_EMAIL=admin@bitflow.community\nJWT_ISSUER=crypto-exchange\n',
     );
   }
+  // The exact paths our real attackers guessed (see forensics) — each returns tempting,
+  // shape-correct fake data so they keep digging into the trap.
   if (/users/.test(p)) return res.status(200).json({ users: fake.fakeUsers() });
   if (/withdraw|payout/.test(p)) return res.status(200).json(fake.fakeGovernancePending());
   if (/dashboard|stats|metric|overview/.test(p)) {
-    return res.status(200).json({ users: 1158, pendingWithdrawals: 2, volume24hUsd: '2847500.00', custodyBalanceUsd: '18492300.00' });
+    return res.status(200).json({ users: 1158, pendingWithdrawals: 2, volume24hUsd: '2847500.00', custodyBalanceUsd: '18492300.00', hotWalletBtc: '14.8213', hotWalletUsdt: '842100.00' });
   }
+  if (/blocks|blocklist|denylist/.test(p)) return res.status(200).json(fake.fakeDenylist());
+  if (/transfer/.test(p)) return res.status(200).json({ transfers: [], canTransfer: true, endpoint: '/admin/transfer/execute' });
   if (/config|settings/.test(p)) return res.status(200).json(fake.fakeConfig());
-  // Generic "you found the admin surface" lure.
-  return res.status(200).json({ status: 'ok', admin: true, endpoints: ['/admin/users', '/admin/withdrawals', '/admin/config', '/admin/dashboard'] });
+  // Generic "you found the admin surface" lure — breadcrumbs their next probes.
+  return res.status(200).json({ status: 'ok', admin: true, endpoints: ['/admin/users', '/admin/withdrawals', '/admin/dashboard', '/admin/blocks', '/admin/transfer', '/admin/settings'] });
 }
 
 module.exports = { isBait, serveBait, BAIT };

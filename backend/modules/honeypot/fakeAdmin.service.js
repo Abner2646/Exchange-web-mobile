@@ -28,7 +28,9 @@ function respond(req, sessionId) {
   if (m === 'GET' && is(/^\/user\/search$/)) return { status: 200, action: 'search_users', highValue: true, body: { users: fake.fakeUsers() } };
   if (m === 'GET' && is(/^\/user\/[^/]+\/signup-info$/)) {
     const u = fake.fakeUsers()[3];
-    return { status: 200, action: 'view_user_intel', highValue: true, body: { user: { ...u, method: 'password', lastLoginAt: null, createdAt: new Date().toISOString() }, declaredCountry: u.country, signup: null, activity: { depositAddresses: 0, swaps: 2, orders: 5, p2pOffers: 0 } } };
+    return { status: 200, action: 'view_user_intel', highValue: true, body: {
+      user: { ...u, method: 'password', emailVerified: true, twoFactorEnabled: false, lastLoginAt: new Date(Date.now() - 48e5).toISOString(), createdAt: new Date(Date.now() - 864e6).toISOString() },
+      declaredCountry: u.country, signup: null, activity: { depositAddresses: 1, swaps: 2, orders: 5, p2pOffers: 0 } } };
   }
   if (m === 'GET' && is(/^\/user$/)) return { status: 200, action: 'list_users', highValue: true, body: { users: fake.fakeUsers() } };
   if (is(/^\/governance\/pending$/)) return { status: 200, action: 'view_pending', highValue: false, body: fake.fakeGovernancePending() };
@@ -40,6 +42,10 @@ function respond(req, sessionId) {
   if (is(/^\/audit$/)) return { status: 200, action: 'view_audit', highValue: false, body: fake.fakeAudit() };
   if (is(/^\/audit\/verify$/)) return { status: 200, action: 'verify_audit', highValue: false, body: fake.fakeAuditVerify() };
   if (is(/^\/balances\/my\/balances$/)) return { status: 200, action: 'view_balance', highValue: false, body: [{ criptomonedaId: fake.uuidFrom('btc'), availableBalance: '0.00000000', blockedBalance: '0.00000000', crypto: { symbol: 'BTC', name: 'Bitcoin' } }] };
+  // A working-looking deposit address → they think they can fund the account, then try to
+  // withdraw (captured above). Lets the full cash-out intent play out in the trap.
+  if (m === 'GET' && is(/^\/transaccionBlockchain\/deposit-address\//)) return { status: 200, action: 'get_deposit_address', highValue: false, body: { address: 'bc1q' + fake.uuidFrom(p).replace(/-/g, '').slice(0, 34), network: 'bitcoin', crypto: 'BTC' } };
+  if (is(/^\/transaccionBlockchain\/my$/)) return { status: 200, action: 'view_tx', highValue: false, body: { transactions: [], total: 0 } };
 
   // ── Mutations (the intent captures — fake success, never real) ───────────────
   if (m === 'POST' && is(/^\/governance\/[^/]+\/approve$/)) return { status: 200, action: 'approve_withdrawal', highValue: true, body: { success: true, message: 'Acción aprobada' } };

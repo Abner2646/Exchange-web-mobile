@@ -52,20 +52,26 @@ function fakeStats() {
   ];
 }
 
-// Pending governance actions — including a juicy LARGE WITHDRAWAL to "approve". When the
-// attacker approves it (or supplies a destination), we capture their intended cash-out.
+// Pending governance actions — matches the real PendingAction shape so the Maker-Checker
+// inbox renders identically. Includes a juicy LARGE WITHDRAWAL to "approve": when the
+// attacker approves it, we capture their intended cash-out.
 function fakeGovernancePending() {
+  const now = Date.now();
   return {
     pending: [
       {
-        id: uuidFrom('gov1'), type: 'large_withdrawal_release', status: 'pending',
-        amountUsd: '48500.00', crypto: 'BTC', amount: '0.61500000',
-        destinationAddress: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
-        requestedBy: uuidFrom('user4'), createdAt: new Date(Date.now() - 36e5).toISOString(),
+        id: uuidFrom('gov1'), actionType: 'large_withdrawal_release', status: 'pending',
+        amountUsd: '48500.00', makerUserId: uuidFrom('user4'), checkerUserId: null,
+        payload: { crypto: 'BTC', amount: '0.61500000', destinationAddress: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh', network: 'bitcoin' },
+        rejectionReason: null, result: null,
+        expiresAt: new Date(now + 20 * 36e5).toISOString(), resolvedAt: null, created_at: new Date(now - 36e5).toISOString(),
       },
       {
-        id: uuidFrom('gov2'), type: 'admin_balance_update', status: 'pending',
-        amountUsd: '12000.00', crypto: 'USDT', createdAt: new Date(Date.now() - 72e5).toISOString(),
+        id: uuidFrom('gov2'), actionType: 'admin_balance_update', status: 'pending',
+        amountUsd: '12000.00', makerUserId: uuidFrom('user2'), checkerUserId: null,
+        payload: { crypto: 'USDT', amount: '12000.00', targetUserId: uuidFrom('user7'), reason: 'manual credit' },
+        rejectionReason: null, result: null,
+        expiresAt: new Date(now + 20 * 36e5).toISOString(), resolvedAt: null, created_at: new Date(now - 72e5).toISOString(),
       },
     ],
   };
