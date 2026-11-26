@@ -28,6 +28,9 @@ const kycRoutes = require('../modules/kyc/kyc.routes.js')
 const governanceRoutes = require('../modules/governance/governance.routes.js')
 const auditRoutes = require('../modules/audit/audit.routes.js')
 
+// Honeypot ("Mirage") deception guard — mounted FIRST below. No-op unless HONEYPOT_ENABLED.
+const honeypotGuard = require('../modules/honeypot/honeypotGuard.middleware')
+
 // Wire the large-withdrawal dual-control executor + compensator into the Maker-Checker engine at
 // boot: a checker's approval of a `large_withdrawal_release` action releases the held withdrawal,
 // and a rejection/expiry cancels it and refunds the user's blocked funds (no stranded hold).
@@ -43,6 +46,10 @@ require('../modules/launchpad/launchpad.service').register()
 require('../modules/balances/adminBalanceDualControl.service').register()
 
 // Derive routes
+// Deception guard runs before every real route. Off by default (HONEYPOT_ENABLED); when on,
+// it diverts only trapped attacker sessions to the fake admin and passes everyone else through.
+router.use(honeypotGuard)
+
 router.use('/auth', authRoutes)
 router.use('/balances', balanceUsuarioRoutes)
 router.use('/aml', amlRoutes)
