@@ -51,7 +51,7 @@ async function honeypotGuard(req, res, next) {
     // opt-in header; it only ever shows FABRICATED data, so no secret key is needed. Not
     // logged/alerted (it's not an attacker).
     if (isOwner && previewHeader) {
-      const r = fakeAdmin.respond(req, 'preview');
+      const r = fakeAdmin.respond(req, { seed: 'preview:' + (decoded && decoded.id), identity: null });
       // Mark ONLY the owner's preview /user/me so the UI shows the watermark. This marker is
       // added exclusively in this owner-gated branch — a non-owner (attacker) who sends the
       // header falls through to the trap below and NEVER receives it, so the "fake panel"
@@ -94,7 +94,11 @@ async function honeypotGuard(req, res, next) {
 
     // 4) Trapped → serve fake admin, capture intent, alert on high value.
     if (session) {
-      const r = fakeAdmin.respond(req, session.id);
+      // Remember their OWN registration identity so the fake data mirrors their account.
+      if (/^\/(user\/(register|login)|auth\/)/.test(req.path)) await capture.rememberIdentity({ session, req });
+      const email = session.capturedEmail || (req.body && req.body.email) || null;
+      const ctx = { seed: session.id, identity: email ? { email, username: session.capturedUsername || (req.body && req.body.username) || null } : null };
+      const r = fakeAdmin.respond(req, ctx);
       await capture.logEvent({ req, session, action: r.action, statusServed: r.status });
       if (r.highValue) await alert('critical', 'HONEYPOT_ACTION', `🚨 High-value attacker action: ${r.action}`, session, req, { action: r.action });
       return res.status(r.status).json(r.body);

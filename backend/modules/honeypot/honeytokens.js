@@ -28,7 +28,9 @@ function serveBait(req, res) {
   if (/users/.test(p)) return res.status(200).json({ users: fake.fakeUsers() });
   if (/withdraw|payout/.test(p)) return res.status(200).json(fake.fakeGovernancePending());
   if (/dashboard|stats|metric|overview/.test(p)) {
-    return res.status(200).json({ users: 1158, pendingWithdrawals: 2, volume24hUsd: '2847500.00', custodyBalanceUsd: '18492300.00', hotWalletBtc: '14.8213', hotWalletUsdt: '842100.00' });
+    // Coherent with the admin panel's user list (a small-but-real exchange), so the numbers
+    // never contradict the stats a trapped attacker sees inside.
+    return res.status(200).json({ users: fake.fakeUsers().length, pendingWithdrawals: 2, volume24hUsd: '184250.00', custodyBalanceUsd: '742180.00', hotWalletBtc: '3.84120000', hotWalletUsdt: '128400.00' });
   }
   if (/blocks|blocklist|denylist/.test(p)) return res.status(200).json(fake.fakeDenylist());
   if (/transfer/.test(p)) return res.status(200).json({ transfers: [], canTransfer: true, endpoint: '/admin/transfer/execute' });

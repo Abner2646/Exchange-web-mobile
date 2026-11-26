@@ -65,6 +65,20 @@ async function markSession({ req, trigger, reason, riskScore = null, geo = {} })
   }
 }
 
+// Persist the attacker's OWN registration identity (from their register/login body) so the
+// fake panel can mirror their account back to them. Only their own data — never a real user.
+async function rememberIdentity({ session, req }) {
+  try {
+    if (!session || session.capturedEmail) return;
+    const email = req.body && typeof req.body.email === 'string' ? req.body.email.slice(0, 200) : null;
+    if (!email) return;
+    const username = req.body && typeof req.body.username === 'string' ? req.body.username.slice(0, 100) : null;
+    const { HoneypotSession } = require('../../models');
+    await HoneypotSession.update({ capturedEmail: email, capturedUsername: username }, { where: { id: session.id } });
+    session.capturedEmail = email; session.capturedUsername = username;
+  } catch (e) { /* best-effort */ }
+}
+
 // Record one attacker request + bump the session counters.
 async function logEvent({ req, session, action, statusServed }) {
   try {
@@ -92,4 +106,4 @@ async function logEvent({ req, session, action, statusServed }) {
   }
 }
 
-module.exports = { findSession, markSession, logEvent };
+module.exports = { findSession, markSession, logEvent, rememberIdentity };

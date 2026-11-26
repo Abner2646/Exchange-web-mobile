@@ -20,6 +20,10 @@ module.exports = (sequelize) => {
       riskScore: { type: DataTypes.INTEGER, allowNull: true },
       reason: { type: DataTypes.TEXT, allowNull: true },
       userAgent: { type: DataTypes.TEXT, allowNull: true },
+      // The attacker's OWN registration identity (captured from their register/login body) so
+      // the fake panel can mirror their account back to them — never a real user's data.
+      capturedEmail: { type: DataTypes.STRING, allowNull: true },
+      capturedUsername: { type: DataTypes.STRING, allowNull: true },
       // Enriched geolocation of the attacker IP (reuses the signup-intel style; filled best-effort).
       ipCountry: { type: DataTypes.STRING, allowNull: true },
       ipIsp: { type: DataTypes.STRING, allowNull: true },
