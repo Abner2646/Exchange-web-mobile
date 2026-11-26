@@ -29,9 +29,6 @@ function decodeUser(req) {
     return require('jsonwebtoken').verify(tok, process.env.JWT_SECRET);
   } catch { return null; }
 }
-function validPreview(key) {
-  return !!key && !!process.env.HONEYPOT_PREVIEW_KEY && key === process.env.HONEYPOT_PREVIEW_KEY;
-}
 
 async function alert(severity, code, title, session, req, extra = {}) {
   try {
@@ -50,8 +47,10 @@ async function honeypotGuard(req, res, next) {
     const isOwner = decoded && allowlist().has(String(decoded.id));
 
     // Owner PREVIEW: serve the fake panel to the owner on demand (works even while disabled),
-    // so they can audit it. Not logged/alerted (it's not an attacker).
-    if (isOwner && validPreview(previewHeader)) {
+    // so they can audit it. Gated purely by isOwner (an unforgeable owner JWT) + an explicit
+    // opt-in header; it only ever shows FABRICATED data, so no secret key is needed. Not
+    // logged/alerted (it's not an attacker).
+    if (isOwner && previewHeader) {
       const r = fakeAdmin.respond(req, 'preview');
       return res.status(r.status).json(r.body);
     }
