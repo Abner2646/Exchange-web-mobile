@@ -21,6 +21,7 @@ const transaccionP2PModel = require('../modules/p2p/p2pTransaction.model');
 const transferModel = require('../modules/balances/transfer.model')
 const userModel = require('../modules/users/user.model');
 const userSignupInfoModel = require('../modules/users/userSignupInfo.entity');
+const honeypotModels = require('../modules/honeypot/honeypot.entity');
 const valoracionModel = require('../modules/p2p/rating.model');
 const walletMaestraModel = require('../modules/wallets/masterWallet.model');
 
@@ -78,6 +79,8 @@ const P2PTransaction = transaccionP2PModel(sequelize);
 const Transfer = transferModel(sequelize);
 const User = userModel(sequelize);
 const UserSignupInfo = userSignupInfoModel(sequelize);
+// Honeypot ("Mirage") — isolated attacker-intelligence store (no real-domain associations).
+const { HoneypotSession, HoneypotEvent } = honeypotModels(sequelize);
 const Rating = valoracionModel(sequelize);
 const MasterWallet = walletMaestraModel(sequelize);
 
@@ -365,4 +368,6 @@ module.exports = {
   LedgerBalance,
   BusinessConfig,
   UserSignupInfo,
+  HoneypotSession,
+  HoneypotEvent,
 };
