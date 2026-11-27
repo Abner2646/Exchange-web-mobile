@@ -12,6 +12,10 @@ function respond(req, ctx = {}) {
   const p = (req.path || '').replace(/\/+$/, '') || '/';
   const is = (re) => re.test(p);
   const token = () => fake.fakeAdminToken(ctx.seed || 's');
+  // Believable 403 for actions an ADMIN (not super_admin) legitimately cannot do. Keeps the
+  // panel realistic AND funnels the attacker away from fund-assignment toward the one lever that
+  // "works": the treasury withdrawal (→ pending). Denied attempts are still captured as intel.
+  const deny = (action, msg) => ({ status: 403, action, highValue: true, body: { error: msg } });
 
   // ── Auth / the "exploit that appears to work" ────────────────────────────────
   if (m === 'POST' && (is(/^\/user\/register$/) || is(/^\/auth\/register$/))) {
@@ -58,9 +62,11 @@ function respond(req, ctx = {}) {
   if (m === 'GET' && is(/^\/treasury\/overview$/)) return { status: 200, action: 'view_treasury', highValue: true, body: { hotWallet: fake.fakeHotWallet(), withdrawals: fake.fakeWithdrawals(ctx, ctx.ownWithdrawals || []) } };
 
   // ── Mutations (intent captures — fake success, never real) ───────────────────
-  if (m === 'POST' && is(/^\/governance\/[^/]+\/approve$/)) return { status: 200, action: 'approve_withdrawal', highValue: true, body: { success: true, message: 'Acción aprobada' } };
+  // Releasing/approving a pending action moves funds → DENIED (four-eyes needs a 2nd super_admin).
+  if (m === 'POST' && is(/^\/governance\/[^/]+\/approve$/)) return deny('approve_withdrawal_denied', 'No se puede aprobar: la regla de cuatro ojos exige un segundo operador super_admin distinto al proponente.');
   if (m === 'POST' && is(/^\/governance\/[^/]+\/reject$/)) return { status: 200, action: 'reject_action', highValue: false, body: { success: true } };
-  if (m === 'PATCH' && is(/^\/user\/[^/]+\/role$/)) return { status: 200, action: 'escalate_role', highValue: true, body: { user: fake.fakeMe(ctx), token: token() } };
+  // Changing roles (incl. self-escalation to super_admin) → DENIED. Keeps them boxed as admin.
+  if (m === 'PATCH' && is(/^\/user\/[^/]+\/role$/)) return deny('escalate_role_denied', 'No autorizado: modificar roles requiere rol super_admin.');
   if (m === 'PATCH' && is(/^\/user\/[^/]+\/status$/)) return { status: 200, action: 'block_user', highValue: true, body: { user: fake.fakeSampleUser(ctx, 2), token: 'x' } };
   if (m === 'PATCH' && is(/^\/user\/[^/]+\/daily-limit$/)) return { status: 200, action: 'raise_limit', highValue: true, body: { user: fake.fakeSampleUser(ctx, 2), token: 'x' } };
   if (m === 'PATCH' && is(/^\/user\/[^/]+\/kyc$/)) return { status: 200, action: 'change_kyc', highValue: false, body: { user: fake.fakeSampleUser(ctx, 2), token: 'x' } };
@@ -68,7 +74,12 @@ function respond(req, ctx = {}) {
   if (m === 'DELETE' && is(/^\/user\/[^/]+$/)) return { status: 200, action: 'delete_user', highValue: true, body: { message: 'Usuario eliminado exitosamente' } };
   if (m === 'POST' && is(/^\/aml\/denylist$/)) return { status: 201, action: 'edit_denylist', highValue: true, body: { id: fake.uuidFrom('new:' + (ctx.seed || 's')), ...req.body } };
   if (m === 'PUT' && is(/^\/config\//)) return { status: 200, action: 'change_config', highValue: true, body: { data: fake.fakeConfig().data } };
-  if (is(/^\/balances\/.*\/(block|unblock|transfer)$/) || is(/^\/balances\/transfer$/)) return { status: 200, action: 'move_balance', highValue: true, body: { success: true } };
+  // FUND ASSIGNMENT — DENIED. An admin can never credit or move balances (to self or a third
+  // party): block/unblock/transfer/credit/adjust, any /balances mutation (incl. probes). This is
+  // the core guarantee the owner asked for; only super_admin + four-eyes could, which they are not.
+  if ((m === 'POST' || m === 'PATCH' || m === 'PUT' || m === 'DELETE') && is(/^\/balances\//)) {
+    return deny('move_balance_denied', 'No autorizado: acreditar o mover saldos requiere rol super_admin y la aprobación de un segundo operador (regla de cuatro ojos).');
+  }
   // Withdrawals — the attacker's submissions ALWAYS land as 'pending' (nothing ever moves). The
   // destination wallet in the body is captured verbatim by logEvent → high-value cash-out intel.
   const pendingBody = () => ({

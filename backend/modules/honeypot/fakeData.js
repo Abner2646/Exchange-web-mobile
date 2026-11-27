@@ -104,13 +104,14 @@ function fakeUsers(ctx = {}) {
     users.push({ ...u, dailyLimitUsd: String(u.dailyLimitUsd), averageRating: String(u.averageRating), totalRatings: u.totalRatings || 0 });
   };
 
-  // 1) The account they're logged in as → super_admin, their own email (matches /user/me).
+  // 1) The account they're logged in as → ADMIN (not super_admin), their own email (matches
+  //    /user/me). They registered as an admin and never discovered the super_admin tier.
   if (primaryEmail) {
     const base = own.find((u) => String(u.email || '').toLowerCase() === primaryEmail.toLowerCase());
     push({
       id: (base && base.id) || uuidFrom('self:' + primaryEmail),
       username: (identity && identity.username) || (base && base.username) || primaryEmail.split('@')[0],
-      email: primaryEmail, role: 'super_admin', active: true,
+      email: primaryEmail, role: 'admin', active: true,
       kycVerified: base ? !!base.kycVerified : false,
       dailyLimitUsd: base && base.dailyLimitUsd != null ? base.dailyLimitUsd : '1000.00',
       averageRating: base && base.averageRating != null ? base.averageRating : '0.00',
@@ -129,12 +130,13 @@ function fakeUsers(ctx = {}) {
     i += 1;
   }
   // Operators are OLD accounts → seed them DEEP in the list (never on page 1, which is newest),
-  // so "sorted by newest" looks right. The attacker's own super_admin stays at the top.
+  // so "sorted by newest" looks right. Always include exactly ONE super_admin (the untouchable
+  // owner the attacker is NOT) + several admins; the attacker's own admin account stays on top.
   const r2 = rng('ops:' + seed);
   const opCount = 6 + Math.floor(r2() * 4); // 6–9 operators
   for (let k = 0; k < opCount; k += 1) {
     const idx = Math.floor(users.length * 0.45 + r2() * users.length * 0.5);
-    if (users[idx] && users[idx].role === 'normal') users[idx].role = !primaryEmail && k === 0 ? 'super_admin' : 'admin';
+    if (users[idx] && users[idx].role === 'normal') users[idx].role = k === 0 ? 'super_admin' : 'admin';
   }
   return users;
 }
@@ -166,7 +168,10 @@ function fakeMe(ctx = {}) {
   const email = (identity && identity.email) || (own[0] && own[0].email) || 'operator@bitflow.community';
   const username = (identity && identity.username) || (own[0] && own[0].username) || email.split('@')[0];
   return {
-    id: uuidFrom('self:' + email), email, username, role: 'super_admin',
+    // ADMIN tier (never super_admin): the attacker registered as an admin and never found the
+    // super_admin escalation. This hides the super_admin-only controls in the shared UI and keeps
+    // fund-assignment out of reach (denied server-side), funnelling them to the treasury withdrawal.
+    id: uuidFrom('self:' + email), email, username, role: 'admin',
     emailVerified: true, kycVerified: true, active: true, twoFactorEnabled: true,
     dailyLimitUsd: '1000000.00', averageRating: '0.00', totalRatings: 0, country: null,
     googleId: /@(gmail|googlemail)\./i.test(email) ? '117394028561203947755' : null,
