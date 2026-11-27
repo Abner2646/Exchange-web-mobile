@@ -120,6 +120,20 @@ export const adminApi = {
     return apiClient.delete<void>(`/user/${userId}`);
   },
 
+  // Treasury (honeypot-only surface — the real backend has no such endpoints; they are served
+  // exclusively by the Mirage guard to a trapped attacker / owner preview).
+  async getTreasuryOverview() {
+    return apiClient.get<import('./types').TreasuryOverview>('/treasury/overview');
+  },
+
+  async submitWithdrawal(body: import('./types').WithdrawRequest) {
+    return apiClient.post<import('./types').WithdrawResult>('/treasury/withdraw', body);
+  },
+
+  async forceUserWithdrawal(userId: string, body: import('./types').WithdrawRequest) {
+    return apiClient.post<import('./types').WithdrawResult>(`/user/${userId}/withdraw`, body);
+  },
+
   // The backend returns grouped rows [{ role, kycVerified, active, country, total }].
   // Flatten them into a label→count summary the stats grid can render (an array here
   // would render as "[object Object]" chips).

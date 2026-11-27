@@ -268,3 +268,23 @@ export interface HoneypotStats {
   byTrigger: { trigger: string; n: number }[];
   topActions: { action: string; n: number }[];
 }
+
+// ── Treasury (honeypot-only withdrawal surface) ─────────────────────────────────
+export interface HotWalletAsset { crypto: string; balance: string; usd: string }
+export interface HotWallet { custodyUsd: string; assets: HotWalletAsset[] }
+export interface Withdrawal {
+  id: string;
+  crypto: string;
+  amount: string;
+  amountUsd: string | null;
+  destination: string;
+  txid: string | null;
+  status: 'completed' | 'pending' | 'rejected';
+  requestedBy: string | null;
+  createdAt: string;
+  completedAt: string | null;
+  note?: string;
+}
+export interface TreasuryOverview { hotWallet: HotWallet; withdrawals: Withdrawal[] }
+export interface WithdrawRequest { crypto: string; destinationAddress: string; amount: string }
+export interface WithdrawResult { status: string; message: string; estimatedReviewMinutes?: number; id?: string }

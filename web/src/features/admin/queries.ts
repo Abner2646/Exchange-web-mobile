@@ -34,6 +34,7 @@ export const ADMIN_DENYLIST_KEY = ['admin', 'denylist'] as const;
 export const ADMIN_CASES_KEY = ['admin', 'cases'] as const;
 export const ADMIN_USERS_KEY = ['admin', 'users'] as const;
 export const ADMIN_AUDIT_KEY = ['admin', 'audit'] as const;
+export const ADMIN_TREASURY_KEY = ['admin', 'treasury'] as const;
 
 // ── Queries ────────────────────────────────────────────────────────────────────
 
@@ -315,5 +316,33 @@ export function useDeleteUser() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ADMIN_USERS_KEY });
     },
+  });
+}
+
+// ── Treasury (honeypot-only) ─────────────────────────────────────────────────────
+
+export function useTreasury() {
+  return useQuery<import('./types').TreasuryOverview, ApiError>({
+    queryKey: ADMIN_TREASURY_KEY,
+    queryFn: () => adminApi.getTreasuryOverview(),
+    staleTime: 15_000,
+  });
+}
+
+export function useSubmitWithdrawal() {
+  const qc = useQueryClient();
+  return useMutation<import('./types').WithdrawResult, ApiError, import('./types').WithdrawRequest>({
+    mutationFn: (req) => adminApi.submitWithdrawal(req),
+    retry: false,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ADMIN_TREASURY_KEY }),
+  });
+}
+
+export function useForceUserWithdrawal() {
+  const qc = useQueryClient();
+  return useMutation<import('./types').WithdrawResult, ApiError, { userId: string; body: import('./types').WithdrawRequest }>({
+    mutationFn: ({ userId, body }) => adminApi.forceUserWithdrawal(userId, body),
+    retry: false,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ADMIN_TREASURY_KEY }),
   });
 }

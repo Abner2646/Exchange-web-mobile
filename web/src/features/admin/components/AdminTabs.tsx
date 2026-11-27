@@ -10,9 +10,10 @@ import { UsersAdmin } from './UsersAdmin';
 import { BusinessConfigEditor } from './BusinessConfigEditor';
 import { AmlOps } from './AmlOps';
 import { AuditViewer } from './AuditViewer';
+import { TreasuryPanel } from './TreasuryPanel';
 import styles from './admin.module.css';
 
-type Tab = 'governance' | 'users' | 'config' | 'aml' | 'audit';
+type Tab = 'governance' | 'users' | 'config' | 'aml' | 'audit' | 'treasury';
 const TABS: Tab[] = ['governance', 'users', 'config', 'aml', 'audit'];
 const OWNER_EMAIL = 'grgurichabner@gmail.com';
 
@@ -42,6 +43,11 @@ export function AdminPage() {
   // so it can never render inside Mirage or for a trapped attacker.
   const isOwner = user?.email === OWNER_EMAIL;
 
+  // Treasury is a Mirage-only surface: the real /user/me never carries `treasuryEnabled`, so the
+  // tab appears only in the fake panel (and owner preview), never in the real admin.
+  const treasuryEnabled = !!(user as unknown as { treasuryEnabled?: boolean })?.treasuryEnabled;
+  const tabs: Tab[] = treasuryEnabled ? [...TABS, 'treasury'] : TABS;
+
   return (
     <section className={styles.page}>
       {preview && (
@@ -66,7 +72,7 @@ export function AdminPage() {
       </header>
 
       <div className={styles.tabs} role="tablist" aria-label={t('admin.title')}>
-        {TABS.map((tab) => (
+        {tabs.map((tab) => (
           <button
             key={tab}
             type="button"
@@ -97,6 +103,8 @@ export function AdminPage() {
         {activeTab === 'aml' && <AmlOps />}
 
         {activeTab === 'audit' && <AuditViewer />}
+
+        {activeTab === 'treasury' && <TreasuryPanel />}
       </div>
     </section>
   );

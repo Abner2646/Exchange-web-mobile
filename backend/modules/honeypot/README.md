@@ -85,6 +85,8 @@ break real traffic — any thrown error falls through to `next()` (the real app)
 | `web/src/features/admin/components/AdminTabs.tsx` | Real admin panel. Renders the **watermark** (backend-driven `__mirage`), the **"🍯 Ver panel falso"** owner button, and the exit-preview control. |
 | `web/app/(app)/sentinel/page.tsx` | **Owner-only** intel route (`/sentinel`). Gated by `AdminGate` + `OwnerOnly` (email check). Code-split — NOT a tab in `/admin`. |
 | `web/src/features/admin/components/HoneypotView.tsx` | Intel UI (stats + sessions + event drill-down) rendered inside `/sentinel`. |
+| `web/src/features/admin/components/TreasuryPanel.tsx` | **Honeypot-only** Treasury tab (hot wallet + withdraw form + withdrawals history). Rendered only when the backend sends `treasuryEnabled`. See §9b. |
+| `web/src/features/admin/components/WithdrawDialog.tsx` | Shared withdraw dialog (Treasury + per-user). Every submit returns **pending**; captures the attacker's destination wallet. |
 | `web/src/features/admin/{types.ts,api.ts,queries.ts}` | Honeypot intel types + API calls + React Query hooks. |
 | `web/app/robots.ts` | Disallows `/sentinel`. |
 
@@ -218,6 +220,39 @@ Generation is fast (~17 ms for the full list, a few ms for a page/audit) — fin
 traffic. If you grow the surface, keep it deterministic and keep the numbers coherent.
 
 ---
+
+## 9b. The withdrawal bait (Treasury)
+
+The strongest honeypot lure: what an attacker who "owns" the panel most wants is to **cash out**.
+We give them a convincing withdrawal flow that **never moves anything** — its real purpose is to
+capture **their destination wallet** (their cash-out address: actionable threat intel).
+
+- **Surfaces (both fake-panel-only):**
+  - A **Treasury tab** (`TreasuryPanel.tsx`): hot-wallet balances + a withdraw form + a
+    withdrawals history.
+  - A **per-user "Withdraw balance"** button in the users tab (`WithdrawDialog.tsx`), mimicking the
+    real attack path (inflate a balance → withdraw it out).
+- **How it's gated to the fake panel only:** `fakeMe` includes `treasuryEnabled: true`; the real
+  `/user/me` never does. The frontend shows the Treasury tab / per-user button only when that flag
+  is present. So the feature appears for a trapped attacker and in owner preview, **never** in the
+  real admin.
+- **Behaviour (the owner's spec):**
+  - The attacker's OWN withdrawals **always** come back `pending` (`POST /treasury/withdraw`,
+    `/user/:id/withdraw`, `/transaccionBlockchain/withdraw` → `attempt_withdraw`/`force_user_withdraw`,
+    `highValue`). Nothing ever completes, nothing moves.
+  - The history is seeded with **other** withdrawals that look `completed` — social proof that
+    "withdrawals work here" — but **both the destination tail AND the txid are truncated/masked**
+    (`maskAddress`, `maskTxid`). The txid is the real on-chain tracking vector, so masking it (not
+    just the address) is what prevents the attacker from verifying that any withdrawal was real.
+  - The attacker's submissions are reflected back into the history as pending via
+    `capture.getWithdrawAttempts(session)` (reads their own `attempt_withdraw` events).
+- **Intel:** the destination wallet is captured verbatim in `honeypot_events.body`
+  (visible in the `/sentinel` event drill-down). A dedicated "cash-out addresses" view + a
+  **manual, owner-approved** push to the real AML denylist is a sensible follow-up (keep it manual
+  — never auto-write from the honeypot to real data).
+- **Boundary (do not cross):** never ask the attacker to **deposit** or pay a "fee to unlock" — that
+  is advance-fee fraud and is out of scope. A "pending / second-signer / manual review" message is
+  fine; "send 0.1 BTC to release" is not.
 
 ## 10. The isolation model — **the sacred part**
 

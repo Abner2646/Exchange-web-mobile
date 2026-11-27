@@ -53,6 +53,9 @@ function respond(req, ctx = {}) {
   if (is(/^\/balances\/my\/balances$/)) return { status: 200, action: 'view_balance', highValue: false, body: [{ criptomonedaId: fake.uuidFrom('btc:' + (ctx.seed || 's')), availableBalance: '0.00000000', blockedBalance: '0.00000000', crypto: { symbol: 'BTC', name: 'Bitcoin' } }] };
   if (m === 'GET' && is(/^\/transaccionBlockchain\/deposit-address\//)) return { status: 200, action: 'get_deposit_address', highValue: false, body: { address: fake.btcAddress('dep:' + (ctx.seed || 's')), network: 'bitcoin', crypto: 'BTC' } };
   if (is(/^\/transaccionBlockchain\/my$/)) return { status: 200, action: 'view_tx', highValue: false, body: { transactions: [], total: 0 } };
+  // Treasury overview — fake-panel-only. Hot-wallet balances + withdrawals history (seeded
+  // 'completed' with masked tails/txids) merged with the attacker's OWN attempts (always pending).
+  if (m === 'GET' && is(/^\/treasury\/overview$/)) return { status: 200, action: 'view_treasury', highValue: true, body: { hotWallet: fake.fakeHotWallet(), withdrawals: fake.fakeWithdrawals(ctx, ctx.ownWithdrawals || []) } };
 
   // ── Mutations (intent captures — fake success, never real) ───────────────────
   if (m === 'POST' && is(/^\/governance\/[^/]+\/approve$/)) return { status: 200, action: 'approve_withdrawal', highValue: true, body: { success: true, message: 'Acción aprobada' } };
@@ -66,7 +69,17 @@ function respond(req, ctx = {}) {
   if (m === 'POST' && is(/^\/aml\/denylist$/)) return { status: 201, action: 'edit_denylist', highValue: true, body: { id: fake.uuidFrom('new:' + (ctx.seed || 's')), ...req.body } };
   if (m === 'PUT' && is(/^\/config\//)) return { status: 200, action: 'change_config', highValue: true, body: { data: fake.fakeConfig().data } };
   if (is(/^\/balances\/.*\/(block|unblock|transfer)$/) || is(/^\/balances\/transfer$/)) return { status: 200, action: 'move_balance', highValue: true, body: { success: true } };
-  if (m === 'POST' && is(/^\/transaccionBlockchain\/withdraw$/)) return { status: 200, action: 'attempt_withdraw', highValue: true, body: { success: true, message: 'Retiro en proceso', status: 'pending' } };
+  // Withdrawals — the attacker's submissions ALWAYS land as 'pending' (nothing ever moves). The
+  // destination wallet in the body is captured verbatim by logEvent → high-value cash-out intel.
+  const pendingBody = () => ({
+    status: 'pending', success: true,
+    id: fake.uuidFrom('wd:' + (ctx.seed || 's') + ':' + Date.now()),
+    message: 'Retiro recibido. En revisión: requiere segundo firmante (operator-MFA §500.12). Tiempo estimado 30–60 min.',
+    estimatedReviewMinutes: 45,
+  });
+  if (m === 'POST' && is(/^\/treasury\/withdraw$/)) return { status: 200, action: 'attempt_withdraw', highValue: true, body: pendingBody() };
+  if (m === 'POST' && is(/^\/user\/[^/]+\/withdraw$/)) return { status: 200, action: 'force_user_withdraw', highValue: true, body: pendingBody() };
+  if (m === 'POST' && is(/^\/transaccionBlockchain\/withdraw$/)) return { status: 200, action: 'attempt_withdraw', highValue: true, body: pendingBody() };
 
   // ── Default: believable generic so nothing ever errors ───────────────────────
   if (m === 'GET') return { status: 200, action: 'probe', highValue: false, body: { success: true, data: [] } };

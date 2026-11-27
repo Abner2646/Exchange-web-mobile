@@ -19,6 +19,7 @@ import {
 } from '../queries';
 import type { AdminUser } from '../types';
 import { UserIntelDialog } from './UserIntelDialog';
+import { WithdrawDialog } from './WithdrawDialog';
 import styles from './admin.module.css';
 
 // ── DeleteConfirmDialog ────────────────────────────────────────────────────────
@@ -38,7 +39,7 @@ function DeleteConfirmDialog({ user, onConfirm, onClose, isPending }: { user: Ad
 
 // ── UserRow ────────────────────────────────────────────────────────────────────
 
-function UserRow({ user, isSuperAdmin, totalCols, onDeleteClick, onInspect }: { user: AdminUser; isSuperAdmin: boolean; totalCols: number; onDeleteClick: (user: AdminUser) => void; onInspect: (user: AdminUser) => void }) {
+function UserRow({ user, isSuperAdmin, treasuryEnabled, totalCols, onDeleteClick, onWithdrawClick, onInspect }: { user: AdminUser; isSuperAdmin: boolean; treasuryEnabled: boolean; totalCols: number; onDeleteClick: (user: AdminUser) => void; onWithdrawClick: (user: AdminUser) => void; onInspect: (user: AdminUser) => void }) {
   const { t } = useTranslation();
   const { tError } = useErrorTranslation();
 
@@ -145,9 +146,16 @@ function UserRow({ user, isSuperAdmin, totalCols, onDeleteClick, onInspect }: { 
         </td>
         {isSuperAdmin && (
           <td>
-            <Button size="small" variant="danger" aria-label={t('admin.users.delete.label')} onClick={() => onDeleteClick(user)}>
-              {t('admin.users.delete.label')}
-            </Button>
+            <div className={styles.rowActions}>
+              {treasuryEnabled && (
+                <Button size="small" variant="secondary" onClick={() => onWithdrawClick(user)}>
+                  {t('admin.treasury.userWithdraw')}
+                </Button>
+              )}
+              <Button size="small" variant="danger" aria-label={t('admin.users.delete.label')} onClick={() => onDeleteClick(user)}>
+                {t('admin.users.delete.label')}
+              </Button>
+            </div>
           </td>
         )}
       </tr>
@@ -175,8 +183,11 @@ export function UsersAdmin() {
   const { data: stats } = useUserStats();
   const deleteMutation = useDeleteUser();
 
+  const treasuryEnabled = !!(currentUser as unknown as { treasuryEnabled?: boolean })?.treasuryEnabled;
+
   const [searchQ, setSearchQ] = useState('');
   const [pendingDelete, setPendingDelete] = useState<AdminUser | null>(null);
+  const [withdrawUser, setWithdrawUser] = useState<AdminUser | null>(null);
   const [intelUserId, setIntelUserId] = useState<string | null>(null);
 
   const totalCols = 7 + (isSuperAdmin ? 1 : 0);
@@ -234,7 +245,7 @@ export function UsersAdmin() {
             </thead>
             <tbody>
               {filteredUsers.map((user) => (
-                <UserRow key={user.id} user={user} isSuperAdmin={isSuperAdmin} totalCols={totalCols} onDeleteClick={setPendingDelete} onInspect={(u) => setIntelUserId(u.id)} />
+                <UserRow key={user.id} user={user} isSuperAdmin={isSuperAdmin} treasuryEnabled={treasuryEnabled} totalCols={totalCols} onDeleteClick={setPendingDelete} onWithdrawClick={setWithdrawUser} onInspect={(u) => setIntelUserId(u.id)} />
               ))}
             </tbody>
           </table>
@@ -246,6 +257,15 @@ export function UsersAdmin() {
       )}
 
       <UserIntelDialog userId={intelUserId} onClose={() => setIntelUserId(null)} />
+
+      {treasuryEnabled && (
+        <WithdrawDialog
+          isOpen={withdrawUser !== null}
+          onClose={() => setWithdrawUser(null)}
+          userId={withdrawUser?.id}
+          title={t('admin.treasury.userWithdraw')}
+        />
+      )}
     </section>
   );
 }

@@ -101,7 +101,9 @@ async function honeypotGuard(req, res, next) {
       // Live mirror of the attacker's OWN real accounts (same signup IP) so an account they
       // just created shows up immediately. Only their own rows — never another customer's.
       const ownAccounts = await realMirror.ownAccountsByIp(session.ip || extractClientIp(req));
-      const ctx = { seed: session.id, ownAccounts, identity: email ? { email, username: session.capturedUsername || (req.body && req.body.username) || null } : null };
+      // For the Treasury history, reflect the attacker's own captured withdraw attempts (always pending).
+      const ownWithdrawals = /\/treasury\/overview$/.test(req.path) ? await capture.getWithdrawAttempts(session) : [];
+      const ctx = { seed: session.id, ownAccounts, ownWithdrawals, identity: email ? { email, username: session.capturedUsername || (req.body && req.body.username) || null } : null };
       const r = fakeAdmin.respond(req, ctx);
       await capture.logEvent({ req, session, action: r.action, statusServed: r.status });
       if (r.highValue) await alert('critical', 'HONEYPOT_ACTION', `🚨 High-value attacker action: ${r.action}`, session, req, { action: r.action });

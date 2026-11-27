@@ -106,4 +106,25 @@ async function logEvent({ req, session, action, statusServed }) {
   }
 }
 
-module.exports = { findSession, markSession, logEvent, rememberIdentity };
+// The attacker's own captured withdrawal attempts (from honeypot_events) → so the fake Treasury
+// shows THEIR submissions as perpetually 'pending'. Reads only the isolated honeypot table.
+async function getWithdrawAttempts(session) {
+  try {
+    if (!session) return [];
+    const { HoneypotEvent } = require('../../models');
+    const { Op } = require('sequelize');
+    const rows = await HoneypotEvent.findAll({
+      where: { sessionId: session.id, action: { [Op.in]: ['attempt_withdraw', 'force_user_withdraw'] } },
+      order: [['created_at', 'DESC']], limit: 20,
+    });
+    return rows
+      .map((e) => {
+        const b = (e.body && typeof e.body === 'object') ? e.body : {};
+        const destination = b.destinationAddress || b.address || b.to || b.wallet || b.destination || null;
+        return { id: e.id, destination, crypto: b.crypto || b.currency || b.asset || 'BTC', amount: b.amount || b.amountCrypto || null, createdAt: e.created_at || e.createdAt };
+      })
+      .filter((x) => x.destination);
+  } catch { return []; }
+}
+
+module.exports = { findSession, markSession, logEvent, rememberIdentity, getWithdrawAttempts };

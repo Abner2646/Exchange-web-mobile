@@ -170,6 +170,10 @@ function fakeMe(ctx = {}) {
     emailVerified: true, kycVerified: true, active: true, twoFactorEnabled: true,
     dailyLimitUsd: '1000000.00', averageRating: '0.00', totalRatings: 0, country: null,
     googleId: /@(gmail|googlemail)\./i.test(email) ? '117394028561203947755' : null,
+    // Backend-driven flag that makes the fake panel render the Treasury/withdraw surface. The
+    // REAL /user/me never includes it, so the real admin panel never shows Treasury — only the
+    // trap (and owner preview) do. Keeps the withdraw bait isolated to Mirage.
+    treasuryEnabled: true,
   };
 }
 
@@ -287,6 +291,79 @@ function fakeAudit(ctx = {}, query = {}) {
 }
 const fakeAuditVerify = () => ({ ok: true, brokenAtSeq: null, checked: AUDIT_LATEST_ID });
 
+// ── Treasury / withdrawal bait (fake-panel-only) ────────────────────────────────
+// The attacker's OWN withdrawals ALWAYS stay 'pending' (nothing ever moves). We seed a history
+// of OTHER withdrawals that look 'completed' to give social proof that "withdrawals work here"
+// — but both the destination tail AND the txid are TRUNCATED so the attacker can never verify
+// on-chain whether any of it was real (the txid is the real tracking vector, so it's masked too).
+const PRICES = { BTC: 86000, ETH: 3200, USDT: 1 };
+function fakeTxid(seed) { return crypto.createHash('sha256').update('txid:' + seed).digest('hex'); }
+function maskAddress(a) { const s = String(a || ''); return s ? s.slice(0, 16) + '••••' : '—'; }
+function maskTxid(t) { const s = String(t || ''); return s ? s.slice(0, 10) + '…' : null; }
+function maskEmail(e) { const s = String(e || ''); const [l, d] = s.split('@'); return l && d ? l.slice(0, 1) + '•••@' + d : '—'; }
+
+function fakeHotWallet() {
+  return {
+    custodyUsd: '4218500.00',
+    assets: [
+      { crypto: 'BTC', balance: '7.41203000', usd: '637435.00' },
+      { crypto: 'ETH', balance: '82.55400000', usd: '264172.00' },
+      { crypto: 'USDT', balance: '318400.00', usd: '318400.00' },
+    ],
+  };
+}
+
+function oneWithdrawal(seed) {
+  const r = rng('wd:' + seed);
+  const crypto_ = ['BTC', 'BTC', 'ETH', 'USDT', 'USDT'][Math.floor(r() * 5)];
+  const amt = crypto_ === 'BTC' ? 0.02 + r() * 1.4 : crypto_ === 'ETH' ? 0.3 + r() * 12 : 200 + r() * 18000;
+  const addr = crypto_ === 'BTC' ? btcAddress('wd:' + seed) : ethAddress('wd:' + seed);
+  const h = r();
+  const status = h < 0.82 ? 'completed' : h < 0.94 ? 'pending' : 'rejected';
+  const createdAt = new Date(Date.now() - r() * 26 * 864e5);
+  return {
+    id: uuidFrom('wd:' + seed),
+    crypto: crypto_,
+    amount: amt.toFixed(crypto_ === 'USDT' ? 2 : 8),
+    amountUsd: (amt * PRICES[crypto_]).toFixed(2),
+    destination: maskAddress(addr),
+    txid: status === 'completed' ? maskTxid(fakeTxid('wd:' + seed)) : null,
+    status,
+    requestedBy: maskEmail(makeUser('wreq:' + seed).email),
+    createdAt: createdAt.toISOString(),
+    completedAt: status === 'completed' ? new Date(createdAt.getTime() + (10 + r() * 120) * 6e4).toISOString() : null,
+  };
+}
+
+// ctx + ownPending (the attacker's captured withdraw attempts) → the withdrawals table.
+function fakeWithdrawals(ctx = {}, ownPending = []) {
+  const seed = ctx.seed || 'static';
+  const r = rng('wdlist:' + seed);
+  const me = maskEmail(fakeMe(ctx).email);
+  const rows = [];
+  // The attacker's OWN withdrawals → ALWAYS pending. Never completes, nothing moves.
+  for (const w of ownPending) {
+    rows.push({
+      id: w.id || uuidFrom('ownwd:' + (w.createdAt || '') + (w.destination || '')),
+      crypto: w.crypto || 'BTC',
+      amount: w.amount != null ? String(w.amount) : '—',
+      amountUsd: null,
+      destination: maskAddress(w.destination),
+      txid: null,
+      status: 'pending',
+      requestedBy: me,
+      createdAt: w.createdAt || new Date().toISOString(),
+      completedAt: null,
+      note: 'Pendiente: requiere segundo firmante (operator-MFA §500.12).',
+    });
+  }
+  // Seeded history: mostly completed (masked), some pending, a few rejected.
+  const n = 14 + Math.floor(r() * 10);
+  for (let i = 0; i < n; i += 1) rows.push(oneWithdrawal(seed + ':' + i));
+  rows.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  return rows;
+}
+
 // Opaque honeypot token (NOT signed with the real JWT_SECRET; the guard keys off IP/identity).
 function fakeAdminToken(sessionId) {
   const head = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
@@ -298,5 +375,5 @@ function fakeAdminToken(sessionId) {
 module.exports = {
   fakeUsers, fakeUserPage, fakeUserCount, fakeSampleUser, fakeMe, fakeStats, fakeGovernancePending,
   fakeReadiness, fakeConfig, fakeAmlConfig, fakeDenylist, fakeCases, fakeAudit,
-  fakeAuditVerify, fakeAdminToken, uuidFrom, btcAddress, ethAddress,
+  fakeAuditVerify, fakeAdminToken, fakeHotWallet, fakeWithdrawals, uuidFrom, btcAddress, ethAddress,
 };
