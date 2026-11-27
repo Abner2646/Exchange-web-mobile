@@ -284,6 +284,7 @@
 .treasuryAssetUsd { font-size: var(--font-size-xs); color: var(--text-tertiary); }
 .treasuryForm { display: flex; flex-direction: column; gap: var(--spacing-sm); }
 .treasuryField { display: flex; flex-direction: column; gap: 4px; font-size: var(--font-size-sm); color: var(--text-secondary); }
+.treasuryAvailable { font-size: var(--font-size-xs); color: var(--text-tertiary); }
 .treasurySelect {
   padding: var(--spacing-xs) var(--spacing-sm); border: 1px solid var(--border-primary); border-radius: var(--radius-md);
   background-color: var(--bg-primary); color: var(--text-primary); font-size: var(--font-size-sm);

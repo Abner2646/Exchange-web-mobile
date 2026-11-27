@@ -318,14 +318,15 @@ function fakeHotWallet() {
   };
 }
 
-// The ADMINISTRATOR balance: operational funds attributed to the admin ROLE (not their personal
-// account, which stays at zero). This is the lure the withdrawal flow draws from — seeded per
-// attacker, and kept below the exchange custody so it stays coherent (admin allocation ⊂ custody).
+// The ADMINISTRATOR balance: a SMALL operational float attributed to the admin role, framed as
+// funds "to pay network fees / commissions" — NOT the prize. The prize the attacker is meant to
+// go after is the exchange hot wallets (fakeHotWallet), which the withdrawal flow lets them
+// target. Keeping this float small (a few $k) is what gives them a reason to drain the big pot.
 function fakeAdminBalance(ctx = {}) {
   const r = rng('adminbal:' + (ctx.seed || 'static'));
-  const btc = 1.5 + r() * 3; // 1.5–4.5 BTC
-  const eth = 18 + r() * 45; // 18–63 ETH
-  const usdt = 30000 + r() * 85000; // 30k–115k USDT
+  const btc = 0.008 + r() * 0.04; // ~0.008–0.05 BTC
+  const eth = 0.15 + r() * 0.6; // ~0.15–0.75 ETH
+  const usdt = 150 + r() * 700; // ~150–850 USDT
   const assets = [
     { crypto: 'BTC', balance: btc.toFixed(8), usd: (btc * PRICES.BTC).toFixed(2) },
     { crypto: 'ETH', balance: eth.toFixed(8), usd: (eth * PRICES.ETH).toFixed(2) },

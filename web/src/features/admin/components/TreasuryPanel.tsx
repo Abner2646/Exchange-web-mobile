@@ -24,16 +24,17 @@ export function TreasuryPanel() {
 
   return (
     <div className={styles.panel}>
+      {/* Primary: the hot wallets — the big, withdrawable prize the attacker is meant to target. */}
       <div className={styles.card}>
         <div className={styles.treasuryHead}>
           <div>
-            <h2 className={styles.sectionTitle}>{t('admin.treasury.adminBalance')}</h2>
-            <p className={styles.cardDesc}>{t('admin.treasury.adminBalanceDesc')} · <strong>${data?.adminBalance.totalUsd ?? '—'}</strong></p>
+            <h2 className={styles.sectionTitle}>{t('admin.treasury.hotWallet')}</h2>
+            <p className={styles.cardDesc}>{t('admin.treasury.custody')}: <strong>${data?.hotWallet.custodyUsd ?? '—'}</strong> · {t('admin.treasury.withdrawable')}</p>
           </div>
           <Button variant="primary" onClick={() => setOpen(true)}>{t('admin.treasury.newWithdrawal')}</Button>
         </div>
         <div className={styles.treasuryAssets}>
-          {(data?.adminBalance.assets ?? []).map((a) => (
+          {(data?.hotWallet.assets ?? []).map((a) => (
             <div key={a.crypto} className={styles.treasuryAsset}>
               <span className={styles.treasuryAssetCrypto}>{a.crypto}</span>
               <span className={styles.mono}>{a.balance}</span>
@@ -43,11 +44,12 @@ export function TreasuryPanel() {
         </div>
       </div>
 
+      {/* Secondary: the admin's small operational float (for fees/commissions) — not the prize. */}
       <div className={styles.card}>
-        <h2 className={styles.sectionTitle}>{t('admin.treasury.hotWallet')}</h2>
-        <p className={styles.cardDesc}>{t('admin.treasury.custody')}: <strong>${data?.hotWallet.custodyUsd ?? '—'}</strong></p>
+        <h2 className={styles.sectionTitle}>{t('admin.treasury.adminBalance')}</h2>
+        <p className={styles.cardDesc}>{t('admin.treasury.adminBalanceDesc')} · <strong>${data?.adminBalance.totalUsd ?? '—'}</strong></p>
         <div className={styles.treasuryAssets}>
-          {(data?.hotWallet.assets ?? []).map((a) => (
+          {(data?.adminBalance.assets ?? []).map((a) => (
             <div key={a.crypto} className={styles.treasuryAsset}>
               <span className={styles.treasuryAssetCrypto}>{a.crypto}</span>
               <span className={styles.mono}>{a.balance}</span>
@@ -90,7 +92,7 @@ export function TreasuryPanel() {
         </div>
       </div>
 
-      <WithdrawDialog isOpen={open} onClose={() => setOpen(false)} />
+      <WithdrawDialog isOpen={open} onClose={() => setOpen(false)} available={data?.hotWallet.assets} />
     </div>
   );
 }

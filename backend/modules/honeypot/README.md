@@ -227,10 +227,13 @@ The strongest honeypot lure: what an attacker who "owns" the panel most wants is
 We give them a convincing withdrawal flow that **never moves anything** — its real purpose is to
 capture **their destination wallet** (their cash-out address: actionable threat intel).
 
-- **Administrator balance:** the Treasury shows a **"Saldo de administrador"** (`fakeAdminBalance`)
-  — operational funds attributed to the admin ROLE (the lure the withdrawal draws from), distinct
-  from their personal account (which stays at zero) and from the exchange custody/hot-wallet. Seeded
-  per attacker, kept below custody so it stays coherent.
+- **The prize is the hot wallets.** The Treasury leads with the **hot wallets** (`fakeHotWallet`,
+  ~$4.2M, shown "available for withdrawal") — the big pot the attacker is meant to try to drain;
+  the withdraw dialog shows the hot-wallet balance as "Available". A small **"Saldo de
+  administrador"** (`fakeAdminBalance`, a few $k) sits below it, framed as an operational float for
+  **network fees/commissions** — NOT the prize (if the only withdrawable balance were their own
+  small/zero one, there'd be no reason to attack). Personal account stays at zero. The float is kept
+  far below custody so the numbers stay coherent.
 - **Surfaces (both fake-panel-only):**
   - A **Treasury tab** (`TreasuryPanel.tsx`): hot-wallet balances + a withdraw form + a
     withdrawals history.

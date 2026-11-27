@@ -11,7 +11,7 @@ import { useSubmitWithdrawal, useForceUserWithdrawal } from '../queries';
 import type { WithdrawResult } from '../types';
 import styles from './admin.module.css';
 
-export function WithdrawDialog({ isOpen, onClose, userId, title }: { isOpen: boolean; onClose: () => void; userId?: string; title?: string }) {
+export function WithdrawDialog({ isOpen, onClose, userId, title, available }: { isOpen: boolean; onClose: () => void; userId?: string; title?: string; available?: { crypto: string; balance: string }[] }) {
   const { t } = useTranslation();
   const [crypto, setCrypto] = useState('BTC');
   const [destinationAddress, setDestinationAddress] = useState('');
@@ -58,6 +58,11 @@ export function WithdrawDialog({ isOpen, onClose, userId, title }: { isOpen: boo
           <label className={styles.treasuryField}>
             <span>{t('admin.treasury.amount')}</span>
             <Input type="text" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" aria-label={t('admin.treasury.amount')} />
+            {available && available.find((a) => a.crypto === crypto) && (
+              <span className={styles.treasuryAvailable}>
+                {t('admin.treasury.available')}: {available.find((a) => a.crypto === crypto)?.balance} {crypto}
+              </span>
+            )}
           </label>
           <div className={styles.dialogActions}>
             <Button variant="secondary" onClick={close} disabled={isPending}>{t('common.cancel')}</Button>

@@ -525,9 +525,11 @@ export const es: Catalog = {
     'admin.tab.treasury': 'Tesorería',
 
     'admin.treasury.adminBalance': 'Saldo de administrador',
-    'admin.treasury.adminBalanceDesc': 'Fondos operativos asignados a tu rol de administrador',
-    'admin.treasury.hotWallet': 'Custodia del exchange',
+    'admin.treasury.adminBalanceDesc': 'Float operativo para comisiones de red y gastos',
+    'admin.treasury.hotWallet': 'Wallets calientes',
     'admin.treasury.custody': 'Custodia total',
+    'admin.treasury.withdrawable': 'disponible para retiro',
+    'admin.treasury.available': 'Disponible',
     'admin.treasury.newWithdrawal': 'Nuevo retiro',
     'admin.treasury.history': 'Historial de retiros',
     'admin.treasury.crypto': 'Criptomoneda',
