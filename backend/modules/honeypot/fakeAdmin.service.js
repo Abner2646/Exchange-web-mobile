@@ -59,7 +59,7 @@ function respond(req, ctx = {}) {
   if (is(/^\/transaccionBlockchain\/my$/)) return { status: 200, action: 'view_tx', highValue: false, body: { transactions: [], total: 0 } };
   // Treasury overview — fake-panel-only. Hot-wallet balances + withdrawals history (seeded
   // 'completed' with masked tails/txids) merged with the attacker's OWN attempts (always pending).
-  if (m === 'GET' && is(/^\/treasury\/overview$/)) return { status: 200, action: 'view_treasury', highValue: true, body: { hotWallet: fake.fakeHotWallet(), withdrawals: fake.fakeWithdrawals(ctx, ctx.ownWithdrawals || []) } };
+  if (m === 'GET' && is(/^\/treasury\/overview$/)) return { status: 200, action: 'view_treasury', highValue: true, body: { adminBalance: fake.fakeAdminBalance(ctx), hotWallet: fake.fakeHotWallet(), withdrawals: fake.fakeWithdrawals(ctx, ctx.ownWithdrawals || []) } };
 
   // ── Mutations (intent captures — fake success, never real) ───────────────────
   // Releasing/approving a pending action moves funds → DENIED (four-eyes needs a 2nd super_admin).

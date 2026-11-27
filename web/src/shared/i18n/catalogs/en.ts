@@ -524,7 +524,9 @@ export const en: Catalog = {
     'admin.tab.honeypot': 'Honeypot',
     'admin.tab.treasury': 'Treasury',
 
-    'admin.treasury.hotWallet': 'Hot wallet',
+    'admin.treasury.adminBalance': 'Administrator balance',
+    'admin.treasury.adminBalanceDesc': 'Operational funds allocated to your administrator role',
+    'admin.treasury.hotWallet': 'Exchange custody',
     'admin.treasury.custody': 'Total custody',
     'admin.treasury.newWithdrawal': 'New withdrawal',
     'admin.treasury.history': 'Withdrawal history',

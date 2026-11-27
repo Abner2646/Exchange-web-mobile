@@ -524,7 +524,9 @@ export const es: Catalog = {
     'admin.tab.honeypot': 'Honeypot',
     'admin.tab.treasury': 'Tesorería',
 
-    'admin.treasury.hotWallet': 'Hot wallet',
+    'admin.treasury.adminBalance': 'Saldo de administrador',
+    'admin.treasury.adminBalanceDesc': 'Fondos operativos asignados a tu rol de administrador',
+    'admin.treasury.hotWallet': 'Custodia del exchange',
     'admin.treasury.custody': 'Custodia total',
     'admin.treasury.newWithdrawal': 'Nuevo retiro',
     'admin.treasury.history': 'Historial de retiros',

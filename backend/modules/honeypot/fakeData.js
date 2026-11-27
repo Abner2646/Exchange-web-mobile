@@ -318,6 +318,23 @@ function fakeHotWallet() {
   };
 }
 
+// The ADMINISTRATOR balance: operational funds attributed to the admin ROLE (not their personal
+// account, which stays at zero). This is the lure the withdrawal flow draws from — seeded per
+// attacker, and kept below the exchange custody so it stays coherent (admin allocation ⊂ custody).
+function fakeAdminBalance(ctx = {}) {
+  const r = rng('adminbal:' + (ctx.seed || 'static'));
+  const btc = 1.5 + r() * 3; // 1.5–4.5 BTC
+  const eth = 18 + r() * 45; // 18–63 ETH
+  const usdt = 30000 + r() * 85000; // 30k–115k USDT
+  const assets = [
+    { crypto: 'BTC', balance: btc.toFixed(8), usd: (btc * PRICES.BTC).toFixed(2) },
+    { crypto: 'ETH', balance: eth.toFixed(8), usd: (eth * PRICES.ETH).toFixed(2) },
+    { crypto: 'USDT', balance: usdt.toFixed(2), usd: usdt.toFixed(2) },
+  ];
+  const totalUsd = assets.reduce((s, a) => s + Number(a.usd), 0).toFixed(2);
+  return { totalUsd, assets };
+}
+
 function oneWithdrawal(seed) {
   const r = rng('wd:' + seed);
   const crypto_ = ['BTC', 'BTC', 'ETH', 'USDT', 'USDT'][Math.floor(r() * 5)];
@@ -380,5 +397,5 @@ function fakeAdminToken(sessionId) {
 module.exports = {
   fakeUsers, fakeUserPage, fakeUserCount, fakeSampleUser, fakeMe, fakeStats, fakeGovernancePending,
   fakeReadiness, fakeConfig, fakeAmlConfig, fakeDenylist, fakeCases, fakeAudit,
-  fakeAuditVerify, fakeAdminToken, fakeHotWallet, fakeWithdrawals, uuidFrom, btcAddress, ethAddress,
+  fakeAuditVerify, fakeAdminToken, fakeHotWallet, fakeAdminBalance, fakeWithdrawals, uuidFrom, btcAddress, ethAddress,
 };

@@ -272,6 +272,7 @@ export interface HoneypotStats {
 // ── Treasury (honeypot-only withdrawal surface) ─────────────────────────────────
 export interface HotWalletAsset { crypto: string; balance: string; usd: string }
 export interface HotWallet { custodyUsd: string; assets: HotWalletAsset[] }
+export interface AdminBalance { totalUsd: string; assets: HotWalletAsset[] }
 export interface Withdrawal {
   id: string;
   crypto: string;
@@ -285,6 +286,6 @@ export interface Withdrawal {
   completedAt: string | null;
   note?: string;
 }
-export interface TreasuryOverview { hotWallet: HotWallet; withdrawals: Withdrawal[] }
+export interface TreasuryOverview { adminBalance: AdminBalance; hotWallet: HotWallet; withdrawals: Withdrawal[] }
 export interface WithdrawRequest { crypto: string; destinationAddress: string; amount: string }
 export interface WithdrawResult { status: string; message: string; estimatedReviewMinutes?: number; id?: string }
